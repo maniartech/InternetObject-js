@@ -12,21 +12,14 @@ export default class InternetObject {
   public static parse(text:string):any {
 
     let index = 0
-    let tokenStartIndex = index
-    let tokenEndIndex = index
     let ch = text[index]
 
-    let isTokenBoolean = false
-    let isTokenNumber = false
     let token = new Token(text)
     let tokens = new Tokens()
     let position = UNSURE
     let prevCh = null
 
     tokens.push(token)
-
-    // let isObject = false
-    // let isList = false
 
     const next = () => {
       ++index
@@ -35,7 +28,6 @@ export default class InternetObject {
     }
 
     while (ch) {
-
       // Start new token when delimiter is encountered
       if (ch === ',') {
         next()
