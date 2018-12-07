@@ -18,7 +18,16 @@ console.log(o.age);
 
 > This project is under heavy development! Hence, it is not ready for productio yet.
 
-For more information, check it out-
+### Development Guide:
+
+1. Fork repository from https://github.com/maniartech/internet-object
+1. Install dependencies `npm install` or `yarn install`
+1. Run tests, `npm test` or `yarn test`
+1. Make changes into `./src` directory
+1. Update tests
+1. Send pull requests!
+
+For more information about Internet Object architecture, check it out-
 www.internetobject.org
 
 MIT License -  `© Maniar Technologies`
