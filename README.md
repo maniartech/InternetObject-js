@@ -22,10 +22,10 @@ console.log(o.age);
 
 1. Fork repository from https://github.com/maniartech/internet-object
 1. Install dependencies `npm install` or `yarn install`
-1. Run tests, `npm test` or `yarn test`
 1. Make changes into `./src` directory
 1. Update tests
-1. Send pull requests!
+1. Run tests, `npm test` or `yarn test`
+1. Send pull request
 
 For more information about Internet Object architecture, check it out-
 www.internetobject.org
