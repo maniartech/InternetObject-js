@@ -1,13 +1,13 @@
 import { TRUE, FALSE } from './constants';
-import { INVALID_TYPE } from './errors';
+// import { INVALID_TYPE } from './errors';
 
 
 export default class Token {
 
-  constructor(text:string, start:number=0, end:number=0) {
+  constructor(text:string, start:number=0) {
     this._text = text
     this._start = start
-    this._end = end
+    this._end = start
   }
 
   get token () {
@@ -23,32 +23,33 @@ export default class Token {
   public get start() : number {
     return this._start;
   }
-  public set start(v : number) {
-    this._start = v;
-  }
 
   private _end : number;
   public get end() : number {
     return this._end;
   }
-  public set end(v : number) {
-    this._end = v;
+
+  next = () => {
+    this._end += 1
   }
 
   get length():number {
     return this.end - this.start;
   };
 
-  get isBoolean () {
-    let token = this.token;
-    return token === TRUE || token === FALSE
-  }
+  get value () {
+    const token = this.token
 
-  get booleanVal () {
-    if (this.isBoolean) {
-      return this.token === TRUE
-    }
-    throw INVALID_TYPE
+    // Boolean
+    if (token === TRUE) return true
+    if (token === FALSE) return false
+
+    // Number
+    const num = Number(token)
+    if (!isNaN(num)) return num
+
+    // String
+    return token
   }
 
 }

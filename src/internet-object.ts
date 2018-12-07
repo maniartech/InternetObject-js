@@ -1,6 +1,7 @@
 // import './constants'
 import Token from './token'
 import { UNSURE, ZERO, NINE } from './constants';
+import Tokens from './tokens';
 
 export default class InternetObject {
 
@@ -18,41 +19,39 @@ export default class InternetObject {
     let isTokenBoolean = false
     let isTokenNumber = false
     let token = new Token(text)
-    let tokenDetails = []
+    let tokens = new Tokens()
     let position = UNSURE
+    let prevCh = null
+
+    tokens.push(token)
 
     // let isObject = false
     // let isList = false
 
-    while (ch) {
-      ++token.end
-
-      isTokenBoolean = false
-
-      let chCode = ch.charCodeAt(index)
-      let chIsNum = chCode >= ZERO && chCode <= NINE
-
-      if  (chIsNum && (isTokenNumber || tokenStartIndex === 0)) {
-        isTokenNumber = true
-      }
-      else if (token.isBoolean) {
-        isTokenBoolean = true
-      }
-
+    const next = () => {
       ++index
+      prevCh = ch
       ch = text[index]
     }
 
-    if (isTokenNumber) {
-      return Number(token.token)
+    while (ch) {
+
+      // Start new token when delimiter is encountered
+      if (ch === ',') {
+        next()
+        token = new Token(text, index)
+        tokens.push(token)
+        continue
+      }
+
+      token.next();
+      next()
     }
 
-    if (isTokenBoolean) {
-      return token.booleanVal
+    if (tokens.length === 1) {
+      return token.value
     }
-
-    return token.token
-
+    return tokens.value
   }
 
 }

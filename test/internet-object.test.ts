@@ -18,14 +18,22 @@ describe("Scalar Number", () => {
 
 describe("Scalar Boolean", () => {
   it("parses the boolean", () => {
-    expect(IO.parse("true")).toBe(true)
-    expect(IO.parse("false")).toBe(false)
+    expect(IO.parse("T")).toBe(true)
+    expect(IO.parse("F")).toBe(false)
   })
 })
 
 describe("Scalar String", () => {
   it("parses the string", () => {
     expect(IO.parse("Hello World")).toBe("Hello World")
-    expect(IO.parse("Wow, great!")).toBe("Wow, great!")
+    expect(IO.parse("Wow great!")).toBe("Wow great!")
+  })
+})
+
+describe("Object", () => {
+  it("simple string", () => {
+    const test = "One,Two"
+    expect(IO.parse("One,Two")[0]).toBe("One")
+    expect(IO.parse("One,Two")[1]).toBe("Two")
   })
 })
