@@ -31,9 +31,14 @@ describe("Scalar String", () => {
 })
 
 describe("Object", () => {
-  it("simple string", () => {
-    const test = "One,Two"
-    expect(IO.parse("One,Two")[0]).toBe("One")
-    expect(IO.parse("One,Two")[1]).toBe("Two")
+  it("simple object", () => {
+    const test = "One,Two,3,4,T"
+    const o = IO.parse(test)
+
+    expect(o[0]).toBe("One")
+    expect(o[1]).toBe("Two")
+    expect(o[2]).toBe(3)
+    expect(o[3]).toBe(4)
+    expect(o[4]).toBe(true)
   })
 })
