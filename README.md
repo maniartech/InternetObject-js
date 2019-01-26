@@ -2,6 +2,8 @@
 
 JavaScript Parser of Internet Object.
 
+> This project is under heavy development! Hence, it is not ready for productio yet.
+
 ```JS
 import IO from 'internet-object'
 
@@ -16,7 +18,29 @@ console.log(o.name);
 console.log(o.age);
 ```
 
-> This project is under heavy development! Hence, it is not ready for productio yet.
+```JS
+import IO from 'internet-object'
+
+const schema = "name,age,address:{street,city,state,zip}"
+
+const o = IO.parse("Spiderman,25,{Bond Street, New York, NY, 100000}", schema)
+
+// Print o
+console.log(o);
+```
+Outputs following object.
+```
+{
+  "name": "Spiderman",
+  "age": 25,
+  "address": {
+    "street": "Bond Street",
+    "city": "New York",
+    "state": "NY",
+    "zip": 100000
+  }
+}
+```
 
 ### Development Guide:
 

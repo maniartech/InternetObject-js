@@ -1,20 +1,40 @@
 import "jest"
-import IO from "../src/internet-object"
+import Tokenizer from "../src/tokenizer"
 
 
-describe("Internet Object", () => {
+describe("Tokenizer", () => {
   it("has a parse method", () => {
-    // expect(typeof IO.parse).toBe("function")
+    // expect(typeof Tokenizer.parse).toBe("function")
   })
 })
 
-// describe("Scalar Number", () => {
-//   it("parses the integer", () => {
-//     expect(IO.parse("1")).toBe(1)
-//     expect(IO.parse("10")).toBe(10)
-//     expect(IO.parse("100")).toBe(100)
-//   })
-// })
+
+describe("Scalar Number", () => {
+  // it("parses the integer", () => {
+  //   let tokenizer = Tokenizer.parse("1")
+  //   let token = tokenizer.get(0)
+  //   expect(tokenizer.length).toBe(1)
+  //   expect(token.index).toBe(0)
+  // })
+})
+
+describe("Simple Object", () => {
+  it("Test 1", () => {
+    const test = '   One,Two,  "One and , two" ,F, { Six, Seven }, [8, 9]    '
+    const test2 =
+`
+,
+one
+   ,,
+two`
+
+    let tokenizer = new Tokenizer(test)
+    tokenizer.readAll()
+
+    console.log("Tokens for", test)
+    console.log(tokenizer.tokens)
+  })
+})
 
 // describe("Scalar Boolean", () => {
 //   it("parses the boolean", () => {
