@@ -2,7 +2,7 @@
 
 JavaScript Parser of Internet Object.
 
-> This project is under heavy development! Hence, it is not ready for production yet.
+### This project is under heavy development! Hence, it is not yet ready.
 
 ```JS
 import IO from 'internet-object'
