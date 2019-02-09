@@ -1,5 +1,10 @@
 import "jest"
 import Tokenizer from "../src/tokenizer"
+import Parser from '../src/parser';
+
+const print = (o:any) => {
+  console.log(JSON.stringify(o, null, 2))
+}
 
 
 describe("Tokenizer", () => {
@@ -20,7 +25,7 @@ describe("Scalar Number", () => {
 
 describe("Simple Object", () => {
   it("Test 1", () => {
-    const test = '   One,Two,  "One and , two" ,F, { Six, Seven }, [8, 9]    '
+    const test = '   One,Two,  "One and , two" ,F, { Six, Seven, { nine, ten } }, [8, 9]    '
     const test2 =
 `
 ,
@@ -29,10 +34,17 @@ one
 two`
 
     let tokenizer = new Tokenizer(test)
-    tokenizer.readAll()
+    let parser = new Parser()
+    let token = tokenizer.read()
+    while(token) {
+      tokenizer.push(token)
+      parser.process(token)
+      token = tokenizer.read()
+    }
 
     console.log("Tokens for", test)
-    console.log(tokenizer.tokens)
+    // console.log(tokenizer.tokens)
+    print(parser.stack[0])
   })
 })
 

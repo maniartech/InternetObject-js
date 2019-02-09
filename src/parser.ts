@@ -1,47 +1,78 @@
-import Token from '../dist/types/token';
-
+import Token from './token';
+import { throwError } from './errors';
 
 export default class Parser {
-
-  private stack:any[] = []
-  private data:any = null
+  public stack:any[] = []
   private lastObj:any = null
   private lastToken:Token|null = null
 
-  constructor() {
-    //
-  }
-
-
 
   process = (token:Token, isFinalToken:boolean = false) => {
-    let obj = this.lastObj
-    let lastToken = this.lastToken
+    let stack = this.stack
 
-    // not yet started
-    if(this.data === null) {
-      // If scalar
-      if (isFinalToken) {
-        this.pushValue(token)
-      }
-      else {
-        this.pushObject(token)
+    let obj = this.getObject()
+
+    if (token.value === "{") {
+      // this.stack.push("{")
+      this.push()
+      return
+    }
+    else if(token.value === "[") {
+      // this.stack.push("[")
+      this.push("array")
+      return
+    }
+    else if(token.type !== "sep") {
+      console.log(obj, token.value)
+      obj.values.push(token.value)
+    }
+    // Empty token
+    else if (token.value === ",") {
+      if(this.lastToken !== null && this.lastToken.value === ",") {
+        obj.values.push("")
       }
     }
+    else if (token.value === "}" || token.value === "]") {
+      this.pop(token.value === "}"
+        ? "object"
+        : "array", token)
+    }
 
+    this.lastToken = token
   }
 
-  pushObject = (token:Token, key?:Token) => {
-    //
+  private getObject = () => {
+    if (this.stack.length === 0) {
+      this.stack.push({
+        type: "object",
+        values: []
+      })
+    }
+
+    let obj = this.stack[this.stack.length-1]
+    return obj
   }
 
-  pushValue = (value:Token, key?:Token) => {
-    this.data
+
+  private push = (type="object", values=[]) => {
+    let object = this.getObject()
+    let newObject = { type, values }
+    object.values.push(newObject)
+    this.stack.push(newObject)
   }
 
-  pushArray = (token:Token, key?:Token) => {
+  private pop = (type:string, token:Token) => {
+    const obj = this.getObject()
 
+    if (obj.type !== type) {
+      const message = `Expecting "${
+        obj.type === "object" ? "}" : "]"
+      }" but found "${
+        obj.type === "object" ? "]" : "}"
+      }"`
+      throwError(token, message)
+    }
+    this.stack.pop()
   }
-
 
 }
