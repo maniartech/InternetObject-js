@@ -1,8 +1,13 @@
 import Token from './token';
 import { throwError } from './errors';
 
+interface ParserTree {
+  type: string,
+  values: (ParserTree|string|number|boolean) []
+}
+
 export default class Parser {
-  public stack:any[] = []
+  public stack:ParserTree[] = []
   private lastObj:any = null
   private lastToken:Token|null = null
 
@@ -41,6 +46,45 @@ export default class Parser {
     this.lastToken = token
   }
 
+  public toObject = () => {
+    if (this.stack.length === 0) return null
+
+    const tree = this.stack[0]
+
+    if (tree.values.length === 0) {
+      return
+    }
+    else if (tree.values.length === 1) {
+      return tree.values[0]
+    }
+
+    const generateObject = (root:ParserTree, container:any) => {
+      for (let index=0; index < root.values.length; index += 1) {
+        let value = root.values[index]
+
+        if (typeof value === 'string' ||
+            typeof value === 'number' ||
+            typeof value === 'boolean') {
+          container[index] = value
+        }
+        else {
+          // Object
+          if(value.type === 'object') {
+            container[index] = generateObject(value, {})
+          }
+          // Array
+          else if(value.type === 'array') {
+            container[index] = generateObject(value, [])
+          }
+        }
+      }
+      return container
+    }
+
+    return generateObject(tree, {})
+  }
+
+
   private getObject = () => {
     if (this.stack.length === 0) {
       this.stack.push({
@@ -74,5 +118,7 @@ export default class Parser {
     }
     this.stack.pop()
   }
+
+
 
 }
