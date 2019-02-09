@@ -62,8 +62,29 @@ export default class Tokenizer {
     const token = this._lastToken
     if (token === null) return null
 
-    token.token = this._text.substring(this._start, this._end+1)
-    token.value = token.token.length
+    let value:any = this._text.substring(this._start, this._end+ (this._isEnclosedStringActive ? 2 : 1))
+    let numVal = Number(value)
+    let type = "string"
+    token.token = value
+
+    if (SEPARATORS.indexOf(value) >= 0) {
+      type = "sep"
+    }
+    else if(!isNaN(numVal)) {
+      value = numVal
+      type = "number"
+    }
+    else if( value === "F" || value === "T") {
+      value = value === "T"
+      type = "boolean"
+    }
+    else {
+      // Trim double-quotes
+      value = value.toString().replace(/^"(.*)"$/, '$1')
+    }
+
+    token.value = value
+    token.type = type
     return token
   }
 
@@ -90,6 +111,8 @@ export default class Tokenizer {
       this._col = 0
     }
     else if (!isWS) {
+
+      // Processing not started yet!
       if (this._start === -1) {
         this._start = index
 
@@ -103,8 +126,8 @@ export default class Tokenizer {
 
       if (ch === STRING_ENCLOSER ) {
         if (this._isEnclosedStringActive) {
-          this._isEnclosedStringActive = false
           return this.getToken()
+          this._isEnclosedStringActive = false
         }
         this._isEnclosedStringActive = true
       }
