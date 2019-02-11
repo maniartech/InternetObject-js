@@ -1,9 +1,42 @@
 import Token from './token';
 import { throwError } from './errors';
 
+type KeyVal = {
+  key: string,
+  value: ParserTreeValue
+}
+
+type ParserTreeValue =
+  null |
+  undefined |
+  ParserTree |
+  string |
+  number |
+  boolean |
+  KeyVal
+
 interface ParserTree {
   type: string,
-  values: (ParserTree|string|number|boolean) []
+  values: ParserTreeValue[],
+
+}
+
+function instanceOfParserTree(object: any): object is ParserTree {
+  try {
+    return "type" in object && "values" in object
+  }
+  catch {
+    return false
+  }
+}
+
+function instanceOfKeyVal(object: any): object is KeyVal {
+  try {
+    return "key" in object && "value" in object
+  }
+  catch {
+    return false
+  }
 }
 
 export default class Parser {
@@ -20,21 +53,35 @@ export default class Parser {
     if (token.value === "{") {
       // this.stack.push("{")
       this.push()
-      return
+      // return
     }
     else if(token.value === "[") {
       // this.stack.push("[")
       this.push("array")
-      return
+      // return
     }
     else if(token.type !== "sep") {
-      console.log(obj, token.value)
-      obj.values.push(token.value)
+      this.addValue(token.value)
+    }
+    else if (token.value === ':') {
+      let lastVal = obj.values[obj.values.length - 1]
+
+      if (lastVal && ['string', 'number', 'boolean'].indexOf(typeof lastVal) > -1) {
+        obj.values[obj.values.length - 1] = {
+          key: lastVal.toString(),
+          value: undefined
+        }
+        // console.log(obj.values)
+      }
+      else {
+        // TODO:Handle null and other types
+        // Throw Invalid key error!
+      }
     }
     // Empty token
     else if (token.value === ",") {
       if(this.lastToken !== null && this.lastToken.value === ",") {
-        obj.values.push("")
+        this.addValue("")
       }
     }
     else if (token.value === "}" || token.value === "]") {
@@ -62,12 +109,7 @@ export default class Parser {
       for (let index=0; index < root.values.length; index += 1) {
         let value = root.values[index]
 
-        if (typeof value === 'string' ||
-            typeof value === 'number' ||
-            typeof value === 'boolean') {
-          container[index] = value
-        }
-        else {
+        if (instanceOfParserTree(value)) {
           // Object
           if(value.type === 'object') {
             container[index] = generateObject(value, {})
@@ -77,6 +119,18 @@ export default class Parser {
             container[index] = generateObject(value, [])
           }
         }
+        else if(instanceOfKeyVal(value)) {
+          if (instanceOfParserTree(value.value)) {
+            container[value.key] = generateObject(value.value,
+              value.value.type === "object" ? {} : [])
+          }
+          else {
+            container[value.key] = value.value
+          }
+        }
+        else {
+          container[index] = value
+        }
       }
       return container
     }
@@ -84,6 +138,25 @@ export default class Parser {
     return generateObject(tree, {})
   }
 
+  private addValue = (value: ParserTreeValue) => {
+    let obj = this.getObject()
+
+    // If last token is : then
+    if (this.lastToken !== null && this.lastToken.value === ":") {
+      let lastVal = obj.values[obj.values.length - 1]
+      // console.log("---", lastVal)
+      if (lastVal && instanceOfKeyVal(lastVal)) {
+        // obj.values[obj.values.length - 1].value = value
+        lastVal.value = value
+      }
+      else {
+        // TODO: Verify this case!
+      }
+    }
+    else {
+      obj.values.push(value)
+    }
+  }
 
   private getObject = () => {
     if (this.stack.length === 0) {
@@ -97,11 +170,10 @@ export default class Parser {
     return obj
   }
 
-
   private push = (type="object", values=[]) => {
     let object = this.getObject()
     let newObject = { type, values }
-    object.values.push(newObject)
+    this.addValue(newObject)
     this.stack.push(newObject)
   }
 
@@ -110,15 +182,14 @@ export default class Parser {
 
     if (obj.type !== type) {
       const message = `Expecting "${
-        obj.type === "object" ? "}" : "]"
-      }" but found "${
-        obj.type === "object" ? "]" : "}"
-      }"`
+          obj.type === "object" ? "}" : "]"
+        }" but found "${
+          obj.type === "object" ? "]" : "}"
+        }"`
       throwError(token, message)
     }
     this.stack.pop()
   }
 
-
-
 }
+
