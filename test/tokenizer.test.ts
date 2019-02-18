@@ -1,6 +1,6 @@
 import "jest"
 import Tokenizer from "../src/tokenizer"
-import Parser from '../src/parser';
+import ASTParser from '../src/parser/ast-parser';
 
 const print = (o:any) => {
   console.log(JSON.stringify(o, null, 2))
@@ -25,16 +25,34 @@ describe("Scalar Number", () => {
 
 describe("Simple Object", () => {
   it("Test 1", () => {
-    const test = '   One,Two,  "One and , two" ,F, { Six, Seven, { nine, ten } }, [8, 9]    '
+    const test = '   One,Two,  "One and , two", ready:F, { Six, Seven, { nine, ten } }, [8, 9, 10]    '
     const test2 =
 `
 ,
 one
    ,,
 two`
+    const schemaTest = `
+      id: number,
+      name:{
+        string,
+        maxLength: 20
+      },
+      age?,
+      tags: [{name:string, slug:string}],
+      test:{type: string,  maxLength:10},
+      string,
+      address?: {
+        building: {
+          type: string,
+          maxLength: 100
+        },
+        street?,
+        city
+      }`
 
     let tokenizer = new Tokenizer(test)
-    let parser = new Parser()
+    let parser = new ASTParser()
     let token = tokenizer.read()
     while(token) {
       tokenizer.push(token)
@@ -42,11 +60,57 @@ two`
       token = tokenizer.read()
     }
 
-    console.log("Tokens for", test)
-    // console.log(tokenizer.tokens)
     print(parser.stack[0])
+    print(parser.toObject())
+    print(parser.toSchema())
   })
 })
+
+const template = {
+  type: "object",
+  values: [
+    {
+      key: "name",
+      value: {
+        type: "object",
+        values: [
+          "string",
+          {
+            key: "max_length" ,
+            value: 20
+          }
+        ]
+      }
+    },
+    "age",
+    {
+      key: "address?",
+      value: {
+        type: "object",
+        values: [
+
+        ]
+      }
+    }
+  ]
+}
+
+const schemaTemplate = {
+  "id": "number",
+  "name": {
+    "type": "string",
+    "max_length": 20
+  },
+  "age?": "type",
+  "address?": {
+    "building": {
+      "type": "string",
+      "max_length": 100
+    },
+    "street?": "any",
+    "city": "any"
+  }
+}
 
 // describe("Scalar Boolean", () => {
 //   it("parses the boolean", () => {
