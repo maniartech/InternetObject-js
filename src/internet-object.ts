@@ -1,6 +1,6 @@
 // import './constants'
 import Tokenizer from './tokenizer';
-import Parser from './parser';
+import ASTParser from './parser/ast-parser';
 
 export default class InternetObject {
 
@@ -10,7 +10,7 @@ export default class InternetObject {
    */
   public static parse(text:string):any {
     let tokenizer = new Tokenizer(text)
-    let parser = new Parser()
+    let parser = new ASTParser()
     let token = tokenizer.read()
     while(token) {
       parser.process(token)

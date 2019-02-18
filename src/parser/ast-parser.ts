@@ -1,46 +1,13 @@
-import Token from './token';
-import { throwError } from './errors';
+import Token from '../token';
+import { throwError } from '../errors';
+import { isDataType, isArray } from '../is';
+import { ASTParserTree, instanceOfParserTree,
+         instanceOfKeyVal, ParserTreeValue } from '.';
+import SchemaParser from './schema-parser';
 
-type KeyVal = {
-  key: string,
-  value: ParserTreeValue
-}
 
-type ParserTreeValue =
-  null |
-  undefined |
-  ParserTree |
-  string |
-  number |
-  boolean |
-  KeyVal
-
-interface ParserTree {
-  type: string,
-  values: ParserTreeValue[],
-
-}
-
-function instanceOfParserTree(object: any): object is ParserTree {
-  try {
-    return "type" in object && "values" in object
-  }
-  catch {
-    return false
-  }
-}
-
-function instanceOfKeyVal(object: any): object is KeyVal {
-  try {
-    return "key" in object && "value" in object
-  }
-  catch {
-    return false
-  }
-}
-
-export default class Parser {
-  public stack:ParserTree[] = []
+export default class ASTParser {
+  public stack:ASTParserTree[] = []
   private lastObj:any = null
   private lastToken:Token|null = null
 
@@ -105,7 +72,7 @@ export default class Parser {
       return tree.values[0]
     }
 
-    const generateObject = (root:ParserTree, container:any) => {
+    const generateObject = (root:ASTParserTree, container:any) => {
       for (let index=0; index < root.values.length; index += 1) {
         let value = root.values[index]
 
@@ -136,6 +103,12 @@ export default class Parser {
     }
 
     return generateObject(tree, {})
+  }
+
+  public toSchema = () => {
+    if (this.stack.length === 0) return null
+    const tree = this.stack[0]
+    return SchemaParser.parse(tree)
   }
 
   private addValue = (value: ParserTreeValue) => {
