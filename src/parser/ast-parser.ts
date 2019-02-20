@@ -2,7 +2,7 @@ import Token from '../token';
 import { throwError } from '../errors';
 import {
   isDataType, isArray,
-  isParserTree, isKeyVal } from '../is'
+  isParserTree, isKeyVal } from '../utils/is'
 import { ASTParserTree, ParserTreeValue } from '.';
 import SchemaParser from './schema-parser';
 

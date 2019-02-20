@@ -1,5 +1,5 @@
-import { DATA_TYPES } from "./schema/schema-validator";
-import { ASTParserTree, KeyVal } from './parser/index';
+import { DATA_TYPES } from "../schema/schema-validator";
+import { ASTParserTree, KeyVal } from '../parser/index';
 
 
 /**
