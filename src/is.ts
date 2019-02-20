@@ -1,4 +1,5 @@
 import { DATA_TYPES } from "./schema/schema-validator";
+import { ASTParserTree, KeyVal } from './parser/index';
 
 
 /**
@@ -49,4 +50,28 @@ export const isArray = (val:any) => {
  */
 export const isDataType = (val:string) => {
   return DATA_TYPES.indexOf(val) > -1
+}
+
+export function isParserTree(object: any): object is ASTParserTree {
+  try {
+    return "type" in object && "values" in object
+  }
+  catch {
+    return false
+  }
+}
+
+export function isKeyVal(object: any): object is KeyVal {
+  try {
+    return "key" in object && "value" in object
+  }
+  catch {
+    return false
+  }
+}
+
+export const isSchemaDef = (o:any) => {
+  if (isArray(o)) {
+    return typeof o[0] === "string" && isDataType(o[0])
+  }
 }
