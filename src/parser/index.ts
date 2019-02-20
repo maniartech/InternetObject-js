@@ -19,20 +19,3 @@ export interface ASTParserTree {
   values: ParserTreeValue[]
 }
 
-export function instanceOfParserTree(object: any): object is ASTParserTree {
-  try {
-    return "type" in object && "values" in object
-  }
-  catch {
-    return false
-  }
-}
-
-export function instanceOfKeyVal(object: any): object is KeyVal {
-  try {
-    return "key" in object && "value" in object
-  }
-  catch {
-    return false
-  }
-}

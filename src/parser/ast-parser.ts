@@ -1,8 +1,9 @@
 import Token from '../token';
 import { throwError } from '../errors';
-import { isDataType, isArray } from '../is';
-import { ASTParserTree, instanceOfParserTree,
-         instanceOfKeyVal, ParserTreeValue } from '.';
+import {
+  isDataType, isArray,
+  isParserTree, isKeyVal } from '../is'
+import { ASTParserTree, ParserTreeValue } from '.';
 import SchemaParser from './schema-parser';
 
 
@@ -76,7 +77,7 @@ export default class ASTParser {
       for (let index=0; index < root.values.length; index += 1) {
         let value = root.values[index]
 
-        if (instanceOfParserTree(value)) {
+        if (isParserTree(value)) {
           // Object
           if(value.type === 'object') {
             container[index] = generateObject(value, {})
@@ -86,8 +87,8 @@ export default class ASTParser {
             container[index] = generateObject(value, [])
           }
         }
-        else if(instanceOfKeyVal(value)) {
-          if (instanceOfParserTree(value.value)) {
+        else if(isKeyVal(value)) {
+          if (isParserTree(value.value)) {
             container[value.key] = generateObject(value.value,
               value.value.type === "object" ? {} : [])
           }
@@ -118,7 +119,7 @@ export default class ASTParser {
     if (this.lastToken !== null && this.lastToken.value === ":") {
       let lastVal = obj.values[obj.values.length - 1]
       // console.log("---", lastVal)
-      if (lastVal && instanceOfKeyVal(lastVal)) {
+      if (lastVal && isKeyVal(lastVal)) {
         // obj.values[obj.values.length - 1].value = value
         lastVal.value = value
       }
