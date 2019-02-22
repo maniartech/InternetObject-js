@@ -1,7 +1,5 @@
-import { isDataType, isArray, isParserTree, isKeyVal, isSchemaDef } from '../is'
-import { ASTParserTree, ParserTreeValue } from '.'
-import { isString } from '../is'
-import { KeyVal } from './index'
+import { isDataType, isArray, isParserTree, isKeyVal } from '../utils/is'
+import { ASTParserTree } from '.'
 
 export default class SchemaParser {
   public static parse(tree: ASTParserTree) {
@@ -12,6 +10,7 @@ export default class SchemaParser {
     }
 
     return generateObject(tree, {})
+    // return generateNormalizedSchema(tree, {})
   }
 }
 
@@ -65,11 +64,63 @@ const generateObject = (root: ASTParserTree, container: any) => {
     if (key && keys) {
       keys.push(key)
     }
+
   }
 
   if(container.defs && container.defs.type && container.keys[0] === "type") {
     return container.defs
   }
 
+  return container
+}
+
+
+const generateNormalizedSchema = (root:ASTParserTree, container:any) => {
+  for (let index=0; index < root.values.length; index += 1) {
+    let value = root.values[index]
+
+    if (isParserTree(value)) {
+      // Object
+      if(value.type === 'object') {
+        container[index] = generateNormalizedSchema(value, {})
+      }
+      // Array
+      else {
+        container[index] = generateNormalizedSchema(value, [])
+      }
+    }
+    else if(isKeyVal(value)) {
+      if (isParserTree(value.value)) {
+        container[value.key] = generateNormalizedSchema(value.value,
+          value.value.type === "object" ? {} : [])
+      }
+      else if(isKeyVal(value.value)) {
+        console.log(">>>", value.value)
+      }
+      else {
+        console.log("--->", value)
+        container[value.key] = value.value
+      }
+    }
+    else if (value) {
+      if (index === 0 && isDataType(value.toString())) {
+        if (isArray(container)) {
+          container.push(value)
+        }
+        else {
+          container["type"] = value
+        }
+      }
+      else if (isArray(container)) {
+        container.push(value)
+      }
+      else {
+        container[value.toString()] = "any"
+      }
+    }
+    else {
+      console.log("~~~", value)
+    }
+  }
   return container
 }

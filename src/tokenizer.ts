@@ -70,6 +70,9 @@ export default class Tokenizer {
     if (SEPARATORS.indexOf(value) >= 0) {
       type = "sep"
     }
+    else if(value === '---') {
+      type = "datasep"
+    }
     else if(!isNaN(numVal)) {
       value = numVal
       type = "number"
@@ -135,8 +138,16 @@ export default class Tokenizer {
       this._end = index
     }
 
-    if (!this._isEnclosedStringActive && (isNextSep || isSep) && this._start !== -1 && this._end !== -1 /* Skip WS */) {
-      return this.getToken()
+    if (!this._isEnclosedStringActive) {
+      if ((isNextSep || isSep) && this._start !== -1 && this._end !== -1 /* Skip WS */) {
+        return this.getToken()
+      }
+      else if (ch === '-') {
+        let value = this._text.substring(this._start, this._end + 1)
+        if (value === '---') {
+          return this.getToken()
+        }
+      }
     }
     return this.next()
   }

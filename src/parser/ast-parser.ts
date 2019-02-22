@@ -5,13 +5,18 @@ import {
   isParserTree, isKeyVal } from '../utils/is'
 import { ASTParserTree, ParserTreeValue } from '.';
 import SchemaParser from './schema-parser';
+import DataParser from './data-parser';
+import { print } from '../utils/index';
 
 
 export default class ASTParser {
+  public tree:any = {
+    header: null,
+    data: null
+  }
   public stack:ASTParserTree[] = []
   private lastObj:any = null
   private lastToken:Token|null = null
-
 
   process = (token:Token, isFinalToken:boolean = false) => {
     let stack = this.stack
@@ -28,9 +33,7 @@ export default class ASTParser {
       this.push("array")
       // return
     }
-    else if(token.type !== "sep") {
-      this.addValue(token.value)
-    }
+
     else if (token.value === ':') {
       let lastVal = obj.values[obj.values.length - 1]
 
@@ -58,61 +61,52 @@ export default class ASTParser {
         : "array", token)
     }
 
+    // Ready for schema generation
+    else if (token.type === "datasep") {
+      console.log("--------", this.stack)
+      if (this.tree.header === null) {
+        this.tree.header = {
+          schema: {...this.stack[0]}
+        }
+        this.stack.length = 0
+      }
+    }
+    // else if(token.type !== "sep") {
+    else {
+      this.addValue(token.value)
+    }
+
     this.lastToken = token
+  }
+
+  public done = () => {
+    if (this.stack.length === 0) return
+    let data = this.stack[0]
+    if (this.tree.data === null) {
+      this.tree.data = data
+    }
+    print(this.tree)
   }
 
   public toObject = () => {
     if (this.stack.length === 0) return null
-
-    const tree = this.stack[0]
-
-    if (tree.values.length === 0) {
-      return
+    const data = this.tree.data
+    if (data) {
+      return DataParser.parse(data)
     }
-    else if (tree.values.length === 1) {
-      return tree.values[0]
-    }
-
-    const generateObject = (root:ASTParserTree, container:any) => {
-      for (let index=0; index < root.values.length; index += 1) {
-        let value = root.values[index]
-
-        if (isParserTree(value)) {
-          // Object
-          if(value.type === 'object') {
-            container[index] = generateObject(value, {})
-          }
-          // Array
-          else if(value.type === 'array') {
-            container[index] = generateObject(value, [])
-          }
-        }
-        else if(isKeyVal(value)) {
-          if (isParserTree(value.value)) {
-            container[value.key] = generateObject(value.value,
-              value.value.type === "object" ? {} : [])
-          }
-          else {
-            container[value.key] = value.value
-          }
-        }
-        else {
-          container[index] = value
-        }
-      }
-      return container
-    }
-
-    return generateObject(tree, {})
+    return null
   }
 
   public toSchema = () => {
     if (this.stack.length === 0) return null
-    const tree = this.stack[0]
-    return SchemaParser.parse(tree)
+    const schema = (this.tree.header || {}).schema || null
+    if (schema) {
+      return SchemaParser.parse(schema)
+    }
+    return null
   }
 
-  private addValue = (value: ParserTreeValue) => {
+  private addValue = (value:any) => {
     let obj = this.getObject()
 
     // If last token is : then
@@ -125,6 +119,7 @@ export default class ASTParser {
       }
       else {
         // TODO: Verify this case!
+        console.warn("Verify this case!")
       }
     }
     else {
