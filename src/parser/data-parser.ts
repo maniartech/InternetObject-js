@@ -32,12 +32,15 @@ const generateObject = (root:ASTParserTree, container:any) => {
         container[value.key] = generateObject(value.value,
           value.value.type === "object" ? {} : [])
       }
+      else if (isKeyVal(value.value)) {
+        console.warn("Validate this case!")
+      }
       else {
-        container[value.key] = value.value
+        container[value.key] = value.value === null ? undefined : value.value.value
       }
     }
     else {
-      container[index] = value
+      container[index] = value === null ? undefined : value.value
     }
   }
   return container
