@@ -1,4 +1,4 @@
-import Token from '../token';
+import { Token } from '../token';
 import { throwError } from '../errors';
 import {
   isDataType, isArray,
@@ -11,9 +11,10 @@ import { print } from '../utils/index';
 
 export default class ASTParser {
   public tree:any = {
-    header: null,
-    data: null
+    header: undefined,
+    data: undefined
   }
+
   public stack:ASTParserTree[] = []
   private lastObj:any = null
   private lastToken:Token|null = null
@@ -35,12 +36,12 @@ export default class ASTParser {
     }
 
     else if (token.value === ':') {
-      let lastVal = obj.values[obj.values.length - 1]
+      let lastVal:any = obj.values[obj.values.length - 1]
 
-      if (lastVal && ['string', 'number', 'boolean'].indexOf(typeof lastVal) > -1) {
+      if (lastVal && ['string', 'number', 'boolean'].indexOf(typeof lastVal.value) > -1) {
         obj.values[obj.values.length - 1] = {
-          key: lastVal.toString(),
-          value: undefined
+          key: lastVal.value,
+          value: null
         }
         // console.log(obj.values)
       }
@@ -52,7 +53,7 @@ export default class ASTParser {
     // Empty token
     else if (token.value === ",") {
       if(this.lastToken !== null && this.lastToken.value === ",") {
-        this.addValue("")
+        this.addValue(null)
       }
     }
     else if (token.value === "}" || token.value === "]") {
@@ -63,8 +64,7 @@ export default class ASTParser {
 
     // Ready for schema generation
     else if (token.type === "datasep") {
-      console.log("--------", this.stack)
-      if (this.tree.header === null) {
+      if (!this.tree.header) {
         this.tree.header = {
           schema: {...this.stack[0]}
         }
@@ -73,7 +73,7 @@ export default class ASTParser {
     }
     // else if(token.type !== "sep") {
     else {
-      this.addValue(token.value)
+      this.addValue(token)
     }
 
     this.lastToken = token
@@ -82,10 +82,10 @@ export default class ASTParser {
   public done = () => {
     if (this.stack.length === 0) return
     let data = this.stack[0]
-    if (this.tree.data === null) {
+    if (this.tree.data === undefined) {
       this.tree.data = data
     }
-    print(this.tree)
+    // print(this.tree)
   }
 
   public toObject = () => {
@@ -99,7 +99,8 @@ export default class ASTParser {
 
   public toSchema = () => {
     if (this.stack.length === 0) return null
-    const schema = (this.tree.header || {}).schema || null
+    const schema = (this.tree.header || {}).schema ? this.tree.header.schema : this.tree.data || null
+    // console.log("...", schema)
     if (schema) {
       return SchemaParser.parse(schema)
     }

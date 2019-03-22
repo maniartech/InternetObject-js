@@ -1,4 +1,4 @@
-import Token from "./token";
+import { Token } from "./token";
 
 export const INVALID_TYPE = "invalid-type"
 
@@ -11,13 +11,21 @@ export const throwError = (token:Token, message:string = "") => {
 
 class InternetObjectError extends Error {
 
-  // we have to do the following because of: https://github.com/Microsoft/TypeScript/issues/13965
-  // otherwise we cannot use instanceof later to catch a given type
+  // Due to a bug in TypeScript specifically control the __proto__
+  // Ref: https://github.com/Microsoft/TypeScript/issues/13965
+  // If not, `instanceof` and `catch` won't work properly
   // tslint:disable-next-line:variable-name
   public __proto__: Error;
 
-  constructor(...args: any[]) {
-    super(...args)
+  constructor(message:string = "", token:Token|null=null) {
+    let errorMsg:string
+    if (token) {
+      errorMsg = `Error occured while processing "${token.token}" at ${token.row}, ${token.col}. ${message}`
+    }
+    else {
+      errorMsg = message
+    }
+    super(errorMsg)
     Error.captureStackTrace(this, InternetObjectError)
     this.__proto__ = new.target.prototype
   }

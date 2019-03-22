@@ -75,3 +75,14 @@ export const isSchemaDef = (o:any) => {
     return typeof o[0] === "string" && isDataType(o[0])
   }
 }
+
+// export function isToken(val: any): val is Token {
+//   if (!val) return false
+
+//   if (typeof val !== 'object') return false
+
+//   const keys = Object.keys(val)
+
+
+
+// }
