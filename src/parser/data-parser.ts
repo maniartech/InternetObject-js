@@ -1,15 +1,19 @@
 import { isDataType, isArray, isParserTree, isKeyVal } from '../utils/is'
 import { ASTParserTree } from '.'
 
+/**
+ * Parses the ASTParserTree into the data that makes sense.
+ */
 export default class DataParser {
-  public static parse(tree: ASTParserTree) {
-    if (tree.values.length === 0) {
+  public static parse(dataTree:ASTParserTree) {
+
+    if (dataTree.values.length === 0) {
       return
-    } else if (tree.values.length === 1) {
-      return tree.values[0]
+    } else if (dataTree.values.length === 1) {
+      return dataTree.values[0]
     }
 
-    return generateObject(tree, {})
+    return generateObject(dataTree, {})
   }
 }
 

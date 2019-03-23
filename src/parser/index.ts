@@ -1,3 +1,4 @@
+import { Token } from '../token';
 
 
 export type KeyVal = {
@@ -5,14 +6,22 @@ export type KeyVal = {
   value: ParserTreeValue
 }
 
+
+
+// export type ParserTreeValue =
+//   null |
+//   undefined |
+//   ASTParserTree |
+//   string |
+//   number |
+//   boolean |
+//   KeyVal
+
 export type ParserTreeValue =
   null |
-  undefined |
   ASTParserTree |
-  string |
-  number |
-  boolean |
-  KeyVal
+  KeyVal |
+  Token
 
 export interface ASTParserTree {
   type: string,

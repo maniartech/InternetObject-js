@@ -1,4 +1,4 @@
-import Token from './token';
+import { Token } from './token';
 import { SPACE, SEPARATORS, STRING_ENCLOSER } from './constants';
 
 type NullableToken = Token | null
@@ -101,6 +101,7 @@ export default class Tokenizer {
     if (!ch) return this.getToken()
 
     let nextCh = this._text[index+1]
+    let nextChCode = nextCh === undefined ? -1 : nextCh.charCodeAt(0)
     let chCode = ch.charCodeAt(0)
 
     let isWS = chCode <= SPACE
@@ -124,7 +125,6 @@ export default class Tokenizer {
           token.col = this._col
           token.row = this._row
         }
-
       }
 
       if (ch === STRING_ENCLOSER ) {
@@ -147,6 +147,13 @@ export default class Tokenizer {
         if (value === '---') {
           return this.getToken()
         }
+      }
+      // TODO: Validate when nextChCode === -1 (End of text)
+      else if(ch === '~' && nextChCode === SPACE) {
+        // Skip next char (space)
+        this.next()
+        let value = '~ '
+        return this.getToken()
       }
     }
     return this.next()
