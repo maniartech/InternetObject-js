@@ -3,15 +3,14 @@
 /**
  * Represents an enmu that has all the data types.
  */
-export enum DataType {
-  Id        = "id",
-  Any       = "any",
-  String    = "string",
-  Number    = "number",
-  Boolean   = "boolean",
-  Date      = "date"
+export const DataType = {
+  id        :"id",
+  any       :"any",
+  string    :"string",
+  number    :"number",
+  boolean   :"boolean",
+  date      :"date"
 }
-
 
 /**
  * Parses the key to see if it is optional.
