@@ -8,7 +8,7 @@ import { ASTParserTree, KeyVal } from '../parser/index';
  * @param val The value to be tested for number check!
  * @returns `true` if the value is a number otherwise `false`
  */
-export const isNumber = (val:any) => {
+export const isNumber = (val:any): val is number => {
   return typeof val === "number"
 }
 
@@ -18,7 +18,7 @@ export const isNumber = (val:any) => {
  * @param val The value to be tested for string check
  * @returns `true` if the value is a string otherwise `false`
  */
-export const isString = (val:any) => {
+export const isString = (val:any): val is string => {
   return typeof val === "string"
 }
 
@@ -28,7 +28,7 @@ export const isString = (val:any) => {
  * @param val The value to be tested for number check!
  * @returns `true` if the value is a boolean otherwise `false`
  */
-export const isBoolean = (val:any) => {
+export const isBoolean = (val:any): val is boolean => {
   return typeof val === "boolean"
 }
 
@@ -38,7 +38,7 @@ export const isBoolean = (val:any) => {
  * @param val The value to be tested for an array check!
  * @returns `true` if the value is an array otherwise `false`
  */
-export const isArray = (val:any) => {
+export const isArray = (val:any): val is Array<any> => {
   return val instanceof Array
 }
 
@@ -52,34 +52,47 @@ export const isDataType = (val:string) => {
   return val in DataType
 }
 
-export function isParserTree(object: any): object is ASTParserTree {
+export function isParserTree(obj: any): obj is ASTParserTree {
   try {
-    return "type" in object && "values" in object
+    return "type" in obj && "values" in obj
   }
   catch {
     return false
   }
 }
 
-export function isKeyVal(object: any): object is KeyVal {
+export function isDefined<T>(val: T | null | undefined): val is T {
+	return val !== null && val !== undefined;
+}
+
+/**
+ * Checks whether the specified object is a KeyVal or not!
+ * @param obj The object to be validated for the KeyVal check
+ * @returns `true` if the value is a KeyVal otherwise `false`
+ */
+export function isKeyVal(obj: any): obj is KeyVal {
   try {
-    return "key" in object && "value" in object
+    return "key" in obj && "value" in obj
   }
   catch {
     return false
   }
 }
 
-export const isSchemaDef = (o:any) => {
-  if (isArray(o)) {
-    return typeof o[0] === "string" && isDataType(o[0])
+/**
+ *
+ * @param obj
+ */
+export const isSchemaDef = (obj:any) => {
+  if (isArray(obj)) {
+    return typeof obj[0] === "string" && isDataType(obj[0])
   }
 }
 
 // export function isToken(val: any): val is Token {
 //   if (!val) return false
 
-//   if (typeof val !== 'object') return false
+//   if (typeof val !== 'obj') return false
 
 //   const keys = Object.keys(val)
 
