@@ -1,21 +1,46 @@
-import { SchemaParser } from '../parser/schema-parser';
 
+import { isNumber } from '../utils/is';
+import TypeDefinition from './schema-type-definition';
+import { parseKey } from './base';
+import { INVALID_TYPE } from '../errors';
+import { Token } from '../token';
 
-export default class StringParser implements SchemaParser {
+/**
+ * Represents the InternetObject String, performs following validations.
+ *
+ * - Value is number
+ * - Value is optional
+ * - Value is nullable
+ * - Value length <= maxLength
+ * - Value length >= minLength
+ * - Value is in choices
+ */
+export default class String implements TypeDefinition {
 
-  parse = (key: string, value:any = null): object => {
-    const type = "string"
-    const optional = key.endsWith("?")
-    const name = optional ? key.substr(0, key.length - 1): key
-    const schema:any = { name, type, optional }
+  validate = (key:string, token:Token, memberDef:any): boolean => {
+    const {optional} = parseKey(key)
+    const nullable = memberDef['null'] === true
+    const value = token.value
 
-    if (!value) return schema
+    // Optional check
+    if (value === undefined) return optional
 
-    if (value.max_length) {
-      schema.max_length = value.max_length
+    // Nullability check
+    if (value === null) return nullable
+
+    // Typeof check
+    if (typeof value !== "string") {
+      throw Error(INVALID_TYPE)
     }
 
-    return schema
+    const maxLength = memberDef.maxLength
+
+    // Max length check
+    if (maxLength !== undefined && isNumber(maxLength)) {
+      if (value.length > maxLength) return false
+    }
+
+    return true
   }
 
 }
