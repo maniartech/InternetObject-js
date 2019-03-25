@@ -81,6 +81,10 @@ export default class Tokenizer {
       value = value === "T"
       type = "boolean"
     }
+    else if(value === "N") {
+      value = null
+      type = "null"
+    }
     else {
       // Trim double-quotes
       value = value.toString().replace(/^"(.*)"$/, '$1')
