@@ -1,4 +1,4 @@
-import { isDataType, isArray, isParserTree, isKeyVal } from '../utils/is'
+import { isDataType, isArray, isParserTree, isKeyVal, isToken } from '../utils/is'
 import { ASTParserTree } from '.'
 
 /**
@@ -10,7 +10,10 @@ export default class DataParser {
     if (dataTree.values.length === 0) {
       return
     } else if (dataTree.values.length === 1) {
-      return dataTree.values[0]
+      const val = dataTree.values[0]
+      if (isToken(val)) {
+        return val.value
+      }
     }
 
     return generateObject(dataTree, {})
