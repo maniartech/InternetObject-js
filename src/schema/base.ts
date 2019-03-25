@@ -12,6 +12,15 @@ export const DataType = {
   date      :"date"
 }
 
+export interface MemberDef {
+  type:string,
+  optional?:boolean,
+  null?:any,
+  default?:any,
+  choices?:any[],
+  [index:string]:any
+}
+
 /**
  * Parses the key to see if it is optional.
  * @param key

@@ -5,7 +5,7 @@ import { INVALID_TYPE } from '../errors'
 import TypeDefinition from './schema-type-definition'
 import ParserError from '../errors/parser-error';
 
-// age?: { number, true, 10, min:10, max:20}
+// age?: {any, true}
 
 /**
  * Represents the InternetObjectNumber, performs following validations.
@@ -16,13 +16,13 @@ import ParserError from '../errors/parser-error';
  * - Value <= schema.max
  * - Value is in choices
  */
-class NumberDef implements TypeDefinition {
+export default class AnyDef implements TypeDefinition {
 
   getType = () => {
-    return "number"
+    return "any"
   }
 
-  validate = (key: string, token: Token, memberDef: MemberDef): number => {
+  validate = (key: string, token: Token, memberDef:MemberDef): number => {
 
     // Optional check
     if (memberDef.optional && token.value === undefined) {
@@ -39,24 +39,6 @@ class NumberDef implements TypeDefinition {
       throw new ParserError("value-not-in-choices", token)
     }
 
-    // Typeof check
-    if (token.type !== "number") {
-      throw Error(INVALID_TYPE)
-    }
-
-    if (isNumber(memberDef.min)) {
-      const min = memberDef.min
-      if (token.value < min) {
-        throw new ParserError(
-          `The "${ key }" must be greater than or equal to ${memberDef.min}, Currently it is "${token.value}".`, token
-        )
-      }
-    }
-
-    if (isNumber(memberDef.max) && token.value > memberDef.max) {
-      throw new ParserError('invalid-value', token)
-    }
-
     return token.value
   }
 
@@ -64,6 +46,3 @@ class NumberDef implements TypeDefinition {
     return 'number'
   }
 }
-
-
-export default NumberDef

@@ -5,6 +5,8 @@ import { Token } from "../token";
  */
 export default interface TypeDefinition {
 
+  getType: () => string
+
   /**
    * Validates the value as per schema and returns the results
    * specifying whether the value adhers to the schema or not!
