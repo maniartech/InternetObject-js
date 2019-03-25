@@ -1,5 +1,6 @@
 import { DataType } from "../schema/base";
 import { ASTParserTree, KeyVal } from '../parser/index';
+import { Token } from "../token";
 
 
 /**
@@ -60,6 +61,16 @@ export function isParserTree(obj: any): obj is ASTParserTree {
     return false
   }
 }
+
+/**
+ * Checks whether the specified object is a Token or not!
+ * @param obj The object to be validated for the Token check
+ * @returns `true` if the value is a Token otherwise `false`
+ */
+export function isToken(obj: any): obj is Token {
+  return obj.type !== undefined && obj.col !== undefined && obj.row !== undefined
+}
+
 
 export function isDefined<T>(val: T | null | undefined): val is T {
 	return val !== null && val !== undefined;

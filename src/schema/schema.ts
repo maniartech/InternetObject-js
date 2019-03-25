@@ -1,8 +1,12 @@
-import Tokenizer from "../tokenizer";
+import './index'
+
 import ASTParser from "../parser/ast-parser";
 import { ASTParserTree } from "../parser";
 import { isString, isParserTree, isKeyVal, isArray, isDataType } from "../utils/is";
 import { print } from "../utils/index";
+import TypedefRegistry from './typedef-registry';
+import InternetObjectError from '../errors/error-base';
+import { Token } from '../token';
 
 export default class IObjectSchema {
 
@@ -31,6 +35,7 @@ export default class IObjectSchema {
       parsedSchema = schema
     }
 
+    // print("AST", parsedSchema)
     const compiledSchema = _compile(parsedSchema, {})
 
     return new IObjectSchema(compiledSchema)
@@ -43,13 +48,25 @@ function _apply(data:any, schema:any, container?:any):any {
 
   schema.keys.forEach((key:string, index:number) => {
     const memberDef = schema.defs[key]
-    let item = data.values[index]
+    let token:Token = data.values[index]
 
-     if (typeof memberDef === "string" || memberDef.type) {
-      container[key] = item.value
+    if (typeof memberDef === "string" || memberDef.type) {
+      const type = isString(memberDef) ? memberDef : memberDef.type
+      const typeDef = TypedefRegistry.getDef(type)
+      if (typeDef !== undefined) {
+        // Clean and validate values
+        const value = typeDef.validate(key, token, memberDef)
+        container[key] = value
+      }
+      else {
+        // TODO: Throw error here!
+        console.error(token, memberDef, type)
+        // throw new InternetObjectError(`Invalid Type "${ type }"`)
+        container[key] = token.value
+      }
     }
     else if (memberDef.keys) {
-      container[key] = _apply(item, memberDef, {})
+      container[key] = _apply(token, memberDef, {})
     }
   })
 
@@ -59,7 +76,8 @@ function _apply(data:any, schema:any, container?:any):any {
 // Compiles the parsed ast into processebile schema object
 const _compile = (root: ASTParserTree, container: any) => {
 
-  const keys: string[] | null = isArray(container) ? null : []
+  const arrayConatiner = isArray(container)
+  const keys: string[] | null = arrayConatiner ? null : []
 
   if (keys) {
     container['keys'] = keys
@@ -71,8 +89,21 @@ const _compile = (root: ASTParserTree, container: any) => {
     let key: string = ''
 
     if (isParserTree(item)) {
+      // Complex object
+      // if (item.values.length > 0 && isParserTree(item.values[0])) {
+      //   const complexObj = item.values[0]
+      //   if (complexObj) {
+      //     item.values.shift()
+      //     item.values.unshift({
+      //       key: "type",
+      //       "value": complexObj
+      //     })
+      //   }
+      // }
+
       // Object
       if (item.type === 'object') {
+        // console.warn("Item", index, item)
         container[index] = _compile(item, {})
       }
       // Array
@@ -82,6 +113,16 @@ const _compile = (root: ASTParserTree, container: any) => {
     } else if (isKeyVal(item)) {
       key = item.key
       if (isParserTree(item.value)) {
+        // Complex object
+        // if (item.value.values.length > 0 && isParserTree(item.value.values[0])) {
+        //   const complexObj = item.value.values[0]
+        //   item.value.values.shift()
+        //   item.value.values.unshift({
+        //     key: "type",
+        //     "value": complexObj
+        //   })
+        // }
+
         container.defs[key] = _compile(item.value, item.value.type === 'object' ? {} : [])
       } else if (isKeyVal(item.value)) {
         console.warn('See this case!', item.value)
@@ -109,13 +150,55 @@ const _compile = (root: ASTParserTree, container: any) => {
 
     // If key found, add it into the keys
     if (key && keys) {
-      keys.push(key)
+      let name:string = key
+      let def = container.defs[key]
+
+      if (key.endsWith("?")) {
+        name = key.substr(0, key.length - 1)
+        if (isString(def)) {
+          def = {
+            type: def,
+            optional: true
+          }
+        }
+        else {
+          def.optional = true
+        }
+        delete container.defs[key]
+      }
+
+      // Convert string defs into types if required!
+      // name:string -> name:{type:string}
+      if (isString(def) && key !== "type"){
+        def = {
+          type:def
+        }
+      }
+      container.defs[name] = def
+      keys.push(name)
     }
 
   }
 
+  // Fix the Object and Array type structure
+  if (container["0"] !== undefined && keys) {
+    const type = container["0"]
+    container.keys.unshift("type")
+    container.defs.type = type
+    delete container["0"]
+  }
+
+  // Ideinfy memberDef and normalize them
   if(container.defs && container.defs.type && container.keys[0] === "type") {
-    return container.defs
+    const memberDef:any = {}
+    container.keys.forEach((key:string) => {
+      let val = container.defs[key]
+      if (val.type === "any") {
+        val = true
+      }
+      memberDef[key] = val
+    })
+    return memberDef // container.defs
   }
 
   return container
