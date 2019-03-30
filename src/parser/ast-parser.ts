@@ -1,11 +1,11 @@
-import { Token } from '../token'
+import { Token } from './token'
 import { isDataType, isArray, isParserTree, isKeyVal } from '../utils/is'
 import { ASTParserTree, ParserTreeValue } from '.'
 // import SchemaParser from './bak-schema-compiler'
 import DataParser from './data-parser'
 import { print } from '../utils/index'
-import InternetObjectSchema from '../schema/schema'
-import Tokenizer from '../tokenizer'
+import InternetObjectSchema from './schema'
+import Tokenizer from './tokenizer'
 import InternetObjectError from '../errors/io-error';
 
 const NOT_STARTED = 'not-started'

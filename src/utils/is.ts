@@ -1,6 +1,6 @@
-import { DataType } from "../schema/base";
+import { DataType } from "../types/base";
 import { ASTParserTree, KeyVal } from '../parser/index';
-import { Token } from "../token";
+import { Token } from "../parser/token";
 
 
 /**

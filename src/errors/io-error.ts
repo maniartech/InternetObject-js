@@ -1,8 +1,7 @@
-import InternetObjectError from "./io-error";
 import { Token } from "../parser/token";
 
 
-export default class ParserError extends InternetObjectError {
+export default class InternetObjectError extends Error {
 
   // Due to a bug in TypeScript specifically control the __proto__
   // Ref: https://github.com/Microsoft/TypeScript/issues/13965
@@ -10,16 +9,29 @@ export default class ParserError extends InternetObjectError {
   // tslint:disable-next-line:variable-name
   public __proto__: Error;
 
-  constructor(message:string = "", token:Token|null=null) {
+  public errorCode?:string
+
+  constructor(...args:any[]) {
+    super()
+
+    const errorCode:string = args[0] || ""
+    const message:string = args[1] || ""
+    const token:Token|null = args[2] || null
+
+    this.errorCode = errorCode
     let errorMsg:string
     if (token) {
-      errorMsg = `Error occured while processing "${token.token}" at ${token.row}, ${token.col}. ${message}`
+      errorMsg = `${errorCode} at (${token.row}, ${token.col}): ${message}`
     }
     else {
-      errorMsg = message
+      errorMsg = message || ""
     }
-    super()
+    this.message = errorMsg
+
     Error.captureStackTrace(this, InternetObjectError)
     this.__proto__ = new.target.prototype
   }
+
 }
+
+

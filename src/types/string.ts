@@ -3,9 +3,10 @@ import TypeDefinition from './schema-type-definition';
 
 import { isNumber } from '../utils/is';
 import { parseKey } from './base';
-import { INVALID_TYPE } from '../errors';
-import { Token } from '../token';
+import IOErrorCodes from '../errors/io-error-codes';
+import { Token } from '../parser/token';
 import ParserError from '../errors/parser-error';
+import InternetObjectError from '../errors/io-error';
 
 /**
  * Represents the InternetObject String, performs following validations.
@@ -31,17 +32,17 @@ export default class StringDef implements TypeDefinition {
 
     // Nullability check
     if (token.value === null && !memberDef.null) {
-      throw new ParserError("null-not-allowed", token)
+      throw new InternetObjectError("null-not-allowed", "", token)
     }
 
     // choices check
     if (memberDef.choices !== undefined && token.value in memberDef.choices === false) {
-      throw new ParserError("value-not-in-choices", token)
+      throw new InternetObjectError("value-not-in-choices", "", token)
     }
 
     // Typeof check
     if (typeof token.value !== "string") {
-      throw Error(INVALID_TYPE)
+      throw Error(IOErrorCodes.invalidType)
     }
 
     const maxLength = memberDef.maxLength
@@ -49,7 +50,16 @@ export default class StringDef implements TypeDefinition {
     // Max length check
     if (maxLength !== undefined && isNumber(maxLength)) {
       if (token.value.length > maxLength) {
-        throw new ParserError("invalid-value", token)
+        throw new InternetObjectError("invalid-value", "", token)
+      }
+    }
+
+    const minLength = memberDef.minLength
+
+    // Max length check
+    if (minLength !== undefined && isNumber(minLength)) {
+      if (token.value.length > minLength) {
+        throw new InternetObjectError("invalid-value", `The length of the ${ key} must be ${ minLength }`, token)
       }
     }
 

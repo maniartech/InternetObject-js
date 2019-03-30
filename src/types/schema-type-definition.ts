@@ -1,4 +1,4 @@
-import { Token } from "../token";
+import { Token } from "../parser/token";
 
 /**
  * Defines the SchemaValidator interface.

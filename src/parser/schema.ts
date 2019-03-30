@@ -1,12 +1,12 @@
-import './index'
+import '../types/index'
 
-import ASTParser from "../parser/ast-parser";
-import { ASTParserTree } from "../parser";
+import ASTParser from "./ast-parser";
+import { ASTParserTree } from ".";
 import { isString, isParserTree, isKeyVal, isArray, isDataType } from "../utils/is";
 import { print } from "../utils/index";
-import TypedefRegistry from './typedef-registry';
-import InternetObjectError from '../errors/error-base';
-import { Token } from '../token';
+import TypedefRegistry from '../types/typedef-registry';
+import InternetObjectError from '../errors/io-error';
+import { Token } from './token';
 
 export default class IObjectSchema {
 
@@ -74,7 +74,7 @@ function _apply(data:any, schema:any, container?:any):any {
 }
 
 // Compiles the parsed ast into processebile schema object
-const _compile = (root: ASTParserTree, container: any) => {
+const _compile = (root: ASTParserTree, container: any, path:string='') => {
 
   const arrayConatiner = isArray(container)
   const keys: string[] | null = arrayConatiner ? null : []
@@ -89,17 +89,6 @@ const _compile = (root: ASTParserTree, container: any) => {
     let key: string = ''
 
     if (isParserTree(item)) {
-      // Complex object
-      // if (item.values.length > 0 && isParserTree(item.values[0])) {
-      //   const complexObj = item.values[0]
-      //   if (complexObj) {
-      //     item.values.shift()
-      //     item.values.unshift({
-      //       key: "type",
-      //       "value": complexObj
-      //     })
-      //   }
-      // }
 
       // Object
       if (item.type === 'object') {
@@ -113,16 +102,6 @@ const _compile = (root: ASTParserTree, container: any) => {
     } else if (isKeyVal(item)) {
       key = item.key
       if (isParserTree(item.value)) {
-        // Complex object
-        // if (item.value.values.length > 0 && isParserTree(item.value.values[0])) {
-        //   const complexObj = item.value.values[0]
-        //   item.value.values.shift()
-        //   item.value.values.unshift({
-        //     key: "type",
-        //     "value": complexObj
-        //   })
-        // }
-
         container.defs[key] = _compile(item.value, item.value.type === 'object' ? {} : [])
       } else if (isKeyVal(item.value)) {
         console.warn('See this case!', item.value)
@@ -152,6 +131,7 @@ const _compile = (root: ASTParserTree, container: any) => {
     if (key && keys) {
       let name:string = key
       let def = container.defs[key]
+      let keyPath = path ? `${path}.${key}` : 'key'
 
       if (key.endsWith("?")) {
         name = key.substr(0, key.length - 1)
@@ -174,6 +154,7 @@ const _compile = (root: ASTParserTree, container: any) => {
           type:def
         }
       }
+      // def.path = keyPath
       container.defs[name] = def
       keys.push(name)
     }

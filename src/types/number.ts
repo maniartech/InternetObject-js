@@ -1,9 +1,9 @@
 import { isNumber } from '../utils/is'
-import { Token } from '../token'
+import { Token } from '../parser/token'
 import { parseKey, MemberDef } from './base'
-import { INVALID_TYPE } from '../errors'
+import IOErrorCodes from '../errors/io-error-codes'
 import TypeDefinition from './schema-type-definition'
-import ParserError from '../errors/parser-error';
+import InternetObjectError from '../errors/io-error';
 
 // age?: { number, true, 10, min:10, max:20}
 
@@ -31,30 +31,28 @@ class NumberDef implements TypeDefinition {
 
     // Nullability check
     if (token.value === null && !memberDef.null) {
-      throw new ParserError("null-not-allowed", token)
+      throw new InternetObjectError("null-not-allowed", "", token)
     }
 
     // choices check
     if (memberDef.choices !== undefined && token.value in memberDef.choices === false) {
-      throw new ParserError("value-not-in-choices", token)
+      throw new InternetObjectError("value-not-in-choices", "", token)
     }
 
     // Typeof check
     if (token.type !== "number") {
-      throw Error(INVALID_TYPE)
+      throw Error(IOErrorCodes.invalidType)
     }
 
     if (isNumber(memberDef.min)) {
       const min = memberDef.min
       if (token.value < min) {
-        throw new ParserError(
-          `The "${ key }" must be greater than or equal to ${memberDef.min}, Currently it is "${token.value}".`, token
-        )
+        throw new InternetObjectError(..._invlalidMin(key, token, memberDef.min))
       }
     }
 
     if (isNumber(memberDef.max) && token.value > memberDef.max) {
-      throw new ParserError('invalid-value', token)
+      throw new InternetObjectError(..._invlalidMax(key, token, memberDef.max))
     }
 
     return token.value
@@ -65,5 +63,28 @@ class NumberDef implements TypeDefinition {
   }
 }
 
+function _invlalidChoice(key:string, token:Token, min:number) {
+  return [
+    IOErrorCodes.invalidMinValue,
+    `The "${ key }" must be greater than or equal to ${min}, Currently it is "${token.value}".`,
+    token
+  ]
+}
+
+function _invlalidMin(key:string, token:Token, min:number) {
+  return [
+    IOErrorCodes.invalidMinValue,
+    `The "${ key }" must be greater than or equal to ${min}, Currently it is "${token.value}".`,
+    token
+  ]
+}
+
+function _invlalidMax(key:string, token:Token, max:number) {
+  return [
+    IOErrorCodes.invalidMaxValue,
+    `The "${ key }" must be less than or equal to ${max}, Currently it is "${token.value}".`,
+    token
+  ]
+}
 
 export default NumberDef

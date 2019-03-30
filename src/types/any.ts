@@ -1,7 +1,6 @@
 import { isNumber } from '../utils/is'
-import { Token } from '../token'
+import { Token } from '../parser/token'
 import { parseKey, MemberDef } from './base'
-import { INVALID_TYPE } from '../errors'
 import TypeDefinition from './schema-type-definition'
 import ParserError from '../errors/parser-error';
 
