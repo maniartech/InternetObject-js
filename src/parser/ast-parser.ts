@@ -1,5 +1,4 @@
 import { Token } from '../token'
-import { throwError } from '../errors'
 import { isDataType, isArray, isParserTree, isKeyVal } from '../utils/is'
 import { ASTParserTree, ParserTreeValue } from '.'
 // import SchemaParser from './bak-schema-compiler'
@@ -7,12 +6,14 @@ import DataParser from './data-parser'
 import { print } from '../utils/index'
 import InternetObjectSchema from '../schema/schema'
 import Tokenizer from '../tokenizer'
+import InternetObjectError from '../errors/io-error';
 
 const NOT_STARTED = 'not-started'
 const STARTED = 'started'
 const FINISHED = 'finished'
 const ERROR = 'error'
 
+/** @internal */
 export default class ASTParser {
   private _tokenizer: Tokenizer
   private _schemaOnly:boolean
@@ -196,7 +197,8 @@ export default class ASTParser {
         obj.type === 'object' ? ']' : '}'
       }"`
       this.status = ERROR
-      throwError(token, message)
+      // throwError(token, message)
+      throw new InternetObjectError("parser-error", message, token)
     }
     this.stack.pop()
   }
