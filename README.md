@@ -1,6 +1,6 @@
 # Internet Object JavaScript Parser
 
-## ⚠ NOT YET READ - This project is under heavy development
+## ⚠ NOT YET READY - This project is under heavy development
 
 ```JS
 import IO from 'internet-object'
