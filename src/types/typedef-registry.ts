@@ -1,4 +1,4 @@
-import TypeDefinition from "./schema-type-definition";
+import TypeDefinition from "./type-definition";
 
 const defsList:any[] = []
 const defs:any = {}

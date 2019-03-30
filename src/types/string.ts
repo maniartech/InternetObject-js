@@ -1,5 +1,5 @@
 
-import TypeDefinition from './schema-type-definition';
+import TypeDefinition from './type-definition';
 
 import { isNumber } from '../utils/is';
 import { parseKey } from './base';

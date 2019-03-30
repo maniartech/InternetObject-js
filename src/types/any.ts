@@ -1,7 +1,7 @@
 import { isNumber } from '../utils/is'
 import { Token } from '../parser/token'
 import { parseKey, MemberDef } from './base'
-import TypeDefinition from './schema-type-definition'
+import TypeDefinition from './type-definition'
 import ParserError from '../errors/parser-error';
 
 // age?: {any, true}

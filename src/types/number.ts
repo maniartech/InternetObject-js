@@ -2,7 +2,7 @@ import { isNumber } from '../utils/is'
 import { Token } from '../parser/token'
 import { parseKey, MemberDef } from './base'
 import IOErrorCodes from '../errors/io-error-codes'
-import TypeDefinition from './schema-type-definition'
+import TypeDefinition from './type-definition'
 import InternetObjectError from '../errors/io-error';
 
 // age?: { number, true, 10, min:10, max:20}
