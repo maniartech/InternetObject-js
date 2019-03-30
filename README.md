@@ -1,8 +1,6 @@
-# Internet Object
+# Internet Object JavaScript Parser
 
-JavaScript Parser of Internet Object.
-
-### This project is under heavy development! Hence, it is not yet ready.
+## ⚠ NOT YET READ - This project is under heavy development
 
 ```JS
 import IO from 'internet-object'
@@ -23,7 +21,7 @@ import IO from 'internet-object'
 
 const schema = "name,age,address:{street,city,state,zip}"
 
-const o = IO.parse("Spiderman,25,{Bond Street, New York, NY, 100000}", schema)
+const o = IO.parse("Spiderman,25,{Bond Street, New York, NY, 100000}", schema).data
 
 // Print o
 console.log(o);
@@ -42,7 +40,7 @@ Outputs following object.
 }
 ```
 
-### Development Guide:
+### Geting Started (⚠ Not Ready):
 
 1. Fork repository from https://github.com/maniartech/internet-object
 1. Install dependencies `npm install` or `yarn install`
@@ -51,7 +49,6 @@ Outputs following object.
 1. Run tests, `npm test` or `yarn test`
 1. Send pull request
 
-For more information about Internet Object architecture, check it out-
-www.internetobject.org
+For more information about Internet Object architecture, check it out - www.internetobject.org
 
-MIT License -  `© Maniar Technologies`
+MIT License -  `© Maniar Technologies 2018-2019`
