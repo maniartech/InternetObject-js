@@ -11,7 +11,7 @@ const libraryName = 'internet-object'
 const mainFile = 'index.ts'
 
 export default {
-  input: `src/${index.ts}`,
+  input: `src/${mainFile}`,
   output: [
     { file: pkg.main, name: camelCase(libraryName), format: 'umd', sourcemap: true },
     { file: pkg.module, format: 'es', sourcemap: true },
