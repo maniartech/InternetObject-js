@@ -42,7 +42,7 @@ Outputs following object.
 
 ### Geting Started (⚠ Not Ready):
 
-1. Fork repository from https://github.com/maniartech/internet-object
+1. Fork repository from https://github.com/internetobject/js-parser
 1. Install dependencies `npm install` or `yarn install`
 1. Make changes into `./src` directory
 1. Update tests
