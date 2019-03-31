@@ -1,7 +1,7 @@
 import { isNumber } from '../utils/is'
 import { Token } from '../parser/token'
 import { parseKey, MemberDef } from './base'
-import TypeDefinition from './type-definition'
+import TypeDef from './typedef'
 import ParserError from '../errors/parser-error';
 
 // age?: {any, true}
@@ -15,7 +15,7 @@ import ParserError from '../errors/parser-error';
  * - Value <= schema.max
  * - Value is in choices
  */
-export default class AnyDef implements TypeDefinition {
+export default class AnyDef implements TypeDef {
 
   getType = () => {
     return "any"

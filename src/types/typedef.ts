@@ -3,7 +3,7 @@ import { Token } from "../parser/token";
 /**
  * Defines the SchemaValidator interface.
  */
-export default interface TypeDefinition {
+export default interface TypeDef {
 
   getType: () => string
 
@@ -14,6 +14,3 @@ export default interface TypeDefinition {
   validate: (key:string, valueToken:Token, memberDef:any) => any
 
 }
-
-
-

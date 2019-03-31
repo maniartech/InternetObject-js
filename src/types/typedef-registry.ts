@@ -1,4 +1,4 @@
-import TypeDefinition from "./type-definition";
+import TypeDef from "./typedef";
 
 const defsList:any[] = []
 const defs:any = {}
@@ -6,7 +6,7 @@ const defs:any = {}
 
 export default class TypedefRegistry {
 
-  public static register(typeDef:TypeDefinition) {
+  public static register(typeDef:TypeDef) {
     const type = typeDef.getType()
     console.log("Registring", type)
 
@@ -24,7 +24,7 @@ export default class TypedefRegistry {
     }
   }
 
-  public static forEach(cb:(type:string, typedef:TypeDefinition) => void) {
+  public static forEach(cb:(type:string, typedef:TypeDef) => void) {
     defs.forEach((def:string) => cb(def, defs[def]));
   }
 
@@ -32,7 +32,7 @@ export default class TypedefRegistry {
     return [...defsList]
   }
 
-  public static getDef(type:string): TypeDefinition {
+  public static getDef(type:string): TypeDef {
     return defs[type]
   }
 }

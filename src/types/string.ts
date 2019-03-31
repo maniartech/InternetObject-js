@@ -1,5 +1,5 @@
 
-import TypeDefinition from './type-definition';
+import TypeDef from './typedef';
 
 import { isNumber } from '../utils/is';
 import { parseKey } from './base';
@@ -18,7 +18,7 @@ import InternetObjectError from '../errors/io-error';
  * - Value length >= minLength
  * - Value is in choices
  */
-export default class StringDef implements TypeDefinition {
+export default class StringDef implements TypeDef {
 
   getType = () => {
     return "string"

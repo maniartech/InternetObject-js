@@ -2,7 +2,7 @@ import { isNumber } from '../utils/is'
 import { Token } from '../parser/token'
 import { parseKey, MemberDef } from './base'
 import IOErrorCodes from '../errors/io-error-codes'
-import TypeDefinition from './type-definition'
+import TypeDef from './typedef'
 import InternetObjectError from '../errors/io-error';
 
 // age?: { number, true, 10, min:10, max:20}
@@ -16,7 +16,7 @@ import InternetObjectError from '../errors/io-error';
  * - Value <= schema.max
  * - Value is in choices
  */
-class NumberDef implements TypeDefinition {
+class NumberDef implements TypeDef {
 
   getType = () => {
     return "number"
