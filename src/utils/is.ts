@@ -1,6 +1,6 @@
-import { DataType } from "../types/base";
 import { ASTParserTree, KeyVal } from '../parser/index';
 import { Token } from "../parser/token";
+import TypedefRegistry from "../types/typedef-registry";
 
 
 /**
@@ -49,8 +49,8 @@ export const isArray = (val:any): val is Array<any> => {
  * @param val The value to be tested for an datatype check!
  * @returns `true` if the value is a datatype otherwise `false`
  */
-export const isDataType = (val:string) => {
-  return val in DataType
+export const isDataType = (val:string): boolean => {
+  return TypedefRegistry.isRegisteredType(val)
 }
 
 export function isParserTree(obj: any): obj is ASTParserTree {

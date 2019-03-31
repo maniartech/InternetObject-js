@@ -1,6 +1,6 @@
 import { isNumber } from '../utils/is'
 import { Token } from '../parser/token'
-import { parseKey, MemberDef } from './base'
+import MemberDef from './memberdef'
 import IOErrorCodes from '../errors/io-error-codes'
 import TypeDef from './typedef'
 import InternetObjectError from '../errors/io-error';

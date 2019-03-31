@@ -1,12 +1,14 @@
 
+
+import { Token } from '../parser/token';
 import TypeDef from './typedef';
+import MemberDef from './memberdef';
 
 import { isNumber } from '../utils/is';
-import { parseKey } from './base';
 import IOErrorCodes from '../errors/io-error-codes';
-import { Token } from '../parser/token';
-import ParserError from '../errors/parser-error';
+
 import InternetObjectError from '../errors/io-error';
+
 
 /**
  * Represents the InternetObject String, performs following validations.
@@ -24,7 +26,7 @@ export default class StringDef implements TypeDef {
     return "string"
   }
 
-  validate = (key:string, token:Token, memberDef:any): string => {
+  validate = (key:string, token:Token, memberDef:MemberDef): string => {
     // Optional check
     if (memberDef.optional && token.value === undefined) {
       return memberDef.default

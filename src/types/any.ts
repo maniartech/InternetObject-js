@@ -1,6 +1,6 @@
 import { isNumber } from '../utils/is'
 import { Token } from '../parser/token'
-import { parseKey, MemberDef } from './base'
+import MemberDef from './memberdef'
 import TypeDef from './typedef'
 import ParserError from '../errors/parser-error';
 
