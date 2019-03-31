@@ -3,13 +3,13 @@
   "version": "0.0.0",
   "description": "",
   "keywords": [],
-  "main": "dist/internet-object.umd.js",
-  "module": "dist/internet-object.es5.js",
-  "typings": "dist/types/internet-object.d.ts",
+  "main": "dist/index.umd.js",
+  "module": "dist/index.es5.js",
+  "typings": "dist/types/index.d.ts",
   "files": [
     "dist"
   ],
-  "author": "Aamir Maniar <aamir.maniar@maniartech.com>",
+  "author": "Mohamed Aamir Maniar <aamir.maniar@maniartech.com>",
   "repository": {
     "type": "git",
     "url": ""
