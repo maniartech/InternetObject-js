@@ -7,16 +7,6 @@ export type KeyVal = {
 }
 
 
-
-// export type ParserTreeValue =
-//   null |
-//   undefined |
-//   ASTParserTree |
-//   string |
-//   number |
-//   boolean |
-//   KeyVal
-
 export type ParserTreeValue =
   null |
   ASTParserTree |

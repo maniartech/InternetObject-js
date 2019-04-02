@@ -1,12 +1,12 @@
 import '../types/index'
 
-import ASTParser from "./ast-parser";
-import { ASTParserTree } from ".";
+import ASTParser from "../parser/ast-parser";
+import { ASTParserTree } from "../parser";
 import { isString, isParserTree, isKeyVal, isArray, isDataType } from "../utils/is";
 import { print } from "../utils/index";
 import TypedefRegistry from '../types/typedef-registry';
 import InternetObjectError from '../errors/io-error';
-import { Token } from './token';
+import { Token } from '../parser/token';
 
 export default class IObjectSchema {
 
@@ -73,7 +73,6 @@ function _apply(data:any, schema:any, container?:any):any {
   return container
 }
 
-// Compiles the parsed ast into processebile schema object
 const _compile = (root: ASTParserTree, container: any, path:string='') => {
 
   const arrayConatiner = isArray(container)
@@ -87,28 +86,34 @@ const _compile = (root: ASTParserTree, container: any, path:string='') => {
   for (let index = 0; index < root.values.length; index += 1) {
     let item = root.values[index]
     let key: string = ''
+    let isTree = false
 
+    // Item = Tree
     if (isParserTree(item)) {
-
-      // Object
-      if (item.type === 'object') {
-        // console.warn("Item", index, item)
-        container[index] = _compile(item, {})
-      }
-      // Array
-      else {
-        container[index] = _compile(item, [])
-      }
-    } else if (isKeyVal(item)) {
+      const compiled = _compile(item, item.type === 'object' ? {} : [])
+      container[index] = compiled
+      isTree = true
+    }
+    // Item = KeyVal
+    else if (isKeyVal(item)) {
       key = item.key
+      // Item = Tree
       if (isParserTree(item.value)) {
-        container.defs[key] = _compile(item.value, item.value.type === 'object' ? {} : [])
-      } else if (isKeyVal(item.value)) {
+        const compiled = _compile(item.value, item.value.type === 'object' ? {} : [])
+        container.defs[key] = compiled
+        isTree = true
+      }
+      // Item = KeyVal
+      else if (isKeyVal(item.value)) {
         console.warn('See this case!', item.value)
-      } else {
+      }
+      // Item = Token
+      else {
         container.defs[key] = item.value === null ? undefined : item.value.value
       }
-    } else if (item !== null && item.value) {
+    }
+    // Token
+    else if (item !== null) {
       if (index === 0 && isDataType(item.value.toString())) {
         if (isArray(container)) {
           container.push(item.value)
@@ -122,9 +127,11 @@ const _compile = (root: ASTParserTree, container: any, path:string='') => {
         key = item.value.toString()
         container.defs[key] = 'any'
       }
-    } else {
+    }
+    // Null
+    else {
       // TODO: Verify this case!
-      console.warn('Verify this case!', item)
+      console.warn('Verify this case!')
     }
 
     // If key found, add it into the keys
@@ -132,6 +139,12 @@ const _compile = (root: ASTParserTree, container: any, path:string='') => {
       let name:string = key
       let def = container.defs[key]
       let keyPath = path ? `${path}.${key}` : 'key'
+
+      if (isArray(def)) {
+        def = {
+          type: def
+        }
+      }
 
       if (key.endsWith("?")) {
         name = key.substr(0, key.length - 1)
@@ -145,6 +158,13 @@ const _compile = (root: ASTParserTree, container: any, path:string='') => {
           def.optional = true
         }
         delete container.defs[key]
+
+        // Identify non string types and fix it.
+        // if (!isString(def['type'])) {
+        //   const schema:any = def['type']
+        //   def['type'] = isArray(schema) ? "array" : "object"
+        //   def["schema"] = schema
+        // }
       }
 
       // Convert string defs into types if required!
@@ -157,17 +177,36 @@ const _compile = (root: ASTParserTree, container: any, path:string='') => {
       // def.path = keyPath
       container.defs[name] = def
       keys.push(name)
-    }
 
+      if (isTree) {
+        print("---", key, def)
+        if (!isString(def.type)) {
+          const schema = def.type
+          def.type = isArray(schema) ? "array" : "object"
+          def.schema = schema
+        }
+      }
+
+    }
   }
 
   // Fix the Object and Array type structure
   if (container["0"] !== undefined && keys) {
+    console.warn(container[0])
     const type = container["0"]
     container.keys.unshift("type")
     container.defs.type = type
     delete container["0"]
   }
+
+  // if (container["0"] !== undefined && keys) {
+  //   const schema = container["0"]
+  //   const type = isArray(schema) ? "array" : "object"
+  //   // container.keys.unshift("type")
+  //   // container.defs.type = type
+
+  //   delete container["0"]
+  // }
 
   // Ideinfy memberDef and normalize them
   if(container.defs && container.defs.type && container.keys[0] === "type") {
@@ -181,6 +220,13 @@ const _compile = (root: ASTParserTree, container: any, path:string='') => {
     })
     return memberDef // container.defs
   }
+
+  // print("====>", container.type, container)
+
+  // return {
+  //   type: arrayConatiner ? "array" : "object",
+  //   schema: container
+  // }
 
   return container
 }
