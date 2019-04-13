@@ -68,7 +68,12 @@ export function isParserTree(obj: any): obj is ASTParserTree {
  * @returns `true` if the value is a Token otherwise `false`
  */
 export function isToken(obj: any): obj is Token {
-  return obj.type !== undefined && obj.col !== undefined && obj.row !== undefined
+  try {
+    return obj.type !== undefined && obj.col !== undefined && obj.row !== undefined
+  }
+  catch {
+    return false
+  }
 }
 
 
