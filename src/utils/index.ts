@@ -13,3 +13,7 @@ export const print = (...args:any[]) => {
   })
   console.log(msgs.join(' '))
 }
+
+export const _ = (o:any):any => {
+  return JSON.stringify(o, null, 2)
+}
