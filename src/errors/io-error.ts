@@ -24,7 +24,7 @@ export default class InternetObjectError extends Error {
       errorMsg = `${errorCode} at (${token.row}, ${token.col}): ${message}`
     }
     else {
-      errorMsg = message || ""
+      errorMsg = message ? `${errorCode}: ${message}` : errorCode
     }
     this.message = errorMsg
 
