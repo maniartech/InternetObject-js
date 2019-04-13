@@ -1,12 +1,13 @@
 import '../types/index'
 
 import ASTParser from "../parser/ast-parser";
-import { ASTParserTree } from "../parser";
-import { isString, isParserTree, isKeyVal, isArray, isDataType } from "../utils/is";
-import { print } from "../utils/index";
 import TypedefRegistry from '../types/typedef-registry';
 import InternetObjectError from '../errors/io-error';
+
+import { ASTParserTree } from "../parser";
+import { isString, isParserTree, isKeyVal, isArray, isDataType, isToken } from "../utils/is";
 import { Token } from '../parser/token';
+import { ParserTreeValue } from '../parser/index';
 
 export default class IObjectSchema {
 
@@ -36,10 +37,209 @@ export default class IObjectSchema {
     }
 
     // print("AST", parsedSchema)
-    const compiledSchema = _compile(parsedSchema, {})
+    const compiledSchema = _compileObjectSchema(parsedSchema)
 
     return new IObjectSchema(compiledSchema)
   }
+}
+
+const _getCompileValue = (value:ParserTreeValue):any => {
+
+  // Process Token
+  if (isToken(value)) {
+    if (isDataType(value.value)) {
+      return {
+        "type": value.value
+      }
+    }
+    // TODO: Throw better  error
+    throw new InternetObjectError("invalid-datatype", "Invalid data type", value)
+  }
+
+  if (isParserTree(value)) {
+    if (_isMemberDef(value)) {
+      return _compileMemberDefTree(value)
+    }
+    const arrayDef = value.type === "array"
+    return {
+      type: value.type,
+      schema: arrayDef ? _compileArraySchema(value) : _compileObjectSchema(value)
+    }
+  }
+
+  // TODO: Throw better error
+  throw new InternetObjectError("invalid-value")
+}
+
+const _compileMemberDefTree = (root: ASTParserTree) => {
+
+  if (root.values.length === 0) {
+    return {
+      "type": root.type,
+      "schema": root.type === "object" ? {} : []
+    }
+  }
+
+  const firstVal = root.values[0]
+
+  // Array Root
+  if (root.type === "array") {
+    if (root.values.length > 1) {
+      // TODO: Throw better  error
+      throw new InternetObjectError("invalid-array-definition")
+    }
+    if (isToken(firstVal)) {
+      if(isDataType(firstVal.value)) {
+        return {
+          type: "array",
+          schema: [firstVal.value]
+        }
+      }
+      else {
+        // TODO: Throw better  error
+        throw new InternetObjectError("invalid-array-definition")
+      }
+    }
+    else if (isParserTree(firstVal)) {
+      return {
+        type: "array",
+        schema: _compileArraySchema(firstVal)
+      }
+    }
+  }
+
+  // Object Root
+  const memberDef:any = {}
+
+  if (isToken(firstVal) && isString(firstVal.value)) {
+    memberDef.type = firstVal.value
+  }
+  else if(isParserTree(firstVal)) {
+    memberDef.type = firstVal.type
+    memberDef.schema = firstVal.type === "object"
+      ? _compileObjectSchema(firstVal)
+      : _compileArraySchema(firstVal)
+  }
+
+  for (let index=1; index<root.values.length; index++) {
+    const item = root.values[index]
+    if (isKeyVal(item)) {
+      if (isToken(item.value)) {
+        memberDef[item.key] = item.value.value
+      }
+      else {
+        // TODO: Consider this case when memberdef key = {object value}
+        console.warn("Consider this case")
+      }
+    }
+    else if(isToken(item)) {
+      memberDef[item.value] = true
+    }
+    else {
+      // TODO: Throw better error
+      throw new InternetObjectError("invalid-value")
+    }
+  }
+
+  return memberDef
+}
+
+const _compileArraySchema = (root: ASTParserTree) => {
+  const array = root.values
+  if (array.length > 1) {
+    // TODO: Throw better error
+    throw new InternetObjectError("invalid-array-schema")
+  }
+
+  if (array.length === 0) {
+    return []
+  }
+
+  const item = array[0]
+  return [_getCompileValue(item)]
+}
+
+const _compileObjectSchema = (root: ASTParserTree) => {
+
+  if (root.values.length === 0) return {}
+
+  const schema:any = {
+    keys: [],
+    defs: {}
+  }
+
+  for (let index = 0; index < root.values.length; index += 1) {
+    let item = root.values[index]
+    let key:any = index
+    let value:any
+    let optional:boolean = false
+
+    // Item = Tree
+    if (isParserTree(item)) {
+      // TODO: Throw better error
+      throw new InternetObjectError("key-required", "Encountered an array or an object while expecting key.")
+    }
+    // Item = KeyVal
+    else if (isKeyVal(item)) {
+      const {name, optional} = _parseKeyForOptional(item.key)
+      const value:any = _getCompileValue(item.value)
+      schema.keys.push(name)
+
+      // When value is a memberDef
+      if (value.type) {
+        value.optional = value.optional || optional || undefined
+        schema.defs[name] = value
+      }
+      else {
+        schema.defs[name] = {
+          type: value,
+          optiona: optional || undefined
+        }
+      }
+    }
+    else if (isToken(item)) {
+      const {name, optional} = _parseKeyForOptional(item.value)
+      schema.keys.push(name)
+      schema.defs[name] = {
+        type: "any",
+        optional: optional || undefined
+      }
+    }
+  }
+
+  return schema
+}
+
+const _addToSchema = (schema:any, value:any, keyOrIndex:any) => {
+  if (isArray(schema)) {
+    schema.push(value)
+  }
+  else {
+    schema.keys.push(keyOrIndex)
+    schema.defs[keyOrIndex] = value
+  }
+}
+
+const _isMemberDef = (root:ASTParserTree) => {
+  const first = root.values[0]
+
+  if (isToken(first) && isDataType(first.value)) {
+    return true
+  }
+  else if (isParserTree(first)) {
+    return true
+  }
+  return false
+}
+
+const _parseKeyForOptional = (key:string) => {
+  if(key.endsWith("?")) {
+    return {
+      name: key.substr(0, key.length - 1),
+      optional: true
+    }
+  }
+  return { name:key, optional: false }
 }
 
 // Merges the data with schema and returns complete JSON object
@@ -69,164 +269,6 @@ function _apply(data:any, schema:any, container?:any):any {
       container[key] = _apply(token, memberDef, {})
     }
   })
-
-  return container
-}
-
-const _compile = (root: ASTParserTree, container: any, path:string='') => {
-
-  const arrayConatiner = isArray(container)
-  const keys: string[] | null = arrayConatiner ? null : []
-
-  if (keys) {
-    container['keys'] = keys
-    container['defs'] = {}
-  }
-
-  for (let index = 0; index < root.values.length; index += 1) {
-    let item = root.values[index]
-    let key: string = ''
-    let isTree = false
-
-    // Item = Tree
-    if (isParserTree(item)) {
-      const compiled = _compile(item, item.type === 'object' ? {} : [])
-      container[index] = compiled
-      isTree = true
-    }
-    // Item = KeyVal
-    else if (isKeyVal(item)) {
-      key = item.key
-      // Item = Tree
-      if (isParserTree(item.value)) {
-        const compiled = _compile(item.value, item.value.type === 'object' ? {} : [])
-        container.defs[key] = compiled
-        isTree = true
-      }
-      // Item = KeyVal
-      else if (isKeyVal(item.value)) {
-        console.warn('See this case!', item.value)
-      }
-      // Item = Token
-      else {
-        container.defs[key] = item.value === null ? undefined : item.value.value
-      }
-    }
-    // Token
-    else if (item !== null) {
-      if (index === 0 && isDataType(item.value.toString())) {
-        if (isArray(container)) {
-          container.push(item.value)
-        } else {
-          key = 'type'
-          container.defs[key] = item.value
-        }
-      } else if (isArray(container)) {
-        container.push(item.value)
-      } else {
-        key = item.value.toString()
-        container.defs[key] = 'any'
-      }
-    }
-    // Null
-    else {
-      // TODO: Verify this case!
-      console.warn('Verify this case!')
-    }
-
-    // If key found, add it into the keys
-    if (key && keys) {
-      let name:string = key
-      let def = container.defs[key]
-      let keyPath = path ? `${path}.${key}` : 'key'
-
-      if (isArray(def)) {
-        def = {
-          type: def
-        }
-      }
-
-      if (key.endsWith("?")) {
-        name = key.substr(0, key.length - 1)
-        if (isString(def)) {
-          def = {
-            type: def,
-            optional: true
-          }
-        }
-        else {
-          def.optional = true
-        }
-        delete container.defs[key]
-
-        // Identify non string types and fix it.
-        // if (!isString(def['type'])) {
-        //   const schema:any = def['type']
-        //   def['type'] = isArray(schema) ? "array" : "object"
-        //   def["schema"] = schema
-        // }
-      }
-
-      // Convert string defs into types if required!
-      // name:string -> name:{type:string}
-      if (isString(def) && key !== "type"){
-        def = {
-          type:def
-        }
-      }
-      // def.path = keyPath
-      container.defs[name] = def
-      keys.push(name)
-
-      if (isTree) {
-        print("---", key, def)
-        if (!isString(def.type)) {
-          const schema = def.type
-          def.type = isArray(schema) ? "array" : "object"
-          def.schema = schema
-        }
-      }
-
-    }
-  }
-
-  // Fix the Object and Array type structure
-  if (container["0"] !== undefined && keys) {
-    console.warn(container[0])
-    const type = container["0"]
-    container.keys.unshift("type")
-    container.defs.type = type
-    delete container["0"]
-  }
-
-  // if (container["0"] !== undefined && keys) {
-  //   const schema = container["0"]
-  //   const type = isArray(schema) ? "array" : "object"
-  //   // container.keys.unshift("type")
-  //   // container.defs.type = type
-
-  //   delete container["0"]
-  // }
-
-  // Ideinfy memberDef and normalize them
-  if(container.defs && container.defs.type && container.keys[0] === "type") {
-    const memberDef:any = {}
-    container.keys.forEach((key:string) => {
-      let val = container.defs[key]
-      if (val.type === "any") {
-        val = true
-      }
-      memberDef[key] = val
-    })
-    return memberDef // container.defs
-  }
-
-  // print("====>", container.type, container)
-
-  // return {
-  //   type: arrayConatiner ? "array" : "object",
-  //   schema: container
-  // }
 
   return container
 }
