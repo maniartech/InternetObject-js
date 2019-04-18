@@ -7,5 +7,6 @@ export default interface MemberDef {
   null?:any,
   default?:any,
   choices?:any[],
+  schema?:any,
   [index:string]:any
 }
