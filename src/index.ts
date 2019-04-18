@@ -5,8 +5,7 @@ import { isString } from './utils/is';
 import IOSchema from './schema';
 import DataParser from './parser/data-parser';
 import InternetObjectError from './errors/io-error';
-
-type SchemaType = string | IOSchema | null
+import { print } from './utils';
 
 export default class InternetObject {
 
@@ -28,7 +27,7 @@ export default class InternetObject {
    * Parses the Internet Object string and returns the value
    * @param text The text to be parsed
    */
-  public static parse(text:string, schema:SchemaType = null):InternetObject {
+  public static parse(text:string, schema?:string|IOSchema):InternetObject {
     const parser = new ASTParser(text)
     let compiledSchema:IOSchema|null = null
 
@@ -49,8 +48,9 @@ export default class InternetObject {
     else if (schema instanceof  IOSchema) {
       compiledSchema = schema
     }
+
     // If object contains schema, parse and compile it
-    else if (schema === null && parser.schema) {
+    else if (!schema && parser.schema) {
       compiledSchema = IOSchema.compile(parser.schema)
     }
 
