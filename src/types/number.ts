@@ -1,9 +1,11 @@
-import { isNumber } from '../utils/is'
-import { Token } from '../parser/token'
-import MemberDef from './memberdef'
-import IOErrorCodes from '../errors/io-error-codes'
-import TypeDef from './typedef'
 import InternetObjectError from '../errors/io-error';
+import IOErrorCodes from '../errors/io-error-codes';
+import { ParserTreeValue } from '../parser/index';
+import { Token } from '../parser/token';
+import { isNumber, isToken } from '../utils/is';
+import MemberDef from './memberdef';
+import TypeDef from './typedef';
+import { doCommonTypeCheck } from './utils';
 
 // age?: { number, true, 10, min:10, max:20}
 
@@ -18,21 +20,18 @@ import InternetObjectError from '../errors/io-error';
  */
 class NumberDef implements TypeDef {
 
-  getType = () => {
+  getType () {
     return "number"
   }
 
-  validate = (key: string, token: Token, memberDef: MemberDef): number => {
+  process(key: string, token:ParserTreeValue, memberDef: MemberDef): number {
 
-    // Optional check
-    if (memberDef.optional && token.value === undefined) {
-      return memberDef.default
+    if (!isToken(token)) {
+      throw new InternetObjectError("invalid-value")
     }
 
-    // Nullability check
-    if (token.value === null && !memberDef.null) {
-      throw new InternetObjectError("null-not-allowed", "", token)
-    }
+    const validatedData = doCommonTypeCheck(token, memberDef)
+    if (validatedData !== token) return validatedData
 
     // choices check
     if (memberDef.choices !== undefined && token.value in memberDef.choices === false) {

@@ -8,7 +8,6 @@ export default class TypedefRegistry {
 
   public static register(typeDef:TypeDef) {
     const type = typeDef.getType()
-    console.log("Registring", type)
 
     if (defs[type] === undefined) {
       defs[type] = typeDef
@@ -24,15 +23,15 @@ export default class TypedefRegistry {
     }
   }
 
-  public static forEach(cb:(type:string, typedef:TypeDef) => void) {
-    defs.forEach((def:string) => cb(def, defs[def]));
+  public static forEach(cb:(type:string, typedef:TypeDef, handleCollection?:boolean) => void) {
+    defs.forEach((def:string) => cb(def, defs[def].typeDef, defs[def].handleCollection));
   }
 
   public static get defs():string[] {
     return [...defsList]
   }
 
-  public static getDef(type:string): TypeDef {
+  public static get(type:string): TypeDef {
     return defs[type]
   }
 

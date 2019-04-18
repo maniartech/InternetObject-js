@@ -1,14 +1,10 @@
-
-
-import { Token } from '../parser/token';
-import TypeDef from './typedef';
-import MemberDef from './memberdef';
-
-import { isNumber } from '../utils/is';
-import IOErrorCodes from '../errors/io-error-codes';
-
 import InternetObjectError from '../errors/io-error';
-
+import IOErrorCodes from '../errors/io-error-codes';
+import { ParserTreeValue } from '../parser/index';
+import { isNumber, isToken } from '../utils/is';
+import MemberDef from './memberdef';
+import TypeDef from './typedef';
+import { doCommonTypeCheck } from './utils';
 
 /**
  * Represents the InternetObject String, performs following validations.
@@ -22,20 +18,18 @@ import InternetObjectError from '../errors/io-error';
  */
 export default class StringDef implements TypeDef {
 
-  getType = () => {
+  getType () {
     return "string"
   }
 
-  validate = (key:string, token:Token, memberDef:MemberDef): string => {
-    // Optional check
-    if (memberDef.optional && token.value === undefined) {
-      return memberDef.default
+  process (key:string, token:ParserTreeValue, memberDef: MemberDef):string {
+
+    if (!isToken(token)) {
+      throw new InternetObjectError("invalid-value")
     }
 
-    // Nullability check
-    if (token.value === null && !memberDef.null) {
-      throw new InternetObjectError("null-not-allowed", "", token)
-    }
+    const validatedData = doCommonTypeCheck(token, memberDef)
+    if (validatedData !== token) return validatedData
 
     // choices check
     if (memberDef.choices !== undefined && token.value in memberDef.choices === false) {
@@ -57,7 +51,6 @@ export default class StringDef implements TypeDef {
     }
 
     const minLength = memberDef.minLength
-
     // Max length check
     if (minLength !== undefined && isNumber(minLength)) {
       if (token.value.length > minLength) {

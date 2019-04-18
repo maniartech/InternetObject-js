@@ -1,8 +1,9 @@
-import { isNumber } from '../utils/is'
-import { Token } from '../parser/token'
-import MemberDef from './memberdef'
-import TypeDef from './typedef'
-import ParserError from '../errors/parser-error';
+import DataParser from '../parser/data-parser';
+import { ParserTreeValue } from '../parser/index';
+import MemberDef from './memberdef';
+import TypeDef from './typedef';
+import { doCommonTypeCheck } from './utils';
+import { isToken, isParserTree } from '../utils/is';
 
 // age?: {any, true}
 
@@ -17,31 +18,22 @@ import ParserError from '../errors/parser-error';
  */
 export default class AnyDef implements TypeDef {
 
-  getType = () => {
+  getType () {
     return "any"
   }
 
-  validate = (key: string, token: Token, memberDef:MemberDef): number => {
+  process (key: string, data:ParserTreeValue, memberDef: MemberDef):any {
+    const validatedData = doCommonTypeCheck(data, memberDef)
 
-    // Optional check
-    if (memberDef.optional && token.value === undefined) {
-      return memberDef.default
+    if (validatedData !== data) return validatedData
+
+    if (isToken(data)) return data.value
+
+    if (isParserTree(data)) {
+      return DataParser.parse(data)
     }
 
-    // Nullability check
-    if (token.value === null && !memberDef.null) {
-      throw new ParserError("null-not-allowed", token)
-    }
-
-    // choices check
-    if (memberDef.choices !== undefined && token.value in memberDef.choices === false) {
-      throw new ParserError("value-not-in-choices", token)
-    }
-
-    return token.value
+    console.assert(false, "Check this case!")
   }
 
-  get type() {
-    return 'number'
-  }
 }
