@@ -22,22 +22,22 @@ export default class StringDef implements TypeDef {
     return "string"
   }
 
-  process (token:ParserTreeValue, memberDef: MemberDef):string {
+  process (data:ParserTreeValue, memberDef: MemberDef):string {
 
-    if (!isToken(token)) {
+    if (!isToken(data)) {
       throw new InternetObjectError("invalid-value")
     }
 
-    const validatedData = doCommonTypeCheck(token, memberDef)
-    if (validatedData !== token) return validatedData
+    const validatedData = doCommonTypeCheck(data, memberDef)
+    if (validatedData !== data) return validatedData
 
     // choices check
-    if (memberDef.choices !== undefined && token.value in memberDef.choices === false) {
-      throw new InternetObjectError("value-not-in-choices", "", token)
+    if (memberDef.choices !== undefined && data.value in memberDef.choices === false) {
+      throw new InternetObjectError("value-not-in-choices", "", data)
     }
 
     // Typeof check
-    if (typeof token.value !== "string") {
+    if (typeof data.value !== "string") {
       throw Error(IOErrorCodes.invalidType)
     }
 
@@ -45,20 +45,20 @@ export default class StringDef implements TypeDef {
 
     // Max length check
     if (maxLength !== undefined && isNumber(maxLength)) {
-      if (token.value.length > maxLength) {
-        throw new InternetObjectError("invalid-value", "", token)
+      if (data.value.length > maxLength) {
+        throw new InternetObjectError("invalid-value", "", data)
       }
     }
 
     const minLength = memberDef.minLength
     // Max length check
     if (minLength !== undefined && isNumber(minLength)) {
-      if (token.value.length > minLength) {
-        throw new InternetObjectError("invalid-value", `The length of the ${memberDef.path} must be ${ minLength }`, token)
+      if (data.value.length > minLength) {
+        throw new InternetObjectError("invalid-value", `The length of the ${memberDef.path} must be ${ minLength }`, data)
       }
     }
 
-    return token.value
+    return data.value
   }
 
 }

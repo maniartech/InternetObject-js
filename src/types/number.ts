@@ -24,37 +24,37 @@ class NumberDef implements TypeDef {
     return "number"
   }
 
-  process(token:ParserTreeValue, memberDef: MemberDef): number {
+  process(data:ParserTreeValue, memberDef: MemberDef): number {
 
-    if (!isToken(token)) {
+    if (!isToken(data)) {
       throw new InternetObjectError("invalid-value")
     }
 
-    const validatedData = doCommonTypeCheck(token, memberDef)
-    if (validatedData !== token) return validatedData
+    const validatedData = doCommonTypeCheck(data, memberDef)
+    if (validatedData !== data) return validatedData
 
     // choices check
-    if (memberDef.choices !== undefined && token.value in memberDef.choices === false) {
-      throw new InternetObjectError("value-not-in-choices", "", token)
+    if (memberDef.choices !== undefined && data.value in memberDef.choices === false) {
+      throw new InternetObjectError("value-not-in-choices", "", data)
     }
 
     // Typeof check
-    if (token.type !== "number") {
+    if (data.type !== "number") {
       throw Error(IOErrorCodes.invalidType)
     }
 
     if (isNumber(memberDef.min)) {
       const min = memberDef.min
-      if (token.value < min) {
-        throw new InternetObjectError(..._invlalidMin(memberDef.path, token, memberDef.min))
+      if (data.value < min) {
+        throw new InternetObjectError(..._invlalidMin(memberDef.path, data, memberDef.min))
       }
     }
 
-    if (isNumber(memberDef.max) && token.value > memberDef.max) {
-      throw new InternetObjectError(..._invlalidMax(memberDef.path, token, memberDef.max))
+    if (isNumber(memberDef.max) && data.value > memberDef.max) {
+      throw new InternetObjectError(..._invlalidMax(memberDef.path, data, memberDef.max))
     }
 
-    return token.value
+    return data.value
   }
 
   get type() {
@@ -62,27 +62,27 @@ class NumberDef implements TypeDef {
   }
 }
 
-function _invlalidChoice(path:string, token:Token, min:number) {
+function _invlalidChoice(path:string, data:Token, min:number) {
   return [
     IOErrorCodes.invalidMinValue,
-    `The "${ path }" must be greater than or equal to ${min}, Currently it is "${token.value}".`,
-    token
+    `The "${ path }" must be greater than or equal to ${min}, Currently it is "${data.value}".`,
+    data
   ]
 }
 
-function _invlalidMin(path:string, token:Token, min:number) {
+function _invlalidMin(path:string, data:Token, min:number) {
   return [
     IOErrorCodes.invalidMinValue,
-    `The "${ path }" must be greater than or equal to ${min}, Currently it is "${token.value}".`,
-    token
+    `The "${ path }" must be greater than or equal to ${min}, Currently it is "${data.value}".`,
+    data
   ]
 }
 
-function _invlalidMax(path:string, token:Token, max:number) {
+function _invlalidMax(path:string, data:Token, max:number) {
   return [
     IOErrorCodes.invalidMaxValue,
-    `The "${ path }" must be less than or equal to ${max}, Currently it is "${token.value}".`,
-    token
+    `The "${ path }" must be less than or equal to ${max}, Currently it is "${data.value}".`,
+    data
   ]
 }
 
