@@ -8,9 +8,9 @@ describe("Internet Object", () => {
     // expect(typeof IO.parse).toBe("function")
 
     const test = `
-    name:{string}, age?, address:{street, city, zip}, test: {first, second, subtest: {x, y, z}}
+    name:{string}, age?, address:{street, city, zip}, test: {first, second, subtest: {x, y, z}}, colors:[string]
     ---
-    Spiderman,25, { Bond Street, New York, 50001 }, {10, 20, {"T", A, A}}
+    Spiderman,25, { Bond Street, New York, 50001 }, {10, 20, {"T", A, A}}, ["red", "blue", "green"]
     `
 
     const s1 = 'name:string, age?:{number, min:30, null}, address:{street, city, zip}, test: {first, second, subtest: {x, y, z}}'
@@ -65,6 +65,7 @@ describe("Internet Object", () => {
       // print("Output:", obj)
 
       // const s = IObject.compileSchema(schemaTest)
+      // print("Schema", s)
     }
     catch (e) {
       console.error(e.message)
