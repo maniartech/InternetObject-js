@@ -24,7 +24,7 @@ class NumberDef implements TypeDef {
     return "number"
   }
 
-  process(key: string, token:ParserTreeValue, memberDef: MemberDef): number {
+  process(token:ParserTreeValue, memberDef: MemberDef): number {
 
     if (!isToken(token)) {
       throw new InternetObjectError("invalid-value")
@@ -46,12 +46,12 @@ class NumberDef implements TypeDef {
     if (isNumber(memberDef.min)) {
       const min = memberDef.min
       if (token.value < min) {
-        throw new InternetObjectError(..._invlalidMin(key, token, memberDef.min))
+        throw new InternetObjectError(..._invlalidMin(memberDef.path, token, memberDef.min))
       }
     }
 
     if (isNumber(memberDef.max) && token.value > memberDef.max) {
-      throw new InternetObjectError(..._invlalidMax(key, token, memberDef.max))
+      throw new InternetObjectError(..._invlalidMax(memberDef.path, token, memberDef.max))
     }
 
     return token.value
@@ -62,26 +62,26 @@ class NumberDef implements TypeDef {
   }
 }
 
-function _invlalidChoice(key:string, token:Token, min:number) {
+function _invlalidChoice(path:string, token:Token, min:number) {
   return [
     IOErrorCodes.invalidMinValue,
-    `The "${ key }" must be greater than or equal to ${min}, Currently it is "${token.value}".`,
+    `The "${ path }" must be greater than or equal to ${min}, Currently it is "${token.value}".`,
     token
   ]
 }
 
-function _invlalidMin(key:string, token:Token, min:number) {
+function _invlalidMin(path:string, token:Token, min:number) {
   return [
     IOErrorCodes.invalidMinValue,
-    `The "${ key }" must be greater than or equal to ${min}, Currently it is "${token.value}".`,
+    `The "${ path }" must be greater than or equal to ${min}, Currently it is "${token.value}".`,
     token
   ]
 }
 
-function _invlalidMax(key:string, token:Token, max:number) {
+function _invlalidMax(path:string, token:Token, max:number) {
   return [
     IOErrorCodes.invalidMaxValue,
-    `The "${ key }" must be less than or equal to ${max}, Currently it is "${token.value}".`,
+    `The "${ path }" must be less than or equal to ${max}, Currently it is "${token.value}".`,
     token
   ]
 }

@@ -22,7 +22,7 @@ export default class StringDef implements TypeDef {
     return "string"
   }
 
-  process (key:string, token:ParserTreeValue, memberDef: MemberDef):string {
+  process (token:ParserTreeValue, memberDef: MemberDef):string {
 
     if (!isToken(token)) {
       throw new InternetObjectError("invalid-value")
@@ -54,7 +54,7 @@ export default class StringDef implements TypeDef {
     // Max length check
     if (minLength !== undefined && isNumber(minLength)) {
       if (token.value.length > minLength) {
-        throw new InternetObjectError("invalid-value", `The length of the ${ key} must be ${ minLength }`, token)
+        throw new InternetObjectError("invalid-value", `The length of the ${memberDef.path} must be ${ minLength }`, token)
       }
     }
 

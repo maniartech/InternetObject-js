@@ -28,7 +28,7 @@ class ObjectDef implements TypeDef {
     return "object"
   }
 
-  public process = (key: string, data:ParserTreeValue, memberDef: MemberDef):any => {
+  public process = (data:ParserTreeValue, memberDef: MemberDef):any => {
 
     const validatedData = doCommonTypeCheck(data, memberDef)
     if (validatedData !== data) return validatedData
@@ -45,7 +45,7 @@ class ObjectDef implements TypeDef {
       const typeDef:TypeDef = TypedefRegistry.get(memberDef.type)
       const dataItem = this._findDataItem(data, key, index)
 
-      const value = typeDef.process(key, dataItem, memberDef)
+      const value = typeDef.process(dataItem, memberDef)
       object[key] = value
     })
 

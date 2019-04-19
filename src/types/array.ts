@@ -28,7 +28,7 @@ class ArrayDef implements TypeDef {
     return "array"
   }
 
-  public process = (key: string, data:ParserTreeValue, memberDef: MemberDef):any => {
+  public process = (data:ParserTreeValue, memberDef: MemberDef):any => {
 
     const validatedData = doCommonTypeCheck(data, memberDef)
     if (validatedData !== data) return validatedData
@@ -50,7 +50,7 @@ class ArrayDef implements TypeDef {
     const array:any = []
 
     data.values.forEach((item) => {
-      const value = typeDef.process(key, item, schema)
+      const value = typeDef.process(item, schema)
       array.push(value)
     })
 

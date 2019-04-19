@@ -22,7 +22,7 @@ export default class AnyDef implements TypeDef {
     return "any"
   }
 
-  process (key: string, data:ParserTreeValue, memberDef: MemberDef):any {
+  process (data:ParserTreeValue, memberDef: MemberDef):any {
     const validatedData = doCommonTypeCheck(data, memberDef)
 
     if (validatedData !== data) return validatedData

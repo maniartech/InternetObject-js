@@ -14,5 +14,5 @@ export default interface TypeDef {
    * Validates and processes the value as per schema and returns the results
    * specifying whether the value adhers to the schema or not!
    */
-  process: (key:string, value:ParserTreeValue, memberDef: MemberDef) => any
+  process: (value:ParserTreeValue, memberDef: MemberDef) => any
 }

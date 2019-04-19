@@ -270,5 +270,5 @@ const _concatPath = (newPath:string, oldPath?:string) => {
 
 function _apply(data:any, schema:any, container?:any):any {
   const objectDef = TypedefRegistry.get("object")
-  return objectDef.process("root", data, { type: "object", path: "", schema })
+  return objectDef.process(data, { type: "object", path: "", schema })
 }
