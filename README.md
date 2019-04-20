@@ -4,7 +4,7 @@ Thin & Robust Data Interchange Format - Best JSON alternative!
 
 ## Internet Object JavaScript Parser
 
-## ⚠ NOT YET READY - This project is under heavy development
+### ⚠ NOT YET READY - This project is under heavy development
 
 ```JS
 import IObject from 'internet-object'
