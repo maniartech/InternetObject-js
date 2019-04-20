@@ -141,11 +141,20 @@ export default class ASTParser {
     }
 
     let data = this.stack[0]
+
+    const tokenCount = this._tokenizer.length
+
     if (this.tree.data === undefined) {
       if (this._schemaOnly) {
         this.tree.schema = data
+        // TODO: Handle the case when compiling for schema
+        // and token count is 1
+        console.warn("Compiling for schema while token count is 1")
       }
       else {
+        if (tokenCount === 1) {
+          data.type = "scalar"
+        }
         this.tree.data = data
       }
     }
