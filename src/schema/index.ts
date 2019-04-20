@@ -8,6 +8,7 @@ import { ASTParserTree } from "../parser";
 import { isString, isParserTree, isKeyVal, isArray, isDataType, isToken } from "../utils/is";
 import { Token } from '../parser/token';
 import { ParserTreeValue } from '../parser/index';
+import DataParser from '../parser/data-parser';
 
 export default class IObjectSchema {
 
@@ -134,9 +135,13 @@ const _compileMemberDefTree = (root: ASTParserTree, path?:string) => {
       if (isToken(item.value)) {
         memberDef[item.key] = item.value.value
       }
+      else if (isParserTree(item.value)) {
+        memberDef[item.key] = DataParser.parse(item.value)
+      }
       else {
         // TODO: Consider this case when memberdef key = {object value}
-        console.warn("Consider this case")
+        console.warn("Check this case", "invalid-option", item.value)
+        // throw new InternetObjectError("invalid-option")
       }
     }
     else if(isToken(item)) {
