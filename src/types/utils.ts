@@ -19,11 +19,6 @@ export function doCommonTypeCheck (data:ParserTreeValue, memberDef: MemberDef):a
       if (memberDef.null) return null
       throw new InternetObjectError("null-not-allowed", `${ memberDef.path} does not support null.` )
     }
-
-    // choices check
-    if (memberDef.choices !== undefined && data.value in memberDef.choices === false) {
-      throw new ParserError("value-not-in-choices", data)
-    }
   }
 
   // If everything is okay, return same data
