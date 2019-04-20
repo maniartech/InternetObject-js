@@ -92,6 +92,7 @@ export default class Tokenizer {
 
     token.value = value
     token.type = type
+    this._tokens.push(token)
     return token
   }
 
