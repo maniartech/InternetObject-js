@@ -1,9 +1,13 @@
-# Internet Object JavaScript Parser
+# <img src="/logo/io-logo.png" width="22px"> Internet Object
+Thin & Robust Data Interchange Format - Best JSON alternative!
+
+
+## Internet Object JavaScript Parser
 
 ## ⚠ NOT YET READY - This project is under heavy development
 
 ```JS
-import IO from 'internet-object'
+import IObject from 'internet-object'
 
 const schema = "name,age"
 
@@ -21,7 +25,7 @@ import IO from 'internet-object'
 
 const schema = "name,age,address:{street,city,state,zip}"
 
-const o = IO.parse("Spiderman,25,{Bond Street, New York, NY, 100000}", schema).data
+const o = IO.parse("Spiderman,25,{Bond Street, New York, NY, 50005}", schema).data
 
 // Print o
 console.log(o);
@@ -35,20 +39,21 @@ Outputs following object.
     "street": "Bond Street",
     "city": "New York",
     "state": "NY",
-    "zip": 100000
+    "zip": 50005
   }
 }
 ```
 
 ### Geting Started (⚠ Not Ready):
 
-1. Fork repository from https://github.com/internetobject/js-parser
+1. Fork repository from https://github.com/maniartech/InternetObject-js
 1. Install dependencies `npm install` or `yarn install`
-1. Make changes into `./src` directory
-1. Update tests
+1. Make changes in `./src`
+1. Update tests in `./tests/`
 1. Run tests, `npm test` or `yarn test`
-1. Send pull request
+1. Send pull request(s)
 
-For more information about Internet Object architecture, check it out - www.internetobject.org
+For more information about Internet Object architecture - InternetObject.org
 
-MIT License -  `© Maniar Technologies 2018-2019`
+> **MIT License:**
+© ManiarTechⓇ 2018-2019
