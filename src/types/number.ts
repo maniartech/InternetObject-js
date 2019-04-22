@@ -1,5 +1,5 @@
 import InternetObjectError from '../errors/io-error'
-import IOErrorCodes from '../errors/io-error-codes'
+import ErrorCodes from '../errors/io-error-codes'
 import { ParserTreeValue } from '../parser/index'
 import { Token } from '../parser/token'
 import { isNumber, isToken } from '../utils/is'
@@ -25,7 +25,7 @@ class NumberDef implements TypeDef {
 
   process(data: ParserTreeValue, memberDef: MemberDef): number {
     if (!isToken(data)) {
-      throw new InternetObjectError('invalid-value')
+      throw new InternetObjectError(ErrorCodes.invalidValue)
     } else if (isNaN(Number(data.value))) {
       throw new InternetObjectError(..._notANumber(memberDef.path, data))
     }
@@ -55,7 +55,7 @@ class NumberDef implements TypeDef {
 
 function _notANumber(path: string, data: Token) {
   return [
-    IOErrorCodes.notANumber,
+    ErrorCodes.notANumber,
     `Expecting a number value for "${path}", Currently it is ${data.value}.`,
     data
   ]
@@ -63,7 +63,7 @@ function _notANumber(path: string, data: Token) {
 
 function _invlalidChoice(path: string, data: Token, choices:number[]) {
   return [
-    IOErrorCodes.invalidValue,
+    ErrorCodes.invalidValue,
     `The value of "${path}" must be one of the [${choices.join(",")}]. Currently it is ${data.value}.`,
     data
   ]
@@ -71,7 +71,7 @@ function _invlalidChoice(path: string, data: Token, choices:number[]) {
 
 function _invlalidMin(path: string, data: Token, min: number) {
   return [
-    IOErrorCodes.invalidMinValue,
+    ErrorCodes.invalidMinValue,
     `The "${path}" must be greater than or equal to ${min}, Currently it is ${data.value}.`,
     data
   ]
@@ -79,7 +79,7 @@ function _invlalidMin(path: string, data: Token, min: number) {
 
 function _invlalidMax(path: string, data: Token, max: number) {
   return [
-    IOErrorCodes.invalidMaxValue,
+    ErrorCodes.invalidMaxValue,
     `The "${path}" must be less than or equal to ${max}, Currently it is ${data.value}.`,
     data
   ]
