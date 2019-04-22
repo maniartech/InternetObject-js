@@ -17,9 +17,10 @@ export default class InternetObjectError extends Error {
     const errorCode:string = args[0] || ""
     const message:string = args[1] || ""
     const token:Token|null = args[2] || null
+    let errorMsg:string = errorCode
 
     this.errorCode = errorCode
-    let errorMsg:string
+
     if (token) {
       errorMsg = `${errorCode} at (${token.row}, ${token.col}): ${message}`
     }
