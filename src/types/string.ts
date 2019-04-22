@@ -1,10 +1,11 @@
 import InternetObjectError from '../errors/io-error';
-import IOErrorCodes from '../errors/io-error-codes';
 import { ParserTreeValue } from '../parser/index';
 import { isNumber, isToken } from '../utils/is';
 import MemberDef from './memberdef';
 import TypeDef from './typedef';
 import { doCommonTypeCheck } from './utils';
+import ErrorCodes from '../errors/io-error-codes';
+import { Token } from '../parser/token';
 
 /**
  * Represents the InternetObject String, performs following validations.
@@ -25,7 +26,7 @@ export default class StringDef implements TypeDef {
   process (data:ParserTreeValue, memberDef: MemberDef):string {
 
     if (!isToken(data)) {
-      throw new InternetObjectError("invalid-value")
+      throw new InternetObjectError(ErrorCodes.notAString)
     }
 
     const validatedData = doCommonTypeCheck(data, memberDef)
@@ -33,12 +34,12 @@ export default class StringDef implements TypeDef {
 
     // choices check
     if (memberDef.choices !== undefined && data.value in memberDef.choices === false) {
-      throw new InternetObjectError("value-not-in-choices", "", data)
+      throw new InternetObjectError(..._invlalidChoice(memberDef.path, data, memberDef.choices))
     }
 
     // Typeof check
     if (typeof data.value !== "string") {
-      throw Error(IOErrorCodes.invalidType)
+      throw new InternetObjectError(..._notAString(memberDef.path, data))
     }
 
     const maxLength = memberDef.maxLength
@@ -46,7 +47,7 @@ export default class StringDef implements TypeDef {
     // Max length check
     if (maxLength !== undefined && isNumber(maxLength)) {
       if (data.value.length > maxLength) {
-        throw new InternetObjectError("invalid-value", "", data)
+        throw new InternetObjectError(..._invlalidMaxLength(memberDef.path, data, memberDef.maxLength))
       }
     }
 
@@ -54,11 +55,42 @@ export default class StringDef implements TypeDef {
     // Max length check
     if (minLength !== undefined && isNumber(minLength)) {
       if (data.value.length > minLength) {
-        throw new InternetObjectError("invalid-value", `The length of the ${memberDef.path} must be ${ minLength }`, data)
+        throw new InternetObjectError(..._invlalidMinLength(memberDef.path, data, memberDef.minLength))
       }
     }
 
     return data.value
   }
+}
 
+function _notAString(path: string, data: Token) {
+  return [
+    ErrorCodes.notAString,
+    `Expecting a string value for "${path}"`,
+    data
+  ]
+}
+
+function _invlalidChoice(path: string, data: Token, choices:number[]) {
+  return [
+    ErrorCodes.invalidValue,
+    `The value of "${path}" must be one of the [${choices.join(",")}]. Currently it is ${data.value}.`,
+    data
+  ]
+}
+
+function _invlalidMinLength(path: string, data: Token, minLength: number) {
+  return [
+    ErrorCodes.invalidMinLength,
+    `The length of "${path}" must be ${minLength} or more. Currently it is ${data.value.length}.`,
+    data
+  ]
+}
+
+function _invlalidMaxLength(path: string, data: Token, maxLength: number) {
+  return [
+    ErrorCodes.invalidMaxLength,
+    `The length of "${path}" must be ${maxLength} or more. Currently it is ${data.value.length}.`,
+    data
+  ]
 }
