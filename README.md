@@ -1,5 +1,7 @@
 # <img src="/logo/io-logo.png" width="22px"> Internet Object
-Thin & Robust Data Interchange Format - Best JSON alternative!
+Thin & Robust Data Interchange Format.
+
+Simple yet powerful alternative to JSON!
 
 
 ## Internet Object JavaScript Parser
