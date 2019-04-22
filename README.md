@@ -1,4 +1,4 @@
-<img src="/logo/internet-object.png" height="70px" alt="Internet Object">
+<img src="/logo/internet-object.png" height="70px" alt="Internet Object" title="Internet Object Logo">
 
 > **Thin, simple & robust data interchange format for Internet. Best JSON alternative!**
 
