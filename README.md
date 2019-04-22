@@ -1,7 +1,5 @@
-# <img src="/logo/io-logo.png" width="22px"> Internet Object
-Thin & Robust Data Interchange Format.
-
-Simple yet powerful alternative to JSON!
+<img src="/logo/internet-object.png" height="70px">
+Thin, simple & robust data interchange format for Internet. Best JSON alternative!
 
 
 ## Internet Object JavaScript Parser
