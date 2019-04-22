@@ -1,5 +1,5 @@
 <img src="/logo/internet-object.png" height="70px">
-Thin, simple & robust data interchange format for Internet. Best JSON alternative!
+> Thin, simple & robust data interchange format for Internet. Best JSON alternative!
 
 
 ## Internet Object JavaScript Parser
