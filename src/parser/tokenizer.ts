@@ -1,9 +1,7 @@
+import { DATASEP, HYPHEN, NEW_LINE, SEPARATORS, SPACE, STRING_ENCLOSER, TILDE } from './constants';
 import { Token } from './token';
-import { SPACE, SEPARATORS, STRING_ENCLOSER } from './constants';
 
 type NullableToken = Token | null
-
-const NEW_LINE = '\n'
 
 export default class Tokenizer {
   private _text:string
@@ -34,7 +32,7 @@ export default class Tokenizer {
   public readAll = () => {
     let token = this.read()
     while(token) {
-      this.push(token)
+      // this.push(token)
       token = this.read()
     }
   }
@@ -70,7 +68,7 @@ export default class Tokenizer {
     if (SEPARATORS.indexOf(value) >= 0) {
       type = "sep"
     }
-    else if(value === '---') {
+    else if(value === DATASEP) {
       type = "datasep"
     }
     else if(!isNaN(numVal)) {
@@ -112,8 +110,9 @@ export default class Tokenizer {
     let isWS = chCode <= SPACE
     let isSep = SEPARATORS.indexOf(ch) >= 0
     let isNextSep = SEPARATORS.indexOf(nextCh) >= 0
+    let isNextCollSep = nextCh === '~'
     let isChar = !isWS && !isSep
-    let isNewLine = ch === '\n'
+    let isNewLine = ch === NEW_LINE
 
     if (isNewLine) {
       this._row += 1
@@ -134,8 +133,8 @@ export default class Tokenizer {
 
       if (ch === STRING_ENCLOSER ) {
         if (this._isEnclosedStringActive) {
-          return this.getToken()
           this._isEnclosedStringActive = false
+          return this.getToken()
         }
         this._isEnclosedStringActive = true
       }
@@ -144,21 +143,16 @@ export default class Tokenizer {
     }
 
     if (!this._isEnclosedStringActive) {
-      if ((isNextSep || isSep) && this._start !== -1 && this._end !== -1 /* Skip WS */) {
+      if ((isNextSep || isSep) &&
+          this._start !== -1 &&
+          this._end !== -1 /* Skip WS */) {
         return this.getToken()
       }
-      else if (ch === '-') {
+      else if (ch === HYPHEN) {
         let value = this._text.substring(this._start, this._end + 1)
-        if (value === '---') {
+        if (value === DATASEP) {
           return this.getToken()
         }
-      }
-      // TODO: Validate when nextChCode === -1 (End of text)
-      else if(ch === '~' && nextChCode === SPACE) {
-        // Skip next char (space)
-        this.next()
-        let value = '~ '
-        return this.getToken()
       }
     }
     return this.next()
