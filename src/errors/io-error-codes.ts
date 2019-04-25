@@ -5,6 +5,10 @@ enum ErrorCodes {
   tokenNotReady     = "token-not-ready",
   invalidValue      = "invalid-value",
 
+  // Parser Errors
+  multipleHeaders   = "multiple-headers-found",
+  invalidCollection = "invalid-collection",
+
   // -- string, number, date, datetime, time
   valueNotInChoice  = "value-not-in-choice",
 
@@ -19,7 +23,6 @@ enum ErrorCodes {
 
   // String
   notAString        = "not-a-string",
-
 
   // Object
 
