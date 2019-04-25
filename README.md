@@ -8,7 +8,7 @@
 ### ⚠ NOT YET READY - This project is under heavy development
 
 ```JS
-import IObject from 'internet-object'
+import IO from 'internet-object'
 
 const schema = "name,age"
 
