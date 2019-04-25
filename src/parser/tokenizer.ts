@@ -111,6 +111,7 @@ export default class Tokenizer {
     let isSep = SEPARATORS.indexOf(ch) >= 0
     let isNextSep = SEPARATORS.indexOf(nextCh) >= 0
     let isNextCollSep = nextCh === '~'
+    let isNextDataSep = this._text.substring(index+1, index+4) === DATASEP
     let isChar = !isWS && !isSep
     let isNewLine = ch === NEW_LINE
 
@@ -143,7 +144,7 @@ export default class Tokenizer {
     }
 
     if (!this._isEnclosedStringActive) {
-      if ((isNextSep || isSep) &&
+      if ((isNextSep || isSep || isNextDataSep) &&
           this._start !== -1 &&
           this._end !== -1 /* Skip WS */) {
         return this.getToken()
