@@ -2,8 +2,8 @@
 
 import ASTParser from './parser/ast-parser';
 import { isString } from './utils/is';
-import IOSchema from './schema';
-import DataParser from './parser/data-parser';
+import IOSchema from './header';
+import DataParser from './data/data-parser';
 import InternetObjectError from './errors/io-error';
 import { print } from './utils';
 

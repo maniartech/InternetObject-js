@@ -1,5 +1,5 @@
 import { isDataType, isArray, isParserTree, isKeyVal, isToken } from '../utils/is'
-import { ASTParserTree } from '.'
+import { ASTParserTree } from '../parser'
 import { print } from '../utils';
 
 

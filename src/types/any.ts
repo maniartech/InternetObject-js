@@ -1,4 +1,4 @@
-import DataParser from '../parser/data-parser';
+import DataParser from '../data/data-parser';
 import { ParserTreeValue } from '../parser/index';
 import MemberDef from './memberdef';
 import TypeDef from './typedef';
