@@ -12,7 +12,7 @@ import IO from 'internet-object'
 
 const schema = "name,age"
 
-const o = IO.parse("Spiderman,25", schema)
+const o = IO.parse("Spiderman,25", schema).data
 
 // Prints Spiderman
 console.log(o.name);
