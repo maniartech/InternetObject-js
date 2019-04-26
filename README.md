@@ -3,7 +3,7 @@
 > **Thin, simple & robust data interchange format for Internet. Best JSON alternative!**
 
 
-## Internet Object JavaScript Parser
+## Internet Object TypeScript/JavaScript Parser
 
 ### ⚠ NOT YET READY - This project is under heavy development
 
@@ -12,7 +12,7 @@ import IO from 'internet-object'
 
 const schema = "name,age"
 
-const o = IO.parse("Spiderman,25", schema)
+const o = IO.parse("Spiderman,25", schema).data
 
 // Prints Spiderman
 console.log(o.name);
