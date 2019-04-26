@@ -22,8 +22,15 @@ export default class IObjectSchema {
    * Applies the schema to specified data and returns the
    * mapped
    */
-  public apply = (data:any) => {
+  public apply (data:any) {
     return _apply(data, this._schema, {})
+  }
+
+  /**
+   * Converts and returns the string version of current schema.
+   */
+  public toString () {
+    // TODO: Need to work on this function.
   }
 
   public static compile = (schema:any): IObjectSchema => {
