@@ -2,7 +2,7 @@
 
 import ASTParser from './parser/ast-parser';
 import { isString } from './utils/is';
-import IOSchema from './header';
+import IOSchema from './header/schema';
 import DataParser from './data/data-parser';
 import InternetObjectError from './errors/io-error';
 import { print } from './utils';
