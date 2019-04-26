@@ -8,7 +8,7 @@ import { ASTParserTree } from "../parser";
 import { isString, isParserTree, isKeyVal, isArray, isDataType, isToken } from "../utils/is";
 import { Token } from '../parser/token';
 import { ParserTreeValue } from '../parser/index';
-import DataParser from '../data/data-parser';
+import DataParser from '../data';
 
 export default class IObjectSchema {
 
