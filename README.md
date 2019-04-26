@@ -3,7 +3,7 @@
 > **Thin, simple & robust data interchange format for Internet. Best JSON alternative!**
 
 
-## Internet Object JavaScript Parser
+## Internet Object TypeScript/JavaScript Parser
 
 ### ⚠ NOT YET READY - This project is under heavy development
 
