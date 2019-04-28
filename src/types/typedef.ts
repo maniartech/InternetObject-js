@@ -1,5 +1,3 @@
-import { Token } from "../parser/token";
-import { ASTParserTree } from '../../dist/types/parser/index';
 import MemberDef from "./memberdef";
 import { ParserTreeValue } from '../parser/index';
 
