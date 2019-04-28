@@ -7,7 +7,6 @@ import MemberDef from './memberdef';
 import TypeDef from './typedef';
 import TypedefRegistry from './typedef-registry';
 import { doCommonTypeCheck } from './utils';
-import { ASTParserTree } from '../../dist/types/parser/index';
 
 // age?: { number, true, 10, min:10, max:20}
 

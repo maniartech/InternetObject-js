@@ -1,13 +1,14 @@
-import { isDataType, isArray, isParserTree, isKeyVal, isToken } from '../utils/is'
+import { isDataType, isArray, isParserTree, isKeyVal, isToken, isString } from '../utils/is'
 import { ASTParserTree } from '../parser'
 import { print } from '../utils';
+import { ParserTreeValue } from '../parser/index';
 
 
 /**
  * Parses the ASTParserTree into the data that makes sense.
  */
 export default class DataParser {
-  public static parse(dataTree:ASTParserTree) {
+  public static parse(dataTree:ASTParserTree, defs?:any) {
 
     if (dataTree.type === "scalar") {
       const val = dataTree.values[0]
@@ -28,7 +29,7 @@ export default class DataParser {
   }
 }
 
-const _parse = (root:ASTParserTree, container:any) => {
+const _parse = (root:ASTParserTree, container:any, defs?:any) => {
   for (let index=0; index < root.values.length; index += 1) {
     let value = root.values[index]
 
@@ -59,4 +60,18 @@ const _parse = (root:ASTParserTree, container:any) => {
     }
   }
   return container
+}
+
+function _getValue(value:ParserTreeValue, defs:any =) {
+  if (isToken(value)) {
+    if (isString(value.value) && value.value.startsWith("$")) {
+      return _getDefValue(value.value, defs)
+    }
+  }
+}
+
+function _getDefValue(def:string, defs:any) {
+  if (!defs) return def
+
+  const value = defs[def]
 }

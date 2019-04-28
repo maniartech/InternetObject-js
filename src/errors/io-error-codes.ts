@@ -8,6 +8,8 @@ enum ErrorCodes {
   // Parser Errors
   multipleHeaders   = "multiple-headers-found",
   invalidCollection = "invalid-collection",
+  invlidHeader      = "invalid-header",
+  invalidHeaderItem = "invalid-header-item",
 
   // -- string, number, date, datetime, time
   valueNotInChoice  = "value-not-in-choice",
