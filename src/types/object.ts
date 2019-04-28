@@ -1,13 +1,13 @@
 import InternetObjectError from '../errors/io-error';
 import IOErrorCodes from '../errors/io-error-codes';
-import { ParserTreeValue } from '../parser/index';
+import { ParserTreeValue, ASTParserTree } from '../parser/index';
 import { Token } from '../parser/token';
 import { isParserTree, isKeyVal } from '../utils/is';
 import MemberDef from './memberdef';
 import TypeDef from './typedef';
 import TypedefRegistry from './typedef-registry';
 import { doCommonTypeCheck } from './utils';
-import { ASTParserTree } from '../../dist/types/parser/index';
+
 
 // age?: { number, true, 10, min:10, max:20}
 
