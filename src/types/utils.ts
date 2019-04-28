@@ -1,8 +1,8 @@
-import MemberDef from '../../dist/types/types/memberdef';
 import { ParserTreeValue } from '../parser/index';
 import { isToken } from '../utils/is';
 import InternetObjectError from '../errors/io-error';
 import ParserError from '../errors/parser-error';
+import MemberDef from './memberdef';
 
 
 export function doCommonTypeCheck (data:ParserTreeValue, memberDef: MemberDef):any {
