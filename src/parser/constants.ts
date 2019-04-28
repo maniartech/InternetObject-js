@@ -34,3 +34,13 @@ export const SEPARATORS = [
                 SQUARE_OPEN, SQUARE_CLOSED,
                 TILDE
               ]
+
+// Parsed Tree Types
+export const COLLECTION = "collection"
+export const OBJECT = "object"
+export const ARRAY = "array"
+export const SCALAR = "scalar"
+
+// Others
+
+export const SCHEMA = "schema"
