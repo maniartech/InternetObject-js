@@ -6,10 +6,11 @@ import IOSchema from './header/schema';
 import DataParser from './data';
 import InternetObjectError from './errors/io-error';
 import { print } from './utils';
+import InternetObjectHeader from './header';
 
 export default class InternetObject {
 
-  constructor(schema?:string|IOSchema) {
+  constructor() {
     //
   }
 
@@ -39,7 +40,7 @@ export default class InternetObject {
     if (isString(schema)) {
       const astSchmeaParser = new ASTParser(schema, true)
       astSchmeaParser.parse()
-      const parsedSchema = astSchmeaParser.schema
+      const parsedSchema = astSchmeaParser.header
       if(parsedSchema) {
         compiledSchema = IOSchema.compile(parsedSchema)
       }
@@ -50,8 +51,11 @@ export default class InternetObject {
     }
 
     // If object contains schema, parse and compile it
-    else if (!schema && parser.schema) {
-      compiledSchema = IOSchema.compile(parser.schema)
+    else if (!schema && parser.header) {
+      const header = InternetObjectHeader.compile(parser.header)
+      print("---", header)
+      compiledSchema = header.schema
+      // compiledSchema = IOSchema.compile(parser.h)
     }
 
     const iObject = new InternetObject()
@@ -61,7 +65,7 @@ export default class InternetObject {
       return iObject
     }
 
-    compiledSchema.apply(data)
+    // compiledSchema.apply(data)
     iObject._schema = compiledSchema
     iObject._data = compiledSchema.apply(data)
     return iObject
