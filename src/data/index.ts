@@ -36,11 +36,11 @@ const _parse = (root:ASTParserTree, container:any, defs?:any) => {
     if (isParserTree(value)) {
       // Object
       if(value.type === 'object') {
-        container[index] = _parse(value, {})
+        container[index] = _parse(value, {}, defs)
       }
       // Array
       else if(value.type === 'array') {
-        container[index] = _parse(value, [])
+        container[index] = _parse(value, [], defs)
       }
     }
     else if(isKeyVal(value)) {
@@ -52,26 +52,41 @@ const _parse = (root:ASTParserTree, container:any, defs?:any) => {
         console.warn("Validate this case!")
       }
       else {
-        container[value.key] = value.value === null ? undefined : value.value.value
+        // container[value.key] = value.value === null ? undefined : value.value.value
+        container[value.key] = _getValue(value.value, defs)
       }
     }
     else {
-      container[index] = value === null ? undefined : value.value
+      // container[index] = value === null ? undefined : value.value
+      container[index] = _getValue(value, defs)
     }
   }
   return container
 }
 
-function _getValue(value:ParserTreeValue, defs:any =) {
+function _getValue(value:ParserTreeValue, defs:any):any {
   if (isToken(value)) {
     if (isString(value.value) && value.value.startsWith("$")) {
       return _getDefValue(value.value, defs)
     }
+    return value.value
   }
+  return
 }
 
-function _getDefValue(def:string, defs:any) {
+function _getDefValue(def:string, defs:any):any {
   if (!defs) return def
 
   const value = defs[def]
+
+  if (isParserTree(value)) {
+    return (value.type === 'object')  ? _parse(value, {}) : _parse(value, [])
+  }
+
+  if (isToken(value)) {
+    return _getValue(value, defs)
+  }
+
+  // TODO: Verify this case!
+  throw new Error("Verify this case!")
 }
