@@ -40,12 +40,19 @@ export default class ASTParser {
     this._finalize()
   }
 
-  public get schema() {
+  public get header() {
     if (this.status !== FINISHED) {
       throw new Error('parsing-not-finished')
     }
     return this.tree.header
   }
+
+  // public get schema() {
+  //   if (this.status !== FINISHED) {
+  //     throw new Error('parsing-not-finished')
+  //   }
+  //   return this.tree.header
+  // }
 
   public get data() {
     if (this.status !== FINISHED) {
@@ -163,10 +170,13 @@ export default class ASTParser {
     if (isHeaderOpen) {
       if (isCollection) {
         if (!this.tree.header) {
-          this.tree.header = [data]
+          this.tree.header = {
+            type: "collection",
+            values: [data]
+          }
         }
         else {
-          this.tree.header.push(data)
+          this.tree.header.values.push(data)
         }
       }
       else {
@@ -177,10 +187,13 @@ export default class ASTParser {
       // Process data section
       if (isCollection) {
         if (!this.tree.data) {
-          this.tree.data = [data]
+          this.tree.data = {
+            type: "collection",
+            values: [data]
+          }
         }
         else {
-          this.tree.data.push(data)
+          this.tree.data.values.push(data)
         }
       }
       else {
