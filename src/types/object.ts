@@ -53,7 +53,7 @@ class ObjectDef implements TypeDef {
   }
 
   private _findDataItem = (data:ASTParserTree, key:string, index:number) => {
-    let dataItem = data.values[index]
+    let dataItem = data.values[index] || null
 
     if(!isKeyVal(dataItem)) {
       return dataItem
