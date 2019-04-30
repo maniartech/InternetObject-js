@@ -33,12 +33,12 @@ export default class IObjectSchema {
     // TODO: Need to work on this function.
   }
 
-  public static compile = (schema:any): IObjectSchema => {
+  public static compile = (schema:any, defs?:any): IObjectSchema => {
     let parsedSchema:any = null
     if (isString(schema)) {
       let parser = new ASTParser(schema, true)
       parser.parse()
-      parsedSchema = parser.schema
+      parsedSchema = parser.header
     }
     else {
       parsedSchema = schema
@@ -282,5 +282,19 @@ const _concatPath = (newPath:string, oldPath?:string) => {
 
 function _apply(data:any, schema:any, container?:any):any {
   const objectDef = TypedefRegistry.get("object")
-  return objectDef.process(data, { type: "object", path: "", schema })
+  const schemaDef = {
+    type: "object",
+    path: "",
+    schema
+  }
+
+  if (data.type === "collection") {
+    const collection:any[] = []
+    data.values.forEach((item:any) => {
+      collection.push(objectDef.process(item, schemaDef))
+    })
+    return collection
+  }
+
+  return objectDef.process(data, schemaDef)
 }
