@@ -10,7 +10,7 @@ import { Token } from '../parser/token';
 import { ParserTreeValue } from '../parser/index';
 import DataParser from '../data';
 
-export default class IObjectSchema {
+export default class Schema {
 
   private _schema:any
 
@@ -33,7 +33,7 @@ export default class IObjectSchema {
     // TODO: Need to work on this function.
   }
 
-  public static compile = (schema:any, defs?:any): IObjectSchema => {
+  public static compile = (schema:any, defs?:any): Schema => {
     let parsedSchema:any = null
     if (isString(schema)) {
       let parser = new ASTParser(schema, true)
@@ -47,7 +47,7 @@ export default class IObjectSchema {
     // print("AST", parsedSchema)
     const compiledSchema = _compileObjectSchema(parsedSchema)
 
-    return new IObjectSchema(compiledSchema)
+    return new Schema(compiledSchema)
   }
 }
 
