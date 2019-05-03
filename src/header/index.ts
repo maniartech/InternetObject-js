@@ -5,8 +5,9 @@ import { ASTParserTree } from '../parser';
 import { SCHEMA } from '../parser/constants';
 import { isKeyVal, isParserTree, isString, isToken } from '../utils/is';
 import IObjectSchema from './schema';
+import ASTParser from '../parser/ast-parser';
 
-export default class InternetObjectHeader {
+export default class Header {
 
   private _keys:string[]
   private _map:any
@@ -34,11 +35,22 @@ export default class InternetObjectHeader {
     return this._map[SCHEMA]
   }
 
-  public static compile(tree:ASTParserTree):InternetObjectHeader {
+  public static compile(header:string|ASTParserTree):Header {
+
+    let tree:ASTParserTree
+
+    if (isString(header)) {
+      const parser = new ASTParser(header, true)
+      parser.parse()
+      tree = parser.header
+    }
+    else {
+      tree = header
+    }
 
     // If it is object, it must be schema.
     if (tree.type === "object") {
-      return new InternetObjectHeader({
+      return new Header({
         keys: [SCHEMA],
         map: {
           [SCHEMA]: IObjectSchema.compile(tree)
@@ -52,7 +64,7 @@ export default class InternetObjectHeader {
       throw new InternetObjectError(ErrorCodes.invlidHeader, "Invalid value found in header")
     }
 
-    return new InternetObjectHeader(_parseCollection(tree))
+    return new Header(_parseCollection(tree))
 
   }
 }
