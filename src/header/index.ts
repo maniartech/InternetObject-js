@@ -11,12 +11,10 @@ export default class Header {
 
   private _keys:string[]
   private _map:any
-  private _defs:any
 
   private constructor(o:any) {
     this._keys = o.keys
     this._map = o.map
-    this._defs = o.defs
   }
 
   public length (): number {
@@ -102,17 +100,6 @@ function _parseCollection (tree:ASTParserTree):any {
 
     const key = keyVal.key
     let value = keyVal.value
-
-    // When value is a definition, replace it with a concrete value
-    // found from the defs object.
-    // In the following example, The color $R is set as "red"
-    // ~ $R: red,
-    // ~ $G: green,
-    // ~ $B: blue,
-    // color: $R
-    if (isToken(value) && isString(value) && value.startsWith("$")) {
-      value = defs[value] || value
-    }
 
     // When key is a SCHEMA, compile the value and create schema
     if (key === SCHEMA) {
