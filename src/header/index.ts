@@ -4,7 +4,7 @@ import ErrorCodes from '../errors/io-error-codes';
 import { ASTParserTree } from '../parser';
 import { SCHEMA } from '../parser/constants';
 import { isKeyVal, isParserTree, isString, isToken } from '../utils/is';
-import IObjectSchema from './schema';
+import Schema from './schema';
 import ASTParser from '../parser/ast-parser';
 
 export default class Header {
@@ -31,7 +31,7 @@ export default class Header {
     return this._map[key]
   }
 
-  public get schema (): IObjectSchema {
+  public get schema (): Schema {
     return this._map[SCHEMA]
   }
 
@@ -48,12 +48,13 @@ export default class Header {
       tree = header
     }
 
-    // If it is object, it must be schema.
+    // If it is object, it must be schema. Then convert it into
+    // collection.
     if (tree.type === "object") {
       return new Header({
         keys: [SCHEMA],
         map: {
-          [SCHEMA]: IObjectSchema.compile(tree)
+          [SCHEMA]: Schema.compile(tree)
         },
         defs: {}
       })
@@ -113,30 +114,25 @@ function _parseCollection (tree:ASTParserTree):any {
       value = defs[value] || value
     }
 
-    // When key is a def, do not process. Just use it as it is.
-    if (key.startsWith("$")) {
-      defs[key] = value
+    // When key is a SCHEMA, compile the value and create schema
+    if (key === SCHEMA) {
+      map[key] = Schema.compile(value)
     }
+    else if (isParserTree(value)) {
+      map[key] = DataParser.parse(value)
+    }
+    else if (isToken(value)) {
+      map[key] = value.value
+    }
+    // When value is null or of KeyVal type!
     else {
-      // When key is a SCHEMA, compile the value and create schema
-      if (key === SCHEMA) {
-        map[key] = IObjectSchema.compile(value, defs)
-      }
-      else if (isParserTree(value)) {
-        map[key] = DataParser.parse(value, defs)
-      }
-      else if (isToken(value)) {
-        map[key] = value.value
-      }
-      // When value is null or of KeyVal type!
-      else {
-        // TODO: Fix this error
-        throw new InternetObjectError(ErrorCodes.invalidHeaderItem)
-      }
-      keys.push(key)
+      // TODO: Fix this error
+      throw new InternetObjectError(ErrorCodes.invalidHeaderItem)
     }
+    keys.push(key)
+
   }
 
-  return { keys, map, defs }
+  return { keys, map }
 }
 
