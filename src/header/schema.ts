@@ -6,13 +6,15 @@ import InternetObjectError from '../errors/io-error';
 
 import { ASTParserTree } from "../parser";
 import { isString, isParserTree, isKeyVal, isArray, isDataType, isToken } from "../utils/is";
-import { Token } from '../parser/token';
 import { ParserTreeValue } from '../parser/index';
 import DataParser from '../data';
+import ErrorCodes from '../errors/io-error-codes';
+
 
 export default class Schema {
 
   private _schema:any
+  private _defs:any
 
   private constructor(schema:any) {
     this._schema = schema
@@ -33,7 +35,7 @@ export default class Schema {
     // TODO: Need to work on this function.
   }
 
-  public static compile = (schema:any, defs?:any): Schema => {
+  public static compile = (schema:any): Schema => {
     let parsedSchema:any = null
     if (isString(schema)) {
       let parser = new ASTParser(schema, true)
@@ -77,7 +79,7 @@ const _getCompileValue = (value:ParserTreeValue, path?:string):any => {
   }
 
   // TODO: Throw better error
-  throw new InternetObjectError("invalid-value")
+  throw new InternetObjectError(ErrorCodes.invalidValue)
 }
 
 const _compileMemberDefTree = (root: ASTParserTree, path?:string) => {
@@ -139,15 +141,18 @@ const _compileMemberDefTree = (root: ASTParserTree, path?:string) => {
   for (let index=1; index<root.values.length; index++) {
     const item = root.values[index]
     if (isKeyVal(item)) {
-      if (isToken(item.value)) {
-        memberDef[item.key] = item.value.value
+
+      let val = item.value
+
+      if (isToken(val)) {
+        memberDef[item.key] = val.value
       }
-      else if (isParserTree(item.value)) {
-        memberDef[item.key] = DataParser.parse(item.value)
+      else if (isParserTree(val)) {
+        memberDef[item.key] = DataParser.parse(val)
       }
       else {
         // TODO: Consider this case when memberdef key = {object value}
-        console.warn("Check this case", "invalid-option", item.value)
+        console.warn("Check this case", "invalid-option", val)
         // throw new InternetObjectError("invalid-option")
       }
     }
