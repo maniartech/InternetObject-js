@@ -8,28 +8,28 @@
 ### ⚠ NOT YET READY - This project is under heavy development
 
 ```JS
-import IO from 'internet-object'
+import InternetObject from 'internet-object'
 
 const schema = "name,age"
 
-const o = IO.parse("Spiderman,25", schema).data
+const o = new InternetObject("Spiderman,25", schema)
 
 // Prints Spiderman
-console.log(o.name);
+console.log(o.data.name);
 
 // Prints 25
-console.log(o.age);
+console.log(o.data.age);
 ```
 
 ```JS
-import IO from 'internet-object'
+import InternetObject from 'internet-object'
 
 const schema = "name,age,address:{street,city,state,zip}"
 
-const o = IO.parse("Spiderman,25,{Bond Street, New York, NY, 50005}", schema).data
+const o = new InternetObject("Spiderman,25,{Bond Street, New York, NY, 50005}", schema)
 
 // Print o
-console.log(o);
+console.log(o.data);
 ```
 Outputs following object.
 ```
