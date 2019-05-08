@@ -9,20 +9,15 @@ import ASTParser from '../parser/ast-parser';
 
 export default class Header {
 
-  private _keys:string[]
+  private _keys:any
   private _map:any
-
-  private constructor(o:any) {
-    this._keys = o.keys
-    this._map = o.map
-  }
 
   public length (): number {
     return this._keys.length
   }
 
   public get keys (): string[] {
-    return this._keys
+    return [...this._keys]
   }
 
   public get (key:string):any {
@@ -33,7 +28,13 @@ export default class Header {
     return this._map[SCHEMA]
   }
 
-  public static compile(header:string|ASTParserTree):Header {
+  public add(key:string, val:any):Header {
+    this._keys.push(key)
+    this._map[key] = val
+    return this
+  }
+
+  public static compile(header:string|ASTParserTree, schema?:Schema):Header {
 
     let tree:ASTParserTree
 
@@ -49,13 +50,8 @@ export default class Header {
     // If it is object, it must be schema. Then convert it into
     // collection.
     if (tree.type === "object") {
-      return new Header({
-        keys: [SCHEMA],
-        map: {
-          [SCHEMA]: Schema.compile(tree)
-        },
-        defs: {}
-      })
+      const compiledSchema = Schema.compile(tree)
+      return (new Header).add(SCHEMA, compiledSchema)
     }
 
     // If it not collection, throw and invalid header error
@@ -63,8 +59,11 @@ export default class Header {
       throw new InternetObjectError(ErrorCodes.invlidHeader, "Invalid value found in header")
     }
 
-    return new Header(_parseCollection(tree))
-
+    const newHeader = new Header()
+    const {keys, map} = _parseCollection(tree)
+    newHeader._keys = keys
+    newHeader._map = map
+    return newHeader
   }
 }
 
