@@ -5,11 +5,14 @@ enum ErrorCodes {
   tokenNotReady     = "token-not-ready",
   invalidValue      = "invalid-value",
 
-  // Parser Errors
+  // Parser Errors (Header)
   multipleHeaders   = "multiple-headers-found",
   invalidCollection = "invalid-collection",
   invlidHeader      = "invalid-header",
   invalidHeaderItem = "invalid-header-item",
+
+  // Parser Errors (Schema)
+  invalidSchema     = "invalid-schema",
 
   // -- string, number, date, datetime, time
   valueNotInChoice  = "value-not-in-choice",
