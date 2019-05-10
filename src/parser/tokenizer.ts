@@ -118,8 +118,11 @@ export default class Tokenizer {
     if (isNewLine) {
       this._row += 1
       this._col = 0
+      return this.next() // continue
     }
-    else if (!isWS) {
+
+    // If not whitespace
+    if (!isWS) {
 
       // Processing not started yet!
       if (this._start === -1) {
@@ -132,6 +135,7 @@ export default class Tokenizer {
         }
       }
 
+      // Process string encloser (")
       if (ch === STRING_ENCLOSER ) {
         if (this._isEnclosedStringActive) {
           this._isEnclosedStringActive = false
@@ -143,18 +147,24 @@ export default class Tokenizer {
       this._end = index
     }
 
+    // When the enclosed string is not active
     if (!this._isEnclosedStringActive) {
+
+      // End token when a separator is found
       if ((isNextSep || isSep || isNextDataSep) &&
           this._start !== -1 &&
           this._end !== -1 /* Skip WS */) {
         return this.getToken()
       }
+
+      // Check for data separator
       else if (ch === HYPHEN) {
         let value = this._text.substring(this._start, this._end + 1)
         if (value === DATASEP) {
           return this.getToken()
         }
       }
+
     }
     return this.next()
   }
