@@ -20,20 +20,62 @@ export default class Header {
     return [...this._keys]
   }
 
+  /**
+   * Gets a value for specified key
+   * @param key {string} The key
+   * @returns Value
+   */
   public get (key:string):any {
     return this._map[key]
   }
 
-  public get schema (): Schema {
-    return this._map[SCHEMA]
-  }
-
-  public add(key:string, val:any):Header {
-    this._keys.push(key)
+  /**
+   * Sets the key and associated value in the header. If key already
+   * @param key {string} The header key
+   * @param val {any} The associated value for that key in the header.
+   */
+  public set(key:string, val:any):Header {
+    if (key in this._map === false) {
+      this._keys.push(key)
+    }
     this._map[key] = val
     return this
   }
 
+  /**
+   * Removes the specified key from the header.
+   * @param key {string} The key of the header item, which needs to be removed.
+   */
+  public remove(key:string):Header {
+    if(key in this._map === false) return this
+    const index = this._keys.indexOf(key)
+    this._keys.splice(index)
+    delete this._map[key]
+    return this
+  }
+
+  /**
+   * Gets schema
+   */
+  public get schema (): Schema {
+    return this._map[SCHEMA]
+  }
+
+  /**
+   * Sets schema
+   */
+  public set schema (schema:Schema) {
+    if (!this.schema) {
+      this._keys.push(SCHEMA)
+    }
+    this._map[SCHEMA] = schema
+  }
+
+  /**
+   *
+   * @param header The header string that needs to be compiled!
+   * @param schema The schema
+   */
   public static compile(header:string|ASTParserTree, schema?:Schema):Header {
 
     let tree:ASTParserTree
@@ -51,7 +93,7 @@ export default class Header {
     // collection.
     if (tree.type === "object") {
       const compiledSchema = Schema.compile(tree)
-      return (new Header).add(SCHEMA, compiledSchema)
+      return (new Header).set(SCHEMA, compiledSchema)
     }
 
     // If it not collection, throw and invalid header error
