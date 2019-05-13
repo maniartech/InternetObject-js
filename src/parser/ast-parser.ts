@@ -210,22 +210,28 @@ export default class ASTParser {
 
     this._processObject()
 
-    if (this._isHeaderOpen) {
-      this.tree.data = this.tree.header
-      delete this.tree.header
-    }
-
-
-    return
-
-    // If no data found just return
-    if (this.stack.length === 0) return
-
     // TODO: Consider the scenario when more than 1 item exists in the stack!
     if (this.stack.length > 1) {
       console.warn(this._text, this.stack)
       console.warn("Invalid Stack")
     }
+
+    if (this._isHeaderOpen) {
+      this.tree.data = this.tree.header
+      delete this.tree.header
+
+      if (this._tokenizer.length === 1) {
+        this.tree.data.type = "scalar"
+      }
+    }
+
+    print("TOKENIZER", this._tokenizer)
+    print("TREE", this.stack)
+
+    return
+
+    // If no data found just return
+    if (this.stack.length === 0) return
 
     let data = this.stack[0]
 
