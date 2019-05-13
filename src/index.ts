@@ -70,12 +70,12 @@ function _parse(text:string, schema?:string|Schema) {
   else {
     header = compiledSchema === null
       ? new Header
-      : (new Header).add(SCHEMA, compiledSchema)
+      : (new Header).set(SCHEMA, compiledSchema)
   }
 
   const data = compiledSchema
           ? compiledSchema.apply(parser.tree.data)
-          : DataParser.apply(parser.tree.data)
+          : DataParser.parse(parser.tree.data)
 
   return {header, data}
 
