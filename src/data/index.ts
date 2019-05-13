@@ -9,7 +9,7 @@ import { ParserTreeValue } from '../parser/index';
  */
 export default class DataParser {
   public static parse(dataTree:ASTParserTree, defs?:any) {
-
+    console.log(">>>>", dataTree)
     if (dataTree.type === "scalar") {
       const val = dataTree.values[0]
       if (isToken(val)) {
