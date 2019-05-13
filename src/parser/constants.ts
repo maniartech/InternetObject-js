@@ -31,9 +31,12 @@ export const STRING_ENCLOSER = '"'
 export const SEPARATORS = [
                 COMMA, COLON,
                 CURLY_OPEN, CURLY_CLOSED,
-                SQUARE_OPEN, SQUARE_CLOSED,
-                TILDE
+                SQUARE_OPEN, SQUARE_CLOSED
               ]
+
+// Escape characters
+
+export const BACKSLASH = "\\"
 
 // Parsed Tree Types
 export const COLLECTION = "collection"
