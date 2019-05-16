@@ -12,6 +12,7 @@ export default class Tokenizer {
   private _col:number = 0
   private _start:number = -1
   private _end:number = -1
+  private _tokenLength = 0
   private _lastToken:NullableToken = null
   private _isEnclosedStringActive:boolean = false
   private _isEscaping = false
@@ -26,6 +27,7 @@ export default class Tokenizer {
     } as Token
     this._start = -1
     this._end = -1
+    this._tokenLength = 0
     this._isEnclosedStringActive = false
 
     return this._next()
@@ -62,7 +64,7 @@ export default class Tokenizer {
     const token = this._lastToken
     if (token === null) return null
 
-    let value:any = this._text.substring(this._start, this._end+ (this._isEnclosedStringActive ? 2 : 1))
+    let value:any = this._text.substring(this._start, this._end+ (this._isEnclosedStringActive ? 1 : 1))
     let numVal = Number(value)
     let type = "string"
     token.token = value
@@ -86,21 +88,22 @@ export default class Tokenizer {
       type = "null"
     }
     else if (isString(value))  {
-      console.warn(">>>", value)
+      // console.warn(">>>", value)
       // Trim double-quotes
       // value = value.toString().replace(/^"(.*)(^(\\")|")$/, '$1')
-      console.log("Start", value)
+      // console.log("Start", value)
       value = value.startsWith('"') ? value.substring(1) : value
       value = value.endsWith('"') && !value.endsWith('\\"')
         ? value.substring(0, value.length-1)
         : value
 
-      console.log("End", value)
+      // console.log("End", value.replace(/\s/g, "."))
     }
 
     token.value = value
     token.type = type
     this._tokens.push(token)
+    // console.log("###", token)
     return token
   }
 
@@ -141,8 +144,7 @@ export default class Tokenizer {
     // Handle white-spaces
     if (isWS) {
 
-      console.log(":::", this._subtext)
-
+      // console.log(":::", this._subtext)
       // Update values in case of new line
       if (isNewLine) {
         this._row += 1
@@ -159,6 +161,8 @@ export default class Tokenizer {
     // If not whitespace
     // =================
 
+    this._end = index
+
     // Processing not started yet!
     if (this._start === -1) {
       this._start = index
@@ -171,11 +175,15 @@ export default class Tokenizer {
       }
     }
 
+    this._tokenLength += 1
+
 
     // Handle string escapes
     if (ch === BACKSLASH && this._isEscaping === false) {
       this._isEscaping = true
       return this._next()
+
+      // TODO: Throw and error when escaping is not closed!
     }
 
     // When escaping, escape next char!
@@ -184,7 +192,7 @@ export default class Tokenizer {
       // if (isNextSep || isSep || isNextDataSep) {
       //   return this._returnToken()
       // }
-      console.log("---", ch, prevCh, this._subtext)
+      // console.log("---", this._start, this._end, ch, prevCh, this._subtext)
       return this._next()
     }
 
@@ -193,13 +201,16 @@ export default class Tokenizer {
       if (this._isEnclosedStringActive) {
         const token = this._returnToken()
         this._isEnclosedStringActive = false
-        return this._returnToken()
+        // console.error(token)
+        return token
       }
-
-      this._isEnclosedStringActive = true
+      // console.error(this._start, ch, nextCh)
+      // When the " is encountered at first char,
+      // activate enclosed string mode
+      if (this._tokenLength === 1) {
+        this._isEnclosedStringActive = true
+      }
     }
-
-    this._end = index
 
     // When the enclosed string is not active
     if (!this._isEnclosedStringActive) {
@@ -229,12 +240,10 @@ export default class Tokenizer {
   }
 
   private get _subtext() {
-    return  this._text.substring(
+    return  this._text.substring (
       this._start,
-      this._end + (
-        this._isEnclosedStringActive ? 2 : 1
-      )
-    ).replace(" ", ".")
+      this._end + 1
+    )
   }
 
 }
