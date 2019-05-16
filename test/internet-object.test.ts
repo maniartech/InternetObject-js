@@ -1,16 +1,19 @@
 import "jest"
 import IObject from "../src"
 import { print } from '../src/utils/index';
-import InternetObjectSchema from "../src/schema/index";
+import InternetObjectSchema from "../src/header/schema";
+import Tokenizer from "../src/parser/tokenizer";
+import ASTParser from '../src/parser/ast-parser';
+import InternetObject from "../src";
 
 describe("Internet Object", () => {
   it("tryout", () => {
     // expect(typeof IO.parse).toBe("function")
 
     const test = `
-    name:{string}, age?, address:{street, city, zip}, test: {first, second, subtest: {x, y, z}}, colors:[string]
+    name:{string}, age?:{number, choices:[30, 20, 10]}, address:{num:{number, max:10}, street, city, zip}, test: {first, second, subtest: {x, y, z}}, colors:[string]
     ---
-    Spiderman,25, { Bond Street, New York, 50001 }, {10, 20, {"T", A, A}}, ["red", "blue", "green"]
+    Spiderman,25, {5, Bond Street, New York, 50001 }, {10, 20, {"T", A, A}}, ["red", "blue", "green"]
     `
 
     const s1 = 'name:string, age?:{number, min:30, null}, address:{street, city, zip}, test: {first, second, subtest: {x, y, z}}'
@@ -54,26 +57,41 @@ describe("Internet Object", () => {
       a: [string]
     `
 
-    try {
-      const obj = IObject.parse(test).data
-      print("Data", obj)
+    // const obj = IObject.parse(test).data
+    // print("Data", obj)
 
-      // const schema = IObject.compileSchema(schemaTest)
-      // print("Schema ", schema)
+    // const schema = IObject.compileSchema(schemaTest)
+    // print("Schema ", schema)
 
-      // const o = IO.parse(test2)
-      // print("Output:", obj)
+    // const o = IO.parse(test2)
+    // print("Output:", obj)
 
-      // const s = IObject.compileSchema(schemaTest)
-      // print("Schema", s)
+    // const s = IObject.parse(schemaTest).data
+    // print("Schema", s)
+
+    interface Persona {
+      firstName:string,
+      lastName:string,
+      age?:number
     }
-    catch (e) {
-      console.error(e.message)
-      throw e
-    }
 
+    const obj = `
+    ~ success: T
+    ~ schema: {firstName, lastName, age?}
+    ---
+    ~ "Aam""ir",, Maniar
+    ~ Kabir, Maniar, 15
+    `
+    // const parser = new ASTParser(obj)
+    // parser.parse()
+    // print(">>>", parser.tree)
+    const str = '\\"aam,ir\\"'
+    const io = new InternetObject(obj)
+
+    print("IO", io.data)
   })
 })
+
 
 // describe("Scalar Number", () => {
 //   it("parses the integer", () => {

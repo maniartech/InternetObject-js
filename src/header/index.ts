@@ -130,6 +130,7 @@ function _parseCollection (tree:ASTParserTree):any {
     }
 
     if (item.values.length !== 1) {
+      console.log("***", item, item.values)
       // TODO: Throw better error
       throw new InternetObjectError(ErrorCodes.invalidHeaderItem)
     }

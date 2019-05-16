@@ -1,10 +1,6 @@
 import "jest"
-import Tokenizer from "../src/tokenizer"
+import Tokenizer from "../src/parser/tokenizer"
 import ASTParser from '../src/parser/ast-parser';
-
-const print = (o:any) => {
-  console.log(JSON.stringify(o, null, 2))
-}
 
 
 describe("Tokenizer", () => {
@@ -33,17 +29,16 @@ one
    ,,
 two`
     const schemaTest = `
-      id: number,
-      name:{
+      id?: number,
+      name?:{
         string,
         maxLength: 20
       },
       age?,
-      tags: [{name:string, slug:string}],
-      test:{type: string,  maxLength:10},
-      string,
+      tags?: [{name:string, slug:string}],
+      test?:{type: string,  maxLength:10},
       address?: {
-        building: {
+        building?: {
           type: string,
           maxLength: 100
         },
@@ -51,18 +46,29 @@ two`
         city
       }`
 
-    let tokenizer = new Tokenizer(test)
-    let parser = new ASTParser()
-    let token = tokenizer.read()
-    while(token) {
-      tokenizer.push(token)
-      parser.process(token)
-      token = tokenizer.read()
-    }
 
-    print(parser.stack[0])
-    print(parser.toObject())
-    print(parser.toSchema())
+    const test3 = `
+    name, age, address:{street, city, zip}
+    ---
+    Spiderman, 25, { Bond Street, New York, 50001 }
+    `
+
+    // let tokenizer = new Tokenizer(test3)
+    // let parser = new ASTParser()
+    // let token = tokenizer.read()
+    // while(token) {
+    //   // console.log(token)
+    //   tokenizer.push(token)
+    //   parser.process(token)
+    //   token = tokenizer.read()
+    // }
+    // parser.done()
+
+    // print (parser.tree)
+
+    // print(parser.stack[0])
+    // print(parser.toObject())
+    // print(parser.toSchema())
   })
 })
 
@@ -147,3 +153,5 @@ const schemaTemplate = {
 //     expect(o[1]).toBeUndefined()
 //   })
 // })
+
+

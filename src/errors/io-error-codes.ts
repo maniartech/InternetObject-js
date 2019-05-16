@@ -10,6 +10,7 @@ enum ErrorCodes {
   invalidCollection = "invalid-collection",
   invlidHeader      = "invalid-header",
   invalidHeaderItem = "invalid-header-item",
+  expectingSeparator= "expecting-a-separator",
 
   // Parser Errors (Schema)
   invalidSchema     = "invalid-schema",

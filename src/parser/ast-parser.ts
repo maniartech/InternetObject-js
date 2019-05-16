@@ -77,7 +77,9 @@ export default class ASTParser {
       this._push("array")
     }
 
-    // Key Value found
+    // When a colon is found, consider previous value as key
+    // and keep the value slot to null. When the next token arives, push it
+    // into the value slot.
     else if (token.value === ':') {
       const obj = this._getObject()
       let lastVal: any = obj.values[obj.values.length - 1]
@@ -210,22 +212,28 @@ export default class ASTParser {
 
     this._processObject()
 
-    if (this._isHeaderOpen) {
-      this.tree.data = this.tree.header
-      delete this.tree.header
-    }
-
-
-    return
-
-    // If no data found just return
-    if (this.stack.length === 0) return
-
     // TODO: Consider the scenario when more than 1 item exists in the stack!
     if (this.stack.length > 1) {
       console.warn(this._text, this.stack)
       console.warn("Invalid Stack")
     }
+
+    if (this._isHeaderOpen) {
+      this.tree.data = this.tree.header
+      delete this.tree.header
+
+      if (this._tokenizer.length === 1) {
+        this.tree.data.type = "scalar"
+      }
+    }
+
+    print("TOKENIZER", this._tokenizer)
+    print("TREE", this.stack)
+
+    return
+
+    // If no data found just return
+    if (this.stack.length === 0) return
 
     let data = this.stack[0]
 
@@ -247,23 +255,6 @@ export default class ASTParser {
     }
   }
 
-  private _addToHeader = () => {
-    if (!this.tree.header) {
-      // When more than 1 item exists in the stack, it means
-      // one or more bracket is still open.
-      if (this.stack.length > 1) {
-        // TODO: Throw a proper error
-        console.warn("Invalid Stack")
-      }
-      this.tree.header = this.stack[0]
-      this.stack.length = 0
-    }
-    else {
-      // TODO: Handle this case!
-      console.warn("multiple-headers")
-    }
-  }
-
   private _getObject = () => {
     if (this.stack.length === 0) {
       this.stack.push({
@@ -282,17 +273,35 @@ export default class ASTParser {
     // If last token is : then
     if (this.lastToken !== null && this.lastToken.value === ':') {
       let lastVal = obj.values[obj.values.length - 1]
-      // console.log("---", lastVal)
+
+      // When the lastVal is a KeyVal, set the current token as
+      // the value of lastVal
       if (lastVal && isKeyVal(lastVal)) {
-        // obj.values[obj.values.length - 1].value = value
         lastVal.value = value
-      } else {
+      }
+      else {
         // TODO: Verify this case!
         console.warn('Verify this case!')
       }
-    } else {
+    }
+    else {
+      this._checkValueSlot(value)
       obj.values.push(value)
     }
+  }
+
+  private _checkValueSlot(value:any) {
+    const token:any = this.lastToken
+    if (token === null) return
+    if (value === null) return
+
+    if (
+      [",", ":", "~", "}", "]"].indexOf(token.value) === -1
+    ) {
+      // TODO: Provide better error
+      throw new InternetObjectError(ErrorCodes.expectingSeparator, `Error while parsing ${value.token}`, value)
+    }
+
   }
 
   private _push = (type = 'object', values = []) => {
@@ -310,7 +319,7 @@ export default class ASTParser {
         obj.type === 'object' ? ']' : '}'
         }"`
       this.status = ERROR
-      // throwError(token, message)
+      // TODO: Throw better message
       throw new InternetObjectError("parser-error", message, token)
     }
     this.stack.pop()
