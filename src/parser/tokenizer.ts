@@ -36,7 +36,6 @@ export default class Tokenizer {
   public readAll = () => {
     let token = this.read()
     while(token) {
-      // this.push(token)
       token = this.read()
     }
   }

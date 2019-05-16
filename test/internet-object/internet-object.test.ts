@@ -1,10 +1,5 @@
 import "jest"
-import IObject from "../src"
-import { print } from '../src/utils/index';
-import InternetObjectSchema from "../src/header/schema";
-import Tokenizer from "../src/parser/tokenizer";
-import ASTParser from '../src/parser/ast-parser';
-import InternetObject from "../src";
+import InternetObject from "../../src";
 
 describe("Internet Object", () => {
   it("tryout", () => {
@@ -79,16 +74,19 @@ describe("Internet Object", () => {
     ~ success: T
     ~ schema: {firstName, lastName, age?}
     ---
-    ~ "Aam""ir",, Maniar
+    ~ Aam"ir""                 , Maniar
     ~ Kabir, Maniar, 15
     `
     // const parser = new ASTParser(obj)
     // parser.parse()
     // print(">>>", parser.tree)
     const str = '\\"aam,ir\\"'
-    const io = new InternetObject(obj)
-
-    print("IO", io.data)
+    const s2 = '   "Aam",i"r"\\"                 , Maniar'
+    const date = new Date()
+    const io = new InternetObject(s2)
+    // const json = JSON.parse('{"name": "aamir", "age":40}')
+    // print("IO", io.data)
+    // console.log(`Executed in ${(new Date()).getTime() - date.getTime()} milliseconds`)
   })
 })
 

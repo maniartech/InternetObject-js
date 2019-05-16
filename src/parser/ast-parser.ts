@@ -227,8 +227,8 @@ export default class ASTParser {
       }
     }
 
-    print("TOKENIZER", this._tokenizer)
-    print("TREE", this.stack)
+    // print("TOKENIZER", this._tokenizer)
+    // print("TREE", this.stack)
 
     return
 
