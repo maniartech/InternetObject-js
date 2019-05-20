@@ -21,6 +21,7 @@ enum ErrorCodes {
   // -- string, array
   invalidMinLength  = "invalid-min-length",
   invalidMaxLength  = "invalid-max-length",
+  invalidChar       = "invalid-char",
 
   // Number
   notANumber        = "not-a-number",
