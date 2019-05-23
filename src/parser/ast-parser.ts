@@ -296,7 +296,7 @@ export default class ASTParser {
     if (value === null) return
 
     if (
-      [",", ":", "~", "}", "]"].indexOf(token.value) === -1
+      [",", ":", "~", "{", "["].indexOf(token.value) === -1
     ) {
       // TODO: Provide better error
       throw new InternetObjectError(ErrorCodes.expectingSeparator, `Error while parsing ${value.token}`, value)

@@ -1,5 +1,7 @@
 import "jest"
+
 import InternetObject from "../../src";
+
 
 describe("Internet Object", () => {
   it("tryout", () => {
@@ -81,7 +83,7 @@ describe("Internet Object", () => {
     // parser.parse()
     // print(">>>", parser.tree)
     const str = '\\"aam,ir\\"'
-    const s2 = '   "Aam",i"r"\\"                 , Maniar'
+    const s2 = '   "Aam",ir\\"                 , Maniar'
     const date = new Date()
     const io = new InternetObject(s2)
     // const json = JSON.parse('{"name": "aamir", "age":40}')
@@ -89,53 +91,3 @@ describe("Internet Object", () => {
     // console.log(`Executed in ${(new Date()).getTime() - date.getTime()} milliseconds`)
   })
 })
-
-
-// describe("Scalar Number", () => {
-//   it("parses the integer", () => {
-//     expect(IObject.parse("1").data).toBe(1)
-//     expect(IObject.parse("10").data).toBe(10)
-//     expect(IObject.parse("100").data).toBe(100)
-//   })
-// })
-
-// describe("Scalar Boolean", () => {
-//   it("parses the boolean", () => {
-//     expect(IO.parse("T")).toBe(true)
-//     expect(IO.parse("F")).toBe(false)
-//   })
-// })
-
-// describe("Scalar String", () => {
-//   it("parses the string", () => {
-//     expect(IO.parse("Hello World")).toBe("Hello World")
-//     expect(IO.parse("Wow great!")).toBe("Wow great!")
-//   })
-// })
-
-// describe("Object", () => {
-//   it("simple object", () => {
-//     const test = "One, Two, 3, 4, T"
-//     const o = IO.parse(test)
-
-//     expect(o[0]).toBe("One")
-//     expect(o[1]).toBe("Two")
-//     expect(o[2]).toBe(3)
-//     expect(o[3]).toBe(4)
-//     expect(o[4]).toBe(true)
-//   })
-// })
-
-// describe("Undefined", () => {
-//   it("checks undefined", () => {
-//     const test = "1,,3,    ,5"
-//     const o = IO.parse(test)
-
-//     expect(o[1]).toBeUndefined()
-//   })
-// })
-
-
-const o = {
-
-}

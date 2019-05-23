@@ -4,7 +4,11 @@ import ASTParser from '../../src/parser/ast-parser';
 
 
 describe("Tokenizer", () => {
-  it("has a parse method", () => {
+  it("Initialization", () => {
+    const tokenizer = new Tokenizer("")
+  })
+
+  it("other methods", () => {
     const tokenizer = new Tokenizer("")
     expect(typeof tokenizer.read).toBe("function")
     expect(typeof tokenizer.readAll).toBe("function")

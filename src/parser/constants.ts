@@ -2,7 +2,6 @@
 // CharCodes
 export const ZERO = 48
 export const NINE = 57
-export const SPACE = 32
 
 // Other
 export const KEY = "key"
@@ -10,6 +9,7 @@ export const VAL = "val"
 export const UNSURE = "unsure"
 export const EMPTY = "empty"
 export const HYPHEN = "-"
+export const SPACE = " "
 export const NEW_LINE = '\n'
 
 // Keywords and Language
@@ -46,4 +46,5 @@ export const SCALAR = "scalar"
 
 // Others
 
+export const HASH = "#"
 export const SCHEMA = "schema"
