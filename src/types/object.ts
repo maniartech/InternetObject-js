@@ -7,6 +7,7 @@ import MemberDef from './memberdef';
 import TypeDef from './typedef';
 import TypedefRegistry from './typedef-registry';
 import { doCommonTypeCheck } from './utils';
+import ErrorCodes from '../errors/io-error-codes';
 
 
 // age?: { number, true, 10, min:10, max:20}
@@ -42,11 +43,17 @@ class ObjectDef implements TypeDef {
     schema.keys.forEach((key:string, index:number) => {
 
       const memberDef:MemberDef = schema.defs[key]
-      const typeDef:TypeDef = TypedefRegistry.get(memberDef.type)
+      const typeDef:TypeDef|undefined = TypedefRegistry.get(memberDef.type)
       const dataItem = this._findDataItem(data, key, index)
 
-      const value = typeDef.process(dataItem, memberDef)
-      object[key] = value
+      if (typeDef !== undefined) {
+        const value = typeDef.process(dataItem, memberDef)
+        object[key] = value
+      }
+      else {
+        // TODO: Improve this error
+        throw ErrorCodes.invalidType
+      }
     })
 
     return object
