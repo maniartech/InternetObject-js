@@ -8,9 +8,9 @@ import StringDef from './string';
 import TypedefRegistry from './typedef-registry';
 
 
-TypedefRegistry.register(new AnyDef())
-TypedefRegistry.register(new StringDef())
-TypedefRegistry.register(new NumberDef())
+TypedefRegistry.register("any", new AnyDef())
+TypedefRegistry.register("string", new StringDef())
+TypedefRegistry.register("number", new NumberDef())
 
-TypedefRegistry.register(new ObjectDef())
-TypedefRegistry.register(new ArrayDef())
+TypedefRegistry.register("object", new ObjectDef())
+TypedefRegistry.register("array", new ArrayDef())
