@@ -1,5 +1,5 @@
 import InternetObjectError from '../errors/io-error';
-import IOErrorCodes from '../errors/io-error-codes';
+import ErrorCodes from '../errors/io-error-codes';
 import { ParserTreeValue } from '../parser/index';
 import { Token } from '../parser/token';
 import { isParserTree, isKeyVal, isString } from '../utils/is';
@@ -36,7 +36,7 @@ class ArrayDef implements TypeDef {
 
     const schema = memberDef.schema
 
-    let typeDef:TypeDef
+    let typeDef:TypeDef | undefined
 
     if (schema.type) {
       typeDef = TypedefRegistry.get(schema.type)
@@ -49,8 +49,14 @@ class ArrayDef implements TypeDef {
     const array:any = []
 
     data.values.forEach((item) => {
-      const value = typeDef.process(item, schema)
-      array.push(value)
+      if(typeDef !== undefined) {
+        const value = typeDef.process(item, schema)
+        array.push(value)
+      }
+      else {
+        // TODO: Improve this error
+        throw ErrorCodes.invalidType
+      }
     })
 
     return array
@@ -60,7 +66,7 @@ class ArrayDef implements TypeDef {
 
 function _invlalidChoice(key:string, token:Token, min:number) {
   return [
-    IOErrorCodes.invalidMinValue,
+    ErrorCodes.invalidMinValue,
     `The "${ key }" must be greater than or equal to ${min}, Currently it is "${token.value}".`,
     token
   ]
@@ -68,7 +74,7 @@ function _invlalidChoice(key:string, token:Token, min:number) {
 
 function _invlalidMinLength(key:string, token:Token, min:number) {
   return [
-    IOErrorCodes.invalidMinValue,
+    ErrorCodes.invalidMinValue,
     `The "${ key }" must be greater than or equal to ${min}, Currently it is "${token.value}".`,
     token
   ]
@@ -76,7 +82,7 @@ function _invlalidMinLength(key:string, token:Token, min:number) {
 
 function _invlalidMaxLength(key:string, token:Token, max:number) {
   return [
-    IOErrorCodes.invalidMaxValue,
+    ErrorCodes.invalidMaxValue,
     `The "${ key }" must be less than or equal to ${max}, Currently it is "${token.value}".`,
     token
   ]
