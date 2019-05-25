@@ -6,15 +6,22 @@ const defs:any = {}
 
 export default class TypedefRegistry {
 
-  public static register(typeDef:TypeDef) {
-    const type = typeDef.getType()
-
+  /**
+   * Registers the TypeDef for the specified type.
+   * @param type The type name
+   * @param typeDef The associated TypeDef ojbect
+   */
+  public static register(type:string, typeDef:TypeDef) {
     if (defs[type] === undefined) {
       defs[type] = typeDef
       defsList.push(type)
     }
   }
 
+  /**
+   * Unregisters the specified type from the registry.
+   * @param type The type name
+   */
   public static unregister(type:string) {
     if (defs[type] !== undefined) {
       delete defs[type]
@@ -23,20 +30,20 @@ export default class TypedefRegistry {
     }
   }
 
-  public static forEach(cb:(type:string, typedef:TypeDef, handleCollection?:boolean) => void) {
-    defs.forEach((def:string) => cb(def, defs[def].typeDef, defs[def].handleCollection));
-  }
-
-  public static get defs():string[] {
+  /**
+   * Gets the array of registered type names.
+   */
+  public static get types():string[] {
     return [...defsList]
   }
 
-  public static get(type:string): TypeDef {
+  /**
+   * Returns the associated TypeDef object when the specified type
+   * is found otherwise returns undefined.
+   * @param type The registered type
+   */
+  public static get(type:string): TypeDef | undefined {
     return defs[type]
-  }
-
-  public static isRegisteredType(typeName:string): boolean {
-    return typeName in defs
   }
 
 }
