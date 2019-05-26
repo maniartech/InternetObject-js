@@ -46,4 +46,8 @@ export default class TypedefRegistry {
     return defs[type]
   }
 
+  public static isRegisteredType(typeName:string): boolean {
+    return typeName in defs
+  }
+
 }
