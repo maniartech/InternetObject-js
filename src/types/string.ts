@@ -19,8 +19,14 @@ import { Token } from '../parser/token';
  */
 export default class StringDef implements TypeDef {
 
-  getType () {
-    return "string"
+  private _type:string
+
+  constructor(type:string = "string") {
+    this._type = type
+  }
+
+  getType() {
+    return this._type
   }
 
   process (data:ParserTreeValue, memberDef: MemberDef):string {
@@ -31,6 +37,8 @@ export default class StringDef implements TypeDef {
 
     const validatedData = doCommonTypeCheck(data, memberDef)
     if (validatedData !== data) return validatedData
+
+    _validatePattern(memberDef.type, data, memberDef)
 
     // choices check
     if (memberDef.choices !== undefined && data.value in memberDef.choices === false) {
@@ -60,6 +68,17 @@ export default class StringDef implements TypeDef {
     }
 
     return data.value
+  }
+}
+
+function _validatePattern(type:string, token:Token, memberDef:MemberDef) {
+
+  if (type === "string" && memberDef.pattern !== undefined) {
+    const pattern = new RegExp(memberDef.pattern)
+    console.log(pattern)
+    if (!pattern.test(token.value)) {
+      throw new InternetObjectError(ErrorCodes.invalidValue)
+    }
   }
 }
 
@@ -94,3 +113,4 @@ function _invlalidMaxLength(path: string, data: Token, maxLength: number) {
     data
   ]
 }
+
