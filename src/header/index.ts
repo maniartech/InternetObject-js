@@ -6,6 +6,7 @@ import { SCHEMA } from '../parser/constants';
 import { isKeyVal, isParserTree, isString, isToken } from '../utils/is';
 import Schema from './schema';
 import ASTParser from '../parser/ast-parser';
+import { print } from '../utils';
 
 export default class Header {
 
@@ -93,7 +94,10 @@ export default class Header {
     // collection.
     if (tree.type === "object") {
       const compiledSchema = Schema.compile(tree)
-      return (new Header).set(SCHEMA, compiledSchema)
+      const header = new Header
+      header._map = {}
+      header._keys = []
+      return (header).set(SCHEMA, compiledSchema)
     }
 
     // If it not collection, throw and invalid header error
@@ -112,7 +116,6 @@ export default class Header {
 
 function _parseCollection (tree:ASTParserTree):any {
   const map:any = {}
-  const defs:any = {}
   const keys:string[] = []
 
   for(let index=0; index < tree.values.length; index += 1) {
