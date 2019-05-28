@@ -1,4 +1,4 @@
-import { DATASEP, HYPHEN, NEW_LINE, SEPARATORS, SPACE, STRING_ENCLOSER, TILDE, BACKSLASH, HASH } from './constants';
+import { DATASEP, HYPHEN, NEW_LINE, SEPARATORS, SPACE, STRING_ENCLOSER, TILDE, BACKSLASH, HASH, AT } from './constants';
 import { Token } from './token';
 import ErrorCodes from '../errors/io-error-codes';
 import InternetObjectError from '../errors/io-error';
@@ -6,9 +6,9 @@ import InternetObjectError from '../errors/io-error';
 type NullableToken = Token | null
 
 const escapeCharMap:any = {
-  "\\": "\\\\",
-  "/": "\/",
-  "\"": "\"",
+  "\\": "\\",
+  "/": "/",
+  "\"": '"',
   "b": "\b",
   "f": "\f",
   "n": "\n",
@@ -29,7 +29,8 @@ export default class Tokenizer {
   private _start:number = -1
   private _end:number = -1
   private _tokenLength = 0
-  private _isEnclosedString:boolean = false
+  private _isQuoatedString:boolean = false
+  private _isRawString:boolean = false
   private _isEscaping = false
   private _isCommenting = false
 
@@ -45,7 +46,7 @@ export default class Tokenizer {
     this._start = -1
     this._end = -1
     this._tokenLength = 0
-    this._isEnclosedString = false
+    this._isQuoatedString = false
 
     return this._next()
   }
@@ -55,6 +56,7 @@ export default class Tokenizer {
     while(token) {
       token = this.read()
     }
+    return this
   }
 
   public get length ():number {
@@ -82,13 +84,13 @@ export default class Tokenizer {
 
     let value:any = this._value
       .replace(/[\s\uFEFF\xA0]+$/g, "") // Trim end spaces
-      .replace(/^"+|(\\?")$/g, (g1) => { // Trim end quotes
-        return g1 === "\\\"" ? g1 : ""
-      })
+      // .replace(/^"+|(\\?")$/g, (g1) => { // Trim end quotes
+      //   return g1 === "\\\"" ? g1 : ""
+      // })
     // console.log(">>>", value, this._value)
     let numVal = Number(value)
     let type = "string"
-    token.token = this._text.substring(this._start, this._end+ (this._isEnclosedString ? 1 : 1))
+    token.token = this._text.substring(this._start, this._end+ (this._isQuoatedString ? 1 : 1))
 
     if (SEPARATORS.indexOf(value) >= 0 || value === TILDE) {
       type = "sep"
@@ -129,7 +131,10 @@ export default class Tokenizer {
 
     // Return token when text ends
     let ch = this._text[index]
-    if (!ch) return this._returnToken()
+    if (!ch) {
+      // TODO: Throw and error when escaping is not closed on last char
+      return this._returnToken()
+    }
 
     const token = this._lastToken
     let chCode = ch.charCodeAt(0)
@@ -208,22 +213,37 @@ export default class Tokenizer {
 
     this._tokenLength += 1
 
-
-    // Handle string escapes
-    if (ch === BACKSLASH && this._isEscaping === false) {
+    // Handle string escapes when not a raw string
+    if (ch === BACKSLASH && this._isEscaping === false && this._isRawString === false) {
       this._isEscaping = true
       return this._next()
+    }
 
-      // TODO: Throw and error when escaping is not closed!
+    // Process the first char
+    if (this._tokenLength === 1) {
+      // Start raw string when @" is found
+      if (ch === AT && nextCh === STRING_ENCLOSER) {
+        this._isRawString = true
+        return this._next()
+      }
+      // When the " is encountered at first char,
+      // activate enclosed string mode
+      else if (ch === STRING_ENCLOSER) {
+        this._isQuoatedString = true
+        return this._next()
+      }
     }
 
     // When escaping, escape next char!
     if (this._isEscaping) {
+
       this._isEscaping = false
-      // if (isNextSep || isSep || isNextDataSep) {
-      //   return this._returnToken()
-      // }
-      // console.log("---", this._start, this._end, ch, prevCh, this._subtext)
+
+      // Escape " when rawstring mode is active!
+      if (this._isRawString) {
+        this._value += STRING_ENCLOSER // Quote is the only escape char during raw string
+        return this._next()
+      }
 
       this._value += ch in escapeCharMap ? escapeCharMap[ch] : ch
       return this._next()
@@ -231,18 +251,26 @@ export default class Tokenizer {
 
     // Process string encloser (")
     if (ch === STRING_ENCLOSER ) {
-      if (this._isEnclosedString) {
-        this._value += ch
-        const token = this._returnToken()
-        this._isEnclosedString = false
-        // console.error(token)
-        return token
+      if (this._isQuoatedString) {
+        this._isQuoatedString = false
+        return this._returnToken()
       }
 
-      // When the " is encountered at first char,
-      // activate enclosed string mode
-      if (this._tokenLength === 1) {
-        this._isEnclosedString = true
+      // Handle raw string!
+      if (this._isRawString) {
+        // Open string!
+        if (this._tokenLength === 2) {
+          return this._next()
+        }
+
+        // Initiate the escape mode when the first of two " is found
+        if (!this._isEscaping && nextCh === STRING_ENCLOSER) {
+          this._isEscaping = true
+          return this._next()
+        }
+
+        this._isRawString = false
+        return this._returnToken()
       }
 
       // Do not allow unescaped quotation mark in the
@@ -253,8 +281,9 @@ export default class Tokenizer {
     }
 
     // When the enclosed string is not active
-    if (!this._isEnclosedString) {
+    if (!(this._isQuoatedString || this._isRawString)) {
 
+      // Initiate the commenting mode when
       if (ch === HASH) {
         this._isCommenting = true
         return this._next()
@@ -264,14 +293,6 @@ export default class Tokenizer {
         this._value += ch
         return this._returnToken()
       }
-
-      // End token when a separator is found
-      // if ((isNextSep || isSep || isNextDataSep) &&
-      //     // TODO: Skip the WS only in case of collection start
-      //     this._start !== -1 &&
-      //     this._end !== -1 /* Skip WS */) {
-      //   return this._returnToken()
-      // }
 
       // Check for data separator
       else if (ch === HYPHEN) {
