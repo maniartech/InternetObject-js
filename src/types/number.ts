@@ -19,8 +19,17 @@ import { doCommonTypeCheck } from './utils'
  * - Value is in choices
  */
 class NumberDef implements TypeDef {
+
+  private _type:string
+  private _validator:any
+
+  constructor(type:string = "number") {
+    this._type = type
+    this._validator = _getValidator(type)
+  }
+
   getType() {
-    return 'number'
+    return this._type
   }
 
   process(data: ParserTreeValue, memberDef: MemberDef): number {
@@ -38,6 +47,8 @@ class NumberDef implements TypeDef {
       throw new InternetObjectError(..._invlalidChoice(memberDef.path, data, memberDef.choices))
     }
 
+    this._validator(data, memberDef)
+
     if (memberDef.min !== undefined) {
       const min = memberDef.min
       if (data.value < min) {
@@ -50,6 +61,54 @@ class NumberDef implements TypeDef {
     }
 
     return data.value
+  }
+}
+
+function _intValidator(min:number, max:number, token:Token, memberDef:MemberDef) {
+  const value = token.value
+  // Validate for number
+  if (!isNumber(value)) {
+    throw new InternetObjectError(..._notANumber(memberDef.path, token))
+  }
+
+  // Validate for integer
+  if (value % 1 !== 0) {
+    // TODO: Throw proper error
+    throw new InternetObjectError(ErrorCodes.notAnInteger)
+  }
+
+  if (min === max) return
+
+  if (value < min || value > max) {
+    throw new InternetObjectError(ErrorCodes.outOfRange)
+  }
+}
+
+function _getValidator(type:string) {
+
+  switch (type) {
+    case "number": {
+      return (token:Token, memberDef:MemberDef) => {
+        if (isNaN(Number(token.value))) {
+          throw new InternetObjectError(..._notANumber(memberDef.path, token))
+        }
+      }
+    }
+    case "byte": {
+      const range = 2 ** 8 // -128,127
+      return _intValidator.bind(null, -(range/2), (range/2)-1)
+    }
+    case "int16": {
+      const range = 2 ** 16 // -32768,32767
+      return _intValidator.bind(null, -(range/2), (range/2)-1)
+    }
+    case "int32": {
+      const range = 2 ** 32 // -2147483648,2147483647
+      return _intValidator.bind(null, -(range/2), (range/2)-1)
+    }
+    case "int": {
+      return _intValidator.bind(null, 0, 0)
+    }
   }
 }
 

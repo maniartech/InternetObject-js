@@ -181,10 +181,11 @@ export default class Tokenizer {
         return this._next()
       }
 
-      if ((isNextSep || isNextCollectionSep) && isStarted) {
+      if ((isNextSep || isNextCollectionSep || isNextDataSep) && isStarted) {
         if (this._col === 0) this._col = 1
         return this._returnToken();
       }
+
       return this._next()
     }
 
@@ -274,9 +275,9 @@ export default class Tokenizer {
 
       // Check for data separator
       else if (ch === HYPHEN) {
-        let value = this._text.substring(this._start, this._end + 1)
-        if (value === DATASEP) {
-          this._value += ch
+        // let value = this._text.substring(this._start, this._end + 1)
+        if (isDataSep) {
+          this._value = "---"
           return this._returnToken()
         }
       }
