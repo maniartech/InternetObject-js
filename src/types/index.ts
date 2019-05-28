@@ -4,12 +4,13 @@ import NumberDef from './number';
 import ObjectDef from './object';
 import StringDef from './string';
 
-
 import TypedefRegistry from './typedef-registry';
 
-
 TypedefRegistry.register("any", new AnyDef())
+
 TypedefRegistry.register("string", new StringDef())
+TypedefRegistry.register("email", new StringDef())
+TypedefRegistry.register("url", new StringDef())
 
 TypedefRegistry.register("number", new NumberDef())
 TypedefRegistry.register("byte", new NumberDef("byte"))
