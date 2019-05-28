@@ -7,6 +7,13 @@ import { doCommonTypeCheck } from './utils';
 import ErrorCodes from '../errors/io-error-codes';
 import { Token } from '../parser/token';
 
+// Reference: RFC 5322 Official Standard
+// http://emailregex.com
+const emailExp = /(?:[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*|"(?:[\x01-\x08\x0b\x0c\x0e-\x1f\x21\x23-\x5b\x5d-\x7f]|\\[\x01-\x09\x0b\x0c\x0e-\x7f])*")@(?:(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?|\[(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?|[a-z0-9-]*[a-z0-9]:(?:[\x01-\x08\x0b\x0c\x0e-\x1f\x21-\x5a\x53-\x7f]|\\[\x01-\x09\x0b\x0c\x0e-\x7f])+)\])/
+
+// http://urlregex.com
+const urlExp = /((([A-Za-z]{3,9}:(?:\/\/)?)(?:[\-;:&=\+\$,\w]+@)?[A-Za-z0-9\.\-]+|(?:www\.|[\-;:&=\+\$,\w]+@)[A-Za-z0-9\.\-]+)((?:\/[\+~%\/\.\w\-_]*)?\??(?:[\-\+=&;%@\.\w_]*)#?(?:[\.\!\/\\\w]*))?)/
+
 /**
  * Represents the InternetObject String, performs following validations.
  *
@@ -72,12 +79,33 @@ export default class StringDef implements TypeDef {
 }
 
 function _validatePattern(type:string, token:Token, memberDef:MemberDef) {
-
+  // Validate user defined pattern
   if (type === "string" && memberDef.pattern !== undefined) {
-    const pattern = new RegExp(memberDef.pattern)
-    console.log(pattern)
-    if (!pattern.test(token.value)) {
+    let re = memberDef.re
+    if (!re) {
+      let pattern = memberDef.pattern
+      // Add ^ and $ at the begging and end of the pattern respectively
+      // if these characters are not set in the pattern
+      pattern = pattern.startsWith("^") ? pattern : `^${pattern}`
+      pattern = pattern.endsWith("$") ? pattern : `${pattern}$`
+
+      // Compile the expression and cache it into the memberDef
+      re = memberDef.re = new RegExp(pattern)
+    }
+    if (!re.test(token.value)) {
       throw new InternetObjectError(ErrorCodes.invalidValue)
+    }
+  }
+  // Validate email
+  else if (type === "email") {
+    if (!emailExp.test(token.value)) {
+      throw new InternetObjectError(ErrorCodes.invalidEmail)
+    }
+  }
+  // Validate url
+  else if (type === "url") {
+    if (!urlExp.test(token.value)) {
+      throw new InternetObjectError(ErrorCodes.invalidUrl)
     }
   }
 }

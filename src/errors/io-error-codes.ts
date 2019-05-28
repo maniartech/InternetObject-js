@@ -22,6 +22,8 @@ enum ErrorCodes {
   invalidMinLength  = "invalid-min-length",
   invalidMaxLength  = "invalid-max-length",
   invalidChar       = "invalid-char",
+  invalidEmail      = "invalid-email",
+  invalidUrl        = "invalid-url",
 
   // Number
   notANumber        = "not-a-number",
