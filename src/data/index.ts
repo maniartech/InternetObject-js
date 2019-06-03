@@ -1,4 +1,4 @@
-import { isDataType, isArray, isParserTree, isKeyVal, isToken, isString } from '../utils/is'
+import { isDataType, isArray, isParserTree, isKeyVal, isToken, isString } from '../utils/is';
 import { ASTParserTree } from '../parser'
 import { print } from '../utils';
 import { ParserTreeValue } from '../parser/index';
@@ -44,8 +44,9 @@ const _parse = (root:ASTParserTree, container:any, defs?:any) => {
       }
     }
     else if(isKeyVal(value)) {
+      let parsedValue = null
       if (isParserTree(value.value)) {
-        container[value.key] = _parse(value.value,
+        parsedValue = _parse(value.value,
           value.value.type === "object" ? {} : [])
       }
       else if (isKeyVal(value.value)) {
@@ -53,7 +54,16 @@ const _parse = (root:ASTParserTree, container:any, defs?:any) => {
       }
       else {
         // container[value.key] = value.value === null ? undefined : value.value.value
-        container[value.key] = _getValue(value.value, defs)
+        parsedValue = _getValue(value.value, defs)
+      }
+
+      if (isArray(container)) {
+        container.push({
+          [value.key]: parsedValue
+        })
+      }
+      else {
+        container[value.key] = parsedValue
       }
     }
     else {
