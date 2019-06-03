@@ -2,25 +2,23 @@ import "jest"
 import InternetObject from '../../src';
 
 
-describe("Email", () => {
-  it("valid emails", () => {
+describe("String Patterns", () => {
+  it("valid pattern values", () => {
     const objStr = String.raw`
-    e1:email, e2:email, e3:email
+    v1:{string, pattern:@"[a-zA-Z\s]+"}
     ---
-    test@example.com, test_server@example.co.in, test.mail@exaple.in
+    Lorem ipsum dolor sit amet
     `
     const obj = new InternetObject(objStr)
-    expect(obj.data.e1).toBe("test@example.com")
-    expect(obj.data.e2).toBe("test_server@example.co.in")
-    expect(obj.data.e3).toBe("test.mail@exaple.in")
+    expect(obj.data.v1).toBe("Lorem ipsum dolor sit amet")
   })
 
-  it("invalid emails", () => {
+  it("invalid pattern values", () => {
     const t1 = () => {
       return new InternetObject(String.raw`
-        email:email
-        ---
-        spiderman
+      v1:{string, pattern:@"[a-zA-Z\s]+"}
+      ---
+      Lorem ipsum dolor sit amet?
       `)
     }
     const t2 = () => {
@@ -41,42 +39,5 @@ describe("Email", () => {
     expect(t1).toThrowError()
     expect(t2).toThrowError()
     expect(t3).toThrowError()
-  })
-})
-
-
-describe("Url", () => {
-  it("valid urls", () => {
-    const objStr = String.raw`
-    u1:url, u2:url, u3:url
-    ---
-    "https://example.com",
-    "ftp://username:password@example.com",
-    "https://test.mailexaple.in?p1=v1&p2=v2#slug"
-    `
-    const obj = new InternetObject(objStr)
-    expect(obj.data.u1).toBe("https://example.com")
-    expect(obj.data.u2).toBe("ftp://username:password@example.com")
-    expect(obj.data.u3).toBe("https://test.mailexaple.in?p1=v1&p2=v2#slug")
-  })
-
-  it("invalid urls", () => {
-    const t1 = () => {
-      return new InternetObject(String.raw`
-        url:url
-        ---
-        example
-      `)
-    }
-    const t2 = () => {
-      return new InternetObject(String.raw`
-        url:url
-        ---
-        example.com
-      `)
-    }
-
-    expect(t1).toThrowError()
-    expect(t2).toThrowError()
   })
 })
