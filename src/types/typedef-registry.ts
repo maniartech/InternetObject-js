@@ -1,4 +1,6 @@
 import TypeDef from "./typedef";
+import InternetObjectError from "../errors/io-error";
+import ErrorCodes from "../errors/io-error-codes";
 
 const defsList:any[] = []
 const defs:any = {}
@@ -42,8 +44,12 @@ export default class TypedefRegistry {
    * is found otherwise returns undefined.
    * @param type The registered type
    */
-  public static get(type:string): TypeDef | undefined {
-    return defs[type]
+  public static get(type:string): TypeDef {
+    const typeDef = defs[type]
+    if (typeDef === undefined) {
+      throw new InternetObjectError(ErrorCodes.invalidType, type)
+    }
+    return typeDef
   }
 
   public static isRegisteredType(typeName:string): boolean {
