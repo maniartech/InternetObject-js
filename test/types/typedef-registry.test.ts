@@ -1,4 +1,5 @@
 import "jest"
+
 import TypedefRegistry from '../../src/types/typedef-registry';
 import AnyDef from '../../src/types/any';
 import StringDef from '../../src/types/string';
@@ -18,7 +19,9 @@ describe("TypeRegistry", () => {
     expect(TypedefRegistry.get("any")).toBeInstanceOf(AnyDef)
     expect(TypedefRegistry.get("string")).toBeInstanceOf(StringDef)
     expect(TypedefRegistry.get("number")).toBeInstanceOf(NumberDef)
-    expect(TypedefRegistry.get("unknown")).toBeUndefined()
+    expect(() => {
+      TypedefRegistry.get("unknown")
+    }).toThrowError()
   })
 
   it("types", () => {
@@ -31,15 +34,23 @@ describe("TypeRegistry", () => {
 
   it("unregister", () => {
     TypedefRegistry.unregister("any")
-    expect(TypedefRegistry.get("any")).toBeUndefined()
+    
+    expect(() => {
+      TypedefRegistry.get("any")
+    }).toThrowError()
+
     expect(TypedefRegistry.types.length).toBe(2)
 
     TypedefRegistry.unregister("string")
-    expect(TypedefRegistry.get("string")).toBeUndefined()
+    expect(() => {
+      TypedefRegistry.get("string")
+    }).toThrowError()
     expect(TypedefRegistry.types.length).toBe(1)
 
     TypedefRegistry.unregister("number")
-    expect(TypedefRegistry.get("number")).toBeUndefined()
+    expect(() => {
+      TypedefRegistry.get("number")
+    }).toThrowError()
     expect(TypedefRegistry.types.length).toBe(0)
 
   })

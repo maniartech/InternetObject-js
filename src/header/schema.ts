@@ -220,14 +220,14 @@ const _compileObjectSchema = (root: ASTParserTree, path?:string) => {
 
       // When value is a memberDef
       if (value.type) {
-        value.optional = value.optional || optional || undefined
+        value.optional = value.optional || optional || false
         value.path = currentPath
         schema.defs[name] = value
       }
       else {
         schema.defs[name] = {
           type: value,
-          optional: optional || undefined,
+          optional: optional || false,
           path: currentPath
         }
       }
@@ -238,7 +238,7 @@ const _compileObjectSchema = (root: ASTParserTree, path?:string) => {
       schema.keys.push(name)
       schema.defs[name] = {
         type: "any",
-        optional: optional || undefined,
+        optional: optional || false,
         path: currentPath
       }
     }

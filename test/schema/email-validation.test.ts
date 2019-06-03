@@ -2,23 +2,25 @@ import "jest"
 import InternetObject from '../../src';
 
 
-describe("String Patterns", () => {
-  it("valid pattern values", () => {
+describe("Email", () => {
+  it("valid emails", () => {
     const objStr = String.raw`
-    v1:{string, pattern:@"[a-zA-Z\s]+"}
+    e1:email, e2:email, e3:email
     ---
-    Lorem ipsum dolor sit amet
+    test@example.com, test_server@example.co.in, test.mail@example.in
     `
     const obj = new InternetObject(objStr)
-    expect(obj.data.v1).toBe("Lorem ipsum dolor sit amet")
+    expect(obj.data.e1).toBe("test@example.com")
+    expect(obj.data.e2).toBe("test_server@example.co.in")
+    expect(obj.data.e3).toBe("test.mail@example.in")
   })
 
-  it("invalid pattern values", () => {
+  it("invalid emails", () => {
     const t1 = () => {
       return new InternetObject(String.raw`
-      v1:{string, pattern:@"[a-zA-Z\s]+"}
-      ---
-      Lorem ipsum dolor sit amet?
+        email:email
+        ---
+        spiderman
       `)
     }
     const t2 = () => {
