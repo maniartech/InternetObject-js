@@ -1,4 +1,4 @@
-import { Token } from "../parser/token";
+import { Token } from "../parser";
 
 
 export default class InternetObjectError extends Error {

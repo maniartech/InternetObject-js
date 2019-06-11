@@ -1,5 +1,5 @@
 import InternetObjectError from "./io-error";
-import { Token } from "../parser/token";
+import { Token } from "../parser";
 
 
 export default class ParserError extends InternetObjectError {

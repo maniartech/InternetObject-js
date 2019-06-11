@@ -1,8 +1,7 @@
 import InternetObjectError from '../errors/io-error';
 import { print } from '../utils/index';
 import { isKeyVal, isSchemaDef } from '../utils/is';
-import { ASTParserTree, ParserTreeValue } from './';
-import { Token } from './token';
+import { Token, ASTParserTree, ParserTreeValue } from './';
 import Tokenizer from './tokenizer';
 import { COMMA, CURLY_CLOSED, SQUARE_CLOSED, TILDE } from './constants';
 import ErrorCodes from '../errors/io-error-codes';
