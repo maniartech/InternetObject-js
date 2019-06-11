@@ -1,5 +1,5 @@
 import { ASTParserTree, KeyVal } from '../parser/index';
-import { Token } from "../parser/token";
+import { Token } from "../parser";
 import TypedefRegistry from "../types/typedef-registry";
 
 
@@ -9,7 +9,7 @@ import TypedefRegistry from "../types/typedef-registry";
  * @param val The value to be tested for number check!
  * @returns `true` if the value is a number otherwise `false`
  */
-export const isNumber = (val:any): val is number => {
+export const isNumber = (val: any): val is number => {
   return typeof val === "number"
 }
 
@@ -19,7 +19,7 @@ export const isNumber = (val:any): val is number => {
  * @param val The value to be tested for string check
  * @returns `true` if the value is a string otherwise `false`
  */
-export const isString = (val:any): val is string => {
+export const isString = (val: any): val is string => {
   return typeof val === "string"
 }
 
@@ -29,7 +29,7 @@ export const isString = (val:any): val is string => {
  * @param val The value to be tested for number check!
  * @returns `true` if the value is a boolean otherwise `false`
  */
-export const isBoolean = (val:any): val is boolean => {
+export const isBoolean = (val: any): val is boolean => {
   return typeof val === "boolean"
 }
 
@@ -39,7 +39,7 @@ export const isBoolean = (val:any): val is boolean => {
  * @param val The value to be tested for an array check!
  * @returns `true` if the value is an array otherwise `false`
  */
-export const isArray = (val:any): val is Array<any> => {
+export const isArray = (val: any): val is Array<any> => {
   return val instanceof Array
 }
 
@@ -49,7 +49,7 @@ export const isArray = (val:any): val is Array<any> => {
  * @param val The value to be tested for an datatype check!
  * @returns `true` if the value is a datatype otherwise `false`
  */
-export const isDataType = (val:string): boolean => {
+export const isDataType = (val: string): boolean => {
   return TypedefRegistry.isRegisteredType(val)
 }
 
@@ -78,7 +78,7 @@ export function isToken(obj: any): obj is Token {
 
 
 export function isDefined<T>(val: T | null | undefined): val is T {
-	return val !== null && val !== undefined;
+  return val !== null && val !== undefined;
 }
 
 /**
@@ -99,7 +99,7 @@ export function isKeyVal(obj: any): obj is KeyVal {
  *
  * @param obj
  */
-export const isSchemaDef = (obj:any) => {
+export const isSchemaDef = (obj: any) => {
   if (isArray(obj)) {
     return typeof obj[0] === "string" && isDataType(obj[0])
   }
