@@ -5,7 +5,7 @@ import MemberDef from './memberdef';
 import TypeDef from './typedef';
 import { doCommonTypeCheck } from './utils';
 import ErrorCodes from '../errors/io-error-codes';
-import { Token } from '../parser/token';
+import { Token } from '../parser';
 
 // Reference: RFC 5322 Official Standard
 // http://emailregex.com
