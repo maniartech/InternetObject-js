@@ -1,5 +1,5 @@
 import { DATASEP, HYPHEN, NEW_LINE, SEPARATORS, SPACE, STRING_ENCLOSER, TILDE, BACKSLASH, HASH, AT } from './constants';
-import { Token } from './token';
+import { Token } from '.';
 import ErrorCodes from '../errors/io-error-codes';
 import InternetObjectError from '../errors/io-error';
 
