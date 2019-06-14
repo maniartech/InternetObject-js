@@ -46,13 +46,6 @@ export default class ASTParser {
     return this.tree.header
   }
 
-  // public get schema() {
-  //   if (this.status !== FINISHED) {
-  //     throw new Error('parsing-not-finished')
-  //   }
-  //   return this.tree.header
-  // }
-
   public get data() {
     if (this.status !== FINISHED) {
       throw new Error('parsing-not-finished')
