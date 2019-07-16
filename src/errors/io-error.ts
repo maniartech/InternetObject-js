@@ -2,9 +2,9 @@ import { Node } from "../parser";
 import InternetObject from "../index";
 
 // Error Examples
-// InternetObject (SyntaxError): invalid-value at 1, 20
+// InternetObject (SyntaxError): invalid-value at (1, 20)
 // InternetObject (SyntaxError): invalid-value
-// InternetObject (ValidationError): invalid-choice - The value of 'address.city' is not correct at 1, 20.
+// InternetObject (ValidationError): invalid-choice at (1, 20) - The value of 'address.city' is not correct.
 // It must be one of these values [Mumbai, Thane, Pune].
 
 /**
@@ -24,23 +24,24 @@ export default class InternetObjectError extends Error {
   public errorCode?:string
 
   /**
-   * Line number of internet object error
+   * The line number in the text where error has occured.
    */
   public lineNumber?:number
 
   /**
-   * Column number of internet object error
+   * Column number in the text where error has occured.
    */
   public columnNumber?:number
 
   /**
-   * Index  of internet object error
+   * The index in the text where error has occured.
    */
   public index?:number
 
 
   /**
-   *
+   * @example
+   * throw new InternetObjectError("invalid-code")
    * @param errorCode {string} The errorCode
    * @param message {string} The error message
    * @param node {Node} Optional
@@ -57,12 +58,12 @@ export default class InternetObjectError extends Error {
       this.lineNumber = node.row
       this.columnNumber = node.col
       this.index = node.index
-      errorMsg = `${errorCode} at (${node.row}, ${node.col}): ${message}`
+      errorMsg = `${errorCode} at (${node.row}, ${node.col})`
     }
     else {
-      errorMsg = message ? `${errorCode}: ${message}` : errorCode
+      errorMsg = errorCode
     }
-    this.message = errorMsg
+    this.message = message !== "" ? `${ errorMsg }: ${ message }` : errorMsg
 
     Error.captureStackTrace(this, ssf || InternetObject)
     this.__proto__ = new.target.prototype
@@ -77,7 +78,7 @@ export class InternetObjectSyntaxError extends InternetObjectError {
 
   constructor (errorCode:string, message:string="", node?:Node, ssf?:any) {
     super(errorCode, message, node, ssf)
-    this.name = "InternetObjectSyntaxError"
+    this.name = "InternetObject (SyntaxError)"
   }
 }
 
@@ -89,8 +90,7 @@ export class InternetObjectValidationError extends InternetObjectError {
 
   constructor (errorCode:string, message:string="", node?:Node, ssf?:any) {
     super(errorCode, message, node, ssf)
-    this.name = "InternetObjectValidationError"
+    this.name = "InternetObject (ValidationError)"
   }
 
 }
-
