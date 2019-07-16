@@ -1,10 +1,10 @@
-import InternetObjectError from '../errors/io-error';
 import { print } from '../utils/index';
-import { isKeyVal, isSchemaDef } from '../utils/is';
+import { isKeyVal, isSchemaDef, isToken } from '../utils/is';
 import { Token, ASTParserTree, ParserTreeValue } from './';
 import Tokenizer from './tokenizer';
 import { COMMA, CURLY_CLOSED, SQUARE_CLOSED, TILDE } from './constants';
 import ErrorCodes from '../errors/io-error-codes';
+import { InternetObjectSyntaxError } from '../errors/io-error';
 
 const NOT_STARTED = 'not-started'
 const STARTED = 'started'
@@ -37,6 +37,7 @@ export default class ASTParser {
       token = this._tokenizer.read()
     }
     this._finalize()
+    // print("Parser", this)
   }
 
   public get header() {
@@ -45,13 +46,6 @@ export default class ASTParser {
     }
     return this.tree.header
   }
-
-  // public get schema() {
-  //   if (this.status !== FINISHED) {
-  //     throw new Error('parsing-not-finished')
-  //   }
-  //   return this.tree.header
-  // }
 
   public get data() {
     if (this.status !== FINISHED) {
@@ -68,12 +62,12 @@ export default class ASTParser {
 
     // Push new object
     if (token.value === '{') {
-      this._push("object")
+      this._push("object", token.index, token.row, token.col)
     }
 
     // Push new array
     else if (token.value === '[') {
-      this._push("array")
+      this._push("array", token.index, token.row, token.col)
     }
 
     // When a colon is found, consider previous value as key
@@ -81,14 +75,18 @@ export default class ASTParser {
     // into the value slot.
     else if (token.value === ':') {
       const obj = this._getObject()
-      let lastVal: any = obj.values[obj.values.length - 1]
+      // TODO: Validate length of the obj.values
+      let lastToken:any = obj.values[obj.values.length - 1]
 
-      if (lastVal && ['string', 'number', 'boolean'].indexOf(typeof lastVal.value) > -1) {
+      if (isToken(lastToken) && ['string', 'number', 'boolean'].indexOf(typeof lastToken.value) > -1) {
         obj.values[obj.values.length - 1] = {
-          key: lastVal.value,
-          value: null
+          key: lastToken.value,
+          value: null,
+          index: lastToken.index,
+          row: lastToken.row,
+          col:  lastToken.col
         }
-        // console.log(obj.values)
+
       } else {
         // TODO:Handle null and other types
         // Throw Invalid key error!
@@ -99,7 +97,7 @@ export default class ASTParser {
     else if (token.value === COMMA) {
       // Empty Token Found
       if (this.lastToken !== null && this.lastToken.value === ',') {
-        this._addValue(null)
+        this._addValue(null, token.index, token.row, token.col)
       }
     }
 
@@ -118,10 +116,10 @@ export default class ASTParser {
       // When the TILDE is encountered second time check collection mode is on,
       // if not, throw an error
       else if (!this._isCollection && !this.tree.data) {
-        // TODO: Throw and error here
+        // TODO: Throw an error here
         console.log(this.tree)
         console.log(this.stack)
-        throw new InternetObjectError(ErrorCodes.invalidCollection, null, token)
+        throw new InternetObjectSyntaxError(ErrorCodes.invalidCollection, undefined, token)
       }
       else {
         this._processObject()
@@ -134,7 +132,7 @@ export default class ASTParser {
       // Header is closed when, datasep is found. After the header
       // is closed, throw an error when another datasep is sent!
       if (!this._isHeaderOpen) {
-        throw new InternetObjectError(ErrorCodes.multipleHeaders,"Multiple headers are not allowed.", token)
+        throw new InternetObjectSyntaxError(ErrorCodes.multipleHeaders,"Multiple headers are not allowed.", token)
       }
       this._processObject()
       this._isHeaderOpen = false
@@ -144,7 +142,7 @@ export default class ASTParser {
 
     }
     else {
-      this._addValue(token)
+      this._addValue(token, token.index, token.row, token.col)
     }
 
     this.lastToken = token
@@ -164,7 +162,7 @@ export default class ASTParser {
     // more than one items.
     if (this.stack.length > 1) {
       // TODO: Throw a proper error here
-      throw new Error("open-bracket")
+      throw new InternetObjectSyntaxError(ErrorCodes.openBracket, "Expecting bracket to be closed", this.lastToken || undefined)
     }
 
     // Process header section
@@ -231,34 +229,35 @@ export default class ASTParser {
 
     return
 
-    // If no data found just return
-    if (this.stack.length === 0) return
+    // // If no data found just return
+    // if (this.stack.length === 0) return
 
-    let data = this.stack[0]
+    // let data = this.stack[0]
 
-    const tokenCount = this._tokenizer.length
+    // const tokenCount = this._tokenizer.length
 
-    if (this.tree.data === undefined) {
-      if (this._schemaOnly) {
-        this.tree.header = data
-        // TODO: Handle the case when compiling for schema
-        // and token count is 1
-        console.warn("Compiling for schema while token count is 1")
-      }
-      else {
-        if (tokenCount === 1) {
-          data.type = "scalar"
-        }
-        this.tree.data = data
-      }
-    }
+    // if (this.tree.data === undefined) {
+    //   if (this._schemaOnly) {
+    //     this.tree.header = data
+    //     // TODO: Handle the case when compiling for schema
+    //     // and token count is 1
+    //     console.warn("Compiling for schema while token count is 1")
+    //   }
+    //   else {
+    //     if (tokenCount === 1) {
+    //       data.type = "scalar"
+    //     }
+    //     this.tree.data = data
+    //   }
+    // }
   }
 
-  private _getObject = () => {
+  private _getOrCreateObject = (index:number, row:number, col:number) => {
     if (this.stack.length === 0) {
       this.stack.push({
         type: 'object',
-        values: []
+        values: [],
+        index, row, col
       })
     }
 
@@ -266,8 +265,21 @@ export default class ASTParser {
     return obj
   }
 
-  private _addValue = (value: any) => {
-    let obj = this._getObject()
+  private _getObject = () => {
+    // if (this.stack.length === 0) {
+    //   this.stack.push({
+    //     type: 'object',
+    //     values: []
+    //   })
+    // }
+
+    let obj = this.stack[this.stack.length - 1]
+    return obj
+  }
+
+  private _addValue = (value: any, index:number, row:number, col:number) => {
+
+    let obj = this._getOrCreateObject(index, row, col)
 
     // If last token is : then
     if (this.lastToken !== null && this.lastToken.value === ':') {
@@ -298,15 +310,14 @@ export default class ASTParser {
       [",", ":", "~", "{", "[", "---"].indexOf(token.value) === -1
     ) {
       // TODO: Provide better error
-      throw new InternetObjectError(ErrorCodes.expectingSeparator, `Error while parsing ${value.token}`, value)
+      throw new InternetObjectSyntaxError(ErrorCodes.expectingSeparator, `Error while parsing ${value.token}`, value)
     }
-
   }
 
-  private _push = (type = 'object', values = []) => {
-    let object = this._getObject()
-    let newObject = { type, values }
-    this._addValue(newObject)
+  private _push = (type = 'object', index:number, row:number, col:number, values = []) => {
+    let object = this._getOrCreateObject(index, row, col)
+    let newObject = { type, values, index, row, col }
+    this._addValue(newObject, index, row, col)
     this.stack.push(newObject)
   }
 
@@ -319,7 +330,8 @@ export default class ASTParser {
         }"`
       this.status = ERROR
       // TODO: Throw better message
-      throw new InternetObjectError("parser-error", message, token)
+      // throwSyntaxError(ErrorCodes.openBracket)
+      throw new InternetObjectSyntaxError(ErrorCodes.invalidBracket, message, token)
     }
     this.stack.pop()
   }

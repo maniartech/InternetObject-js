@@ -1,7 +1,7 @@
 import { DATASEP, HYPHEN, NEW_LINE, SEPARATORS, SPACE, STRING_ENCLOSER, TILDE, BACKSLASH, HASH, AT } from './constants';
 import { Token } from '.';
 import ErrorCodes from '../errors/io-error-codes';
-import InternetObjectError from '../errors/io-error';
+import InternetObjectSyntaxError from '../errors/io-error';
 
 type NullableToken = Token | null
 
@@ -276,7 +276,7 @@ export default class Tokenizer {
       // Do not allow unescaped quotation mark in the
       // string
       else {
-        throw new InternetObjectError(ErrorCodes.invalidChar, `Invalid character '${ch}' encountered at ${this._index}(${ this._row }:${ this._col}).`)
+        throw new InternetObjectSyntaxError(ErrorCodes.invalidChar, `Invalid character '${ch}' encountered`, this._node)
       }
     }
 
@@ -308,6 +308,12 @@ export default class Tokenizer {
     return this._next()
   }
 
+  private get _node() {
+    return {
+      index: this._index,
+      row: this._row,
+      col: this._col
+    }
+  }
+
 }
-
-

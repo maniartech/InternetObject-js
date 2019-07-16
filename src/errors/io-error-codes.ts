@@ -11,6 +11,8 @@ enum ErrorCodes {
   invlidHeader      = "invalid-header",
   invalidHeaderItem = "invalid-header-item",
   expectingSeparator= "expecting-a-separator",
+  openBracket       = "open-bracket",
+  invalidBracket    = "invalid-bracket",
 
   // Parser Errors (Schema)
   invalidSchema     = "invalid-schema",
