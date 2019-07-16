@@ -1,10 +1,10 @@
-import InternetObjectError from '../errors/io-error';
 import { print } from '../utils/index';
 import { isKeyVal, isSchemaDef, isToken } from '../utils/is';
 import { Token, ASTParserTree, ParserTreeValue } from './';
 import Tokenizer from './tokenizer';
 import { COMMA, CURLY_CLOSED, SQUARE_CLOSED, TILDE } from './constants';
 import ErrorCodes from '../errors/io-error-codes';
+import { InternetObjectSyntaxError } from '../errors/io-error';
 
 const NOT_STARTED = 'not-started'
 const STARTED = 'started'
@@ -37,6 +37,7 @@ export default class ASTParser {
       token = this._tokenizer.read()
     }
     this._finalize()
+    // print("Parser", this)
   }
 
   public get header() {
@@ -81,11 +82,11 @@ export default class ASTParser {
         obj.values[obj.values.length - 1] = {
           key: lastToken.value,
           value: null,
-          col:  lastToken.col,
+          index: lastToken.index,
           row: lastToken.row,
-          index: lastToken.index
+          col:  lastToken.col
         }
-        // console.log(obj.values)
+
       } else {
         // TODO:Handle null and other types
         // Throw Invalid key error!
@@ -118,7 +119,7 @@ export default class ASTParser {
         // TODO: Throw an error here
         console.log(this.tree)
         console.log(this.stack)
-        throw new InternetObjectError(ErrorCodes.invalidCollection, null, token)
+        throw new InternetObjectSyntaxError(ErrorCodes.invalidCollection, undefined, token)
       }
       else {
         this._processObject()
@@ -131,7 +132,7 @@ export default class ASTParser {
       // Header is closed when, datasep is found. After the header
       // is closed, throw an error when another datasep is sent!
       if (!this._isHeaderOpen) {
-        throw new InternetObjectError(ErrorCodes.multipleHeaders,"Multiple headers are not allowed.", token)
+        throw new InternetObjectSyntaxError(ErrorCodes.multipleHeaders,"Multiple headers are not allowed.", token)
       }
       this._processObject()
       this._isHeaderOpen = false
@@ -161,7 +162,7 @@ export default class ASTParser {
     // more than one items.
     if (this.stack.length > 1) {
       // TODO: Throw a proper error here
-      throw new Error("open-bracket")
+      throw new InternetObjectSyntaxError(ErrorCodes.openBracket, "Expecting bracket to be closed", this.lastToken || undefined)
     }
 
     // Process header section
@@ -309,9 +310,8 @@ export default class ASTParser {
       [",", ":", "~", "{", "[", "---"].indexOf(token.value) === -1
     ) {
       // TODO: Provide better error
-      throw new InternetObjectError(ErrorCodes.expectingSeparator, `Error while parsing ${value.token}`, value)
+      throw new InternetObjectSyntaxError(ErrorCodes.expectingSeparator, `Error while parsing ${value.token}`, value)
     }
-
   }
 
   private _push = (type = 'object', index:number, row:number, col:number, values = []) => {
@@ -330,7 +330,8 @@ export default class ASTParser {
         }"`
       this.status = ERROR
       // TODO: Throw better message
-      throw new InternetObjectError("parser-error", message, token)
+      // throwSyntaxError(ErrorCodes.openBracket)
+      throw new InternetObjectSyntaxError(ErrorCodes.invalidBracket, message, token)
     }
     this.stack.pop()
   }
