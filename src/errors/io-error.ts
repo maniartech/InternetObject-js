@@ -78,7 +78,7 @@ export class InternetObjectSyntaxError extends InternetObjectError {
 
   constructor (errorCode:string, message:string="", node?:Node, ssf?:any) {
     super(errorCode, message, node, ssf)
-    this.name = "InternetObject (SyntaxError)"
+    this.name = "InternetObject(SyntaxError)"
   }
 }
 
@@ -90,7 +90,7 @@ export class InternetObjectValidationError extends InternetObjectError {
 
   constructor (errorCode:string, message:string="", node?:Node, ssf?:any) {
     super(errorCode, message, node, ssf)
-    this.name = "InternetObject (ValidationError)"
+    this.name = "InternetObject(ValidationError)"
   }
 
 }
