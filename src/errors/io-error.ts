@@ -51,8 +51,9 @@ export default class InternetObjectError extends Error {
     super()
 
     let errorMsg:string = errorCode
-
     this.errorCode = errorCode
+
+    this.name = "InternetObjectError"
 
     if (node) {
       this.lineNumber = node.row
