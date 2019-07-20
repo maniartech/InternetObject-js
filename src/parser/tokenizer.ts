@@ -1,7 +1,7 @@
 import { DATASEP, HYPHEN, NEW_LINE, SEPARATORS, SPACE, STRING_ENCLOSER, TILDE, BACKSLASH, HASH, AT } from './constants';
 import { Token } from '.';
 import ErrorCodes from '../errors/io-error-codes';
-import InternetObjectSyntaxError from '../errors/io-error';
+import { InternetObjectSyntaxError } from '../errors/io-error';
 
 type NullableToken = Token | null
 
@@ -132,7 +132,11 @@ export default class Tokenizer {
     // Return token when text ends
     let ch = this._text[index]
     if (!ch) {
-      // TODO: Throw and error when escaping is not closed on last char
+      // Throw and error when escaping is not closed on last char
+      if (this._isEscaping) {
+        throw new InternetObjectSyntaxError(
+          ErrorCodes.incompleteEscapeSequence, "End of the text reached before finishing the escape sequence.")
+      }
       return this._returnToken()
     }
 
