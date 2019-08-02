@@ -10,7 +10,7 @@ import InternetObject from "../index";
 /**
  * Represents the base class for throwing InternetObjectError.
  */
-export default class InternetObjectError extends Error {
+export class InternetObjectError extends Error {
 
   // Due to a bug in TypeScript specifically control the __proto__
   // Ref: https://github.com/Microsoft/TypeScript/issues/13965
@@ -51,8 +51,9 @@ export default class InternetObjectError extends Error {
     super()
 
     let errorMsg:string = errorCode
-
     this.errorCode = errorCode
+
+    this.name = "InternetObjectError"
 
     if (node) {
       this.lineNumber = node.row
@@ -78,7 +79,7 @@ export class InternetObjectSyntaxError extends InternetObjectError {
 
   constructor (errorCode:string, message:string="", node?:Node, ssf?:any) {
     super(errorCode, message, node, ssf)
-    this.name = "InternetObject (SyntaxError)"
+    this.name = "InternetObject(SyntaxError)"
   }
 }
 
@@ -90,7 +91,9 @@ export class InternetObjectValidationError extends InternetObjectError {
 
   constructor (errorCode:string, message:string="", node?:Node, ssf?:any) {
     super(errorCode, message, node, ssf)
-    this.name = "InternetObject (ValidationError)"
+    this.name = "InternetObject(ValidationError)"
   }
 
 }
+
+export type ErrorArgs = [string, string, Node]

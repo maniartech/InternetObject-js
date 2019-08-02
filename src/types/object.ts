@@ -1,11 +1,11 @@
-import InternetObjectError from '../errors/io-error';
+import { InternetObjectError } from '../errors/io-error';
 import IOErrorCodes from '../errors/io-error-codes';
 import { ParserTreeValue, ASTParserTree } from '../parser/index';
 import { Token } from '../parser';
 import { isParserTree, isKeyVal } from '../utils/is';
 import MemberDef from './memberdef';
 import TypeDef from './typedef';
-import TypedefRegistry from './typedef-registry';
+import { TypedefRegistry } from './typedef-registry';
 import { doCommonTypeCheck } from './utils';
 
 

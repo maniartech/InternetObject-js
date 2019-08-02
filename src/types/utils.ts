@@ -1,6 +1,6 @@
 import { ParserTreeValue } from '../parser/index';
 import { isToken } from '../utils/is';
-import InternetObjectError from '../errors/io-error';
+import { InternetObjectError } from '../errors/io-error';
 import ParserError from '../errors/parser-error';
 import MemberDef from './memberdef';
 

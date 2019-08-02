@@ -1,4 +1,4 @@
-import InternetObjectError from '../errors/io-error';
+import { InternetObjectError, ErrorArgs } from '../errors/io-error';
 import { ParserTreeValue } from '../parser/index';
 import { isNumber, isToken } from '../utils/is';
 import MemberDef from './memberdef';
@@ -110,7 +110,7 @@ function _validatePattern(type:string, token:Token, memberDef:MemberDef) {
   }
 }
 
-function _notAString(path: string, data: Token) {
+function _notAString(path: string, data: Token) : ErrorArgs {
   return [
     ErrorCodes.notAString,
     `Expecting a string value for "${path}"`,
@@ -118,7 +118,7 @@ function _notAString(path: string, data: Token) {
   ]
 }
 
-function _invlalidChoice(path: string, data: Token, choices:number[]) {
+function _invlalidChoice(path: string, data: Token, choices:number[]) : ErrorArgs {
   return [
     ErrorCodes.invalidValue,
     `The value of "${path}" must be one of the [${choices.join(",")}]. Currently it is ${data.value}.`,
@@ -126,7 +126,7 @@ function _invlalidChoice(path: string, data: Token, choices:number[]) {
   ]
 }
 
-function _invlalidMinLength(path: string, data: Token, minLength: number) {
+function _invlalidMinLength(path: string, data: Token, minLength: number) : ErrorArgs {
   return [
     ErrorCodes.invalidMinLength,
     `The length of "${path}" must be ${minLength} or more. Currently it is ${data.value.length}.`,
@@ -134,7 +134,7 @@ function _invlalidMinLength(path: string, data: Token, minLength: number) {
   ]
 }
 
-function _invlalidMaxLength(path: string, data: Token, maxLength: number) {
+function _invlalidMaxLength(path: string, data: Token, maxLength: number) : ErrorArgs {
   return [
     ErrorCodes.invalidMaxLength,
     `The length of "${path}" must be ${maxLength} or more. Currently it is ${data.value.length}.`,

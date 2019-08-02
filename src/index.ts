@@ -5,10 +5,13 @@ import Schema from './header/schema';
 import ASTParser from './parser/ast-parser';
 import { print } from './utils';
 import { isString } from './utils/is';
-import InternetObjectError from './errors/io-error';
+import { InternetObjectError } from './errors/io-error';
 import ErrorCodes from './errors/io-error-codes';
 import { SCHEMA } from './parser/constants';
 
+/**
+ * Represents the InternetObject. A class that is
+ */
 export default class InternetObject<T = any> {
 
   constructor(text:string, schema?:string|Schema) {

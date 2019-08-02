@@ -1,12 +1,12 @@
 import TypeDef from "./typedef";
-import InternetObjectError from "../errors/io-error";
+import { InternetObjectError } from "../errors/io-error";
 import ErrorCodes from "../errors/io-error-codes";
 
 const defsList:any[] = []
 const defs:any = {}
 
 
-export default class TypedefRegistry {
+export class TypedefRegistry {
 
   /**
    * Registers the TypeDef for the specified type.

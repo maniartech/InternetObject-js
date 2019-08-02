@@ -1,8 +1,8 @@
 import '../types/index'
 
 import ASTParser from "../parser/ast-parser";
-import TypedefRegistry from '../types/typedef-registry';
-import InternetObjectError from '../errors/io-error';
+import { TypedefRegistry } from '../types/typedef-registry';
+import { InternetObjectError } from '../errors/io-error';
 
 import { ASTParserTree } from "../parser";
 import { isString, isParserTree, isKeyVal, isArray, isDataType, isToken } from "../utils/is";
@@ -25,6 +25,9 @@ export default class Schema {
    * mapped
    */
   public apply (data:any) {
+    if (!data) {
+      return null
+    }
     return _apply(data, this._schema, {})
   }
 

@@ -1,6 +1,6 @@
 import { ASTParserTree, KeyVal, Node } from '../parser/index';
 import { Token } from "../parser";
-import TypedefRegistry from "../types/typedef-registry";
+import { TypedefRegistry } from "../types/typedef-registry";
 
 
 /**
