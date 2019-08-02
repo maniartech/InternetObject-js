@@ -1,4 +1,4 @@
-import InternetObjectError from "./io-error";
+import { InternetObjectError } from "./io-error";
 import { Token } from "../parser";
 
 

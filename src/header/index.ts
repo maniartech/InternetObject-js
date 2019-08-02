@@ -1,5 +1,5 @@
 import DataParser from '../data';
-import InternetObjectError from '../errors/io-error';
+import { InternetObjectError } from '../errors/io-error';
 import ErrorCodes from '../errors/io-error-codes';
 import { ASTParserTree } from '../parser';
 import { SCHEMA } from '../parser/constants';

@@ -10,7 +10,7 @@ import InternetObject from "../index";
 /**
  * Represents the base class for throwing InternetObjectError.
  */
-export default class InternetObjectError extends Error {
+export class InternetObjectError extends Error {
 
   // Due to a bug in TypeScript specifically control the __proto__
   // Ref: https://github.com/Microsoft/TypeScript/issues/13965
@@ -95,3 +95,5 @@ export class InternetObjectValidationError extends InternetObjectError {
   }
 
 }
+
+export type ErrorArgs = [string, string, Node]

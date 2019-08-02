@@ -329,8 +329,6 @@ export default class ASTParser {
         obj.type === 'object' ? ']' : '}'
         }"`
       this.status = ERROR
-      // TODO: Throw better message
-      // throwSyntaxError(ErrorCodes.openBracket)
       throw new InternetObjectSyntaxError(ErrorCodes.invalidBracket, message, token)
     }
     this.stack.pop()

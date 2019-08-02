@@ -1,4 +1,4 @@
-import InternetObjectError from '../errors/io-error'
+import { InternetObjectValidationError, ErrorArgs } from '../errors/io-error';
 import ErrorCodes from '../errors/io-error-codes'
 import { ParserTreeValue } from '../parser/index'
 import { Token } from '../parser'
@@ -34,9 +34,9 @@ class NumberDef implements TypeDef {
 
   process(data: ParserTreeValue, memberDef: MemberDef): number {
     if (!isToken(data)) {
-      throw new InternetObjectError(ErrorCodes.invalidValue)
+      throw new InternetObjectValidationError(ErrorCodes.invalidValue)
     } else if (isNaN(Number(data.value))) {
-      throw new InternetObjectError(..._notANumber(memberDef.path, data))
+      throw new InternetObjectValidationError(..._notANumber(memberDef.path, data))
     }
 
     const validatedData = doCommonTypeCheck(data, memberDef)
@@ -44,7 +44,7 @@ class NumberDef implements TypeDef {
 
     // choices check
     if (memberDef.choices !== undefined && memberDef.choices.indexOf(data.value) === -1) {
-      throw new InternetObjectError(..._invlalidChoice(memberDef.path, data, memberDef.choices))
+      throw new InternetObjectValidationError(..._invlalidChoice(memberDef.path, data, memberDef.choices))
     }
 
     this._validator(data, memberDef)
@@ -52,12 +52,12 @@ class NumberDef implements TypeDef {
     if (memberDef.min !== undefined) {
       const min = memberDef.min
       if (data.value < min) {
-        throw new InternetObjectError(..._invlalidMin(memberDef.path, data, memberDef.min))
+        throw new InternetObjectValidationError(..._invlalidMin(memberDef.path, data, memberDef.min))
       }
     }
 
     if (memberDef.max !== undefined && data.value > memberDef.max) {
-      throw new InternetObjectError(..._invlalidMax(memberDef.path, data, memberDef.max))
+      throw new InternetObjectValidationError(..._invlalidMax(memberDef.path, data, memberDef.max))
     }
 
     return data.value
@@ -68,19 +68,19 @@ function _intValidator(min:number, max:number, token:Token, memberDef:MemberDef)
   const value = token.value
   // Validate for number
   if (!isNumber(value)) {
-    throw new InternetObjectError(..._notANumber(memberDef.path, token))
+    throw new InternetObjectValidationError(..._notANumber(memberDef.path, token))
   }
 
   // Validate for integer
   if (value % 1 !== 0) {
     // TODO: Throw proper error
-    throw new InternetObjectError(ErrorCodes.notAnInteger)
+    throw new InternetObjectValidationError(ErrorCodes.notAnInteger)
   }
 
   if (min === max) return
 
   if (value < min || value > max) {
-    throw new InternetObjectError(ErrorCodes.outOfRange)
+    throw new InternetObjectValidationError(ErrorCodes.outOfRange)
   }
 }
 
@@ -90,7 +90,7 @@ function _getValidator(type:string) {
     case "number": {
       return (token:Token, memberDef:MemberDef) => {
         if (isNaN(Number(token.value))) {
-          throw new InternetObjectError(..._notANumber(memberDef.path, token))
+          throw new InternetObjectValidationError(..._notANumber(memberDef.path, token))
         }
       }
     }
@@ -112,7 +112,7 @@ function _getValidator(type:string) {
   }
 }
 
-function _notANumber(path: string, data: Token) {
+function _notANumber(path: string, data: Token) : ErrorArgs {
   return [
     ErrorCodes.notANumber,
     `Expecting a number value for "${path}", Currently it is ${data.value}.`,
@@ -120,7 +120,7 @@ function _notANumber(path: string, data: Token) {
   ]
 }
 
-function _invlalidChoice(path: string, data: Token, choices:number[]) {
+function _invlalidChoice(path: string, data: Token, choices:number[]) : ErrorArgs {
   return [
     ErrorCodes.invalidValue,
     `The value of "${path}" must be one of the [${choices.join(",")}]. Currently it is ${data.value}.`,
@@ -128,7 +128,7 @@ function _invlalidChoice(path: string, data: Token, choices:number[]) {
   ]
 }
 
-function _invlalidMin(path: string, data: Token, min: number) {
+function _invlalidMin(path: string, data: Token, min: number) : ErrorArgs {
   return [
     ErrorCodes.invalidMinValue,
     `The "${path}" must be greater than or equal to ${min}, Currently it is ${data.value}.`,
@@ -136,7 +136,7 @@ function _invlalidMin(path: string, data: Token, min: number) {
   ]
 }
 
-function _invlalidMax(path: string, data: Token, max: number) {
+function _invlalidMax(path: string, data: Token, max: number) : ErrorArgs {
   return [
     ErrorCodes.invalidMaxValue,
     `The "${path}" must be less than or equal to ${max}, Currently it is ${data.value}.`,
