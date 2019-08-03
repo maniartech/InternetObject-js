@@ -1,5 +1,3 @@
-import '../types/index'
-
 import ASTParser from "../parser/ast-parser";
 import { TypedefRegistry } from '../types/typedef-registry';
 import { InternetObjectError } from '../errors/io-error';
@@ -299,10 +297,10 @@ function _apply(data:any, schema:any, container?:any):any {
   if (data.type === "collection") {
     const collection:any[] = []
     data.values.forEach((item:any) => {
-      collection.push(objectDef.process(item, schemaDef))
+      collection.push(objectDef.parse(item, schemaDef))
     })
     return collection
   }
 
-  return objectDef.process(data, schemaDef)
+  return objectDef.parse(data, schemaDef)
 }
