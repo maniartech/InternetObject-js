@@ -1,5 +1,5 @@
 import { Node } from "../parser";
-import InternetObject from "../index";
+import { InternetObject } from "../internet-object";
 
 // Error Examples
 // InternetObject (SyntaxError): invalid-value at (1, 20)
