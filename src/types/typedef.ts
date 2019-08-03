@@ -6,9 +6,13 @@ import { ParserTreeValue } from '../parser/index';
  */
 export default interface TypeDef {
 
+  getType: () => string
+
   /**
-   * Validates and processes the value as per schema and returns the results
+   * Validates and parses the value as per the memberDef and returns the results
    * specifying whether the value adhers to the schema or not!
    */
-  process: (value:ParserTreeValue, memberDef: MemberDef) => any
+  parse: (value:ParserTreeValue, memberDef: MemberDef) => any
+
+
 }

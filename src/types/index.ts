@@ -1,20 +1,19 @@
-import AnyDef from './any';
-import ArrayDef from './array';
-import NumberDef from './number';
-import ObjectDef from './object';
-import StringDef from './string';
+import AnyDef from './any'
+import ArrayDef from './array'
+import NumberDef from './number'
+import ObjectDef from './object'
+import StringDef from './string'
 
-import { TypedefRegistry } from './typedef-registry';
+import { TypedefRegistry } from './typedef-registry'
 
-console.log(TypedefRegistry)
 
+TypedefRegistry.register("string", new StringDef("string"))
 TypedefRegistry.register("any", new AnyDef())
 
-TypedefRegistry.register("string", new StringDef())
-TypedefRegistry.register("email", new StringDef())
-TypedefRegistry.register("url", new StringDef())
+TypedefRegistry.register("email", new StringDef("email"))
+TypedefRegistry.register("url", new StringDef("url"))
 
-TypedefRegistry.register("number", new NumberDef())
+TypedefRegistry.register("number", new NumberDef("number"))
 TypedefRegistry.register("byte", new NumberDef("byte"))
 TypedefRegistry.register("int16", new NumberDef("int16"))
 TypedefRegistry.register("int32", new NumberDef("int32"))

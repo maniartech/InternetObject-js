@@ -36,7 +36,7 @@ export default class StringDef implements TypeDef {
     return this._type
   }
 
-  process (data:ParserTreeValue, memberDef: MemberDef):string {
+  parse (data:ParserTreeValue, memberDef: MemberDef):string {
 
     if (!isToken(data)) {
       throw new InternetObjectError(ErrorCodes.notAString)

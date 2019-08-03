@@ -18,11 +18,11 @@ import { isToken, isParserTree } from '../utils/is';
  */
 export default class AnyDef implements TypeDef {
 
-  getType () {
+  getType ():string {
     return "any"
   }
 
-  process (data:ParserTreeValue, memberDef: MemberDef):any {
+  parse (data:ParserTreeValue, memberDef: MemberDef):any {
     const validatedData = doCommonTypeCheck(data, memberDef)
 
     if (validatedData !== data) return validatedData

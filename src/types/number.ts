@@ -32,7 +32,7 @@ class NumberDef implements TypeDef {
     return this._type
   }
 
-  process(data: ParserTreeValue, memberDef: MemberDef): number {
+  parse(data: ParserTreeValue, memberDef: MemberDef): number {
     if (!isToken(data)) {
       throw new InternetObjectValidationError(ErrorCodes.invalidValue)
     } else if (isNaN(Number(data.value))) {
