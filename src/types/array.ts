@@ -5,7 +5,8 @@ import { isParserTree, isKeyVal, isString } from '../utils/is';
 import MemberDef from './memberdef';
 import TypeDef from './typedef';
 import { TypedefRegistry } from './typedef-registry';
-import { doCommonTypeCheck } from './utils';
+import { doCommonTypeCheck, doCommonTypeCheckForObject } from './utils';
+import { isArray } from 'util';
 
 // age?: { number, true, 10, min:10, max:20}
 
@@ -50,6 +51,41 @@ class ArrayDef implements TypeDef {
     data.values.forEach((item) => {
       if(typeDef !== undefined) {
         const value = typeDef.parse(item, schema)
+        array.push(value)
+      }
+      else {
+        // TODO: Improve this error
+        throw ErrorCodes.invalidType
+      }
+    })
+
+    return array
+  }
+
+  public load = (data:any, memberDef: MemberDef):any => {
+
+    const validatedData = doCommonTypeCheckForObject(data, memberDef)
+    if (validatedData !== data) return validatedData
+
+    if (!isArray(data)) throw new Error("invalid-value")
+
+    const schema = memberDef.schema
+
+    let typeDef:TypeDef | undefined
+
+    if (schema.type) {
+      typeDef = TypedefRegistry.get(schema.type)
+    }
+    else {
+      console.assert(false, "Invalid Case: Array schema must have a type attribute!")
+      throw new Error("Verify this case!")
+    }
+
+    const array:any = []
+
+    data.forEach((item) => {
+      if(typeDef !== undefined) {
+        const value = typeDef.load(item, schema)
         array.push(value)
       }
       else {
