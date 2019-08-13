@@ -3,9 +3,10 @@ import { ParserTreeValue } from '../parser/index';
 import { isNumber, isToken } from '../utils/is';
 import MemberDef from './memberdef';
 import TypeDef from './typedef';
-import { doCommonTypeCheck } from './utils';
+import { doCommonTypeCheck, doCommonTypeCheckForObject } from './utils';
 import ErrorCodes from '../errors/io-error-codes';
 import { Token } from '../parser';
+import { isString } from 'util';
 
 // Reference: RFC 5322 Official Standard
 // http://emailregex.com
@@ -75,6 +76,48 @@ export default class StringDef implements TypeDef {
     }
 
     return data.value
+  }
+
+  load (data:any, memberDef: MemberDef):string {
+
+    if (!isString(data)) {
+      throw new InternetObjectError(ErrorCodes.notAString)
+    }
+
+    const validatedData = doCommonTypeCheckForObject(data, memberDef)
+    if (validatedData !== data) return validatedData
+
+    // TODO: Validate Data for subtypes
+    // _validatePattern(memberDef.type, data, memberDef)
+
+    // choices check
+    if (memberDef.choices !== undefined && data in memberDef.choices === false) {
+      throw new InternetObjectError(ErrorCodes.invalidChoice, `Invalid choice for ${ memberDef.path }.`)
+    }
+
+    // Typeof check
+    if (typeof data !== "string") {
+      throw new InternetObjectError(ErrorCodes.invalidValue, `Invalid value for ${ memberDef.path }.`)
+    }
+
+    const maxLength = memberDef.maxLength
+
+    // Max length check
+    if (maxLength !== undefined && isNumber(maxLength)) {
+      if (data.length > maxLength) {
+        throw new InternetObjectError(ErrorCodes.invalidMaxLength, `Invalid maxLength for ${ memberDef.path }.`)
+      }
+    }
+
+    const minLength = memberDef.minLength
+    // Max length check
+    if (minLength !== undefined && isNumber(minLength)) {
+      if (data.length > minLength) {
+        throw new InternetObjectError(ErrorCodes.invalidMinLength, `Invalid minLength for ${ memberDef.path }.`)
+      }
+    }
+
+    return data
   }
 }
 
