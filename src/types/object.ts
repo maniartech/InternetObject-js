@@ -6,7 +6,7 @@ import { isParserTree, isKeyVal } from '../utils/is';
 import MemberDef from './memberdef';
 import TypeDef from './typedef';
 import { TypedefRegistry } from './typedef-registry';
-import { doCommonTypeCheck } from './utils';
+import { doCommonTypeCheck, doCommonTypeCheckForObject } from './utils';
 
 
 // age?: { number, true, 10, min:10, max:20}
@@ -46,6 +46,28 @@ class ObjectDef implements TypeDef {
       const value = typeDef.parse(dataItem, memberDef)
       object[key] = value
 
+    })
+
+    return object
+  }
+
+  public load = (data:any, memberDef: MemberDef):any => {
+    const validatedData = doCommonTypeCheckForObject(data, memberDef)
+    if (validatedData !== data) return validatedData
+
+    // if (typeof data !== "object" || data.con)
+    // if (!isParserTree(data)) throw new Error("invalid-value")
+
+    const schema = memberDef.schema
+
+    const object:any = {}
+
+    schema.keys.forEach((key:string, index:number) => {
+      const memberDef:MemberDef = schema.defs[key]
+      const typeDef = TypedefRegistry.get(memberDef.type)
+      const dataItem = data[key]
+      const value = typeDef.load(dataItem, memberDef)
+      object[key] = value
     })
 
     return object
