@@ -3,7 +3,7 @@ import { TypedefRegistry } from '../types/typedef-registry';
 import { InternetObjectError } from '../errors/io-error';
 
 import { ASTParserTree } from "../parser";
-import { isString, isParserTree, isKeyVal, isArray, isDataType, isToken } from "../utils/is";
+import { isString, isParserTree, isKeyVal, isArray, isDataType, isToken } from '../utils/is';
 import { ParserTreeValue } from '../parser/index';
 import DataParser from '../data';
 import ErrorCodes from '../errors/io-error-codes';
@@ -287,6 +287,7 @@ const _concatPath = (newPath:string, oldPath?:string) => {
 }
 
 function _apply(data:any, schema:any, container?:any):any {
+
   const objectDef = TypedefRegistry.get("object")
   const schemaDef = {
     type: "object",
@@ -294,13 +295,25 @@ function _apply(data:any, schema:any, container?:any):any {
     schema
   }
 
-  if (data.type === "collection") {
-    const collection:any[] = []
-    data.values.forEach((item:any) => {
-      collection.push(objectDef.parse(item, schemaDef))
+  if (isParserTree(data)) {
+    if (data.type === "collection") {
+      const collection:any[] = []
+      data.values.forEach((item:any) => {
+        collection.push(objectDef.parse(item, schemaDef))
+      })
+      return collection
+    }
+
+    return objectDef.parse(data, schemaDef)
+  }
+  else if (isArray(data)) {
+    const collection = data.forEach((item:any) => {
+      return objectDef.load(item, schemaDef)
     })
     return collection
   }
+  else {
+    return objectDef.load(data, schemaDef)
+  }
 
-  return objectDef.parse(data, schemaDef)
 }
