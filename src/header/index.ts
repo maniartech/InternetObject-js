@@ -10,8 +10,8 @@ import { print } from '../utils';
 
 export default class Header {
 
-  private _keys:any
-  private _map:any
+  private _keys:any = []
+  private _map:any = {}
 
   public length (): number {
     return this._keys.length
@@ -95,8 +95,6 @@ export default class Header {
     if (tree.type === "object") {
       const compiledSchema = Schema.compile(tree)
       const header = new Header
-      header._map = {}
-      header._keys = []
       return (header).set(SCHEMA, compiledSchema)
     }
 
