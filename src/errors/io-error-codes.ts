@@ -20,6 +20,7 @@ enum ErrorCodes {
 
   // -- string, number, date, datetime, time
   valueNotInChoice          = "value-not-in-choice",
+  invalidChoice             = "invalid-choice",
 
   // -- string, array
   invalidMinLength          = "invalid-min-length",
