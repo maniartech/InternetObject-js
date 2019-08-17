@@ -33,6 +33,7 @@ export default class AnyDef implements TypeDef {
       return DataParser.parse(data)
     }
 
+    // TODO: check this case
     console.assert(false, "Check this case!")
   }
 
@@ -41,13 +42,10 @@ export default class AnyDef implements TypeDef {
 
     if (validatedData !== data) return validatedData
 
-    if (isToken(data)) return data.value
-
-    if (isParserTree(data)) {
-      return DataParser.parse(data)
-    }
-
+    return data
+    // TODO: check this case
     console.assert(false, "Check this case!")
+
   }
 
 }
