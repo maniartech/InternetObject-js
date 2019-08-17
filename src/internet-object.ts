@@ -5,7 +5,7 @@ import Schema from './header/schema';
 // import './constants'
 import ASTParser from './parser/ast-parser';
 import { print } from './utils';
-import { isString } from './utils/is';
+import { isString, isArray } from './utils/is';
 import { InternetObjectError } from './errors/io-error';
 import ErrorCodes from './errors/io-error-codes';
 import { SCHEMA } from './parser/constants';
@@ -15,11 +15,19 @@ import { SCHEMA } from './parser/constants';
  */
 export class InternetObject<T = any> {
 
-  constructor(text:string, schema?:string|Schema) {
-    const {
-      header,
-      data
-    } = _parse(text, schema)
+  constructor(o:any, schema?:string|Schema) {
+    let header: Header
+    let data: any
+
+    if (isString(o)) {
+      const parsed =_parse(o, schema)
+      header = parsed.header
+      data = parsed.data
+    } else {
+      const parsed = _parseObject(o, schema)
+      data = parsed.data
+      header = parsed.header
+    }
     this._data = data
     this._header = header
   }
@@ -37,6 +45,33 @@ export class InternetObject<T = any> {
   public get data():T {
     return this._data
   }
+}
+
+function _getCompiledSchema(schema?: string|Schema) {
+  if (!schema) return null
+
+  if (schema instanceof Schema) {
+    return schema
+  }
+
+  return Schema.compile(schema)
+}
+
+function _parseObject(o:any, schema?:string|Schema) {
+  const compiledSchema = _getCompiledSchema(schema)
+
+  if (compiledSchema === null) {
+    return {
+      data: o,
+      header: new Header
+    }
+  }
+
+  return {
+    data: compiledSchema.apply(o),
+    header: (new Header).set(SCHEMA, compiledSchema)
+  }
+
 }
 
 
