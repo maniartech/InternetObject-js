@@ -224,6 +224,11 @@ export default class ASTParser {
       }
     }
 
+    if (this._schemaOnly) {
+      this.tree.header = this.tree.data
+      this.tree.data = null
+    }
+
     // print("TOKENIZER", this._tokenizer)
     // print("TREE", this.stack)
 
