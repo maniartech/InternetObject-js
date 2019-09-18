@@ -1,16 +1,24 @@
-import { isDataType, isArray, isParserTree, isKeyVal, isToken, isString } from '../utils/is';
+import { isDataType, isArray, isParserTree, isKeyVal, isToken, isString } from '../utils/is'
 import { ASTParserTree } from '../parser'
-import { print } from '../utils';
-import { ParserTreeValue } from '../parser/index';
-
+import { print } from '../utils'
+import { ParserTreeValue } from '../parser/index'
 
 /**
- * Parses the ASTParserTree into the data that makes sense.
+ * Represents the DataParser class, which is responsible for parsing
+ * the ASTParserTree into the data that makes sense.
+ *
+ * @internal
  */
 export default class DataParser {
-  public static parse(dataTree:ASTParserTree, defs?:any) {
-    // console.log(">>>>", dataTree)
-    if (dataTree.type === "scalar") {
+  /**
+   * Parses the dataTree and returns the sensible POJO.
+   * @param dataTree The parsed dataTree
+   * @param defs The defs references, (Not in use currently!)
+   *
+   * TODO: Implementations on defs-references not yet finalized!
+   */
+  public static parse(dataTree: ASTParserTree, defs?: any) {
+    if (dataTree.type === 'scalar') {
       const val = dataTree.values[0]
       if (isToken(val)) {
         return val.value
@@ -20,7 +28,7 @@ export default class DataParser {
       }
     }
 
-    const container = dataTree.type === "object" ? {} : []
+    const container = dataTree.type === 'object' ? {} : []
     if (dataTree.values.length === 0) {
       return container
     }
@@ -29,30 +37,26 @@ export default class DataParser {
   }
 }
 
-const _parse = (root:ASTParserTree, container:any, defs?:any) => {
-  for (let index=0; index < root.values.length; index += 1) {
+const _parse = (root: ASTParserTree, container: any, defs?: any) => {
+  for (let index = 0; index < root.values.length; index += 1) {
     let value = root.values[index]
 
     if (isParserTree(value)) {
       // Object
-      if(value.type === 'object') {
+      if (value.type === 'object') {
         container[index] = _parse(value, {}, defs)
       }
       // Array
-      else if(value.type === 'array') {
+      else if (value.type === 'array') {
         container[index] = _parse(value, [], defs)
       }
-    }
-    else if(isKeyVal(value)) {
+    } else if (isKeyVal(value)) {
       let parsedValue = null
       if (isParserTree(value.value)) {
-        parsedValue = _parse(value.value,
-          value.value.type === "object" ? {} : [])
-      }
-      else if (isKeyVal(value.value)) {
-        console.warn("Validate this case!")
-      }
-      else {
+        parsedValue = _parse(value.value, value.value.type === 'object' ? {} : [])
+      } else if (isKeyVal(value.value)) {
+        console.warn('Validate this case!')
+      } else {
         // container[value.key] = value.value === null ? undefined : value.value.value
         parsedValue = _getValue(value.value, defs)
       }
@@ -61,12 +65,10 @@ const _parse = (root:ASTParserTree, container:any, defs?:any) => {
         container.push({
           [value.key]: parsedValue
         })
-      }
-      else {
+      } else {
         container[value.key] = parsedValue
       }
-    }
-    else {
+    } else {
       // container[index] = value === null ? undefined : value.value
       container[index] = _getValue(value, defs)
     }
@@ -74,9 +76,10 @@ const _parse = (root:ASTParserTree, container:any, defs?:any) => {
   return container
 }
 
-function _getValue(value:ParserTreeValue, defs:any):any {
+// TODO: Handle defs!
+function _getValue(value: ParserTreeValue, defs: any): any {
   if (isToken(value)) {
-    if (isString(value.value) && value.value.startsWith("$")) {
+    if (isString(value.value) && value.value.startsWith('$')) {
       return _getDefValue(value.value, defs)
     }
     return value.value
@@ -84,13 +87,14 @@ function _getValue(value:ParserTreeValue, defs:any):any {
   return
 }
 
-function _getDefValue(def:string, defs:any):any {
+// FIXME: Not in use!
+function _getDefValue(def: string, defs: any): any {
   if (!defs) return def
 
   const value = defs[def]
 
   if (isParserTree(value)) {
-    return (value.type === 'object')  ? _parse(value, {}) : _parse(value, [])
+    return value.type === 'object' ? _parse(value, {}) : _parse(value, [])
   }
 
   if (isToken(value)) {
@@ -98,5 +102,5 @@ function _getDefValue(def:string, defs:any):any {
   }
 
   // TODO: Verify this case!
-  throw new Error("Verify this case!")
+  throw new Error('Verify this case!')
 }

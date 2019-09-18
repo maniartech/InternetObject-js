@@ -1,22 +1,21 @@
-import "jest"
-import InternetObject from '../../src';
+import 'jest'
+import InternetObject from '../../src'
 
-
-describe("String Patterns", () => {
-  it("valid pattern values", () => {
+describe('String Patterns', () => {
+  it('valid pattern values', () => {
     const objStr = String.raw`
     v1:{string, pattern:@"[a-zA-Z\s]+"}
     ---
     Lorem ipsum dolor sit amet
     `
     const obj = new InternetObject(objStr)
-    expect(obj.data.v1).toBe("Lorem ipsum dolor sit amet")
+    expect(obj.data.v1).toBe('Lorem ipsum dolor sit amet')
   })
 
-  it("invalid pattern values", () => {
+  it('invalid pattern values', () => {
     const t1 = () => {
       return new InternetObject(String.raw`
-      v1:{string, pattern:@"[a-zA-Z\s]+"}
+      v1:{string, pattern:"[a-zA-Z\s]+"}
       ---
       Lorem ipsum dolor sit amet?
       `)

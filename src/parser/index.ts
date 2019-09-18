@@ -1,11 +1,9 @@
-
-
 /**
  * Node represents an object that
  */
 export interface Node {
-  col: number,
-  row: number,
+  col: number
+  row: number
   index: number
 }
 
@@ -14,23 +12,19 @@ export interface Node {
  * `Tokenizer`
  */
 export interface Token extends Node {
-  value: any,
-  token: string,
+  value: any
+  token: string
   type: string
 }
 
 export interface KeyVal extends Node {
-  key: string,
+  key: string
   value: ParserTreeValue
 }
 
 export interface ASTParserTree extends Node {
-  type: string,
+  type: string
   values: ParserTreeValue[]
 }
 
-export type ParserTreeValue =
-  null |
-  ASTParserTree |
-  KeyVal |
-  Token
+export type ParserTreeValue = undefined | ASTParserTree | KeyVal | Token

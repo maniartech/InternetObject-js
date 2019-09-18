@@ -43,6 +43,27 @@ export const isArray = (val: any): val is Array<any> => {
   return val instanceof Array
 }
 
+export const isPlainObject = (val:any) => {
+
+  if (typeof val !== "object") return false;
+
+  // If has modified constructor
+  const ctor = val.constructor;
+  if (typeof ctor !== 'function') return false;
+
+  // If has modified prototype
+  const prot = ctor.prototype;
+  if (typeof prot !== "object") return false;
+
+  // If constructor does not have an Object-specific method
+  if (prot.hasOwnProperty('isPrototypeOf') === false) {
+    return false;
+  }
+
+  // Most likely a plain Object
+  return true;
+}
+
 /**
  * Checks whether specified value reprents datatype.
  *
