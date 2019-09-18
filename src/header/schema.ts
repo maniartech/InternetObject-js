@@ -1,20 +1,27 @@
-import ASTParser from "../parser/ast-parser";
-import { TypedefRegistry } from '../types/typedef-registry';
-import { InternetObjectError } from '../errors/io-error';
+import DataParser from '../data'
+import ASTParser from '../parser/ast-parser'
+import ErrorCodes from '../errors/io-error-codes'
 
-import { ASTParserTree } from "../parser";
-import { isString, isParserTree, isKeyVal, isArray, isDataType, isToken } from '../utils/is';
-import { ParserTreeValue } from '../parser/index';
-import DataParser from '../data';
-import ErrorCodes from '../errors/io-error-codes';
+import { ASTParserTree } from '../parser'
+import { ParserTreeValue } from '../parser/index'
+import { InternetObjectError } from '../errors/io-error'
+import { TypedefRegistry } from '../types/typedef-registry'
+import { isString, isParserTree, isKeyVal, isArray, isDataType, isToken } from '../utils/is'
 
-
+/**
+ * Represents the Internet Object Schema class which is responsible for
+ * compiling schemas and applying them to data objects.
+ */
 export default class Schema {
+  private _schema: any
 
-  private _schema:any
-  private _defs:any
-
-  private constructor(schema:any) {
+  /**
+   *
+   * @param schema Initializes the new instance of the `Schema` class.
+   *
+   * @param schema {string, ASTParser}
+   */
+  private constructor(schema: any) {
     this._schema = schema
   }
 
@@ -22,7 +29,7 @@ export default class Schema {
    * Applies the schema to specified data and returns the
    * mapped
    */
-  public apply (data:any) {
+  public apply(data: any) {
     if (!data) {
       return null
     }
@@ -32,47 +39,46 @@ export default class Schema {
   /**
    * Converts and returns the string version of current schema.
    */
-  public toString () {
+  public toString() {
     // TODO: Need to work on this function.
   }
 
-  public static compile = (schema:any): Schema => {
-    let parsedSchema:any = null
+  public static compile = (schema: any): Schema => {
+    let parsedSchema: any = null
     if (isString(schema)) {
       let parser = new ASTParser(schema, true)
       parser.parse()
       parsedSchema = parser.header
-    }
-    else {
+      // print("AST", parsedSchema)
+      // print(parser)
+    } else {
       parsedSchema = schema
     }
 
-    // print("AST", parsedSchema)
     const compiledSchema = _compileObjectSchema(parsedSchema)
 
     return new Schema(compiledSchema)
   }
 }
 
-const _getCompileValue = (value:ParserTreeValue, path?:string):any => {
-
+const _getCompileValue = (value: ParserTreeValue, path?: string): any => {
   // Process Token
   if (isToken(value)) {
     if (isDataType(value.value)) {
       return {
-        "type": value.value,
+        type: value.value,
         path
       }
     }
     // TODO: Throw better  error
-    throw new InternetObjectError("invalid-datatype", "Invalid data type", value)
+    throw new InternetObjectError('invalid-datatype', 'Invalid data type', value)
   }
 
   if (isParserTree(value)) {
     if (_isMemberDef(value)) {
       return _compileMemberDefTree(value, path)
     }
-    const arrayDef = value.type === "array"
+    const arrayDef = value.type === 'array'
     return {
       type: value.type,
       schema: arrayDef ? _compileArraySchema(value, path) : _compileObjectSchema(value, path)
@@ -83,12 +89,11 @@ const _getCompileValue = (value:ParserTreeValue, path?:string):any => {
   throw new InternetObjectError(ErrorCodes.invalidValue)
 }
 
-const _compileMemberDefTree = (root: ASTParserTree, path?:string) => {
-
+const _compileMemberDefTree = (root: ASTParserTree, path?: string) => {
   if (root.values.length === 0) {
     return {
-      "type": root.type,
-      "schema": root.type === "object" ? {} : [],
+      type: root.type,
+      schema: root.type === 'object' ? {} : [],
       path
     }
   }
@@ -96,30 +101,28 @@ const _compileMemberDefTree = (root: ASTParserTree, path?:string) => {
   const firstVal = root.values[0]
 
   // Array Root
-  if (root.type === "array") {
+  if (root.type === 'array') {
     if (root.values.length > 1) {
       // TODO: Throw better  error
-      throw new InternetObjectError("invalid-array-definition")
+      throw new InternetObjectError('invalid-array-definition')
     }
     if (isToken(firstVal)) {
-      if(isDataType(firstVal.value)) {
+      if (isDataType(firstVal.value)) {
         return {
-          type: "array",
+          type: 'array',
           schema: {
             type: firstVal.value,
-            path: _concatPath("[", path)
+            path: _concatPath('[', path)
           },
           path
         }
-      }
-      else {
+      } else {
         // TODO: Throw better  error
-        throw new InternetObjectError("invalid-array-definition")
+        throw new InternetObjectError('invalid-array-definition')
       }
-    }
-    else if (isParserTree(firstVal)) {
+    } else if (isParserTree(firstVal)) {
       return {
-        type: "array",
+        type: 'array',
         schema: _compileArraySchema(firstVal, path),
         path
       }
@@ -127,42 +130,37 @@ const _compileMemberDefTree = (root: ASTParserTree, path?:string) => {
   }
 
   // Object Root
-  const memberDef:any = {}
+  const memberDef: any = {}
 
   if (isToken(firstVal) && isString(firstVal.value)) {
     memberDef.type = firstVal.value
-  }
-  else if(isParserTree(firstVal)) {
+  } else if (isParserTree(firstVal)) {
     memberDef.type = firstVal.type
-    memberDef.schema = firstVal.type === "object"
-      ? _compileObjectSchema(firstVal, path)
-      : _compileArraySchema(firstVal, path)
+    memberDef.schema =
+      firstVal.type === 'object'
+        ? _compileObjectSchema(firstVal, path)
+        : _compileArraySchema(firstVal, path)
   }
 
-  for (let index=1; index<root.values.length; index++) {
+  for (let index = 1; index < root.values.length; index++) {
     const item = root.values[index]
     if (isKeyVal(item)) {
-
       let val = item.value
 
       if (isToken(val)) {
         memberDef[item.key] = val.value
-      }
-      else if (isParserTree(val)) {
+      } else if (isParserTree(val)) {
         memberDef[item.key] = DataParser.parse(val)
-      }
-      else {
+      } else {
         // TODO: Consider this case when memberdef key = {object value}
-        console.warn("Check this case", "invalid-option", val)
+        console.warn('Check this case', 'invalid-option', val)
         // throw new InternetObjectError("invalid-option")
       }
-    }
-    else if(isToken(item)) {
+    } else if (isToken(item)) {
       memberDef[item.value] = true
-    }
-    else {
+    } else {
       // TODO: Throw better error
-      throw new InternetObjectError("invalid-value")
+      throw new InternetObjectError('invalid-value')
     }
   }
 
@@ -171,16 +169,16 @@ const _compileMemberDefTree = (root: ASTParserTree, path?:string) => {
   return memberDef
 }
 
-const _compileArraySchema = (root: ASTParserTree, path?:string) => {
+const _compileArraySchema = (root: ASTParserTree, path?: string) => {
   const array = root.values
   if (array.length > 1) {
     // TODO: Throw better error
-    throw new InternetObjectError("invalid-array-schema")
+    throw new InternetObjectError('invalid-array-schema')
   }
 
   if (array.length === 0) {
     return {
-      type: "any",
+      type: 'any',
       path: _concatPath('[', path)
     }
   }
@@ -192,31 +190,33 @@ const _compileArraySchema = (root: ASTParserTree, path?:string) => {
   return value
 }
 
-const _compileObjectSchema = (root: ASTParserTree, path?:string) => {
-
+const _compileObjectSchema = (root: ASTParserTree, path?: string) => {
   if (root.values.length === 0) return {}
 
-  const schema:any = {
+  const schema: any = {
     keys: [],
     defs: {}
   }
 
   for (let index = 0; index < root.values.length; index += 1) {
     let item = root.values[index]
-    let key:any = index
-    let value:any
-    let optional:boolean = false
+    let key: any = index
+    let value: any
+    let optional: boolean = false
 
     // Item = Tree
     if (isParserTree(item)) {
       // TODO: Throw better error
-      throw new InternetObjectError("key-required", "Encountered an array or an object while expecting key.")
+      throw new InternetObjectError(
+        'key-required',
+        'Encountered an array or an object while expecting key.'
+      )
     }
     // Item = KeyVal
     else if (isKeyVal(item)) {
-      const {name, optional} = _parseKeyForOptional(item.key)
+      const { name, optional } = _parseKeyForOptional(item.key)
       const currentPath = _concatPath(name, path)
-      const value:any = _getCompileValue(item.value, currentPath)
+      const value: any = _getCompileValue(item.value, currentPath)
       schema.keys.push(name)
 
       // When value is a memberDef
@@ -224,21 +224,19 @@ const _compileObjectSchema = (root: ASTParserTree, path?:string) => {
         value.optional = value.optional || optional || false
         value.path = currentPath
         schema.defs[name] = value
-      }
-      else {
+      } else {
         schema.defs[name] = {
           type: value,
           optional: optional || false,
           path: currentPath
         }
       }
-    }
-    else if (isToken(item)) {
-      const {name, optional} = _parseKeyForOptional(item.value)
+    } else if (isToken(item)) {
+      const { name, optional } = _parseKeyForOptional(item.value)
       const currentPath = _concatPath(name, path)
       schema.keys.push(name)
       schema.defs[name] = {
-        type: "any",
+        type: 'any',
         optional: optional || false,
         path: currentPath
       }
@@ -248,8 +246,7 @@ const _compileObjectSchema = (root: ASTParserTree, path?:string) => {
   return schema
 }
 
-const _isMemberDef = (root:ASTParserTree) => {
-
+const _isMemberDef = (root: ASTParserTree) => {
   if (!root || !root.values) return false
 
   if (root.values.length === 0) return false
@@ -257,63 +254,57 @@ const _isMemberDef = (root:ASTParserTree) => {
   const first = root.values[0]
   if (isToken(first) && isDataType(first.value)) {
     return true
-  }
-  else if (isParserTree(first)) {
+  } else if (isParserTree(first)) {
     return true
   }
   return false
 }
 
-const _parseKeyForOptional = (key:string) => {
-  if(key.endsWith("?")) {
+const _parseKeyForOptional = (key: string) => {
+  if (key.endsWith('?')) {
     return {
       name: key.substr(0, key.length - 1),
       optional: true
     }
   }
-  return { name:key, optional: false }
+  return { name: key, optional: false }
 }
 
 // Concats the path
-const _concatPath = (newPath:string, oldPath?:string) => {
+const _concatPath = (newPath: string, oldPath?: string) => {
   let path = newPath
   if (oldPath) {
-    path = (oldPath.endsWith("[") || newPath === "[")
-      ? `${oldPath}${newPath}`
-      : `${oldPath}.${newPath}`
+    path =
+      oldPath.endsWith('[') || newPath === '[' ? `${oldPath}${newPath}` : `${oldPath}.${newPath}`
   }
 
   return path
 }
 
-function _apply(data:any, schema:any, container?:any):any {
-
-  const objectDef = TypedefRegistry.get("object")
+function _apply(data: any, schema: any, container?: any): any {
+  const objectDef = TypedefRegistry.get('object')
   const schemaDef = {
-    type: "object",
-    path: "",
+    type: 'object',
+    path: '',
     schema
   }
 
   if (isParserTree(data)) {
-    if (data.type === "collection") {
-      const collection:any[] = []
-      data.values.forEach((item:any) => {
+    if (data.type === 'collection') {
+      const collection: any[] = []
+      data.values.forEach((item: any) => {
         collection.push(objectDef.parse(item, schemaDef))
       })
       return collection
     }
 
     return objectDef.parse(data, schemaDef)
-  }
-  else if (isArray(data)) {
-    const collection = data.forEach((item:any) => {
+  } else if (isArray(data)) {
+    const collection = data.forEach((item: any) => {
       return objectDef.load(item, schemaDef)
     })
     return collection
-  }
-  else {
+  } else {
     return objectDef.load(data, schemaDef)
   }
-
 }
