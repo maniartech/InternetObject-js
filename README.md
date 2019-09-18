@@ -5,7 +5,7 @@
 
 ## Internet Object TypeScript/JavaScript Parser
 
-### ⚠ NOT YET READY - This project is under active development! Don't use it.
+### ⚠ NOT YET READY - This project is under active development! Don't use, not yet ready!
 
 ```JS
 import InternetObject from 'internet-object'
