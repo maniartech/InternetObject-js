@@ -5,7 +5,7 @@ import { Token } from '../parser'
 import { isNumber, isToken } from '../utils/is'
 import MemberDef from './memberdef'
 import TypeDef from './typedef'
-import { doCommonTypeCheck } from './utils'
+import { doCommonTypeCheck, doCommonTypeCheckForObject } from './utils';
 
 // age?: { number, true, 10, min:10, max:20}
 
@@ -62,6 +62,37 @@ class NumberDef implements TypeDef {
 
     return data.value
   }
+
+  load(data:any, memberDef: MemberDef): number {
+    if (!isNumber(data)) {
+      throw new InternetObjectValidationError(ErrorCodes.invalidValue)
+    } else if (isNaN(Number(data))) {
+      throw new InternetObjectValidationError(ErrorCodes.notANumber, `Invalid number encountered at ${memberDef.path}`)
+    }
+
+    const validatedData = doCommonTypeCheckForObject(data, memberDef)
+    if (validatedData !== data) return validatedData
+
+    // choices check
+    if (memberDef.choices !== undefined && memberDef.choices.indexOf(data) === -1) {
+      throw new InternetObjectValidationError(ErrorCodes.invalidChoice, `Invalid choice encountered at ${memberDef.path}`)
+    }
+
+    this._validator(data, memberDef)
+
+    if (memberDef.min !== undefined) {
+      const min = memberDef.min
+      if (data < min) {
+        throw new InternetObjectValidationError(ErrorCodes.invalidMinValue, `Invalid number encountered at ${memberDef.path}`)
+      }
+    }
+
+    if (memberDef.max !== undefined && data > memberDef.max) {
+      throw new InternetObjectValidationError(ErrorCodes.invalidMaxValue, `Invalid number encountered at ${memberDef.path}`)
+    }
+
+    return data
+  }
 }
 
 function _intValidator(min:number, max:number, token:Token, memberDef:MemberDef) {
@@ -112,6 +143,7 @@ function _getValidator(type:string) {
   }
 }
 
+
 function _notANumber(path: string, data: Token) : ErrorArgs {
   return [
     ErrorCodes.notANumber,
@@ -122,7 +154,7 @@ function _notANumber(path: string, data: Token) : ErrorArgs {
 
 function _invlalidChoice(path: string, data: Token, choices:number[]) : ErrorArgs {
   return [
-    ErrorCodes.invalidValue,
+    ErrorCodes.invalidChoice,
     `The value of "${path}" must be one of the [${choices.join(",")}]. Currently it is ${data.value}.`,
     data
   ]
