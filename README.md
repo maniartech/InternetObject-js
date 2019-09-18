@@ -1,6 +1,6 @@
 <img src="/logo/internet-object.png" height="50px" alt="Internet Object" title="Internet Object">
 
-> **Thin, robust, yet simple data interchange format for Internet. Best well-planned alternative to JSON!**
+> **Thin, robust, schema-first yet simple data interchange format for Internet. Best well-planned alternative to JSON!**
 
 
 ## Internet Object TypeScript/JavaScript Parser
