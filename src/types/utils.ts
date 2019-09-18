@@ -1,14 +1,17 @@
+import ErrorCodes from '../errors/io-error-codes'
+import MemberDef from './memberdef'
+
+import { ErrorArgs, InternetObjectError } from '../errors/io-error'
 import { Node } from '../parser/index'
 import { isToken } from '../utils/is'
-import { InternetObjectError, ErrorArgs } from '../errors/io-error'
-import MemberDef from './memberdef'
-import ErrorCodes from '../errors/io-error-codes'
 
 /**
  * Performs the common validations required before serialization and deserialization
  * @param memberDef The memberDef object
  * @param value The value which needs to be validated
  * @param node The node object, required for tracing line and column when parsing raw internet object code!
+ *
+ * @internal
  */
 export function doCommonTypeCheck(memberDef: MemberDef, value?: any, node?: Node): any {
   const isUndefined = value === undefined
@@ -17,13 +20,13 @@ export function doCommonTypeCheck(memberDef: MemberDef, value?: any, node?: Node
   // Check for undefined
   if (isUndefined) {
     if (memberDef.optional) return memberDef.default
-    throw new InternetObjectError('value-required', `Value is missing for '${memberDef.path}'.`)
+    throw new InternetObjectError(..._valueRequired(memberDef, node))
   }
 
   // Check for null
   if (isNull) {
     if (memberDef.null) return null
-    throw new InternetObjectError('null-not-allowed', `${memberDef.path} does not support null.`)
+    throw new InternetObjectError(..._nullNotAllowed(memberDef, node))
   }
 
   // Validate choices
@@ -33,6 +36,14 @@ export function doCommonTypeCheck(memberDef: MemberDef, value?: any, node?: Node
 
   // If everything is okay, return same data
   return value
+}
+
+function _valueRequired(memberDef: MemberDef, node?: Node): ErrorArgs {
+  return [ErrorCodes.valueRequired, `Value is missing for '${memberDef.path}'.`, node]
+}
+
+function _nullNotAllowed(memberDef: MemberDef, node?: Node): ErrorArgs {
+  return [ErrorCodes.nullNotAllowed, `${memberDef.path} does not support null.`]
 }
 
 // Return an invalid choice error parameters
