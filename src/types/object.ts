@@ -78,7 +78,7 @@ class ObjectDef implements TypeDef {
 
   private _process = (memberDef: MemberDef, value: any, node?: Node) => {
     const validatedData = doCommonTypeCheck(memberDef, value, node)
-    if (validatedData !== value) return validatedData
+    if (validatedData !== value || value === undefined) return validatedData
 
     // if (typeof data !== "object" || data.con)
     // if (!isParserTree(data)) throw new Error("invalid-value")
