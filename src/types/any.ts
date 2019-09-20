@@ -16,7 +16,7 @@ export default class AnyDef implements TypeDef {
   parse(data: ParserTreeValue, memberDef: MemberDef): any {
     const validatedData = doCommonTypeCheck(memberDef, data, data)
 
-    if (validatedData !== data) return validatedData
+    if (validatedData !== data || validatedData === undefined) return validatedData
 
     if (isToken(data)) return data.value
 
@@ -26,6 +26,7 @@ export default class AnyDef implements TypeDef {
 
     // TODO: check this case
     console.assert(false, 'Check this case!')
+    console.warn(data, memberDef)
   }
 
   load(data: any, memberDef: MemberDef): any {
