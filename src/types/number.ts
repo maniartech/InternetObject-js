@@ -10,13 +10,10 @@ import { doCommonTypeCheck } from './utils'
 // age?: { number, true, 10, min:10, max:20}
 
 /**
- * Represents the InternetObjectNumber, performs following validations.
- * - Value is number
- * - Value is optional
- * - Value is nullable
- * - Value >= schema.min
- * - Value <= schema.max
- * - Value is in choices
+ * Represents the various number related data types
+ * (such as number, int, byte, int16, int32) in Internet Object.
+ *
+ * @internal
  */
 class NumberDef implements TypeDef {
   private _type: string
@@ -32,43 +29,10 @@ class NumberDef implements TypeDef {
   }
 
   parse(data: ParserTreeValue, memberDef: MemberDef): number {
-    // const val = data === null ? null : (isToken(data) ? data.value : data)
-    // if (!isToken(data)) {
-    //   throw new InternetObjectValidationError(ErrorCodes.invalidValue)
-    // }
-
     const node = isToken(data) ? data : undefined
     const value = node ? node.value : undefined
 
     return _validate(this._validator, memberDef, value, node)
-    // if (!isToken(data)) {
-    //   throw new InternetObjectValidationError(ErrorCodes.invalidValue)
-    // } else if (isNaN(Number(data.value))) {
-    //   throw new InternetObjectValidationError(..._notANumber(memberDef, data.value, data))
-    // }
-
-    // const validatedData = doCommonTypeCheck(memberDef, data === null ? null : data.value, data)
-    // if (validatedData !== data) return validatedData
-
-    // // choices check
-    // if (memberDef.choices !== undefined && memberDef.choices.indexOf(data.value) === -1) {
-    //   throw new InternetObjectValidationError(..._invlalidChoice(memberDef, data.value, data))
-    // }
-
-    // this._validator(data, memberDef)
-
-    // if (memberDef.min !== undefined) {
-    //   const min = memberDef.min
-    //   if (data.value < min) {
-    //     throw new InternetObjectValidationError(..._invlalidMin(memberDef, data.value, data))
-    //   }
-    // }
-
-    // if (memberDef.max !== undefined && data.value > memberDef.max) {
-    //   throw new InternetObjectValidationError(..._invlalidMax(memberDef, data.value, data))
-    // }
-
-    // return data.value
   }
 
   load(data: any, memberDef: MemberDef): number {
@@ -76,6 +40,13 @@ class NumberDef implements TypeDef {
   }
 }
 
+// Performs following validations.
+//  * - Value is number
+//  * - Value is optional
+//  * - Value is nullable
+//  * - Value >= schema.min
+//  * - Value <= schema.max
+//  * - Value is in choices
 function _validate(validator: any, memberDef: MemberDef, value: any, node?: Node) {
   const validatedData = doCommonTypeCheck(memberDef, value, node)
   if (validatedData !== value) return validatedData
@@ -106,21 +77,13 @@ function _validate(validator: any, memberDef: MemberDef, value: any, node?: Node
 }
 
 function _intValidator(min: number, max: number, memberDef: MemberDef, value: any, node?: Node) {
-  // Validate for number
-  if (!isNumber(value)) {
-    throw new InternetObjectValidationError(..._notANumber(memberDef, value, node))
-  }
-
   // Validate for integer
   if (value % 1 !== 0) {
-    // TODO: Throw proper error
-    throw new InternetObjectValidationError(ErrorCodes.notAnInteger)
+    throw new InternetObjectValidationError(..._notAnInt(memberDef, value, node))
   }
 
-  if (min === max) return
-
   if (value < min || value > max) {
-    throw new InternetObjectValidationError(ErrorCodes.outOfRange)
+    throw new InternetObjectValidationError(..._outOfRange(memberDef, value, node))
   }
 }
 
@@ -146,9 +109,29 @@ function _getValidator(type: string) {
       return _intValidator.bind(null, -(range / 2), range / 2 - 1)
     }
     case 'int': {
+      // Any non fraction number!
       return _intValidator.bind(null, 0, 0)
     }
+    default: {
+      console.assert(false, 'Invalid number type!')
+    }
   }
+}
+
+function _outOfRange(memberDef: MemberDef, value: any, node?: Node): ErrorArgs {
+  return [
+    ErrorCodes.outOfRange,
+    `The value (${value}) set for "${memberDef.path}" is out of range.`,
+    node
+  ]
+}
+
+function _notAnInt(memberDef: MemberDef, value: any, node?: Node): ErrorArgs {
+  return [
+    ErrorCodes.notAnInteger,
+    `Expecting an integer value for "${memberDef.path}", Currently it is ${value}.`,
+    node
+  ]
 }
 
 function _notANumber(memberDef: MemberDef, value: any, node?: Node): ErrorArgs {
@@ -158,15 +141,6 @@ function _notANumber(memberDef: MemberDef, value: any, node?: Node): ErrorArgs {
     node
   ]
 }
-
-// function _invlalidChoice(memberDef:MemberDef, value:any, node?:Node) : ErrorArgs {
-//   if (!memberDef.choices) throw Error("Choices not checked during NumberDef implementation.")
-//   return [
-//     ErrorCodes.invalidChoice,
-//     `The value of "${memberDef.path}" must be one of the [${memberDef.choices.join(",")}]. Currently it is ${value}.`,
-//     node
-//   ]
-// }
 
 function _invlalidMin(memberDef: MemberDef, value: any, node?: Node): ErrorArgs {
   return [
