@@ -3,6 +3,7 @@ enum ErrorCodes {
   invalidType = 'invalid-type',
   tokenNotReady = 'token-not-ready',
   invalidValue = 'invalid-value',
+  invalidArray = 'invalid-array',
   valueRequired = 'value-required',
   nullNotAllowed = 'null-not-allowed',
 
@@ -19,6 +20,12 @@ enum ErrorCodes {
   // Parser Errors (Schema)
   invalidSchema = 'invalid-schema',
 
+  // String
+  notAString = 'not-a-string',
+  invalidChar = 'invalid-char',
+  invalidEmail = 'invalid-email',
+  invalidUrl = 'invalid-url',
+
   // -- string, number, date, datetime, time
   valueNotInChoice = 'value-not-in-choice',
   invalidChoice = 'invalid-choice',
@@ -26,23 +33,13 @@ enum ErrorCodes {
   // -- string, array
   invalidMinLength = 'invalid-min-length',
   invalidMaxLength = 'invalid-max-length',
-  invalidChar = 'invalid-char',
-  invalidEmail = 'invalid-email',
-  invalidUrl = 'invalid-url',
 
   // Number
   notANumber = 'not-a-number',
   notAnInteger = 'not-an-integer',
   outOfRange = 'out-of-range',
   invalidMinValue = 'invalid-min-value',
-  invalidMaxValue = 'invalid-max-value',
-
-  // String
-  notAString = 'not-a-string'
-
-  // Object
-
-  // Array
+  invalidMaxValue = 'invalid-max-value'
 }
 
 export default ErrorCodes
