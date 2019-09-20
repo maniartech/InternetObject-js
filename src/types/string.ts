@@ -41,87 +41,10 @@ export default class StringDef implements TypeDef {
     const value = node ? node.value : undefined
 
     return _process(memberDef, value, node)
-
-    // if (!isToken(data)) {
-    //   throw new InternetObjectError(ErrorCodes.notAString)
-    // }
-
-    // const validatedData = doCommonTypeCheck(data, memberDef)
-    // if (validatedData !== data) return validatedData
-
-    // _validatePattern(memberDef, data.value, data)
-
-    // // choices check
-    // if (memberDef.choices !== undefined && data.value in memberDef.choices === false) {
-    //   throw new InternetObjectError(..._invlalidChoice(memberDef.path, data, memberDef.choices))
-    // }
-
-    // // Typeof check
-    // if (typeof data.value !== "string") {
-    //   throw new InternetObjectError(..._notAString(memberDef.path, data))
-    // }
-
-    // const maxLength = memberDef.maxLength
-
-    // // Max length check
-    // if (maxLength !== undefined && isNumber(maxLength)) {
-    //   if (data.value.length > maxLength) {
-    //     throw new InternetObjectError(..._invlalidMaxLength(memberDef.path, data, memberDef.maxLength))
-    //   }
-    // }
-
-    // const minLength = memberDef.minLength
-    // // Max length check
-    // if (minLength !== undefined && isNumber(minLength)) {
-    //   if (data.value.length > minLength) {
-    //     throw new InternetObjectError(..._invlalidMinLength(memberDef.path, data, memberDef.minLength))
-    //   }
-    // }
-
-    // return data.value
   }
 
   load(data: any, memberDef: MemberDef): string {
     return _process(memberDef, data)
-
-    //   if (!isString(data)) {
-    //     throw new InternetObjectError(ErrorCodes.notAString)
-    //   }
-
-    //   const validatedData = doCommonTypeCheckForObject(data, memberDef)
-    //   if (validatedData !== data) return validatedData
-
-    //   // TODO: Validate Data for subtypes
-    //   // _validatePattern(memberDef.type, data, memberDef)
-
-    //   // choices check
-    //   if (memberDef.choices !== undefined && data in memberDef.choices === false) {
-    //     throw new InternetObjectError(ErrorCodes.invalidChoice, `Invalid choice for ${ memberDef.path }.`)
-    //   }
-
-    //   // Typeof check
-    //   if (typeof data !== "string") {
-    //     throw new InternetObjectError(ErrorCodes.invalidValue, `Invalid value for ${ memberDef.path }.`)
-    //   }
-
-    //   const maxLength = memberDef.maxLength
-
-    //   // Max length check
-    //   if (maxLength !== undefined && isNumber(maxLength)) {
-    //     if (data.length > maxLength) {
-    //       throw new InternetObjectError(ErrorCodes.invalidMaxLength, `Invalid maxLength for ${ memberDef.path }.`)
-    //     }
-    //   }
-
-    //   const minLength = memberDef.minLength
-    //   // Max length check
-    //   if (minLength !== undefined && isNumber(minLength)) {
-    //     if (data.length > minLength) {
-    //       throw new InternetObjectError(ErrorCodes.invalidMinLength, `Invalid minLength for ${ memberDef.path }.`)
-    //     }
-    //   }
-
-    //   return data
   }
 }
 
@@ -131,15 +54,10 @@ function _process(memberDef: MemberDef, value: string, node?: Token): string {
   }
 
   const validatedData = doCommonTypeCheck(memberDef, value, node)
-  if (validatedData !== value) return validatedData
+  if (validatedData !== value || validatedData === undefined) return validatedData
 
   // TODO: Validate Data for subtypes
   _validatePattern(memberDef, value, node)
-
-  // choices check
-  // if (memberDef.choices !== undefined && data in memberDef.choices === false) {
-  //   throw new InternetObjectError(ErrorCodes.invalidChoice, `Invalid choice for ${ memberDef.path }.`)
-  // }
 
   // Typeof check
   if (typeof value !== 'string') {
