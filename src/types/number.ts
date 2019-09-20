@@ -41,7 +41,7 @@ class NumberDef implements TypeDef {
 }
 
 // Performs following validations.
-//  * - Value is number
+//  * - Value is number, int, int32, int16, byte
 //  * - Value is optional
 //  * - Value is nullable
 //  * - Value >= schema.min
@@ -49,7 +49,7 @@ class NumberDef implements TypeDef {
 //  * - Value is in choices
 function _validate(validator: any, memberDef: MemberDef, value: any, node?: Node) {
   const validatedData = doCommonTypeCheck(memberDef, value, node)
-  if (validatedData !== value) return validatedData
+  if (validatedData !== value || validatedData === undefined) return validatedData
 
   if (!isNumber(value)) {
     throw new InternetObjectValidationError(ErrorCodes.invalidValue)
@@ -64,7 +64,7 @@ function _validate(validator: any, memberDef: MemberDef, value: any, node?: Node
 
   if (memberDef.min !== undefined) {
     const min = memberDef.min
-    if (value < min) {
+    if (memberDef.min !== undefined && value < min) {
       throw new InternetObjectValidationError(..._invlalidMin(memberDef, value, node))
     }
   }
@@ -82,7 +82,7 @@ function _intValidator(min: number, max: number, memberDef: MemberDef, value: an
     throw new InternetObjectValidationError(..._notAnInt(memberDef, value, node))
   }
 
-  if (value < min || value > max) {
+  if ((min !== -1 && value < min) || (max !== -1 && value > max)) {
     throw new InternetObjectValidationError(..._outOfRange(memberDef, value, node))
   }
 }
@@ -110,7 +110,7 @@ function _getValidator(type: string) {
     }
     case 'int': {
       // Any non fraction number!
-      return _intValidator.bind(null, 0, 0)
+      return _intValidator.bind(null, -1, -1)
     }
     default: {
       console.assert(false, 'Invalid number type!')
