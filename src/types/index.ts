@@ -6,18 +6,19 @@ import StringDef from './string'
 
 import { TypedefRegistry } from './typedef-registry'
 
+TypedefRegistry.register('any', new AnyDef())
 
-TypedefRegistry.register("string", new StringDef("string"))
-TypedefRegistry.register("any", new AnyDef())
+TypedefRegistry.register('string', new StringDef('string'))
+TypedefRegistry.register('email', new StringDef('email'))
+TypedefRegistry.register('url', new StringDef('url'))
 
-TypedefRegistry.register("email", new StringDef("email"))
-TypedefRegistry.register("url", new StringDef("url"))
+TypedefRegistry.register('number', new NumberDef('number'))
+TypedefRegistry.register('byte', new NumberDef('byte'))
+TypedefRegistry.register('int16', new NumberDef('int16'))
+TypedefRegistry.register('int32', new NumberDef('int32'))
+TypedefRegistry.register('int', new NumberDef('int'))
 
-TypedefRegistry.register("number", new NumberDef("number"))
-TypedefRegistry.register("byte", new NumberDef("byte"))
-TypedefRegistry.register("int16", new NumberDef("int16"))
-TypedefRegistry.register("int32", new NumberDef("int32"))
-TypedefRegistry.register("int", new NumberDef("int"))
+TypedefRegistry.register('array', new ArrayDef())
+TypedefRegistry.register('object', new ObjectDef())
 
-TypedefRegistry.register("object", new ObjectDef())
-TypedefRegistry.register("array", new ArrayDef())
+// TODO: Include Date and DateTime Types
