@@ -4,7 +4,16 @@ import ErrorCodes from '../errors/io-error-codes'
 import { InternetObjectSyntaxError } from '../errors/io-error'
 import { isKeyVal, isToken } from '../utils/is'
 import { ASTParserTree, Token } from './'
-import { COMMA, CURLY_CLOSED, SQUARE_CLOSED, TILDE } from './constants'
+import {
+  COMMA,
+  CURLY_CLOSED,
+  SQUARE_CLOSED,
+  TILDE,
+  DATASEP,
+  SQUARE_OPEN,
+  CURLY_OPEN,
+  COLON
+} from './constants'
 
 const NOT_STARTED = 'not-started'
 const STARTED = 'started'
@@ -27,6 +36,7 @@ export default class ASTParser {
   private _text: string
   private _tokenizer: Tokenizer
   private _tree: any = {}
+  private _isFinalToken = false
 
   // TODO: Don't use public fields, use btter appraoch
   // such as readonly properties like parser.isFinished...
@@ -47,10 +57,19 @@ export default class ASTParser {
    * Parses the text.
    */
   parse = () => {
-    let token = this._tokenizer.read()
-    while (token) {
-      this._process(token)
-      token = this._tokenizer.read()
+    const tokenizer = this._tokenizer
+
+    while (!tokenizer.done) {
+      let token = tokenizer.read()
+      this._isFinalToken = tokenizer.done
+
+      if (token === null) {
+        // TODO: When the blank string is passed to the parser, tokenizer
+        // returns the null value
+        console.assert(false)
+      } else {
+        this._process(token)
+      }
     }
     this._finalize()
     // print("Parser", this)
@@ -131,8 +150,15 @@ export default class ASTParser {
 
     // New Token
     else if (token.value === COMMA) {
+      // console.warn(">>>", this._lastToken)
       // Empty Token Found
-      if (this._lastToken && this._lastToken.value === ',') {
+      // if (this._lastToken && this._lastToken.value === ',') {
+
+      if (
+        this._lastToken === undefined ||
+        [CURLY_OPEN, SQUARE_OPEN, COLON, DATASEP].indexOf(this._lastToken.value) > -1 ||
+        this._lastToken.value === ','
+      ) {
         this._addValue(undefined, token.index, token.row, token.col)
       }
     }
@@ -314,7 +340,10 @@ export default class ASTParser {
   private _checkValueSlot(value: any) {
     const token: any = this._lastToken
     if (token === undefined) return
+
     if (value === undefined) return // TODO: Check this, replaced null with undefined
+
+    if (isToken(value) && value.value === '') return
 
     if ([',', ':', '~', '{', '[', '---'].indexOf(token.value) === -1) {
       // TODO: Provide better error
