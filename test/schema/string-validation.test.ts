@@ -2,6 +2,17 @@ import 'jest'
 import InternetObject from '../../src'
 
 describe('String Patterns', () => {
+  it('Blank string', () => {
+    const obj = new InternetObject('')
+    expect(obj.data).toBe('')
+  })
+
+  it('All optional with no value', () => {
+    const obj = new InternetObject('"   "')
+    // console.warn(obj.data)
+    expect(obj.data).toBe('   ')
+  })
+
   it('valid pattern values', () => {
     const objStr = String.raw`
     v1:{string, pattern:@"[a-zA-Z\s]+"}
