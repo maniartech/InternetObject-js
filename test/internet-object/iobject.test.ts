@@ -97,6 +97,6 @@ describe('Internet Object', () => {
     const io = new InternetObject<Persona>(obj)
     // const json = JSON.parse('{"name": "aamir", "age":40}')
     // print("IO", io)
-    console.log(`Executed in ${new Date().getTime() - date.getTime()} milliseconds`)
+    // console.log(`Executed in ${new Date().getTime() - date.getTime()} milliseconds`)
   })
 })

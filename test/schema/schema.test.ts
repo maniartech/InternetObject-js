@@ -1,10 +1,9 @@
-import "jest"
+import 'jest'
 
-import InternetObject from "../../src";
+import InternetObject from '../../src'
 
-
-describe("Internet Object", () => {
-  it("tryout", () => {
+describe('Internet Object', () => {
+  it('tryout', () => {
     // expect(typeof IO.parse).toBe("function")
 
     const test = `
@@ -13,7 +12,8 @@ describe("Internet Object", () => {
     Spiderman,25, {5, Bond Street, New York, 50001 }, {10, 20, {"T", A, A}}, ["red", "blue", "green"]
     `
 
-    const s1 = 'name:string, age?:{number, min:30, null}, address:{street, city, zip}, test: {first, second, subtest: {x, y, z}}'
+    const s1 =
+      'name:string, age?:{number, min:30, null}, address:{street, city, zip}, test: {first, second, subtest: {x, y, z}}'
     const d1 = 'Spiderman, 25, { Bond Street, New York, 50001 }, {10, 20, {"T", A, A}}'
     const d2 = 'Ironman, 40,,N, a:b'
 
@@ -67,9 +67,9 @@ describe("Internet Object", () => {
     // print("Schema", s)
 
     interface Persona {
-      firstName:string,
-      lastName:string,
-      age?:number
+      firstName: string
+      lastName: string
+      age?: number
     }
 
     const obj = `
@@ -85,7 +85,7 @@ describe("Internet Object", () => {
     const str = '\\"aam,ir\\"'
     const s2 = '   "Aam",ir\\"                 , Maniar'
     const date = new Date()
-    const io = new InternetObject(s2)
+    // const io = new InternetObject(s2)
     // const json = JSON.parse('{"name": "aamir", "age":40}')
     // print("IO", io.data)
     // console.log(`Executed in ${(new Date()).getTime() - date.getTime()} milliseconds`)
