@@ -18,6 +18,8 @@ export default class DataParser {
    * TODO: Implementations on defs-references not yet finalized!
    */
   public static parse(dataTree: ASTParserTree, defs?: any) {
+    if (!isParserTree(dataTree)) return null
+
     if (dataTree.type === 'scalar') {
       const val = dataTree.values[0]
       if (isToken(val)) {
