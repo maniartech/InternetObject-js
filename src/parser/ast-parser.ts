@@ -280,6 +280,10 @@ export default class ASTParser {
       if (this._tokenizer.length === 1) {
         this._tree.data.type = 'scalar'
       }
+      // TODO: Add comment
+      else if (this._tree.data.type === 'object' && this._tree.data.values.length === 1) {
+        this._tree.data = this._tree.data.values[0]
+      }
     }
 
     if (this._isSchema) {
