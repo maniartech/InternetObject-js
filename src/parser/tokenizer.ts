@@ -8,7 +8,13 @@ import {
   TILDE,
   BACKSLASH,
   HASH,
-  AT
+  AT,
+  TRUE,
+  TRUE_F,
+  FALSE,
+  FALSE_F,
+  NULL,
+  NULL_F
 } from './constants'
 import { Token } from '.'
 import ErrorCodes from '../errors/io-error-codes'
@@ -104,9 +110,11 @@ export default class Tokenizer {
     token.token = this._text.substring(this._start, this._end + (this._isQuoatedString ? 1 : 1))
     // console.warn(">>>", this._text, JSON.stringify(this._value), this._index, this._start, this._end, this._value, token.token)
 
+    const confirmedString = token.token.endsWith(STRING_ENCLOSER)
+
     // Trim the white spaces only when the strings does not ends with
     // the string encloser.
-    if (!token.token.endsWith(STRING_ENCLOSER)) {
+    if (!confirmedString) {
       value = this._value.trim()
       // .replace(/^[\s\uFEFF\xA0]+/g, "") // Trim starting spaces
       // .replace(/[\s\uFEFF\xA0]+$/g, "") // Trim trailing spaces
@@ -128,13 +136,13 @@ export default class Tokenizer {
     else if (!isNaN(numVal) && value.trim() !== '') {
       value = numVal
       type = 'number'
-    } else if (value === 'T') {
+    } else if (confirmedString === false && (value === TRUE || value === TRUE_F)) {
       value = true
       type = 'boolean'
-    } else if (value === 'F') {
+    } else if (confirmedString === false && (value === FALSE || value === FALSE_F)) {
       value = false
       type = 'boolean'
-    } else if (value === 'N') {
+    } else if (confirmedString === false && (value === NULL || value === NULL_F)) {
       value = null
       type = 'null'
     }
