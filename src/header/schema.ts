@@ -1,3 +1,5 @@
+import '../types'
+
 import DataParser from '../data'
 import ASTParser from '../parser/ast-parser'
 import ErrorCodes from '../errors/io-error-codes'
@@ -70,6 +72,8 @@ const _getCompileValue = (value: ParserTreeValue, path?: string): any => {
         path
       }
     }
+
+    console.warn(path, TypedefRegistry.types, isDataType(value.value))
     // TODO: Throw better  error
     throw new InternetObjectError('invalid-datatype', 'Invalid data type', value)
   }
