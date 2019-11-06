@@ -72,8 +72,6 @@ const _getCompileValue = (value: ParserTreeValue, path?: string): any => {
         path
       }
     }
-
-    console.warn(path, TypedefRegistry.types, isDataType(value.value))
     // TODO: Throw better  error
     throw new InternetObjectError('invalid-datatype', 'Invalid data type', value)
   }
@@ -175,6 +173,7 @@ const _compileMemberDefTree = (root: ASTParserTree, path?: string) => {
 
 const _compileArraySchema = (root: ASTParserTree, path?: string) => {
   const array = root.values
+  console.warn('>>>', root)
   if (array.length > 1) {
     // TODO: Throw better error
     throw new InternetObjectError('invalid-array-schema')
@@ -218,7 +217,7 @@ const _compileObjectSchema = (root: ASTParserTree, path?: string) => {
     }
     // Item = KeyVal
     else if (isKeyVal(item)) {
-      const { name, optional } = _parseKeyForOptional(item.key)
+      const { name, optional, nullable } = _parseKey(item.key)
       const currentPath = _concatPath(name, path)
       const value: any = _getCompileValue(item.value, currentPath)
       schema.keys.push(name)
@@ -226,22 +225,25 @@ const _compileObjectSchema = (root: ASTParserTree, path?: string) => {
       // When value is a memberDef
       if (value.type) {
         value.optional = value.optional || optional || false
+        value.null = value.null || nullable || false
         value.path = currentPath
         schema.defs[name] = value
       } else {
         schema.defs[name] = {
           type: value,
           optional: optional || false,
+          null: nullable || false,
           path: currentPath
         }
       }
     } else if (isToken(item)) {
-      const { name, optional } = _parseKeyForOptional(item.value)
+      const { name, optional, nullable } = _parseKey(item.value)
       const currentPath = _concatPath(name, path)
       schema.keys.push(name)
       schema.defs[name] = {
         type: 'any',
         optional: optional || false,
+        null: nullable || false,
         path: currentPath
       }
     }
@@ -264,14 +266,31 @@ const _isMemberDef = (root: ASTParserTree) => {
   return false
 }
 
-const _parseKeyForOptional = (key: string) => {
-  if (key.endsWith('?')) {
+const _parseKey = (key: string) => {
+  const optionalExp = /\?$/
+  const nullExp = /\*$/
+  const optNullExp = /\?\*$/
+
+  if (key.match(optNullExp)) {
+    return {
+      name: key.substr(0, key.length - 2),
+      optional: true,
+      nullable: true
+    }
+  } else if (key.match(nullExp)) {
     return {
       name: key.substr(0, key.length - 1),
-      optional: true
+      optional: false,
+      nullable: true
+    }
+  } else if (key.match(optionalExp) !== null) {
+    return {
+      name: key.substr(0, key.length - 1),
+      optional: true,
+      nullable: false
     }
   }
-  return { name: key, optional: false }
+  return { name: key, optional: false, nullable: false }
 }
 
 // Concats the path
