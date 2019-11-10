@@ -39,7 +39,10 @@ enum ErrorCodes {
   notAnInteger = 'not-an-integer',
   outOfRange = 'out-of-range',
   invalidMinValue = 'invalid-min-value',
-  invalidMaxValue = 'invalid-max-value'
+  invalidMaxValue = 'invalid-max-value',
+
+  // Object
+  invalidObject = 'invalid-object'
 }
 
 export default ErrorCodes
