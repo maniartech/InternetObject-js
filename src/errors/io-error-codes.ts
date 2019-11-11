@@ -4,6 +4,7 @@ enum ErrorCodes {
   tokenNotReady = 'token-not-ready',
   invalidValue = 'invalid-value',
   invalidArray = 'invalid-array',
+  invalidObject = 'invalid-object',
   valueRequired = 'value-required',
   nullNotAllowed = 'null-not-allowed',
 
@@ -39,10 +40,7 @@ enum ErrorCodes {
   notAnInteger = 'not-an-integer',
   outOfRange = 'out-of-range',
   invalidMinValue = 'invalid-min-value',
-  invalidMaxValue = 'invalid-max-value',
-
-  // Object
-  invalidObject = 'invalid-object'
+  invalidMaxValue = 'invalid-max-value'
 }
 
 export default ErrorCodes
