@@ -5,6 +5,22 @@ import { print } from '../../src/utils/index'
 import ASTParser from '../../src/parser/ast-parser'
 
 describe('Internet Object', () => {
+  it('Structure', () => {
+    expect(
+      new InternetObject(String.raw`
+    name, age, gender
+    ---
+    Spiderman, 25, M
+    `).data.name
+    ).toBe('Spiderman')
+  })
+
+  it('Types', () => {
+    expect(new InternetObject('').data).toBe('')
+    expect(new InternetObject('N').data).toBeNull()
+    expect(new InternetObject('10').data).toBe(10)
+  })
+
   it('tryout', () => {
     const test = `
     name:{string}, age?:{number, choices:[30, 20, 10]}, address:{num:{number, max:10}, street, city, zip}, test: {first, second, subtest: {x, y, z}}, colors:[string]

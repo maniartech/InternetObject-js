@@ -37,14 +37,32 @@ export default class StringDef implements TypeDef {
   }
 
   parse(data: ParserTreeValue, memberDef: MemberDef): string {
-    const node = isToken(data) ? data : undefined
-    const value = node ? node.value : undefined
-
-    return _process(memberDef, value, node)
+    return this.validate(data, memberDef)
   }
 
   load(data: any, memberDef: MemberDef): string {
-    return _process(memberDef, data)
+    return this.validate(data, memberDef)
+  }
+
+  serialize(data: string, memberDef: MemberDef): string {
+    let value = this.validate(data, memberDef)
+
+    const regexSep = /[~,:\{\}\[\]\@]|(?:---)/g
+
+    // When a separator is found in the data,
+    // enclose the result string in a quoration
+    if (regexSep.exec(value) !== null) {
+      value = '"' + value + '"'
+    }
+
+    return value
+  }
+
+  validate(data: any, memberDef: MemberDef): string {
+    const node = isToken(data) ? data : undefined
+    const value = node ? node.value : data
+
+    return _process(memberDef, value, node)
   }
 }
 

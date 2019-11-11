@@ -76,6 +76,27 @@ class ObjectDef implements TypeDef {
     // return object
   }
 
+  public serialize = (data: any, memberDef: MemberDef): string => {
+    if (memberDef.type !== 'object') {
+      throw new InternetObjectError(IOErrorCodes.invalidObject)
+    }
+
+    const validatedData = doCommonTypeCheck(memberDef, data)
+
+    const serialized: string[] = []
+    const schema = memberDef.schema
+    schema.keys.forEach((key: string, index: number) => {
+      const memberDef: MemberDef = schema.defs[key]
+      const typeDef = TypedefRegistry.get(memberDef.type)
+      const value = validatedData[key]
+
+      const serializedValue = typeDef.serilize(value, memberDef)
+      serialized.push(serializedValue)
+    })
+
+    return `{${serialized.join(',')}}`
+  }
+
   private _process = (memberDef: MemberDef, value: any, node?: Node) => {
     const validatedData = doCommonTypeCheck(memberDef, value, node)
     if (validatedData !== value || value === undefined) return validatedData
@@ -84,7 +105,6 @@ class ObjectDef implements TypeDef {
     // if (!isParserTree(data)) throw new Error("invalid-value")
 
     const schema = memberDef.schema
-
     const object: any = {}
 
     schema.keys.forEach((key: string, index: number) => {
