@@ -171,10 +171,25 @@ const _compileMemberDefTree = (root: ASTParserTree, path?: string) => {
   return memberDef
 }
 
-const _compileArraySchema = (root: ASTParserTree, path?: string) => {
+const _compileArraySchema = (root: ASTParserTree, path?: string): any => {
   const array = root.values
-  console.warn('>>>', root)
+  const arrayPath = _concatPath('[', path)
   if (array.length > 1) {
+    // console.warn('>>>', JSON.stringify(root, null, 2))
+
+    if (_isMemberDef(root)) {
+      return _compileMemberDefTree(root, _concatPath('[', path))
+    }
+    if (isParserTree(root)) {
+      return {
+        type: root.type,
+        schema:
+          root.type === 'object'
+            ? _compileObjectSchema(root, arrayPath)
+            : _compileArraySchema(root, arrayPath),
+        path: arrayPath
+      }
+    }
     // TODO: Throw better error
     throw new InternetObjectError('invalid-array-schema')
   }
