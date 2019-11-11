@@ -49,6 +49,9 @@ export default class AnyDef implements TypeDef {
 }
 
 const _serialize = (data: any, memberDef: MemberDef, isRoot: boolean): string => {
+  const validatedData = doCommonTypeCheck(memberDef, data)
+  if (validatedData !== data) return validatedData
+
   // data is a string
   if (isString(data)) {
     return TypedefRegistry.get('string').serialize(data, { ...memberDef, type: 'string' })
