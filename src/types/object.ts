@@ -76,7 +76,7 @@ class ObjectDef implements TypeDef {
     // return object
   }
 
-  public serialize = (data: any, memberDef: MemberDef): string => {
+  public serialize = (data: any, memberDef: MemberDef, isRoot: boolean = false): string => {
     if (memberDef.type !== 'object') {
       throw new InternetObjectError(IOErrorCodes.invalidObject)
     }
@@ -89,11 +89,13 @@ class ObjectDef implements TypeDef {
       const memberDef: MemberDef = schema.defs[key]
       const typeDef = TypedefRegistry.get(memberDef.type)
       const value = validatedData[key]
-
-      const serializedValue = typeDef.serilize(value, memberDef)
+      const serializedValue = typeDef.serialize(value, memberDef)
       serialized.push(serializedValue)
     })
 
+    if (isRoot) {
+      return serialized.join(',')
+    }
     return `{${serialized.join(',')}}`
   }
 
