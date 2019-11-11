@@ -76,7 +76,7 @@ class ArrayDef implements TypeDef {
   }
 
   public serialize = (data: any, memberDef: MemberDef): string => {
-    if (memberDef.type !== 'object') {
+    if (memberDef.type !== 'array') {
       throw new InternetObjectError(ErrorCodes.invalidArray)
     }
 
