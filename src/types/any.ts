@@ -8,6 +8,7 @@ import { TypedefRegistry } from './typedef-registry'
 import { InternetObjectError } from '../errors/io-error'
 import ErrorCodes from '../errors/io-error-codes'
 import { appendPath } from '../utils'
+import { isBoolean } from '../../../src-with-defs/utils/is'
 
 /**
  * Represents the `any` type, performs the following validations.
@@ -60,6 +61,11 @@ const _serialize = (data: any, memberDef: MemberDef, isRoot: boolean): string =>
   // data is a number
   if (isNumber(data)) {
     return TypedefRegistry.get('number').serialize(data, { ...memberDef, type: 'number' })
+  }
+
+  // data is a boolean
+  if (isBoolean(data)) {
+    return TypedefRegistry.get('bool').serialize(data, { ...memberDef, type: 'bool' })
   }
 
   // data is an array
