@@ -56,5 +56,5 @@ Outputs following object.
 
 For more information about Internet Object architecture - InternetObject.org
 
-> **MIT License:**
+> **ISC License:**
 © ManiarTechⓇ 2018-2019
