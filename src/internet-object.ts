@@ -53,6 +53,11 @@ export class InternetObject<T = any> {
     return this._header.schema
   }
 
+  public serialize(): string {
+    //
+    return ''
+  }
+
   private _data: T
   /**
    * Gets the data section of the object
@@ -60,6 +65,10 @@ export class InternetObject<T = any> {
   public get data(): T {
     return this._data
   }
+}
+
+function _serizlie(data: any, schema: Schema): string {
+  return ''
 }
 
 function _getCompiledSchema(schema?: string | Schema) {

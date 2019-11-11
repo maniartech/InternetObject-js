@@ -1,8 +1,11 @@
 import 'jest'
+
+import InternetObject from '../src'
 import Tokenizer from '../src/parser/tokenizer'
 import { print } from '../src/utils/index'
 import ASTParser from '../src/parser/ast-parser'
-import InternetObject from '../src'
+import Schema from '../src/header/schema'
+import AnyDef from '../src/types/any'
 
 describe('Trial Tests', () => {
   it('Blank string', () => {
@@ -12,12 +15,52 @@ describe('Trial Tests', () => {
 
     // `)).data).toBe(null)
 
-    const parser = new ASTParser(String.raw`   "\n \t"   `)
-    parser.parse()
+    // const parser = new ASTParser(String.raw`   "\n \t"   `)
+    // parser.parse()
 
     // console.warn(">>>>", parser.data)
+    const s = String.raw`  {
+      "name":"string",
+      "age?*":"int",
+      "active?":"any",
+      address: {city, state},
+      addresses: [{city, state}],
+      "tags":[{string, minLength:5}],
+      "notes"
+    } `
+    const o: any = String.raw`Aamir, 40, T, [a, b]`
 
-    // expect((new InternetObject(String.raw` " Hello World " `)).data).toBe(" Hello World ")
+    const x = '[a, b, c]'
+    const parser = new ASTParser(s)
+    parser.parse()
+
+    const schema = Schema.compile(s)
+    // print(schema)
+
+    const def = new AnyDef()
+    console.log(
+      def.serialize(
+        {
+          name: 'aamir',
+          age: 20,
+          address: {
+            street: 'Bond Street',
+            city: 'New York',
+            lnglat: [10001, 20002]
+          },
+          test: 'mm,n',
+          tags: ['a', 'b', 'c']
+        },
+        {
+          type: 'any',
+          path: 'test'
+        }
+      )
+    )
+
+    // print(parser.data)
+    // console.log(new InternetObject(o, s))
+    // expect((new InternetObject(null)).data).toBe(" Hello World ")
   })
 
   // it("String with surrounding white spaces", () => {

@@ -1,4 +1,4 @@
-import { InternetObjectValidationError, ErrorArgs } from '../errors/io-error'
+import { InternetObjectValidationError, ErrorArgs, InternetObjectError } from '../errors/io-error'
 import ErrorCodes from '../errors/io-error-codes'
 import { ParserTreeValue, Node } from '../parser/index'
 import { Token } from '../parser'
@@ -6,6 +6,8 @@ import { isNumber, isToken, isNode } from '../utils/is'
 import MemberDef from './memberdef'
 import TypeDef from './typedef'
 import { doCommonTypeCheck } from './utils'
+
+const NUMBER_TYPES = ['number', 'int', 'int32', 'int16', 'byte']
 
 // age?: { number, true, 10, min:10, max:20}
 
@@ -29,14 +31,24 @@ class NumberDef implements TypeDef {
   }
 
   parse(data: ParserTreeValue, memberDef: MemberDef): number {
-    const node = isToken(data) ? data : undefined
-    const value = node ? node.value : undefined
-
-    return _validate(this._validator, memberDef, value, node)
+    return this.validate(data, memberDef)
   }
 
   load(data: any, memberDef: MemberDef): number {
-    return _validate(this._validator, memberDef, data)
+    return this.validate(data, memberDef)
+  }
+
+  serialize = (data: any, memberDef: MemberDef): string => {
+    if (NUMBER_TYPES.indexOf(memberDef.type) === -1) {
+      throw new InternetObjectError(ErrorCodes.invalidType)
+    }
+    return this.validate(data, memberDef).toString()
+  }
+
+  validate(data: any, memberDef: MemberDef): number {
+    const node = isToken(data) ? data : undefined
+    const value = node ? node.value : data
+    return _validate(this._validator, memberDef, value, node)
   }
 }
 

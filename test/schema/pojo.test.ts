@@ -1,6 +1,5 @@
 import 'jest'
 import InternetObject from '../../src'
-import { print } from '../../src/utils/index'
 
 describe('pojo load', () => {
   it('load', () => {
@@ -13,8 +12,6 @@ describe('pojo load', () => {
       },
       schema
     )
-
-    // console.warn(">>>", obj.data)
 
     expect(obj).toBeInstanceOf(InternetObject)
     expect(obj.data.name).toBe('John Doe')

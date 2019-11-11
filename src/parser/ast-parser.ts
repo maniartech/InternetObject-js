@@ -341,6 +341,7 @@ export default class ASTParser {
     }
   }
 
+  // Ensures values can only be added after a separator
   private _checkValueSlot(value: any) {
     const token: any = this._lastToken
     if (token === undefined) return
@@ -351,11 +352,7 @@ export default class ASTParser {
 
     if ([',', ':', '~', '{', '[', '---'].indexOf(token.value) === -1) {
       // TODO: Provide better error
-      throw new InternetObjectSyntaxError(
-        ErrorCodes.expectingSeparator,
-        `Error while parsing ${value.token}`,
-        value
-      )
+      throw new InternetObjectSyntaxError(ErrorCodes.expectingSeparator, '', value)
     }
   }
 
