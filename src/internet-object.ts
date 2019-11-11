@@ -7,6 +7,7 @@ import ErrorCodes from './errors/io-error-codes'
 import { isString } from './utils/is'
 import { SCHEMA } from './parser/constants'
 import { InternetObjectError } from './errors/io-error'
+import InternetObjectSerializer from './serializer/index'
 
 /**
  * Represents the InternetObject. A main facade class that
@@ -54,8 +55,7 @@ export class InternetObject<T = any> {
   }
 
   public serialize(): string {
-    //
-    return ''
+    return InternetObjectSerializer.serialize(this)
   }
 
   private _data: T
@@ -65,10 +65,6 @@ export class InternetObject<T = any> {
   public get data(): T {
     return this._data
   }
-}
-
-function _serizlie(data: any, schema: Schema): string {
-  return ''
 }
 
 function _getCompiledSchema(schema?: string | Schema) {

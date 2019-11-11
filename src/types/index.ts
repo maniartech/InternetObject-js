@@ -1,12 +1,14 @@
 import AnyDef from './any'
 import ArrayDef from './array'
+import BooleanDef from './boolean'
 import NumberDef from './number'
 import ObjectDef from './object'
 import StringDef from './string'
-
 import { TypedefRegistry } from './typedef-registry'
 
 TypedefRegistry.register('any', new AnyDef())
+
+TypedefRegistry.register('bool', new BooleanDef('bool'))
 
 TypedefRegistry.register('string', new StringDef('string'))
 TypedefRegistry.register('email', new StringDef('email'))
