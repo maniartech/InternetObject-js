@@ -4,6 +4,7 @@ enum ErrorCodes {
   tokenNotReady = 'token-not-ready',
   invalidValue = 'invalid-value',
   invalidArray = 'invalid-array',
+  invalidObject = 'invalid-object',
   valueRequired = 'value-required',
   nullNotAllowed = 'null-not-allowed',
 
