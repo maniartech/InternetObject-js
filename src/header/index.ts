@@ -76,8 +76,9 @@ export default class Header {
    * @param header The header string that needs to be compiled!
    * @param schema The schema
    */
-  public static compile(header: string | ASTParserTree, schema?: Schema): Header {
+  public static compile(header: string | ASTParserTree, schema?: Schema | string): Header {
     let tree: ASTParserTree
+    const newHeader = new Header()
 
     if (isString(header)) {
       const parser = new ASTParser(header, true)
@@ -91,19 +92,27 @@ export default class Header {
     // collection.
     if (tree.type === 'object') {
       const compiledSchema = Schema.compile(tree)
-      const header = new Header()
-      return header.set(SCHEMA, compiledSchema)
+      newHeader.set(SCHEMA, compiledSchema)
     }
-
     // If it not collection, throw and invalid header error
-    if (tree.type !== 'collection') {
+    else if (tree.type !== 'collection') {
       throw new InternetObjectError(ErrorCodes.invlidHeader, 'Invalid value found in header')
+    } else {
+      // Setup new header
+      const { keys, map } = _parseCollection(tree)
+      newHeader._keys = keys
+      newHeader._map = map
     }
 
-    const newHeader = new Header()
-    const { keys, map } = _parseCollection(tree)
-    newHeader._keys = keys
-    newHeader._map = map
+    // Override the schema with the supplied one
+    if (schema) {
+      let compiledSchema = schema
+      if (isString(schema)) {
+        compiledSchema = Schema.compile(tree)
+      }
+      newHeader.set(SCHEMA, compiledSchema)
+    }
+
     return newHeader
   }
 }
@@ -117,6 +126,7 @@ function _parseCollection(tree: ASTParserTree): any {
 
     // Verify item is an object and contains only 1 key-value pair!
     if (!isParserTree(item)) {
+      console.warn('>>', tree)
       // TODO: Throw better error
       throw new InternetObjectError(ErrorCodes.invalidHeaderItem)
     }

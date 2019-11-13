@@ -116,12 +116,17 @@ function _parse(text: string, schema?: string | Schema) {
 
   let header: Header
   if (parser.header) {
-    header =
-      compiledSchema === null
-        ? Header.compile(parser.header)
-        : Header.compile(parser.header, compiledSchema)
+    // console.warn(">>>", compiledSchema, parser.header)
 
-    compiledSchema = header.schema ? header.schema : compiledSchema
+    if (compiledSchema === null) {
+      header = Header.compile(parser.header)
+    } else {
+      header = Header.compile(parser.header, compiledSchema)
+    }
+
+    if (header.schema) {
+      compiledSchema = header.schema
+    }
   } else {
     header = compiledSchema === null ? new Header() : new Header().set(SCHEMA, compiledSchema)
   }
