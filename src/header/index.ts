@@ -1,23 +1,22 @@
-import DataParser from '../data';
-import { InternetObjectError } from '../errors/io-error';
-import ErrorCodes from '../errors/io-error-codes';
-import { ASTParserTree } from '../parser';
-import { SCHEMA } from '../parser/constants';
-import { isKeyVal, isParserTree, isString, isToken } from '../utils/is';
-import Schema from './schema';
-import ASTParser from '../parser/ast-parser';
-import { print } from '../utils';
+import DataParser from '../data'
+import { InternetObjectError } from '../errors/io-error'
+import ErrorCodes from '../errors/io-error-codes'
+import { ASTParserTree } from '../parser'
+import { SCHEMA } from '../parser/constants'
+import { isKeyVal, isParserTree, isString, isToken } from '../utils/is'
+import Schema from './schema'
+import ASTParser from '../parser/ast-parser'
+import { print } from '../utils'
 
 export default class Header {
+  private _keys: any = []
+  private _map: any = {}
 
-  private _keys:any = []
-  private _map:any = {}
-
-  public length (): number {
+  public length(): number {
     return this._keys.length
   }
 
-  public get keys (): string[] {
+  public get keys(): string[] {
     return [...this._keys]
   }
 
@@ -26,7 +25,7 @@ export default class Header {
    * @param key {string} The key
    * @returns Value
    */
-  public get (key:string):any {
+  public get(key: string): any {
     return this._map[key]
   }
 
@@ -35,7 +34,7 @@ export default class Header {
    * @param key {string} The header key
    * @param val {any} The associated value for that key in the header.
    */
-  public set(key:string, val:any):Header {
+  public set(key: string, val: any): Header {
     if (key in this._map === false) {
       this._keys.push(key)
     }
@@ -47,8 +46,8 @@ export default class Header {
    * Removes the specified key from the header.
    * @param key {string} The key of the header item, which needs to be removed.
    */
-  public remove(key:string):Header {
-    if(key in this._map === false) return this
+  public remove(key: string): Header {
+    if (key in this._map === false) return this
     const index = this._keys.indexOf(key)
     this._keys.splice(index)
     delete this._map[key]
@@ -58,14 +57,14 @@ export default class Header {
   /**
    * Gets schema
    */
-  public get schema (): Schema {
-    return this._map[SCHEMA]
+  public get schema(): Schema {
+    return this._map[SCHEMA] || null
   }
 
   /**
    * Sets schema
    */
-  public set schema (schema:Schema) {
+  public set schema(schema: Schema) {
     if (!this.schema) {
       this._keys.push(SCHEMA)
     }
@@ -77,46 +76,43 @@ export default class Header {
    * @param header The header string that needs to be compiled!
    * @param schema The schema
    */
-  public static compile(header:string|ASTParserTree, schema?:Schema):Header {
-
-    let tree:ASTParserTree
+  public static compile(header: string | ASTParserTree, schema?: Schema): Header {
+    let tree: ASTParserTree
 
     if (isString(header)) {
       const parser = new ASTParser(header, true)
       parser.parse()
       tree = parser.header
-    }
-    else {
+    } else {
       tree = header
     }
 
     // If it is object, it must be schema. Then convert it into
     // collection.
-    if (tree.type === "object") {
+    if (tree.type === 'object') {
       const compiledSchema = Schema.compile(tree)
-      const header = new Header
-      return (header).set(SCHEMA, compiledSchema)
+      const header = new Header()
+      return header.set(SCHEMA, compiledSchema)
     }
 
     // If it not collection, throw and invalid header error
-    if (tree.type !== "collection") {
-      throw new InternetObjectError(ErrorCodes.invlidHeader, "Invalid value found in header")
+    if (tree.type !== 'collection') {
+      throw new InternetObjectError(ErrorCodes.invlidHeader, 'Invalid value found in header')
     }
 
     const newHeader = new Header()
-    const {keys, map} = _parseCollection(tree)
+    const { keys, map } = _parseCollection(tree)
     newHeader._keys = keys
     newHeader._map = map
     return newHeader
   }
 }
 
+function _parseCollection(tree: ASTParserTree): any {
+  const map: any = {}
+  const keys: string[] = []
 
-function _parseCollection (tree:ASTParserTree):any {
-  const map:any = {}
-  const keys:string[] = []
-
-  for(let index=0; index < tree.values.length; index += 1) {
+  for (let index = 0; index < tree.values.length; index += 1) {
     const item = tree.values[index]
 
     // Verify item is an object and contains only 1 key-value pair!
@@ -125,13 +121,13 @@ function _parseCollection (tree:ASTParserTree):any {
       throw new InternetObjectError(ErrorCodes.invalidHeaderItem)
     }
 
-    if (item.type !== "object") {
+    if (item.type !== 'object') {
       // TODO: Throw better error
       throw new InternetObjectError(ErrorCodes.invalidHeaderItem)
     }
 
     if (item.values.length !== 1) {
-      console.log("***", item, item.values)
+      console.log('***', item, item.values)
       // TODO: Throw better error
       throw new InternetObjectError(ErrorCodes.invalidHeaderItem)
     }
@@ -147,11 +143,9 @@ function _parseCollection (tree:ASTParserTree):any {
     // When key is a SCHEMA, compile the value and create schema
     if (key === SCHEMA) {
       map[key] = Schema.compile(value)
-    }
-    else if (isParserTree(value)) {
+    } else if (isParserTree(value)) {
       map[key] = DataParser.parse(value)
-    }
-    else if (isToken(value)) {
+    } else if (isToken(value)) {
       map[key] = value.value
     }
     // When value is null or of KeyVal type!
@@ -160,9 +154,7 @@ function _parseCollection (tree:ASTParserTree):any {
       throw new InternetObjectError(ErrorCodes.invalidHeaderItem)
     }
     keys.push(key)
-
   }
 
   return { keys, map }
 }
-

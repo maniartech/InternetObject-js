@@ -22,41 +22,59 @@ describe('Trial Tests', () => {
     const s = String.raw`  {
       "name":"string",
       "age?*":"int",
-      "active?":"any",
-      address: {city, state},
-      addresses: [{city, state}],
-      "tags":[{string, minLength:5}],
-      "notes"
+      "active?":"bool",
+      "tags":[{string, maxLength:5}]
     } `
-    const o: any = String.raw`Aamir, 40, T, [a, b]`
+    const o: any = String.raw`Aamir, 40,, [a, b]`
 
-    const x = '[a, b, c]'
-    const parser = new ASTParser(s)
-    parser.parse()
+    // const io = new InternetObject(o, s)
 
-    const schema = Schema.compile(s)
+    const io = new InternetObject(
+      {
+        name: 'Aamir, Maniar',
+        age: 30,
+        tags: ['A', 'B'],
+        active: false
+      },
+      s
+    )
+
+    // console.log(io.serialize())
+
+    const bool = new InternetObject(String.raw`
+      v1:byte
+      ---
+      0
+      `)
+    console.log('>>>', bool.data)
+
+    // const x = '[a, b, c]'
+    // const parser = new ASTParser(s)
+    // parser.parse()
+
+    // const schema = Schema.compile(s)
     // print(schema)
 
-    const def = new AnyDef()
-    console.log(
-      def.serialize(
-        {
-          name: 'aamir',
-          age: 20,
-          address: {
-            street: 'Bond Street',
-            city: 'New York',
-            lnglat: [10001, 20002]
-          },
-          test: 'mm,n',
-          tags: ['a', 'b', 'c']
-        },
-        {
-          type: 'any',
-          path: 'test'
-        }
-      )
-    )
+    // const def = new AnyDef()
+    // console.log(
+    //   def.serialize(
+    //     {
+    //       name: 'aamir',
+    //       age: 20,
+    //       address: {
+    //         street: 'Bond Street',
+    //         city: 'New York',
+    //         lnglat: [10001, 20002]
+    //       },
+    //       test: 'mm,n',
+    //       tags: ['a', 'b', 'c']
+    //     },
+    //     {
+    //       type: 'any',
+    //       path: 'test'
+    //     }
+    //   )
+    // )
 
     // print(parser.data)
     // console.log(new InternetObject(o, s))

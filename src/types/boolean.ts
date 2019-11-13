@@ -43,7 +43,8 @@ export default class BooleanDef implements TypeDef {
     const value = node ? node.value : data
 
     const validatedData = doCommonTypeCheck(memberDef, value, node)
-    if (validatedData !== value || validatedData === undefined) return validatedData
+    if (validatedData !== value || validatedData === null || validatedData === undefined)
+      return validatedData
 
     if (!isBoolean(value)) {
       throw new InternetObjectValidationError(

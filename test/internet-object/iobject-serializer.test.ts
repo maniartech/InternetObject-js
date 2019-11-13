@@ -5,20 +5,16 @@ import { print } from '../../src/utils/index'
 import ASTParser from '../../src/parser/ast-parser'
 
 describe('Internet Object', () => {
-  it('Structure', () => {
+  it('serializes into IO format', () => {
     const io = new InternetObject(String.raw`
       name, age, gender
       ---
       Spiderman, 25, M
       `)
-    expect(io.data).toBeDefined()
-    expect(io.header).toBeDefined()
-    expect(io.schema).toBeDefined()
-  })
 
-  it('Types', () => {
-    expect(new InternetObject('').data).toBe('')
-    expect(new InternetObject('N').data).toBeNull()
-    expect(new InternetObject('10').data).toBe(10)
+    const serialized = io.serialize()
+
+    expect(typeof serialized).toBe('string')
+    expect(serialized).toBe('Spiderman,25,M')
   })
 })
