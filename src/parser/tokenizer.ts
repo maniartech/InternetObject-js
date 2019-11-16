@@ -216,6 +216,16 @@ export default class Tokenizer {
 
     // Handle white-spaces
     if (isWS) {
+      // Normalize newline to \n char when other newline modes such as '\r\n' & '\r' found
+      if (ch === '\r') {
+        // Ignore current \r when a newline found in \r\n pair
+        if (nextCh === '\n') {
+          return this._next()
+        }
+        ch = '\n' // Else replace \r with \n
+        isNewLine = true
+      }
+
       if (this._tokenLength > 0) this._value += ch
 
       // Update values in case of new line
