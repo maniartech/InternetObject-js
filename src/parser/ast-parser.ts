@@ -72,7 +72,6 @@ export default class ASTParser {
       }
     }
     this._finalize()
-    // print("Parser", this)
   }
 
   /**
@@ -106,7 +105,8 @@ export default class ASTParser {
   }
 
   // Process the tokens and build ast.
-  private _process = (token: Token, isFinalToken: boolean = false) => {
+  private _process = (token: Token) => {
+    const isFinalToken = this._isFinalToken
     let stack = this._stack
 
     this.status = STARTED
@@ -136,7 +136,7 @@ export default class ASTParser {
         ['string', 'number', 'boolean'].indexOf(typeof lastToken.value) > -1
       ) {
         obj.values[obj.values.length - 1] = {
-          key: lastToken.value,
+          key: lastToken.value, // TODO: Test check what happens when an int, null or bool is passed as key
           value: undefined, // No value
           index: lastToken.index,
           row: lastToken.row,
@@ -150,13 +150,18 @@ export default class ASTParser {
 
     // New Token
     else if (token.value === COMMA) {
-      // console.warn(">>>", this._lastToken)
-      // Empty Token Found
-      // if (this._lastToken && this._lastToken.value === ',') {
-
-      if (
+      // Handle consicutive ending commas such as `test,,`
+      if (isFinalToken && this._lastToken !== undefined && this._lastToken.value === ',') {
+        this._addValue(undefined, this._lastToken.index, this._lastToken.row, this._lastToken.col)
+        this._addValue(undefined, token.index, token.row, token.col)
+      } else if (
+        // When the last token is comma such as `value,`
+        isFinalToken ||
+        // When the first token is comma such as `,value`
         this._lastToken === undefined ||
+        // When comma is found after opening of braces, colon or datasep operators
         [CURLY_OPEN, SQUARE_OPEN, COLON, DATASEP].indexOf(this._lastToken.value) > -1 ||
+        // When the comma is found just after another comma
         this._lastToken.value === ','
       ) {
         this._addValue(undefined, token.index, token.row, token.col)
@@ -268,6 +273,8 @@ export default class ASTParser {
 
     this._processObject()
 
+    // console.warn(JSON.stringify(this._tree, null, 2))
+
     // TODO: Consider the scenario when more than 1 item exists in the stack!
     if (this._stack.length > 1) {
       console.warn('Invalid Stack', this._stack)
@@ -277,7 +284,7 @@ export default class ASTParser {
       this._tree.data = this._tree.header
       delete this._tree.header
 
-      if (this._tokenizer.length === 1) {
+      if (this.data.values.length === 1) {
         this._tree.data.type = 'scalar'
       }
       // TODO: Add comment
