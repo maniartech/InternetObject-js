@@ -19,7 +19,7 @@ describe('Data Parser Tests', () => {
     expect(new InternetObject(String.raw`"  \n  \t "`).data).toBe('  \n  \t ')
   })
 
-  it('handles string with empty commas', () => {
+  it('handles empty ending commas', () => {
     expect(new InternetObject(String.raw`  \n \t , `).data[0]).toBe('\\n \\t')
     expect(new InternetObject(String.raw`  \n \t , `).data[1]).toBe(undefined)
     expect(new InternetObject(String.raw`  \n \t ,,, `).data[0]).toBe('\\n \\t')
