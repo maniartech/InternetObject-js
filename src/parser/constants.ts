@@ -9,6 +9,7 @@ export const UNSURE = 'unsure'
 export const EMPTY = 'empty'
 export const HYPHEN = '-'
 export const SPACE = ' '
+export const QUOTE = "'"
 export const AT = '@'
 export const NEW_LINE = '\n'
 

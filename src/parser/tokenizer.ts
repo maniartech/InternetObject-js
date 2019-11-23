@@ -5,6 +5,7 @@ import {
   SEPARATORS,
   SPACE,
   STRING_ENCLOSER,
+  QUOTE,
   TILDE,
   BACKSLASH,
   HASH,
@@ -39,27 +40,32 @@ export default class Tokenizer {
   private _text: string
   private _tokens: Token[] = []
 
-  // Last token specific props
+  // Status
   private _value = ''
   private _lastToken: NullableToken = null
+  private _tokenLength = 0
+  private _done: boolean = false
+
+  // Positions
   private _index: number = -1
   private _row: number = 1
   private _col: number = 0
   private _start: number = -1
   private _end: number = -1
-  private _isBlank = true
-  private _tokenLength = 0
+
+  // Flags
   private _isQuoatedString: boolean = false
   private _isRawString: boolean = false
   private _isEscaping = false
   private _isCommenting = false
-  private _done: boolean = false
 
   public constructor(text: string) {
     this._text = text
   }
 
   public read = (): NullableToken => {
+    if (this.done) return null
+
     const text = this._text
     this._lastToken = {} as Token
     this._value = ''
@@ -67,8 +73,8 @@ export default class Tokenizer {
     this._end = -1
     this._tokenLength = 0
     this._isQuoatedString = false
-
-    return this._next()
+    const token = this._next()
+    return token
   }
 
   public readAll = () => {
@@ -108,7 +114,8 @@ export default class Tokenizer {
 
     let value: any = this._value
     token.token = this._text.substring(this._start, this._end + (this._isQuoatedString ? 1 : 1))
-    // console.warn(">>>", this._text, JSON.stringify(this._value), this._index, this._start, this._end, this._value, token.token)
+    // console.warn(">>>", JSON.stringify(this._value))
+    // console.trace()
 
     const confirmedString = token.token.endsWith(STRING_ENCLOSER)
 
@@ -151,9 +158,7 @@ export default class Tokenizer {
     token.type = type
 
     this._tokens.push(token)
-    // console.log(">", this._index)
     this.skipNextWhiteSpaces()
-    // console.log("<", this._index)
     return token
   }
 
@@ -269,25 +274,15 @@ export default class Tokenizer {
 
     this._tokenLength += 1
 
-    // Handle string escapes when not a raw string
-    if (ch === BACKSLASH && this._isEscaping === false) {
-      // Only allow escaping within quoted strings
-      if (this._isQuoatedString) {
-        this._isEscaping = true
-        return this._next()
-      } else if (!this._isRawString) {
-        throw new InternetObjectSyntaxError(
-          ErrorCodes.invalidChar,
-          '\\ not allowed in open strings.',
-          token
-        )
-      }
-    }
-
     // Process the first char
     if (this._tokenLength === 1) {
       // Start raw string when @" is found
-      if (ch === AT && nextCh === STRING_ENCLOSER) {
+      // if (ch === AT && nextCh === STRING_ENCLOSER) {
+      //   this._isRawString = true
+      //   return this._next()
+      // }
+      // Start a raw string when ' is found
+      if (ch === QUOTE) {
         this._isRawString = true
         return this._next()
       }
@@ -299,56 +294,70 @@ export default class Tokenizer {
       }
     }
 
-    // When escaping, escape next char!
-    if (this._isEscaping) {
-      this._isEscaping = false
-
-      // Escape " when rawstring mode is active!
-      if (this._isRawString) {
-        this._value += STRING_ENCLOSER // Quote is the only escape char during raw string
-        return this._next()
-      }
-
-      this._value += ch in escapeCharMap ? escapeCharMap[ch] : ch
-      return this._next()
-    }
-
-    // Process string encloser (")
-    if (ch === STRING_ENCLOSER) {
-      if (this._isQuoatedString) {
-        this._isQuoatedString = false
-        return this._returnToken()
-      }
-
-      // Handle raw string!
-      if (this._isRawString) {
-        // Open string!
-        if (this._tokenLength === 2) {
+    // Handle Regular Strings
+    if (this._isQuoatedString) {
+      if (ch === STRING_ENCLOSER) {
+        // Start the string
+        if (this._tokenLength === 1) {
+          this._isQuoatedString = true
           return this._next()
         }
 
-        // Initiate the escape mode when the first of two " is found
-        if (!this._isEscaping && nextCh === STRING_ENCLOSER) {
+        // End the string
+        if (this._isEscaping === false) {
+          this._isQuoatedString = false
+          return this._returnToken()
+        }
+      }
+
+      // Handle string escapes when not a raw string
+      if (ch === BACKSLASH && this._isEscaping === false) {
+        this._isEscaping = true
+        return this._next()
+      }
+
+      // When escaping, escape next char!
+      if (this._isEscaping) {
+        this._isEscaping = false
+        this._value += ch in escapeCharMap ? escapeCharMap[ch] : ch
+        return this._next()
+      }
+    }
+
+    // Handle Raw Strings
+    if (this._isRawString) {
+      if (ch === QUOTE) {
+        // Start the string
+        if (this._tokenLength === 1) {
+          this._isRawString = true
+          return this._next()
+        }
+
+        // When the first of two consicutive '' are found in the raw string,
+        // activate escaping mode and skip to the next char
+        if (this._isEscaping === false && nextCh === QUOTE) {
           this._isEscaping = true
           return this._next()
         }
 
-        this._isRawString = false
-        return this._returnToken()
-      }
+        // When the second of '' are found during escaping mode, just add the signle `
+        if (this._isEscaping) {
+          this._isEscaping = false
+          this._value += "'"
+          return this._next()
+        }
 
-      // Do not allow unescaped quotation mark in the
-      // string
-      else {
-        throw new InternetObjectSyntaxError(
-          ErrorCodes.invalidChar,
-          `Invalid character '${ch}' encountered`,
-          this._node
-        )
+        // End the string
+        if (this._isEscaping === false) {
+          this._isRawString = false
+          return this._returnToken()
+        }
       }
+      this._value += ch
+      return this._next()
     }
 
-    // When the enclosed string is not active
+    // Character processing during open mode!
     if (!(this._isQuoatedString || this._isRawString)) {
       // Initiate the commenting mode when
       if (ch === HASH) {
@@ -370,6 +379,7 @@ export default class Tokenizer {
         }
       }
     }
+
     this._value += ch
     return this._next()
   }

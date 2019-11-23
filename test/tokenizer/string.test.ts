@@ -115,21 +115,21 @@ describe('String', () => {
     expect(new Tokenizer('one\rtwo').readAll().get(0).value).toBe(`one\ntwo`)
   })
 
-  // it("Raw strings", () => {
-  //   let tokenizer = new Tokenizer(String.raw`'c:\program files\nodepad++'`)
-  //   let token = tokenizer.readAll().get(0)
-  //   expect(token.value).toBe(`c:\\program files\\nodepad++`)
+  it('Raw strings', () => {
+    let tokenizer = new Tokenizer(String.raw`'c:\program files\nodepad++'`)
+    let token = tokenizer.readAll().get(0)
+    expect(token.value).toBe(`c:\\program files\\nodepad++`)
 
-  //   tokenizer = new Tokenizer(String.raw`'c:\program
-  //   files\nodepad++'`)
-  //   token = tokenizer.readAll().get(0)
-  //   expect(token.value).toBe(`c:\\program
-  //   files\\nodepad++`)
-  // })
+    tokenizer = new Tokenizer(String.raw`'c:\program
+    files\nodepad++'`)
+    token = tokenizer.readAll().get(0)
+    expect(token.value).toBe(`c:\\program
+    files\\nodepad++`)
+  })
 
-  // it("Raw strings \" escape", () => {
-  //   let tokenizer = new Tokenizer(String.raw`alert(''hello world'')'`)
-  //   let token = tokenizer.readAll().get(0)
-  //   expect(token.value).toBe(`alert('hello world')`)
-  // })
+  it('Raw strings " escape', () => {
+    let tokenizer = new Tokenizer(String.raw`'alert(''hello world'')'`)
+    let token = tokenizer.readAll().get(0)
+    expect(token.value).toBe(`alert('hello world')`)
+  })
 })

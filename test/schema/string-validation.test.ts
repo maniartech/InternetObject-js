@@ -15,7 +15,7 @@ describe('String Patterns', () => {
 
   it('valid pattern values', () => {
     const objStr = String.raw`
-    v1:{string, pattern:@"[a-zA-Z\s]+"}
+    v1:{string, pattern:'[a-zA-Z\s]+'}
     ---
     Lorem ipsum dolor sit amet
     `
@@ -26,7 +26,7 @@ describe('String Patterns', () => {
   it('invalid pattern values', () => {
     const t1 = () => {
       return new InternetObject(String.raw`
-      v1:{string, pattern:"[a-zA-Z\s]+"}
+      v1:{string, pattern:'[a-zA-Z\s]+'}
       ---
       Lorem ipsum dolor sit amet?
       `)
