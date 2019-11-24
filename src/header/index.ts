@@ -8,7 +8,7 @@ import Schema from './schema'
 import ASTParser from '../parser/ast-parser'
 import { print } from '../utils'
 
-export default class Header {
+export default class KeyValueCollection {
   private _keys: any = []
   private _map: any = {}
 
@@ -30,11 +30,11 @@ export default class Header {
   }
 
   /**
-   * Sets the key and associated value in the header. If key already
-   * @param key {string} The header key
-   * @param val {any} The associated value for that key in the header.
+   * Sets the value for the key.
+   * @param key {string} The key
+   * @param val {any} The associated value for that key.
    */
-  public set(key: string, val: any): Header {
+  public set(key: string, val: any): KeyValueCollection {
     if (key in this._map === false) {
       this._keys.push(key)
     }
@@ -43,10 +43,10 @@ export default class Header {
   }
 
   /**
-   * Removes the specified key from the header.
-   * @param key {string} The key of the header item, which needs to be removed.
+   * Removes the specified key from the collection.
+   * @param key {string} The key of the collection item, which needs to be removed.
    */
-  public remove(key: string): Header {
+  public remove(key: string): KeyValueCollection {
     if (key in this._map === false) return this
     const index = this._keys.indexOf(key)
     this._keys.splice(index)
@@ -73,26 +73,28 @@ export default class Header {
 
   /**
    *
-   * @param header The header string that needs to be compiled!
+   * @param collection The collection string that needs to be compiled!
    * @param schema The schema
    */
-  public static compile(header: string | ASTParserTree, schema?: Schema | string): Header {
+  public static compile(collection: any, schema?: Schema | string): KeyValueCollection {
     let tree: ASTParserTree
-    const newHeader = new Header()
+    const newCollection = new KeyValueCollection()
 
-    if (isString(header)) {
-      const parser = new ASTParser(header, true)
+    if (isString(collection)) {
+      const parser = new ASTParser(collection, true)
       parser.parse()
       tree = parser.header
+    } else if (isParserTree(collection)) {
+      tree = collection
     } else {
-      tree = header
+      throw new Error('invlid-collection')
     }
 
     // If it is object, it must be schema. Then convert it into
     // collection.
     if (tree.type === 'object') {
       const compiledSchema = Schema.compile(tree)
-      newHeader.set(SCHEMA, compiledSchema)
+      newCollection.set(SCHEMA, compiledSchema)
     }
     // If it not collection, throw and invalid header error
     else if (tree.type !== 'collection') {
@@ -100,8 +102,8 @@ export default class Header {
     } else {
       // Setup new header
       const { keys, map } = _parseCollection(tree)
-      newHeader._keys = keys
-      newHeader._map = map
+      newCollection._keys = keys
+      newCollection._map = map
     }
 
     // Override the schema with the supplied one
@@ -110,10 +112,10 @@ export default class Header {
       if (isString(schema)) {
         compiledSchema = Schema.compile(tree)
       }
-      newHeader.set(SCHEMA, compiledSchema)
+      newCollection.set(SCHEMA, compiledSchema)
     }
 
-    return newHeader
+    return newCollection
   }
 }
 
