@@ -1,4 +1,4 @@
-import Header from './header'
+import KeyValueCollection from './header'
 import DataParser from './data'
 import Schema from './header/schema'
 import ASTParser from './parser/ast-parser'
@@ -23,7 +23,7 @@ export class InternetObject<T = any> {
    * @param schema {string, Schema} An optional `Schema` object or its `string` representation
    */
   constructor(o: any, schema?: string | Schema) {
-    let header: Header
+    let header: KeyValueCollection
     let data: any
 
     if (isString(o)) {
@@ -39,11 +39,11 @@ export class InternetObject<T = any> {
     this._header = header
   }
 
-  private _header: Header
+  private _header: KeyValueCollection
   /**
    * Gets the header section of the object.
    */
-  public get header(): Header {
+  public get header(): KeyValueCollection {
     return this._header
   }
 
@@ -83,13 +83,13 @@ function _parseObject(o: any, schema?: string | Schema) {
   if (compiledSchema === null) {
     return {
       data: o,
-      header: new Header()
+      header: new KeyValueCollection()
     }
   }
 
   return {
     data: compiledSchema.apply(o),
-    header: new Header().set(SCHEMA, compiledSchema)
+    header: new KeyValueCollection().set(SCHEMA, compiledSchema)
   }
 }
 
@@ -98,7 +98,7 @@ function _parse(text: string, schema?: string | Schema) {
   const parser = new ASTParser(text)
 
   let compiledSchema: Schema | null = null
-  let compiledHeader: Header | null = null
+  let compiledHeader: KeyValueCollection | null = null
 
   // Parse the text
   parser.parse()
@@ -114,21 +114,24 @@ function _parse(text: string, schema?: string | Schema) {
     }
   }
 
-  let header: Header
+  let header: KeyValueCollection
   if (parser.header) {
     // console.warn(">>>", compiledSchema, parser.header)
 
     if (compiledSchema === null) {
-      header = Header.compile(parser.header)
+      header = KeyValueCollection.compile(parser.header)
     } else {
-      header = Header.compile(parser.header, compiledSchema)
+      header = KeyValueCollection.compile(parser.header, compiledSchema)
     }
 
     if (header.schema) {
       compiledSchema = header.schema
     }
   } else {
-    header = compiledSchema === null ? new Header() : new Header().set(SCHEMA, compiledSchema)
+    header =
+      compiledSchema === null
+        ? new KeyValueCollection()
+        : new KeyValueCollection().set(SCHEMA, compiledSchema)
   }
 
   const data = compiledSchema ? compiledSchema.apply(parser.data) : DataParser.parse(parser.data)
