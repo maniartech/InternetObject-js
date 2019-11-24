@@ -31,7 +31,7 @@ export default class ASTParser {
   private _isCollection = false
   private _isHeaderOpen = true
   private _lastToken?: Token = undefined
-  private _isSchema: boolean
+  private _isHeader: boolean
   private _stack: ASTParserTree[] = []
   private _text: string
   private _tokenizer: Tokenizer
@@ -45,12 +45,12 @@ export default class ASTParser {
   /**
    * Initializes the new instance of `ASTParser` class.
    * @param text {string} The text which needs to be parsed
-   * @param isSchema {boolean} Whether the text is schema or not, `true` if it is schema.
+   * @param isHeader {boolean} Whether the text is schema or not, `true` if it is schema.
    */
-  constructor(text: string, isSchema: boolean = false) {
+  constructor(text: string, isHeader: boolean = false) {
     this._text = text
     this._tokenizer = new Tokenizer(text)
-    this._isSchema = isSchema
+    this._isHeader = isHeader
   }
 
   /**
@@ -293,7 +293,7 @@ export default class ASTParser {
       }
     }
 
-    if (this._isSchema) {
+    if (this._isHeader) {
       this._tree.header = this._tree.data
       this._tree.data = undefined // TODO: Replace this with `undefined`
     }
