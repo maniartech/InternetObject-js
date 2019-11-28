@@ -97,13 +97,14 @@ export default class KeyValueCollection {
       newCollection.set(SCHEMA, compiledSchema)
     }
     // If it not collection, throw and invalid header error
-    else if (tree.type !== 'collection') {
-      throw new InternetObjectError(ErrorCodes.invlidHeader, 'Invalid value found in header')
-    } else {
+    else if (tree.type === 'collection') {
       // Setup new header
-      const { keys, map } = _parseCollection(tree)
-      newCollection._keys = keys
-      newCollection._map = map
+      _parseCollection(tree, newCollection, (key: string, val: any) => {
+        newCollection._keys.push(key)
+        newCollection._map[key] = val
+      })
+    } else {
+      throw new InternetObjectError(ErrorCodes.invlidHeader, 'Invalid value found in header')
     }
 
     // Override the schema with the supplied one
@@ -119,7 +120,7 @@ export default class KeyValueCollection {
   }
 }
 
-function _parseCollection(tree: ASTParserTree): any {
+function _parseCollection(tree: ASTParserTree, collection: KeyValueCollection, callback: any): any {
   const map: any = {}
   const keys: string[] = []
 
@@ -154,19 +155,27 @@ function _parseCollection(tree: ASTParserTree): any {
 
     // When key is a SCHEMA, compile the value and create schema
     if (key === SCHEMA) {
-      map[key] = Schema.compile(value)
+      const val = Schema.compile(value)
+      callback(key, val)
     } else if (isParserTree(value)) {
-      map[key] = DataParser.parse(value)
+      const val = DataParser.parse(value)
+      callback(key, val)
     } else if (isToken(value)) {
-      map[key] = value.value
+      let val = value.value
+      // If the token represents a variable in collection, replace
+      // set the key with the variable value.
+      if (value.type === 'string' && val.length > 2 && val[0] === '$') {
+        const varVal = collection.get(value.value.substr(1))
+        if (varVal !== undefined) {
+          val = varVal
+        }
+      }
+      callback(key, val)
     }
     // When value is null or of KeyVal type!
     else {
       // TODO: Fix this error
       throw new InternetObjectError(ErrorCodes.invalidHeaderItem)
     }
-    keys.push(key)
   }
-
-  return { keys, map }
 }
