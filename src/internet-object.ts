@@ -134,7 +134,9 @@ function _parse(text: string, schema?: string | Schema) {
         : new KeyValueCollection().set(SCHEMA, compiledSchema)
   }
 
-  const data = compiledSchema ? compiledSchema.apply(parser.data) : DataParser.parse(parser.data)
+  const data = compiledSchema
+    ? compiledSchema.apply(parser.data)
+    : DataParser.parse(parser.data, header)
 
   return { header, data }
 }

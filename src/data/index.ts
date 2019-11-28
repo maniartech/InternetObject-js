@@ -1,7 +1,7 @@
-import { isDataType, isArray, isParserTree, isKeyVal, isToken, isString } from '../utils/is'
+import { isArray, isParserTree, isKeyVal, isToken, isString } from '../utils/is'
 import { ASTParserTree } from '../parser'
-import { print } from '../utils'
 import { ParserTreeValue } from '../parser/index'
+import KeyValueCollection from '../header'
 
 /**
  * Represents the DataParser class, which is responsible for parsing
@@ -17,7 +17,7 @@ export default class DataParser {
    *
    * TODO: Implementations on defs-references not yet finalized!
    */
-  public static parse(dataTree: ASTParserTree, defs?: any) {
+  public static parse(dataTree: ASTParserTree, vars?: KeyValueCollection) {
     if (!isParserTree(dataTree)) return null
 
     if (dataTree.type === 'scalar') {
@@ -35,22 +35,22 @@ export default class DataParser {
       return container
     }
 
-    return _parse(dataTree, container)
+    return _parse(dataTree, container, vars)
   }
 }
 
-const _parse = (root: ASTParserTree, container: any, defs?: any) => {
+const _parse = (root: ASTParserTree, container: any, vars?: KeyValueCollection) => {
   for (let index = 0; index < root.values.length; index += 1) {
     let value = root.values[index]
 
     if (isParserTree(value)) {
       // Object
       if (value.type === 'object') {
-        container[index] = _parse(value, {}, defs)
+        container[index] = _parse(value, {}, vars)
       }
       // Array
       else if (value.type === 'array') {
-        container[index] = _parse(value, [], defs)
+        container[index] = _parse(value, [], vars)
       }
     } else if (isKeyVal(value)) {
       let parsedValue = null
@@ -60,7 +60,7 @@ const _parse = (root: ASTParserTree, container: any, defs?: any) => {
         console.warn('Validate this case!')
       } else {
         // container[value.key] = value.value === null ? undefined : value.value.value
-        parsedValue = _getValue(value.value, defs)
+        parsedValue = _getValue(value.value, vars)
       }
 
       if (isArray(container)) {
@@ -72,37 +72,21 @@ const _parse = (root: ASTParserTree, container: any, defs?: any) => {
       }
     } else {
       // container[index] = value === null ? undefined : value.value
-      container[index] = _getValue(value, defs)
+      container[index] = _getValue(value, vars)
     }
   }
   return container
 }
 
 // TODO: Handle defs!
-function _getValue(value: ParserTreeValue, defs: any): any {
+function _getValue(value: ParserTreeValue, vars?: KeyValueCollection): any {
   if (isToken(value)) {
-    if (isString(value.value) && value.value.startsWith('$')) {
-      return _getDefValue(value.value, defs)
+    if (vars && isString(value.value) && value.value.startsWith('$')) {
+      const key = value.value.substr(1)
+      const val = vars.get(key)
+      return val ? val : value.value
     }
     return value.value
   }
   return
-}
-
-// FIXME: Not in use!
-function _getDefValue(def: string, defs: any): any {
-  if (!defs) return def
-
-  const value = defs[def]
-
-  if (isParserTree(value)) {
-    return value.type === 'object' ? _parse(value, {}) : _parse(value, [])
-  }
-
-  if (isToken(value)) {
-    return _getValue(value, defs)
-  }
-
-  // TODO: Verify this case!
-  throw new Error('Verify this case!')
 }

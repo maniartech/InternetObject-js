@@ -158,7 +158,7 @@ function _parseCollection(tree: ASTParserTree, collection: KeyValueCollection, c
       const val = Schema.compile(value)
       callback(key, val)
     } else if (isParserTree(value)) {
-      const val = DataParser.parse(value)
+      const val = DataParser.parse(value, collection)
       callback(key, val)
     } else if (isToken(value)) {
       let val = value.value
