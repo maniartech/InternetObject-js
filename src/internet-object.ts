@@ -135,7 +135,7 @@ function _parse(text: string, schema?: string | Schema) {
   }
 
   const data = compiledSchema
-    ? compiledSchema.apply(parser.data)
+    ? compiledSchema.apply(parser.data, header)
     : DataParser.parse(parser.data, header)
 
   return { header, data }
