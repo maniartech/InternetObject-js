@@ -9,6 +9,7 @@ import { ParserTreeValue } from '../parser/index'
 import { InternetObjectError } from '../errors/io-error'
 import { TypedefRegistry } from '../types/typedef-registry'
 import { isString, isParserTree, isKeyVal, isArray, isDataType, isToken } from '../utils/is'
+import KeyValueCollection from './index'
 
 /**
  * Represents the Internet Object Schema class which is responsible for
@@ -31,11 +32,11 @@ export default class Schema {
    * Applies the schema to specified data and returns the
    * mapped
    */
-  public apply(data: any) {
+  public apply(data: any, vars?: KeyValueCollection) {
     if (!data) {
       return null
     }
-    return _apply(data, this._schema, {})
+    return _apply(data, this._schema, {}, vars)
   }
 
   /**
@@ -263,7 +264,6 @@ const _compileObjectSchema = (root: ASTParserTree, path?: string) => {
       }
     }
   }
-
   return schema
 }
 
@@ -319,7 +319,7 @@ const _concatPath = (newPath: string, oldPath?: string) => {
   return path
 }
 
-function _apply(data: any, schema: any, container?: any): any {
+function _apply(data: any, schema: any, container?: any, vars?: KeyValueCollection): any {
   const objectDef = TypedefRegistry.get('object')
   const schemaDef = {
     type: 'object',
@@ -331,12 +331,12 @@ function _apply(data: any, schema: any, container?: any): any {
     if (data.type === 'collection') {
       const collection: any[] = []
       data.values.forEach((item: any) => {
-        collection.push(objectDef.parse(item, schemaDef))
+        collection.push(objectDef.parse(item, schemaDef, vars))
       })
       return collection
     }
 
-    return objectDef.parse(data, schemaDef)
+    return objectDef.parse(data, schemaDef, vars)
   } else if (isArray(data)) {
     const collection = data.forEach((item: any) => {
       return objectDef.load(item, schemaDef)
