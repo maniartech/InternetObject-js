@@ -55,7 +55,7 @@ const _parse = (root: ASTParserTree, container: any, vars?: KeyValueCollection) 
     } else if (isKeyVal(value)) {
       let parsedValue = null
       if (isParserTree(value.value)) {
-        parsedValue = _parse(value.value, value.value.type === 'object' ? {} : [])
+        parsedValue = _parse(value.value, value.value.type === 'object' ? {} : [], vars)
       } else if (isKeyVal(value.value)) {
         console.warn('Validate this case!')
       } else {
