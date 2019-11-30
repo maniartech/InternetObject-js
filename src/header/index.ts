@@ -21,6 +21,20 @@ export default class KeyValueCollection {
   }
 
   /**
+   * Gets the varialbe value. This function is intend to be used internally
+   * for quickly fetching the variable value, hence it accepts any key to keep the
+   * consumer code free from type checking. The function validate the key and
+   * returns the associated value, if avialable. Otherwise returns undefined.
+   * @param key {any} The varialbe key starting with $
+   * @returns The value associated with the variable
+   */
+  public getV(key: any) {
+    if (isString(key) && key.startsWith('$') && key.length > 1) {
+      return this.get(key.substr(1))
+    }
+  }
+
+  /**
    * Gets a value for specified key
    * @param key {string} The key
    * @returns Value
