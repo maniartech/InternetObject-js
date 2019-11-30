@@ -9,6 +9,7 @@ import { InternetObjectError } from '../errors/io-error'
 import ErrorCodes from '../errors/io-error-codes'
 import { appendPath } from '../utils'
 import { isBoolean } from '../../../src-with-defs/utils/is'
+import KeyValueCollection from '../header'
 
 /**
  * Represents the `any` type, performs the following validations.
@@ -22,15 +23,25 @@ export default class AnyDef implements TypeDef {
     const validatedData = doCommonTypeCheck(memberDef, data, node)
   }
 
-  parse(data: ParserTreeValue, memberDef: MemberDef): any {
+  parse(data: ParserTreeValue, memberDef: MemberDef, vars?: KeyValueCollection): any {
     const validatedData = doCommonTypeCheck(memberDef, data, data)
 
-    if (validatedData !== data || validatedData === undefined) return validatedData
+    if (validatedData !== data || validatedData === null || validatedData === undefined) {
+      return validatedData
+    }
 
-    if (isToken(data)) return data.value
+    if (isToken(data)) {
+      let value: string = data.value
+      if (vars) {
+        const valueFound = vars.getV(value)
+        value = valueFound || value
+      }
+
+      return value
+    }
 
     if (isParserTree(data)) {
-      return DataParser.parse(data)
+      return DataParser.parse(data, vars)
     }
 
     // TODO: check this case
