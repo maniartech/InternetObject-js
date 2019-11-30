@@ -1,7 +1,7 @@
 import ErrorCodes from '../errors/io-error-codes'
 import MemberDef from './memberdef'
 
-import { ErrorArgs, InternetObjectError } from '../errors/io-error'
+import { ErrorArgs, InternetObjectError, InternetObjectValidationError } from '../errors/io-error'
 import { Node } from '../parser/index'
 import { isToken } from '../utils/is'
 
