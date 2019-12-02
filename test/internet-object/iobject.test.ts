@@ -42,4 +42,35 @@ describe('Internet Object', () => {
     expect(t1).toThrowError(ErrorCodes.positionalMemberAfterKeywordMember)
     expect(t2).toThrowError(ErrorCodes.positionalMemberAfterKeywordMember)
   })
+  it('handles variables', () => {
+    const text = String.raw`
+        ~ r: red
+        ~ g: green
+        ~ b: blue
+        ~ colors: [$r, $g, $b]
+        ~ options: { color:$r, list: $colors }
+        ~ schema: {name, age, tag?:{colors:{red, green, blue}}}
+        ---
+        Spiderman, 25, {colors:{red: $r, green: $g, blue: $b}}
+      `
+
+    const io = new InternetObject(text)
+
+    expect(io.header.get('options')).toMatchObject({
+      color: 'red',
+      list: ['red', 'green', 'blue']
+    })
+
+    expect(io.data).toMatchObject({
+      name: 'Spiderman',
+      age: 25,
+      tag: {
+        colors: {
+          red: 'red',
+          green: 'green',
+          blue: 'blue'
+        }
+      }
+    })
+  })
 })
