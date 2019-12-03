@@ -1,4 +1,4 @@
-import { InternetObjectError, ErrorArgs } from '../errors/io-error'
+import { InternetObjectError, ErrorArgs, InternetObjectValidationError } from '../errors/io-error'
 import { ParserTreeValue, Node } from '../parser/index'
 import { isNumber, isToken } from '../utils/is'
 import MemberDef from './memberdef'
@@ -7,6 +7,7 @@ import { doCommonTypeCheck } from './utils'
 import ErrorCodes from '../errors/io-error-codes'
 import { Token } from '../parser'
 import { isString } from 'util'
+import KeyValueCollection from '../header'
 
 // Reference: RFC 5322 Official Standard
 // http://emailregex.com
@@ -16,9 +17,11 @@ const emailExp = /(?:[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-
 const urlExp = /((([A-Za-z]{3,9}:(?:\/\/)?)(?:[\-;:&=\+\$,\w]+@)?[A-Za-z0-9\.\-]+|(?:www\.|[\-;:&=\+\$,\w]+@)[A-Za-z0-9\.\-]+)((?:\/[\+~%\/\.\w\-_]*)?\??(?:[\-\+=&;%@\.\w_]*)#?(?:[\.\!\/\\\w]*))?)/
 
 /**
- * Represents the InternetObject String, performs following validations.
+ * Represents the StringTypeDef which is reponsible for parsing,
+ * validating, loading and serializing strings.
  *
- * - Value is number
+ * It performs the following validation
+ * - Value is string
  * - Value is optional
  * - Value is nullable
  * - Value length <= maxLength
@@ -32,18 +35,31 @@ export default class StringDef implements TypeDef {
     this._type = type
   }
 
+  /**
+   * Returns the type this instance is going to handle.
+   * The return value could be any of the "string", "email", or "url"
+   */
   getType() {
     return this._type
   }
 
-  parse(data: ParserTreeValue, memberDef: MemberDef): string {
-    return this.validate(data, memberDef)
+  /**
+   * Parses the string in IO format into JavaScript strings.
+   */
+  parse(data: ParserTreeValue, memberDef: MemberDef, vars?: KeyValueCollection): string {
+    return this.validate(data, memberDef, vars)
   }
 
+  /**
+   * Loads the JavaScript string.
+   */
   load(data: any, memberDef: MemberDef): string {
     return this.validate(data, memberDef)
   }
 
+  /**
+   * Serializes the string into IO format.
+   */
   serialize(data: string, memberDef: MemberDef): string {
     let value = this.validate(data, memberDef)
 
@@ -58,36 +74,46 @@ export default class StringDef implements TypeDef {
     return value
   }
 
-  validate(data: any, memberDef: MemberDef): string {
+  validate(data: any, memberDef: MemberDef, vars?: KeyValueCollection): string {
     const node = isToken(data) ? data : undefined
     const value = node ? node.value : data
 
-    return _process(memberDef, value, node)
+    return _process(memberDef, value, node, vars)
   }
 }
 
-function _process(memberDef: MemberDef, value: string, node?: Token): string {
+function _process(
+  memberDef: MemberDef,
+  value: string,
+  node?: Token,
+  vars?: KeyValueCollection
+): string {
+  // Replace vars
+  if (vars) {
+    const valueFound = vars.getV(value)
+    value = valueFound || value
+  }
+
+  // Run common check
+  const validatedData = doCommonTypeCheck(memberDef, value, node)
+  if (validatedData !== value || validatedData === null || validatedData === undefined) {
+    return validatedData
+  }
+
+  // Validate
   if (!isString(value)) {
     throw new InternetObjectError(ErrorCodes.notAString)
   }
 
-  const validatedData = doCommonTypeCheck(memberDef, value, node)
-  if (validatedData !== value || validatedData === undefined) return validatedData
-
   // TODO: Validate Data for subtypes
   _validatePattern(memberDef, value, node)
-
-  // Typeof check
-  if (typeof value !== 'string') {
-    throw new InternetObjectError(ErrorCodes.invalidValue, `Invalid value for ${memberDef.path}.`)
-  }
 
   const maxLength = memberDef.maxLength
 
   // Max length check
   if (maxLength !== undefined && isNumber(maxLength)) {
     if (value.length > maxLength) {
-      throw new InternetObjectError(
+      throw new InternetObjectValidationError(
         ErrorCodes.invalidMaxLength,
         `Invalid maxLength for ${memberDef.path}.`
       )

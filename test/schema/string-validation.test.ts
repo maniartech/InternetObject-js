@@ -1,10 +1,32 @@
 import 'jest'
 import InternetObject from '../../src'
+import ErrorCodes from '../../src/errors/io-error-codes'
 
 describe('String Patterns', () => {
   it('Blank string', () => {
     const obj = new InternetObject('')
     expect(obj.data).toBe('')
+  })
+
+  it('handles properly handles null and undefined', () => {
+    const objStr = String.raw`
+    v1?:string, v2?:string, v3?*:string, v4?*:string
+    ---
+    ~ test,,N,
+    ~ ,,,
+    `
+    const obj = new InternetObject(objStr)
+    const [o1, o2, o3] = obj.data
+    expect(o1.v1).toBe('test')
+    expect(o1.v2).toBe(undefined)
+    expect(o1.v3).toBe(null)
+    expect(o1.v4).toBe(undefined)
+
+    expect(o2.v1).toBe(undefined)
+    expect(o2.v2).toBe(undefined)
+    expect(o2.v3).toBe(undefined)
+    expect(o2.v4).toBe(undefined)
+    expect(o2.v5).toBe(undefined)
   })
 
   it('All optional with no value', () => {
@@ -49,5 +71,45 @@ describe('String Patterns', () => {
     expect(t1).toThrowError()
     expect(t2).toThrowError()
     expect(t3).toThrowError()
+  })
+
+  it('handles variables', () => {
+    const text = String.raw`
+        ~ noName: Anonymous
+        ~ r: red
+        ~ g: green
+        ~ b: blue
+        ~ schema: {name:string, color:{string, choices:[red, blue]}, tag?:[{color:string}]}
+        ---
+        ~ Spiderman, $b, [{color:$g}, {color: $r}]
+        ~ $noName, color:$b
+      `
+
+    const io = new InternetObject(text)
+    const [o1, o2] = io.data
+
+    expect(o1.name).toBe('Spiderman')
+    // expect(o1.tag[0].colors[0].c[0][0].colors.join(',')).toBe('red,green,blue')
+    expect(o1.tag[0].color).toBe('green')
+    expect(o1.tag[1].color).toBe('red')
+
+    expect(o2.name).toBe('Anonymous')
+    // // When the variable does not exists
+    // // it should not replace it with any value
+    expect(o2.color).toBe('blue')
+
+    const e1 = () => {
+      const text = String.raw`
+        ~ noName: Anonymous
+        ~ r: red
+        ~ g: green
+        ~ b: blue
+        ~ schema: {name:string, color:{string, choices:[red, blue]}, tag?:[{color:string}]}
+        ---
+        ~ Spiderman, $b, [{color:$g}, {color: $r}]
+        ~ $noName, $noVar`
+      const io = new InternetObject(text)
+    }
+    expect(e1).toThrowError(ErrorCodes.invalidChoice)
   })
 })
