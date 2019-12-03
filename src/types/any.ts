@@ -1,28 +1,33 @@
-import DataParser from '../data'
-import { ParserTreeValue, Node } from '../parser/index'
-import MemberDef from './memberdef'
 import TypeDef from './typedef'
-import { doCommonTypeCheck } from './utils'
-import { isToken, isParserTree, isString, isNumber, isArray, isPlainObject } from '../utils/is'
-import { TypedefRegistry } from './typedef-registry'
-import { InternetObjectError } from '../errors/io-error'
+import MemberDef from './memberdef'
 import ErrorCodes from '../errors/io-error-codes'
-import { appendPath } from '../utils'
-import { isBoolean } from '../../../src-with-defs/utils/is'
+import DataParser from '../data'
 import KeyValueCollection from '../header'
 
+import { isBoolean } from '../../../src-with-defs/utils/is'
+import { appendPath } from '../utils'
+import { TypedefRegistry } from './typedef-registry'
+import { doCommonTypeCheck } from './utils'
+import { InternetObjectError } from '../errors/io-error'
+import { ParserTreeValue } from '../parser/index'
+import { isToken, isParserTree, isString, isNumber, isArray, isPlainObject } from '../utils/is'
+
 /**
- * Represents the `any` type, performs the following validations.
+ * Represents the AnyTypeDef which is reponsible for parsing,
+ * validating, loading and serializing any values.
  */
 export default class AnyDef implements TypeDef {
+  /**
+   * Returns the type this instance is going to handle.
+   * Always returns "any"
+   */
   getType(): string {
     return 'any'
   }
 
-  validate(data: any, memberDef: MemberDef, node: Node): any {
-    const validatedData = doCommonTypeCheck(memberDef, data, node)
-  }
-
+  /**
+   * Parses any value in IO format into JavaScript.
+   */
   parse(data: ParserTreeValue, memberDef: MemberDef, vars?: KeyValueCollection): any {
     const validatedData = doCommonTypeCheck(memberDef, data, data)
 
@@ -49,12 +54,18 @@ export default class AnyDef implements TypeDef {
     console.warn(data, memberDef)
   }
 
+  /**
+   * Loads the JavaScript values.
+   */
   load(data: any, memberDef: MemberDef): any {
     const validatedData = doCommonTypeCheck(memberDef, data)
     if (validatedData !== data) return validatedData
     return data
   }
 
+  /**
+   * Serializes any value from JavaScript into IO format.
+   */
   serialize(data: any, memberDef: MemberDef, isRoot: boolean = true): string {
     return _serialize(data, memberDef, isRoot)
   }
