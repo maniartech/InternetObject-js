@@ -92,7 +92,7 @@ class ObjectDef implements TypeDef {
         }
 
         // Process members only when the indexMode is true.
-        if (indexMode) {
+        if (indexMode || dataItem === undefined) {
           object[key] = typeDef.parse(dataItem, memberDef, vars)
         }
         // Index mode is false means previous member as a keyValue member,
