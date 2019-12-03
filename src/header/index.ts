@@ -1,12 +1,12 @@
-import DataParser from '../data'
-import { InternetObjectError } from '../errors/io-error'
-import ErrorCodes from '../errors/io-error-codes'
-import { ASTParserTree } from '../parser'
-import { SCHEMA } from '../parser/constants'
-import { isKeyVal, isParserTree, isString, isToken } from '../utils/is'
 import Schema from './schema'
 import ASTParser from '../parser/ast-parser'
-import { print } from '../utils'
+import DataParser from '../data'
+import ErrorCodes from '../errors/io-error-codes'
+
+import { SCHEMA } from '../parser/constants'
+import { ASTParserTree } from '../parser'
+import { InternetObjectError } from '../errors/io-error'
+import { isKeyVal, isParserTree, isString, isToken } from '../utils/is'
 
 export default class KeyValueCollection {
   private _keys: any = []
