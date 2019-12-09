@@ -66,45 +66,62 @@ class ObjectDef implements TypeDef {
   }
 
   // Process the parse and load requests
-  private _process = (memberDef: MemberDef, value: any, node?: Node, vars?: KeyValueCollection) => {
+  private _process = (
+    memberDef: MemberDef,
+    value: any,
+    node?: ParserTreeValue,
+    vars?: KeyValueCollection
+  ) => {
     const validatedData = doCommonTypeCheck(memberDef, value, node)
-    if (validatedData !== value || value === undefined) return validatedData
+    if (validatedData !== value || validatedData === null || validatedData === undefined)
+      return validatedData
 
     const schema = memberDef.schema
     const object: any = {}
+    const fn = isParserTree(node) ? 'parse' : 'load'
 
     // When indexMode is on, members are read/loaded from the index.
     let indexMode: boolean = true
-    // Process each keys from the schema
-    schema.keys.forEach((key: string, index: number) => {
-      const memberDef: MemberDef = schema.defs[key]
-      const typeDef = TypedefRegistry.get(memberDef.type)
-      if (isParserTree(node)) {
-        const dataItem = node.values[index]
+    if (isParserTree(node)) {
+      node.values.forEach((dataItem: any, index: number) => {
         if (isKeyVal(dataItem)) {
           indexMode = false
 
-          // Ensure key exists in the schema
-          if (schema.keys.indexOf(key) !== -1) {
-            object[key] = typeDef.parse(dataItem.value, memberDef, vars)
-          }
-          return
-        }
+          const key = dataItem.key
+          const memberDef: MemberDef = schema.defs[key]
 
-        // Process members only when the indexMode is true.
-        if (indexMode || dataItem === undefined) {
-          object[key] = typeDef.parse(dataItem, memberDef, vars)
+          // When memberDef is not found, ignore such member
+          if (memberDef === undefined) return
+
+          const typeDef: TypeDef = TypedefRegistry.get(memberDef.type)
+          object[dataItem.key] = typeDef.parse(dataItem.value, memberDef, vars)
         }
-        // Index mode is false means previous member as a keyValue member,
-        // Do not allow this case!
-        else {
+        // Process members only when the indexMode is true.
+        else if (indexMode || dataItem === undefined) {
+          const key = schema.keys[index]
+          const memberDef: MemberDef = schema.defs[key]
+          const typeDef: TypeDef = TypedefRegistry.get(memberDef.type)
+
+          object[key] = typeDef.parse(dataItem, memberDef, vars)
+        } else {
           throw new InternetObjectSyntaxError(ErrorCodes.positionalMemberAfterKeywordMember)
         }
-      } else {
+      })
+    } else {
+      const keys = Object.keys(value)
+
+      keys.forEach((key, index) => {
+        const memberDef: MemberDef = schema.defs[key]
+
+        // When memberDef is not found, ignore such member
+        if (memberDef === undefined) return
+
+        const typeDef: TypeDef = TypedefRegistry.get(memberDef.type)
+
         const dataItem = value[key]
         object[key] = typeDef.load(dataItem, memberDef)
-      }
-    })
+      })
+    }
 
     return object
   }

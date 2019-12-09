@@ -9,6 +9,7 @@ import { doCommonTypeCheck } from './utils'
 import { isArray } from 'util'
 import { isToken } from '../../../src-with-defs/utils/is'
 import { InternetObjectError } from '../errors/io-error'
+import KeyValueCollection from '../header'
 
 // age?: { number, true, 10, min:10, max:20}
 
@@ -28,11 +29,11 @@ class ArrayDef implements TypeDef {
     return 'array'
   }
 
-  public parse = (data: ParserTreeValue, memberDef: MemberDef): any => {
+  public parse = (data: ParserTreeValue, memberDef: MemberDef, vars?: KeyValueCollection): any => {
     if (isParserTree(data)) {
-      return _process('load', memberDef, data.values, data)
+      return _process('parse', memberDef, data.values, data, vars)
     } else if (data === undefined) {
-      return _process('load', memberDef, undefined, data)
+      return _process('parse', memberDef, undefined, data, vars)
     }
 
     throw new Error('invalid-value')
@@ -92,9 +93,15 @@ class ArrayDef implements TypeDef {
   }
 }
 
-function _process(processingFnName: string, memberDef: MemberDef, value: any, node?: Node) {
+function _process(
+  processingFnName: string,
+  memberDef: MemberDef,
+  value: any,
+  node?: Node,
+  vars?: KeyValueCollection
+) {
   const validatedData = doCommonTypeCheck(memberDef, value, node)
-  if (validatedData !== value) return validatedData
+  if (validatedData !== value || value === undefined) return validatedData
 
   if (!isArray(value)) throw new Error('invalid-value')
 
@@ -113,7 +120,7 @@ function _process(processingFnName: string, memberDef: MemberDef, value: any, no
 
   value.forEach((item: any) => {
     if (typeDef !== undefined) {
-      const value = typeDef[processingFnName](item, schema)
+      const value = typeDef[processingFnName](item, schema, vars)
       array.push(value)
     } else {
       // TODO: Improve this error
