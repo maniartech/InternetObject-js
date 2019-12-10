@@ -2,6 +2,7 @@ import 'jest'
 import InternetObject from '../../src'
 import ASTParser from '../../src/parser/ast-parser'
 import { print } from '../../src/utils/index'
+import ErrorCodes from '../../src/errors/io-error-codes'
 
 const min = Number.MIN_SAFE_INTEGER
 const max = Number.MAX_SAFE_INTEGER
@@ -109,5 +110,42 @@ describe('Number Load', () => {
     expect(t1).toThrowError()
     expect(t2).toThrowError()
     expect(t3).toThrowError()
+  })
+
+  it('handles variables', () => {
+    const text = String.raw`
+        ~ a:1
+        ~ b:2
+        ~ schema: {a:number, b:number, tags:[{o:{number, choices: [1, 2]}}]}
+        ---
+        ~ $a, $b, [{$a}, {o:$b}]
+        ~ a:$a, b:$b, tags:[{o:$a}, {o:$b}]
+      `
+
+    const io = new InternetObject(text)
+    const [o1, o2] = io.data
+
+    expect(o1.a).toBe(1)
+    expect(o1.b).toBe(2)
+    expect(o1.tags[0].o).toBe(1)
+    expect(o1.tags[1].o).toBe(2)
+
+    expect(o2.a).toBe(1)
+    expect(o2.b).toBe(2)
+    expect(o2.tags[0].o).toBe(1)
+    expect(o2.tags[1].o).toBe(2)
+
+    const e1 = () => {
+      const text = String.raw`
+        ~ a:1
+        ~ b:2
+        ~ schema: {a:number, b:number, tags:[{o:{number, choices: [1, 3]}}]}
+        ---
+        ~ $a, $b, [{$a}, {o:$b}]
+      `
+
+      const io = new InternetObject(text)
+    }
+    expect(e1).toThrowError(ErrorCodes.invalidChoice)
   })
 })

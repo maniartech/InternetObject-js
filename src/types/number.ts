@@ -2,10 +2,11 @@ import { InternetObjectValidationError, ErrorArgs, InternetObjectError } from '.
 import ErrorCodes from '../errors/io-error-codes'
 import { ParserTreeValue, Node } from '../parser/index'
 import { Token } from '../parser'
-import { isNumber, isToken, isNode } from '../utils/is'
+import { isNumber, isToken, isNode, isString } from '../utils/is'
 import MemberDef from './memberdef'
 import TypeDef from './typedef'
 import { doCommonTypeCheck } from './utils'
+import KeyValueCollection from '../header/index'
 
 const NUMBER_TYPES = ['number', 'int', 'int32', 'int16', 'byte']
 
@@ -30,8 +31,8 @@ class NumberDef implements TypeDef {
     return this._type
   }
 
-  parse(data: ParserTreeValue, memberDef: MemberDef): number {
-    return this.validate(data, memberDef)
+  parse(data: ParserTreeValue, memberDef: MemberDef, vars?: KeyValueCollection): number {
+    return this.validate(data, memberDef, vars)
   }
 
   load(data: any, memberDef: MemberDef): number {
@@ -45,10 +46,10 @@ class NumberDef implements TypeDef {
     return this.validate(data, memberDef).toString()
   }
 
-  validate(data: any, memberDef: MemberDef): number {
+  validate(data: any, memberDef: MemberDef, vars?: KeyValueCollection): number {
     const node = isToken(data) ? data : undefined
     const value = node ? node.value : data
-    return _validate(this._validator, memberDef, value, node)
+    return _validate(this._validator, memberDef, value, node, vars)
   }
 }
 
@@ -59,7 +60,18 @@ class NumberDef implements TypeDef {
 //  * - Value >= schema.min
 //  * - Value <= schema.max
 //  * - Value is in choices
-function _validate(validator: any, memberDef: MemberDef, value: any, node?: Node) {
+function _validate(
+  validator: any,
+  memberDef: MemberDef,
+  value: any,
+  node?: Node,
+  vars?: KeyValueCollection
+) {
+  if (vars && isString(value)) {
+    const valueFound = vars.getV(value)
+    value = valueFound !== undefined ? valueFound : value
+  }
+
   const validatedData = doCommonTypeCheck(memberDef, value, node)
   if (validatedData !== value || validatedData === undefined) return validatedData
 
