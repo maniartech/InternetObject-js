@@ -1,5 +1,6 @@
 import 'jest'
 import InternetObject from '../../src'
+import ErrorCodes from '../../src/errors/io-error-codes'
 
 describe('Boolean', () => {
   it('valid bools', () => {
@@ -54,5 +55,36 @@ describe('Boolean', () => {
     expect(t1).toThrowError()
     expect(t2).toThrowError()
     expect(t3).toThrowError()
+  })
+
+  it('handles variables', () => {
+    const text = String.raw`
+        ~ a:T
+        ~ b:F
+        ~ schema: {a:bool, b:bool, tags?:[{o:bool}]}
+        ---
+        ~ $a, $b, [{$a}, {o:$b}]
+        ~ b:$b, a:$a
+      `
+
+    const io = new InternetObject(text)
+    const [o1, o2] = io.data
+
+    expect(o1.a).toBeTruthy()
+    expect(o1.b).toBeFalsy()
+    expect(o1.tags[0].o).toBeTruthy()
+    expect(o1.tags[1].o).toBeFalsy()
+
+    expect(o2.a).toBeTruthy()
+    expect(o2.b).toBeFalsy()
+
+    const e1 = () => {
+      const text = String.raw`
+       ~ schema: {active:bool, live:bool}
+        ---
+        ~ $noName, $noVar`
+      const io = new InternetObject(text)
+    }
+    expect(e1).toThrowError(ErrorCodes.notABool)
   })
 })

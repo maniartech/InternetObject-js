@@ -41,7 +41,10 @@ enum ErrorCodes {
   notAnInteger = 'not-an-integer',
   outOfRange = 'out-of-range',
   invalidMinValue = 'invalid-min-value',
-  invalidMaxValue = 'invalid-max-value'
+  invalidMaxValue = 'invalid-max-value',
+
+  // Boolean
+  notABool = 'not-a-bool'
 }
 
 export default ErrorCodes

@@ -1,9 +1,11 @@
 import { ParserTreeValue, Node } from '../parser/index'
-import { isToken, isBoolean } from '../utils/is'
+import { isToken, isBoolean, isString } from '../utils/is'
 import MemberDef from './memberdef'
 import TypeDef from './typedef'
 import { doCommonTypeCheck } from './utils'
 import ErrorCodes from '../errors/io-error-codes'
+import KeyValueCollection from '../header/index'
+import { InternetObjectValidationError } from '../errors/io-error'
 
 /**
  * Represents the InternetObject String, performs following validations.
@@ -23,8 +25,8 @@ export default class BooleanDef implements TypeDef {
     return this._type
   }
 
-  parse(data: ParserTreeValue, memberDef: MemberDef): string {
-    return this.validate(data, memberDef)
+  parse(data: ParserTreeValue, memberDef: MemberDef, vars?: KeyValueCollection): string {
+    return this.validate(data, memberDef, vars)
   }
 
   load(data: any, memberDef: MemberDef): string {
@@ -38,17 +40,23 @@ export default class BooleanDef implements TypeDef {
     return value === true ? 'T' : 'F'
   }
 
-  validate(data: any, memberDef: MemberDef): any {
+  validate(data: any, memberDef: MemberDef, vars?: KeyValueCollection): any {
     const node = isToken(data) ? data : undefined
-    const value = node ? node.value : data
+    let value = node ? node.value : data
+
+    if (vars && isString(value)) {
+      const valueFound = vars.getV(value)
+      value = valueFound !== undefined ? valueFound : value
+    }
 
     const validatedData = doCommonTypeCheck(memberDef, value, node)
-    if (validatedData !== value || validatedData === null || validatedData === undefined)
+    if (validatedData !== value || validatedData === null || validatedData === undefined) {
       return validatedData
+    }
 
     if (!isBoolean(value)) {
       throw new InternetObjectValidationError(
-        ErrorCodes.invalidValue,
+        ErrorCodes.notABool,
         'Expecting a boolean value',
         node
       )
