@@ -73,8 +73,9 @@ class ObjectDef implements TypeDef {
     vars?: KeyValueCollection
   ) => {
     const validatedData = doCommonTypeCheck(memberDef, value, node)
-    if (validatedData !== value || validatedData === null || validatedData === undefined)
+    if (validatedData !== value || validatedData === null || validatedData === undefined) {
       return validatedData
+    }
 
     const schema = memberDef.schema
     const object: any = {}
@@ -101,7 +102,6 @@ class ObjectDef implements TypeDef {
           const key = schema.keys[index]
           const memberDef: MemberDef = schema.defs[key]
           const typeDef: TypeDef = TypedefRegistry.get(memberDef.type)
-
           object[key] = typeDef.parse(dataItem, memberDef, vars)
         } else {
           throw new InternetObjectSyntaxError(ErrorCodes.positionalMemberAfterKeywordMember)
