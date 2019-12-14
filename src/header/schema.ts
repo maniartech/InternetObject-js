@@ -175,25 +175,6 @@ const _compileMemberDefTree = (root: ASTParserTree, path?: string) => {
 const _compileArraySchema = (root: ASTParserTree, path?: string): any => {
   const array = root.values
   const arrayPath = _concatPath('[', path)
-  if (array.length > 1) {
-    // console.warn('>>>', JSON.stringify(root, null, 2))
-
-    if (_isMemberDef(root)) {
-      return _compileMemberDefTree(root, _concatPath('[', path))
-    }
-    if (isParserTree(root)) {
-      return {
-        type: root.type,
-        schema:
-          root.type === 'object'
-            ? _compileObjectSchema(root, arrayPath)
-            : _compileArraySchema(root, arrayPath),
-        path: arrayPath
-      }
-    }
-    // TODO: Throw better error
-    throw new InternetObjectError('invalid-array-schema')
-  }
 
   if (array.length === 0) {
     return {
@@ -202,11 +183,20 @@ const _compileArraySchema = (root: ASTParserTree, path?: string): any => {
     }
   }
 
-  const item = array[0]
-  let currentPath = _concatPath('[', path)
-
-  const value = _getCompileValue(item, currentPath)
-  return value
+  if (_isMemberDef(root)) {
+    return _compileMemberDefTree(root, _concatPath('[', path))
+  } else if (isParserTree(root)) {
+    return {
+      type: root.type,
+      schema:
+        root.type === 'object'
+          ? _compileObjectSchema(root, arrayPath)
+          : _compileArraySchema(root, arrayPath),
+      path: arrayPath
+    }
+  }
+  // TODO: Throw better error
+  throw new InternetObjectError('invalid-array-schema')
 }
 
 const _compileObjectSchema = (root: ASTParserTree, path?: string) => {
