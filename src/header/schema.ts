@@ -46,7 +46,7 @@ export default class Schema {
     // TODO: Need to work on this function.
   }
 
-  public static compile = (schema: any): Schema => {
+  public static compile = (schema: any, vars?: KeyValueCollection): Schema => {
     let parsedSchema: any = null
     if (isString(schema)) {
       let parser = new ASTParser(schema, true)
@@ -58,13 +58,17 @@ export default class Schema {
       parsedSchema = schema
     }
 
-    const compiledSchema = _compileObjectSchema(parsedSchema)
+    const compiledSchema = _compileObjectSchema(parsedSchema, undefined, vars)
 
     return new Schema(compiledSchema)
   }
 }
 
-const _getCompileValue = (value: ParserTreeValue, path?: string): any => {
+const _getCompileValue = (
+  value: ParserTreeValue,
+  path?: string,
+  vars?: KeyValueCollection
+): any => {
   // Process Token
   if (isToken(value)) {
     if (isDataType(value.value)) {
@@ -79,7 +83,7 @@ const _getCompileValue = (value: ParserTreeValue, path?: string): any => {
 
   if (isParserTree(value)) {
     if (_isMemberDef(value)) {
-      return _compileMemberDefTree(value, path)
+      return _compileMemberDefTree(value, path, vars)
     }
     const arrayDef = value.type === 'array'
     return {
@@ -92,7 +96,7 @@ const _getCompileValue = (value: ParserTreeValue, path?: string): any => {
   throw new InternetObjectError(ErrorCodes.invalidValue)
 }
 
-const _compileMemberDefTree = (root: ASTParserTree, path?: string) => {
+const _compileMemberDefTree = (root: ASTParserTree, path?: string, vars?: KeyValueCollection) => {
   if (root.values.length === 0) {
     return {
       type: root.type,
@@ -126,7 +130,7 @@ const _compileMemberDefTree = (root: ASTParserTree, path?: string) => {
     } else if (isParserTree(firstVal)) {
       return {
         type: 'array',
-        schema: _compileArraySchema(firstVal, path),
+        schema: _compileArraySchema(firstVal, path, vars),
         path
       }
     }
@@ -172,7 +176,11 @@ const _compileMemberDefTree = (root: ASTParserTree, path?: string) => {
   return memberDef
 }
 
-const _compileArraySchema = (root: ASTParserTree, path?: string): any => {
+const _compileArraySchema = (
+  root: ASTParserTree,
+  path?: string,
+  vars?: KeyValueCollection
+): any => {
   const array = root.values
   const arrayPath = _concatPath('[', path)
 
@@ -184,14 +192,14 @@ const _compileArraySchema = (root: ASTParserTree, path?: string): any => {
   }
 
   if (_isMemberDef(root)) {
-    return _compileMemberDefTree(root, _concatPath('[', path))
+    return _compileMemberDefTree(root, _concatPath('[', path), vars)
   } else if (isParserTree(root)) {
     return {
       type: root.type,
       schema:
         root.type === 'object'
-          ? _compileObjectSchema(root, arrayPath)
-          : _compileArraySchema(root, arrayPath),
+          ? _compileObjectSchema(root, arrayPath, vars)
+          : _compileArraySchema(root, arrayPath, vars),
       path: arrayPath
     }
   }
@@ -199,7 +207,7 @@ const _compileArraySchema = (root: ASTParserTree, path?: string): any => {
   throw new InternetObjectError('invalid-array-schema')
 }
 
-const _compileObjectSchema = (root: ASTParserTree, path?: string) => {
+const _compileObjectSchema = (root: ASTParserTree, path?: string, vars?: KeyValueCollection) => {
   if (root.values.length === 0) return {}
 
   const schema: any = {
@@ -225,7 +233,7 @@ const _compileObjectSchema = (root: ASTParserTree, path?: string) => {
     else if (isKeyVal(item)) {
       const { name, optional, nullable } = _parseKey(item.key)
       const currentPath = _concatPath(name, path)
-      const value: any = _getCompileValue(item.value, currentPath)
+      const value: any = _getCompileValue(item.value, currentPath, vars)
       schema.keys.push(name)
 
       // When value is a memberDef
@@ -305,7 +313,6 @@ const _concatPath = (newPath: string, oldPath?: string) => {
     path =
       oldPath.endsWith('[') || newPath === '[' ? `${oldPath}${newPath}` : `${oldPath}.${newPath}`
   }
-
   return path
 }
 
