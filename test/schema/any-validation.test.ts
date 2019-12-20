@@ -45,7 +45,7 @@ describe('Any', () => {
         ~ b: blue
         ~ colors: [$r, $g, $b]
         ~ options: { color:$r, list: $colors }
-        ~ schema: {name, age, tag?:[]}
+        ~ $schema: {name, age, tag?:[]}
         ---
         ~ Spiderman, 100, [{ colors:[{c:[[{colors: $colors}]]}]}, {color: $g}]
         ~ $defaultName, $noVar

@@ -11,7 +11,7 @@ describe('Array', () => {
         ~ b: blue
         ~ colors: [$r, $g, $b]
         ~ options: { color:$r, list: $colors }
-        ~ schema: {name?, age?, tag?:[{color:{red?, green?, blue?}}]}
+        ~ $schema: {name?, age?, tag?:[{color:{red?, green?, blue?}}]}
         ---
         ~ Spiderman, 25, [{{red: $r}}, {{green: $g}}, {{blue: $b}}]
         ~ $noName, 10

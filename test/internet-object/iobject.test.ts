@@ -48,7 +48,7 @@ describe('Internet Object', () => {
         ~ b: blue
         ~ colors: [$r, $g, $b]
         ~ options: { color:$r, list: $colors }
-        ~ schema: {name?, age?, tag?:{colors:{red, green, blue}}}
+        ~ $schema: {name?, age?, tag?:{colors:{red, green, blue}}}
         ---
         ~ Spiderman, 25, {colors:{red: $r, green: $g, blue: $b}}
         ~ $noName, 10

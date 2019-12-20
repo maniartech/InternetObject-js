@@ -47,4 +47,4 @@ export const SCALAR = 'scalar'
 // Others
 
 export const HASH = '#'
-export const SCHEMA = 'schema'
+export const SCHEMA = '$schema'

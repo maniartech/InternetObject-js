@@ -79,7 +79,7 @@ describe('String Patterns', () => {
         ~ r: red
         ~ g: green
         ~ b: blue
-        ~ schema: {name:string, color:{string, choices:[red, blue]}, tag?:[{color:string}]}
+        ~ $schema: {name:string, color:{string, choices:[red, blue]}, tag?:[{color:string}]}
         ---
         ~ Spiderman, $b, [{color:$g}, {color: $r}]
         ~ $noName, color:$b
@@ -104,7 +104,7 @@ describe('String Patterns', () => {
         ~ r: red
         ~ g: green
         ~ b: blue
-        ~ schema: {name:string, color:{string, choices:[red, blue]}, tag?:[{color:string}]}
+        ~ $schema: {name:string, color:{string, choices:[red, blue]}, tag?:[{color:string}]}
         ---
         ~ Spiderman, $b, [{color:$g}, {color: $r}]
         ~ $noName, $noVar`

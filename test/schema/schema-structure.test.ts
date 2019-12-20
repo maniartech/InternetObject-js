@@ -162,7 +162,7 @@ describe('Schema Structure', () => {
 
 //     const obj = `
 //     ~ success: T
-//     ~ schema: {firstName, lastName, age?}
+//     ~ $schema: {firstName, lastName, age?}
 //     ---
 //     ~ Aam"ir""                 , Maniar
 //     ~ Kabir, Maniar, 15

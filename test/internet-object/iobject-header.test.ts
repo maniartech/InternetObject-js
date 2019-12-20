@@ -8,7 +8,7 @@ describe('Internet Object', () => {
     const io = new InternetObject(String.raw`
       ~ recordCount: 1
       ~ isSuccessful: T
-      ~ schema: { name, age, gender }
+      ~ $schema: { name, age, gender }
       ---
       Spiderman, 25, Male
       `)

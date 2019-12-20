@@ -116,7 +116,7 @@ describe('Number Load', () => {
     const text = String.raw`
         ~ a:1
         ~ b:2
-        ~ schema: {a:number, b:number, tags:[{o:{number, choices: [1, 2]}}]}
+        ~ $schema: {a:number, b:number, tags:[{o:{number, choices: [1, 2]}}]}
         ---
         ~ $a, $b, [{$a}, {o:$b}]
         ~ a:$a, b:$b, tags:[{o:$a}, {o:$b}]
@@ -139,7 +139,7 @@ describe('Number Load', () => {
       const text = String.raw`
         ~ a:1
         ~ b:2
-        ~ schema: {a:number, b:number, tags:[{o:{number, choices: [1, 3]}}]}
+        ~ $schema: {a:number, b:number, tags:[{o:{number, choices: [1, 3]}}]}
         ---
         ~ $a, $b, [{$a}, {o:$b}]
       `

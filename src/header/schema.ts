@@ -4,9 +4,9 @@ import DataParser from '../data'
 import ASTParser from '../parser/ast-parser'
 import ErrorCodes from '../errors/io-error-codes'
 
-import { ASTParserTree } from '../parser'
+import { ASTParserTree, Token } from '../parser'
 import { ParserTreeValue } from '../parser/index'
-import { InternetObjectError } from '../errors/io-error'
+import { InternetObjectError, InternetObjectSyntaxError } from '../errors/io-error'
 import { TypedefRegistry } from '../types/typedef-registry'
 import { isString, isParserTree, isKeyVal, isArray, isDataType, isToken } from '../utils/is'
 import KeyValueCollection from './index'
@@ -26,6 +26,13 @@ export default class Schema {
    */
   private constructor(schema: any) {
     this._schema = schema
+  }
+
+  /**
+   * Returns the underlaying schema structure
+   */
+  public get schema() {
+    return this._schema
   }
 
   /**
@@ -58,6 +65,14 @@ export default class Schema {
       parsedSchema = schema
     }
 
+    if (isToken(parsedSchema)) {
+      throw new InternetObjectSyntaxError(
+        ErrorCodes.invalidSchema,
+        'Expecting a valid schema',
+        parsedSchema
+      )
+    }
+
     const compiledSchema = _compileObjectSchema(parsedSchema, undefined, vars)
 
     return new Schema(compiledSchema)
@@ -71,12 +86,32 @@ const _getCompileValue = (
 ): any => {
   // Process Token
   if (isToken(value)) {
+    if (vars && isString(value.value)) {
+      const foundValue = vars.getV(value.value)
+
+      // In the case of variable, if value is found, return
+      if (foundValue !== undefined) {
+        if (foundValue instanceof Schema) {
+          return {
+            type: 'object',
+            schema: foundValue.schema,
+            path
+          }
+        }
+        return foundValue
+      }
+    }
+
     if (isDataType(value.value)) {
       return {
         type: value.value,
         path
       }
     }
+
+    // return value.value
+
+    // console.log("+++", value.value)
     // TODO: Throw better  error
     throw new InternetObjectError('invalid-datatype', 'Invalid data type', value)
   }
@@ -88,7 +123,9 @@ const _getCompileValue = (
     const arrayDef = value.type === 'array'
     return {
       type: value.type,
-      schema: arrayDef ? _compileArraySchema(value, path) : _compileObjectSchema(value, path)
+      schema: arrayDef
+        ? _compileArraySchema(value, path, vars)
+        : _compileObjectSchema(value, path, vars)
     }
   }
 
@@ -109,6 +146,7 @@ const _compileMemberDefTree = (root: ASTParserTree, path?: string, vars?: KeyVal
 
   // Array Root
   if (root.type === 'array') {
+    // Arrays can't have multiple schemas
     if (root.values.length > 1) {
       // TODO: Throw better  error
       throw new InternetObjectError('invalid-array-definition')
@@ -140,13 +178,13 @@ const _compileMemberDefTree = (root: ASTParserTree, path?: string, vars?: KeyVal
   const memberDef: any = {}
 
   if (isToken(firstVal) && isString(firstVal.value)) {
-    memberDef.type = firstVal.value
+    memberDef.type = _varOrVal(firstVal, vars)
   } else if (isParserTree(firstVal)) {
     memberDef.type = firstVal.type
     memberDef.schema =
       firstVal.type === 'object'
-        ? _compileObjectSchema(firstVal, path)
-        : _compileArraySchema(firstVal, path)
+        ? _compileObjectSchema(firstVal, path, vars)
+        : _compileArraySchema(firstVal, path, vars)
   }
 
   for (let index = 1; index < root.values.length; index++) {
@@ -155,7 +193,7 @@ const _compileMemberDefTree = (root: ASTParserTree, path?: string, vars?: KeyVal
       let val = item.value
 
       if (isToken(val)) {
-        memberDef[item.key] = val.value
+        memberDef[item.key] = _varOrVal(val, vars)
       } else if (isParserTree(val)) {
         memberDef[item.key] = DataParser.parse(val)
       } else {
@@ -174,6 +212,14 @@ const _compileMemberDefTree = (root: ASTParserTree, path?: string, vars?: KeyVal
   memberDef.path = path
 
   return memberDef
+}
+
+const _varOrVal = (token: Token, vars?: KeyValueCollection) => {
+  if (isString(token.value) && vars) {
+    const val = vars.getV(token.value)
+    return val !== undefined ? val : token.value
+  }
+  return token.value
 }
 
 const _compileArraySchema = (
@@ -217,9 +263,6 @@ const _compileObjectSchema = (root: ASTParserTree, path?: string, vars?: KeyValu
 
   for (let index = 0; index < root.values.length; index += 1) {
     let item = root.values[index]
-    let key: any = index
-    let value: any
-    let optional: boolean = false
 
     // Item = Tree
     if (isParserTree(item)) {
@@ -233,6 +276,7 @@ const _compileObjectSchema = (root: ASTParserTree, path?: string, vars?: KeyValu
     else if (isKeyVal(item)) {
       const { name, optional, nullable } = _parseKey(item.key)
       const currentPath = _concatPath(name, path)
+
       const value: any = _getCompileValue(item.value, currentPath, vars)
       schema.keys.push(name)
 
@@ -251,7 +295,8 @@ const _compileObjectSchema = (root: ASTParserTree, path?: string, vars?: KeyValu
         }
       }
     } else if (isToken(item)) {
-      const { name, optional, nullable } = _parseKey(item.value)
+      const value = _varOrVal(item, vars)
+      const { name, optional, nullable } = _parseKey(value)
       const currentPath = _concatPath(name, path)
       schema.keys.push(name)
       schema.defs[name] = {
@@ -271,6 +316,7 @@ const _isMemberDef = (root: ASTParserTree) => {
   if (root.values.length === 0) return false
 
   const first = root.values[0]
+
   if (isToken(first) && isDataType(first.value)) {
     return true
   } else if (isParserTree(first)) {
@@ -283,6 +329,10 @@ const _parseKey = (key: string) => {
   const optionalExp = /\?$/
   const nullExp = /\*$/
   const optNullExp = /\?\*$/
+
+  if (!isString(key)) {
+    throw new InternetObjectSyntaxError(ErrorCodes.invalidKey)
+  }
 
   if (key.match(optNullExp)) {
     return {
@@ -332,7 +382,6 @@ function _apply(data: any, schema: any, container?: any, vars?: KeyValueCollecti
       })
       return collection
     }
-
     return objectDef.parse(data, schemaDef, vars)
   } else if (isArray(data)) {
     const collection = data.forEach((item: any) => {

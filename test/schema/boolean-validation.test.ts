@@ -61,7 +61,7 @@ describe('Boolean', () => {
     const text = String.raw`
         ~ a:T
         ~ b:F
-        ~ schema: {a:bool, b:bool, tags?:[{o:bool}]}
+        ~ $schema: {a:bool, b:bool, tags?:[{o:bool}]}
         ---
         ~ $a, $b, [{$a}, {o:$b}]
         ~ b:$b, a:$a
@@ -80,7 +80,7 @@ describe('Boolean', () => {
 
     const e1 = () => {
       const text = String.raw`
-       ~ schema: {active:bool, live:bool}
+       ~ $schema: {active:bool, live:bool}
         ---
         ~ $noName, $noVar`
       const io = new InternetObject(text)
