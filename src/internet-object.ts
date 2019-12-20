@@ -35,6 +35,7 @@ export class InternetObject<T = any> {
       data = parsed.data
       header = parsed.header
     }
+
     this._data = data
     this._header = header
   }
