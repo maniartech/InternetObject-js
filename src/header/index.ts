@@ -168,8 +168,8 @@ function _parseCollection(tree: ASTParserTree, collection: KeyValueCollection, c
     let value = keyVal.value
 
     // When key is a SCHEMA, compile the value and create schema
-    if (key === SCHEMA) {
-      const val = Schema.compile(value)
+    if (key.startsWith('$')) {
+      const val = Schema.compile(value, collection)
       callback(key, val)
     } else if (isParserTree(value)) {
       const val = DataParser.parse(value, collection)
