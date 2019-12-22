@@ -178,7 +178,12 @@ const _compileMemberDefTree = (root: ASTParserTree, path?: string, vars?: KeyVal
   const memberDef: any = {}
 
   if (isToken(firstVal) && isString(firstVal.value)) {
-    memberDef.type = _varOrVal(firstVal, vars)
+    const ioType = _varOrVal(firstVal, vars)
+    if (isDataType(ioType)) {
+      memberDef.type = ioType
+    } else {
+      throw new InternetObjectSyntaxError(ErrorCodes.invalidType, ioType, firstVal)
+    }
   } else if (isParserTree(firstVal)) {
     memberDef.type = firstVal.type
     memberDef.schema =
@@ -195,7 +200,7 @@ const _compileMemberDefTree = (root: ASTParserTree, path?: string, vars?: KeyVal
       if (isToken(val)) {
         memberDef[item.key] = _varOrVal(val, vars)
       } else if (isParserTree(val)) {
-        memberDef[item.key] = DataParser.parse(val)
+        memberDef[item.key] = DataParser.parse(val, vars)
       } else {
         // TODO: Consider this case when memberdef key = {object value}
         console.warn('Check this case', 'invalid-option', val)
@@ -286,13 +291,15 @@ const _compileObjectSchema = (root: ASTParserTree, path?: string, vars?: KeyValu
         value.null = value.null || nullable || false
         value.path = currentPath
         schema.defs[name] = value
-      } else {
+      } else if (isDataType(value)) {
         schema.defs[name] = {
           type: value,
           optional: optional || false,
           null: nullable || false,
           path: currentPath
         }
+      } else {
+        throw new InternetObjectSyntaxError(ErrorCodes.invalidType, JSON.stringify(value), item)
       }
     } else if (isToken(item)) {
       const value = _varOrVal(item, vars)

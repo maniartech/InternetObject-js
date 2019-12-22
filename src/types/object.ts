@@ -83,29 +83,41 @@ class ObjectDef implements TypeDef {
 
     // When indexMode is on, members are read/loaded from the index.
     let indexMode: boolean = true
+
     if (isParserTree(node)) {
       node.values.forEach((dataItem: any, index: number) => {
+        let key: string
+        let memberDef: MemberDef
+        let dataValue: any
+
         if (isKeyVal(dataItem)) {
           indexMode = false
-
-          const key = dataItem.key
-          const memberDef: MemberDef = schema.defs[key]
-
-          // When memberDef is not found, ignore such member
-          if (memberDef === undefined) return
-
-          const typeDef: TypeDef = TypedefRegistry.get(memberDef.type)
-          object[dataItem.key] = typeDef.parse(dataItem.value, memberDef, vars)
+          key = dataItem.key
+          memberDef = schema.defs[key]
+          dataValue = dataItem.value
         }
         // Process members only when the indexMode is true.
         else if (indexMode || dataItem === undefined) {
-          const key = schema.keys[index]
-          const memberDef: MemberDef = schema.defs[key]
-          const typeDef: TypeDef = TypedefRegistry.get(memberDef.type)
-          object[key] = typeDef.parse(dataItem, memberDef, vars)
+          key = schema.keys[index]
+          memberDef = schema.defs[key]
+          dataValue = dataItem
         } else {
           throw new InternetObjectSyntaxError(ErrorCodes.positionalMemberAfterKeywordMember)
         }
+
+        // When memberDef is not found, ignore such member
+        if (memberDef === undefined) return
+        const typeDef: TypeDef = TypedefRegistry.get(memberDef.type)
+        object[key] = typeDef.parse(dataValue, memberDef, vars)
+      })
+
+      // Process the members who have not been included in
+      // the data item.
+      schema.keys.forEach((key: string) => {
+        if (key in object) return
+        const memberDef: MemberDef = schema.defs[key]
+        const typeDef: TypeDef = TypedefRegistry.get(memberDef.type)
+        object[key] = typeDef.parse(undefined, memberDef, vars)
       })
     } else {
       const keys = Object.keys(value)

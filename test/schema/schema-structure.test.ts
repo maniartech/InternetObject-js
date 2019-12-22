@@ -88,6 +88,48 @@ describe('Schema Structure', () => {
       state: { type: 'any', optional: true, null: false, path: 'address.state' }
     })
   })
+
+  it('handles variables', () => {
+    const text = String.raw`
+        ~ r: red
+        ~ g: green
+        ~ b: blue
+        ~ id: 0000-0000-0000-0000
+        ~ tag: [a, b, c]
+        ~ $person: {name, age}
+        ~ $address: {street, city, zip}
+        ~ $schema: {
+          person: $$person,
+          address: $$address,
+          id?:{string, default:$id},
+          color?: {string, default:$r, choices:[$r, $g, $b]},
+          tag?: {string, choices:$tag}
+        }
+        ---
+        ~ {Spiderman, 25}, {100, NY, 50001}, "8888-8888-8888-8888", $g, a
+        ~ {Ironman, 45}, {200, Malibu, 60001}
+      `
+
+    const io = new InternetObject(text)
+
+    const [o1, o2] = io.data
+
+    expect(o1).toMatchObject({
+      id: '8888-8888-8888-8888',
+      person: { name: 'Spiderman', age: 25 },
+      address: { street: 100, city: 'NY', zip: 50001 },
+      color: 'green',
+      tag: 'a'
+    })
+
+    expect(o2).toMatchObject({
+      id: '0000-0000-0000-0000',
+      person: { name: 'Ironman', age: 45 },
+      address: { street: 200, city: 'Malibu', zip: 60001 },
+      color: 'red',
+      tag: undefined
+    })
+  })
 })
 
 // describe('Complex Schema', () => {
