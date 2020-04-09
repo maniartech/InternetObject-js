@@ -20,8 +20,6 @@ import {
 import { Token } from '.'
 import ErrorCodes from '../errors/io-error-codes'
 import { InternetObjectSyntaxError } from '../errors/io-error'
-import { copySync } from 'fs-extra'
-import { stringify } from 'querystring'
 
 type NullableToken = Token | null
 
