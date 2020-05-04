@@ -34,12 +34,32 @@ export const isBoolean = (val: any): val is boolean => {
 }
 
 /**
+ * Checks whether specified value is date or not.
+ *
+ * @param val The value to be tested for date check!
+ * @returns `true` if the value is a date otherwise `false`
+ */
+export const isDate = (val: any): val is Date => {
+  return val instanceof Date
+}
+
+/**
+ * Checks whether specified value is date or not.
+ *
+ * @param val The value to be tested for date check!
+ * @returns `true` if the value is a date otherwise `false`
+ */
+export const isDTTypeString = (val: any): val is string => {
+  return isDateTimeString(val) || isDateString(val) || isTimeString(val)
+}
+
+/**
  * Checks whether specified value is datetime or not.
  *
  * @param val The value to be tested for number check!
  * @returns `true` if the value is a datetime otherwise `false`
  */
-export const isDateTime = (val: any): val is Date => {
+export const isDateTimeString = (val: any): val is string => {
   return (
     datetimeRegExes.datetimeExp.exec(val) !== null ||
     datetimeRegExes.datetimePlainExp.exec(val) !== null
@@ -52,7 +72,7 @@ export const isDateTime = (val: any): val is Date => {
  * @param val The value to be tested for date check!
  * @returns `true` if the value is a date otherwise `false`
  */
-export const isDate = (val: any): val is Date => {
+export const isDateString = (val: any): val is string => {
   return (
     val instanceof Date ||
     datetimeRegExes.dateExp.exec(val) !== null ||
@@ -66,7 +86,7 @@ export const isDate = (val: any): val is Date => {
  * @param val The value to be tested for time check!
  * @returns `true` if the value is a date otherwise `false`
  */
-export const isTime = (val: any): val is Date => {
+export const isTimeString = (val: any): val is string => {
   return (
     datetimeRegExes.timeExp.exec(val) !== null || datetimeRegExes.timePlainExp.exec(val) !== null
   )
