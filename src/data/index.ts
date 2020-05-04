@@ -18,14 +18,14 @@ export default class DataParser {
    * TODO: Implementations on defs-references not yet finalized!
    */
   public static parse(dataTree: ASTParserTree, vars?: KeyValueCollection) {
-    if (!isParserTree(dataTree)) return null
+    if (!isParserTree(dataTree)) return undefined
 
     if (dataTree.type === 'scalar') {
       const val = dataTree.values[0]
       if (isToken(val)) {
         return val.value
       }
-      if (val === null) {
+      if (val === undefined) {
         return
       }
     }

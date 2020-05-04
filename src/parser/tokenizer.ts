@@ -72,6 +72,12 @@ export default class Tokenizer {
     this._tokenLength = 0
     this._isQuoatedString = false
     const token = this._next()
+
+    // No character has found while reading the token yet
+    if (this._done && token !== null && token.col === undefined) {
+      return null
+    }
+
     return token
   }
 

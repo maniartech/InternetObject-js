@@ -13,7 +13,7 @@ describe('Trial Tests', () => {
     v1?:number, v2?:number, v3?:number
     ---`)
 
-    expect(obj.data).toBe(null)
+    expect(obj.data).toBeUndefined()
   })
 
   it('Data starts on datasep', () => {

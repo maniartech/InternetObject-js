@@ -15,9 +15,15 @@ describe('Internet Object', () => {
   })
 
   it('Types', () => {
-    expect(new InternetObject('').data).toBe('')
     expect(new InternetObject('N').data).toBeNull()
     expect(new InternetObject('10').data).toBe(10)
+  })
+
+  it('checks whether there is a data', () => {
+    expect(new InternetObject('').data).toBeUndefined()
+    expect(new InternetObject('   ').data).toBeUndefined()
+    expect(new InternetObject('   ').data).toBeUndefined()
+    // expect(new InternetObject('\n').data).toBeUndefined()
   })
 
   it('Structure Positional and Keyword Arguments', () => {

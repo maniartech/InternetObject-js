@@ -63,11 +63,9 @@ export default class ASTParser {
       let token = tokenizer.read()
       this._isFinalToken = tokenizer.done
 
-      if (token === null) {
-        // TODO: When the blank string is passed to the parser, tokenizer
-        // returns the null value
-        console.assert(false)
-      } else {
+      // When the blank string is passed to the parser, tokenizer
+      // returns the null value
+      if (token !== null) {
         this._process(token)
       }
     }
