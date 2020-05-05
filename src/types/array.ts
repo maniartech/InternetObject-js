@@ -1,15 +1,16 @@
-import ErrorCodes from '../errors/io-error-codes'
-import { ParserTreeValue, Node } from '../parser/index'
-import { Token } from '../parser'
-import { isParserTree, isKeyVal, isString } from '../utils/is'
 import MemberDef from './memberdef'
 import TypeDef from './typedef'
+import ErrorCodes from '../errors/io-error-codes'
+import KeyValueCollection from '../header'
+
+import { isArray } from 'util'
+import { InternetObjectError } from '../errors/io-error'
+
+import { Token } from '../parser'
+import { Node, ParserTreeValue } from '../parser/index'
+import { isParserTree, isString } from '../utils/is'
 import { TypedefRegistry } from './typedef-registry'
 import { doCommonTypeCheck } from './utils'
-import { isArray } from 'util'
-import { isToken } from '../../../src-with-defs/utils/is'
-import { InternetObjectError } from '../errors/io-error'
-import KeyValueCollection from '../header'
 
 // age?: { number, true, 10, min:10, max:20}
 

@@ -55,13 +55,14 @@ export default class Schema {
 
   public static compile = (schema: any, vars?: KeyValueCollection): Schema => {
     let parsedSchema: any = null
+
+    // When string is passed, first parse it with ASTParser
     if (isString(schema)) {
       let parser = new ASTParser(schema, true)
+      // TODO: Ensure what happens when parsing is failed
       parser.parse()
       parsedSchema = parser.header
-      // print("AST", parsedSchema)
-      // print(parser)
-    } else {
+    } else if (isParserTree(schema)) {
       parsedSchema = schema
     }
 

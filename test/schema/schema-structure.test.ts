@@ -114,6 +114,12 @@ describe('Schema Structure', () => {
 
     const [o1, o2] = io.data
 
+    expect(io.schema.schema.defs['color']).toMatchObject({
+      type: 'string',
+      default: 'red',
+      choices: ['red', 'green', 'blue']
+    })
+
     expect(o1).toMatchObject({
       id: '8888-8888-8888-8888',
       person: { name: 'Spiderman', age: 25 },
