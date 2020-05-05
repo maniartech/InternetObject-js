@@ -41,7 +41,7 @@ export default class Schema {
    */
   public apply(data: any, vars?: KeyValueCollection) {
     if (!data) {
-      return null
+      return data
     }
     return _apply(data, this._schema, {}, vars)
   }

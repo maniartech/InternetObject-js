@@ -4,13 +4,20 @@ import ErrorCodes from '../errors/io-error-codes'
 import DataParser from '../data'
 import KeyValueCollection from '../header'
 
-import { isBoolean } from '../../../src-with-defs/utils/is'
 import { appendPath } from '../utils'
 import { TypedefRegistry } from './typedef-registry'
 import { doCommonTypeCheck } from './utils'
 import { InternetObjectError } from '../errors/io-error'
 import { ParserTreeValue } from '../parser/index'
-import { isToken, isParserTree, isString, isNumber, isArray, isPlainObject } from '../utils/is'
+import {
+  isToken,
+  isParserTree,
+  isString,
+  isBoolean,
+  isNumber,
+  isArray,
+  isPlainObject
+} from '../utils/is'
 
 /**
  * Represents the AnyTypeDef which is reponsible for parsing,

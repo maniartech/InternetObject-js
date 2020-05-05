@@ -1,6 +1,7 @@
+import ErrorCodes from '../errors/io-error-codes'
+import { isParserTree } from '../utils/is'
 import MemberDef from './memberdef'
 import TypeDef from './typedef'
-import ErrorCodes from '../errors/io-error-codes'
 import KeyValueCollection from '../header'
 
 import { isArray } from 'util'
@@ -8,7 +9,6 @@ import { InternetObjectError } from '../errors/io-error'
 
 import { Token } from '../parser'
 import { Node, ParserTreeValue } from '../parser/index'
-import { isParserTree, isString } from '../utils/is'
 import { TypedefRegistry } from './typedef-registry'
 import { doCommonTypeCheck } from './utils'
 

@@ -5,7 +5,7 @@ import ErrorCodes from '../../src/errors/io-error-codes'
 describe('String Patterns', () => {
   it('Blank string', () => {
     const obj = new InternetObject('')
-    expect(obj.data).toBe('')
+    expect(obj.data).toBeUndefined()
   })
 
   it('handles properly handles null and undefined', () => {
@@ -18,15 +18,15 @@ describe('String Patterns', () => {
     const obj = new InternetObject(objStr)
     const [o1, o2, o3] = obj.data
     expect(o1.v1).toBe('test')
-    expect(o1.v2).toBe(undefined)
+    expect(o1.v2).toBeUndefined()
     expect(o1.v3).toBe(null)
-    expect(o1.v4).toBe(undefined)
+    expect(o1.v4).toBeUndefined()
 
-    expect(o2.v1).toBe(undefined)
-    expect(o2.v2).toBe(undefined)
-    expect(o2.v3).toBe(undefined)
-    expect(o2.v4).toBe(undefined)
-    expect(o2.v5).toBe(undefined)
+    expect(o2.v1).toBeUndefined()
+    expect(o2.v2).toBeUndefined()
+    expect(o2.v3).toBeUndefined()
+    expect(o2.v4).toBeUndefined()
+    expect(o2.v5).toBeUndefined()
   })
 
   it('All optional with no value', () => {

@@ -20,8 +20,6 @@ import {
 import { Token } from '.'
 import ErrorCodes from '../errors/io-error-codes'
 import { InternetObjectSyntaxError } from '../errors/io-error'
-import { copySync } from 'fs-extra'
-import { stringify } from 'querystring'
 
 type NullableToken = Token | null
 
@@ -74,6 +72,12 @@ export default class Tokenizer {
     this._tokenLength = 0
     this._isQuoatedString = false
     const token = this._next()
+
+    // No character has found while reading the token yet
+    if (this._done && token !== null && token.col === undefined) {
+      return null
+    }
+
     return token
   }
 

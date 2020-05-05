@@ -63,11 +63,9 @@ export default class ASTParser {
       let token = tokenizer.read()
       this._isFinalToken = tokenizer.done
 
-      if (token === null) {
-        // TODO: When the blank string is passed to the parser, tokenizer
-        // returns the null value
-        console.assert(false)
-      } else {
+      // When the blank string is passed to the parser, tokenizer
+      // returns the null value
+      if (token !== null) {
         this._process(token)
       }
     }
@@ -151,7 +149,11 @@ export default class ASTParser {
     // New Token
     else if (token.value === COMMA) {
       // Handle consicutive ending commas such as `test,,`
-      if (isFinalToken && this._lastToken !== undefined && this._lastToken.value === ',') {
+      if (
+        isFinalToken &&
+        this._lastToken !== undefined &&
+        (this._lastToken.value === COMMA || this._lastToken.value === TILDE)
+      ) {
         this._addValue(undefined, this._lastToken.index, this._lastToken.row, this._lastToken.col)
         this._addValue(undefined, token.index, token.row, token.col)
       } else if (
@@ -162,7 +164,9 @@ export default class ASTParser {
         // When comma is found after opening of braces, colon or datasep operators
         [CURLY_OPEN, SQUARE_OPEN, COLON, DATASEP].indexOf(this._lastToken.value) > -1 ||
         // When the comma is found just after another comma
-        this._lastToken.value === ','
+        this._lastToken.value === COMMA ||
+        // When the comma is found just after the tilde (collection) sign
+        this._lastToken.value === TILDE
       ) {
         this._addValue(undefined, token.index, token.row, token.col)
       }
@@ -219,6 +223,7 @@ export default class ASTParser {
     // Nothing to process
     if (this._stack.length === 0) {
       // TODO: Handle this case
+      return
     }
 
     // When there are open objects and arrays, stack will contain
@@ -284,12 +289,14 @@ export default class ASTParser {
       this._tree.data = this._tree.header
       delete this._tree.header
 
-      if (this.data.values.length === 1) {
-        this._tree.data.type = 'scalar'
-      }
-      // TODO: Add comment
-      else if (this._tree.data.type === 'object' && this._tree.data.values.length === 1) {
-        this._tree.data = this._tree.data.values[0]
+      if (this._tree.data) {
+        if (this.data.values.length === 1 && this._isCollection === false) {
+          this._tree.data.type = 'scalar'
+        }
+        // TODO: Add comment
+        else if (this._tree.data.type === 'object' && this._tree.data.values.length === 1) {
+          this._tree.data = this._tree.data.values[0]
+        }
       }
     }
 
