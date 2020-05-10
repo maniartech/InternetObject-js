@@ -4,6 +4,8 @@ import BooleanDef from './boolean'
 import NumberDef from './number'
 import ObjectDef from './object'
 import StringDef from './string'
+import DateTimeDef from './datetime'
+
 import { TypedefRegistry } from './typedef-registry'
 
 TypedefRegistry.register('any', new AnyDef())
@@ -19,6 +21,10 @@ TypedefRegistry.register('byte', new NumberDef('byte'))
 TypedefRegistry.register('int16', new NumberDef('int16'))
 TypedefRegistry.register('int32', new NumberDef('int32'))
 TypedefRegistry.register('int', new NumberDef('int'))
+
+TypedefRegistry.register('datetime', new DateTimeDef('datetime'))
+TypedefRegistry.register('date', new DateTimeDef('date'))
+TypedefRegistry.register('time', new DateTimeDef('time'))
 
 TypedefRegistry.register('array', new ArrayDef())
 TypedefRegistry.register('object', new ObjectDef())

@@ -1,6 +1,6 @@
 import 'jest'
 
-import { isDateTime, isDate, isTime } from '../../src/utils/is'
+import { isDateTimeString, isDateString, isTimeString } from '../../src/utils/is'
 import { parseDateTime, parseDate, parseTime } from '../../src/utils/datetime'
 
 // Test anything here, just don't push changes to the server!
@@ -47,12 +47,12 @@ const testDateTime = (
 
 describe('Datetime Tests', () => {
   it('tests the datatime validity', () => {
-    expect(isDateTime(dt1)).toBeTruthy()
-    expect(isDateTime(dt2)).toBeTruthy()
+    expect(isDateTimeString(dt1)).toBeTruthy()
+    expect(isDateTimeString(dt2)).toBeTruthy()
 
-    expect(isDateTime(date1)).toBeFalsy()
-    expect(isDateTime(time1)).toBeFalsy()
-    expect(isDateTime(invalidDate)).toBeFalsy()
+    expect(isDateTimeString(date1)).toBeFalsy()
+    expect(isDateTimeString(time1)).toBeFalsy()
+    expect(isDateTimeString(invalidDate)).toBeFalsy()
   })
 
   it('tests the datetime extration', () => {
@@ -63,12 +63,12 @@ describe('Datetime Tests', () => {
 
 describe('Date Tests', () => {
   it('validates dates', () => {
-    expect(isDate(date1)).toBeTruthy()
-    expect(isDate(date2)).toBeTruthy()
+    expect(isDateString(date1)).toBeTruthy()
+    expect(isDateString(date2)).toBeTruthy()
 
-    expect(isDate(dt1)).toBeFalsy()
-    expect(isDate(time1)).toBeFalsy()
-    expect(isDate(invalidDate)).toBeFalsy()
+    expect(isDateString(dt1)).toBeFalsy()
+    expect(isDateString(time1)).toBeFalsy()
+    expect(isDateString(invalidDate)).toBeFalsy()
   })
 
   it('parses date', () => {
@@ -84,14 +84,14 @@ describe('Date Tests', () => {
 
 describe('Time Tests', () => {
   it('validates times', () => {
-    expect(isTime(time1)).toBeTruthy()
-    expect(isTime(time2)).toBeTruthy()
-    expect(isTime(time3)).toBeTruthy()
-    expect(isTime(time4)).toBeTruthy()
+    expect(isTimeString(time1)).toBeTruthy()
+    expect(isTimeString(time2)).toBeTruthy()
+    expect(isTimeString(time3)).toBeTruthy()
+    expect(isTimeString(time4)).toBeTruthy()
 
-    expect(isTime(dt1)).toBeFalsy()
-    expect(isTime(dt2)).toBeFalsy()
-    expect(isTime(invalidDate)).toBeFalsy()
+    expect(isTimeString(dt1)).toBeFalsy()
+    expect(isTimeString(dt2)).toBeFalsy()
+    expect(isTimeString(invalidDate)).toBeFalsy()
   })
 
   it('parses time', () => {

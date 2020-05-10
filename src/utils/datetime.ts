@@ -10,12 +10,12 @@ const datetimePlain = {
   tz: String.raw`((Z)|((?:\+|-)(?:(?:[0-1][0-9]|2[0-3])(?:[0-5][0-9])?)))`
 }
 
-const datetimeExp = new RegExp(`^(${datetime.date}T${datetime.time}${datetime.tz})$`)
+const datetimeExp = new RegExp(`^(${datetime.date}T${datetime.time}${datetime.tz}?)$`)
 const dateExp = new RegExp(`^${datetime.date}$`)
 const timeExp = new RegExp(`^${datetime.time}$`)
 
 const datetimePlainExp = new RegExp(
-  `^(${datetimePlain.date}T${datetimePlain.time}${datetimePlain.tz})$`
+  `^(${datetimePlain.date}T${datetimePlain.time}${datetimePlain.tz}?)$`
 )
 const datePlainExp = new RegExp(`^${datetimePlain.date}$`)
 const timePlainExp = new RegExp(`^${datetimePlain.time}$`)
@@ -33,8 +33,9 @@ export const parseDateTime = (value: string): Date | null => {
 
   const d = datetimePlainExp.exec(value)
   if (d !== null) {
-    const dateStr = `${d[3]}-${d[4]}-${d[5]}` + `T${d[6]}:${d[7]}:${d[8]}.${d[9]}Z`
-
+    const dateStr =
+      `${d[3]}-${d[4]}-${d[5]}` +
+      `T${d[6] || '00'}:${d[7] || '00'}:${d[8] || '00'}.${d[9] || '000'}Z`
     return new Date(dateStr)
   }
 

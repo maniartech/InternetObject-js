@@ -22,6 +22,7 @@ enum ErrorCodes {
   // Parser Errors (Schema)
   invalidSchema = 'invalid-schema',
   invalidKey = 'invalid-key',
+  invalidMemberDefCondition = 'invalid-memberdef-condition',
 
   // String
   notAString = 'not-a-string',
