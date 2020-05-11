@@ -62,12 +62,10 @@ class DateTimeDef implements TypeDef {
     }
 
     return value
-    // return this.validate(data, memberDef, vars)
   }
 
   load(data: any, memberDef: MemberDef): Date {
     const value = doCommonTypeCheck(memberDef, data)
-
     return value
   }
 
@@ -125,23 +123,6 @@ function _validate(
     )
   }
 
-  // if (memberDef.min !== undefined) {
-  //   if (!memberDef.minDt) {
-  //     memberDef.minDt = parse(memberDef.min)
-  //     if (memberDef.minDt === null) {
-  //       throw new InternetObjectError(ErrorCodes.invalidMemberDefCondition, `The memberDef.min should be a valid ${type}.`)
-  //     }
-  //   }
-  //   const min: Date = memberDef.minDt
-  //   if (value.getTime() < min.getTime()) {
-  //     throw new InternetObjectValidationError(..._invlalidMin(memberDef, value, node))
-  //   }
-  // }
-
-  // if (memberDef.max !== undefined && value > memberDef.max) {
-  //   throw new InternetObjectValidationError(..._invlalidMax(memberDef, value, node))
-  // }
-
   return value
 }
 
@@ -161,61 +142,6 @@ function _getTypeChecker(type: string) {
     return isDateString
   }
   return isTimeString
-}
-
-function _intValidator(min: number, max: number, memberDef: MemberDef, value: any, node?: Node) {
-  // Validate for integer
-  if (value % 1 !== 0) {
-    throw new InternetObjectValidationError(..._notAnInt(memberDef, value, node))
-  }
-
-  if ((min !== -1 && value < min) || (max !== -1 && value > max)) {
-    throw new InternetObjectValidationError(..._outOfRange(memberDef, value, node))
-  }
-}
-
-function _outOfRange(memberDef: MemberDef, value: any, node?: Node): ErrorArgs {
-  return [
-    ErrorCodes.outOfRange,
-    `The value (${value}) set for "${memberDef.path}" is out of range.`,
-    node
-  ]
-}
-
-function _notAnInt(memberDef: MemberDef, value: any, node?: Node): ErrorArgs {
-  return [
-    ErrorCodes.notAnInteger,
-    `Expecting an integer value for "${memberDef.path}", Currently it is ${value}.`,
-    node
-  ]
-}
-
-function _notANumber(memberDef: MemberDef, value: any, node?: Node): ErrorArgs {
-  return [
-    ErrorCodes.notANumber,
-    `Expecting a number value for "${memberDef.path}", Currently it is ${value}.`,
-    node
-  ]
-}
-
-function _invlalidMin(memberDef: MemberDef, value: any, node?: Node): ErrorArgs {
-  return [
-    ErrorCodes.invalidMinValue,
-    `The "${memberDef.path}" must be greater than or equal to ${
-      memberDef.min
-    }, Currently it is ${value}.`,
-    node
-  ]
-}
-
-function _invlalidMax(memberDef: MemberDef, value: any, node?: Node): ErrorArgs {
-  return [
-    ErrorCodes.invalidMaxValue,
-    `The "${memberDef.path}" must be less than or equal to ${
-      memberDef.max
-    }, Currently it is ${value}.`,
-    node
-  ]
 }
 
 export default DateTimeDef

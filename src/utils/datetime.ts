@@ -68,27 +68,19 @@ export const parseTime = (value: string): Date | null => {
 export const dateToDatetimeString = (date: Date | null) => {
   if (date === null) return null
 
-  const _ = (n: number) => {
-    return n.toLocaleString('en-US', { minimumIntegerDigits: 2, useGrouping: false })
-  }
-
   const Y = date.getFullYear()
   const M = _(date.getMonth() + 1)
   const D = _(date.getDate())
   const h = _(date.getHours())
   const m = _(date.getMinutes())
   const s = _(date.getSeconds())
-  const ms = _(date.getMilliseconds())
+  const ms = _(date.getMilliseconds(), 3)
 
   return `${Y}-${M}-${D}T${h}:${m}:${s}.${ms}`
 }
 
 export const dateToDateString = (date: Date | null) => {
   if (date === null) return null
-
-  const _ = (n: number) => {
-    return n.toLocaleString('en-US', { minimumIntegerDigits: 2, useGrouping: false })
-  }
 
   const Y = date.getFullYear()
   const M = _(date.getMonth() + 1)
@@ -100,14 +92,14 @@ export const dateToDateString = (date: Date | null) => {
 export const dateToTimeString = (date: Date | null) => {
   if (date === null) return null
 
-  const _ = (n: number) => {
-    return n.toLocaleString('en-US', { minimumIntegerDigits: 2, useGrouping: false })
-  }
-
   const h = _(date.getHours())
   const m = _(date.getMinutes())
   const s = _(date.getSeconds())
-  const ms = _(date.getMilliseconds())
+  const ms = _(date.getMilliseconds(), 3)
 
   return `${h}:${m}:${s}.${ms}`
+}
+
+const _ = (n: number, pad: number = 2) => {
+  return n.toLocaleString('en-US', { minimumIntegerDigits: pad, useGrouping: false })
 }

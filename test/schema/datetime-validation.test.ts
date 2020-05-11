@@ -2,21 +2,22 @@ import 'jest'
 import InternetObject from '../../src'
 
 import ErrorCodes from '../../src/errors/io-error-codes'
+import { parseDateTime, dateToDatetimeString } from '../../src/utils/datetime'
 
-const dt11 = '"2020-04-12T08:43:46.619Z"'
-const dt12 = '"2020-04-12T08:43:46"'
-const dt13 = '"2020-04-12T08:43"'
+const dt11 = '2020-04-12T08:43:46.619Z'
+const dt12 = '2020-04-12T08:43:46'
+const dt13 = '2020-04-12T08:43'
 
 const dt21 = '20200412T084346.619Z'
 const dt22 = '20200412T084346'
 const dt23 = '20200412T0843'
 
-describe('Date Parser', () => {
-  it('parses valid dates', () => {
+describe('DateTime Parser', () => {
+  it('parses valid datetime', () => {
     const objStr = String.raw`
     v1:datetime, v2?:datetime, v3?:datetime, v4?:datetime
     ---
-    ~ ${dt11}, ${dt12}, ${dt13}
+    ~ "${dt11}", "${dt12}", "${dt13}"
     ~ ${dt21}, ${dt22}, ${dt23}
     `
     const [d1, d2] = new InternetObject(objStr).data
@@ -67,7 +68,7 @@ describe('Date Parser', () => {
     const objStr = String.raw`
     v1?:datetime, v2?*:{datetime}, v3:{datetime, default:now}
     ---
-    ~ , ${dt12}
+    ~ , "${dt12}"
     ~ ,N,
     `
 
@@ -81,8 +82,25 @@ describe('Date Parser', () => {
     expect(data[1].v2).toBeNull()
     expect(data[1].v3 instanceof Date).toBeTruthy()
   })
+})
 
-  it('loads the datetime from POJO', () => {
-    // TODO: Add code here!
+describe('Date Parser', () => {
+  it('valid ints', () => {
+    const schema = String.raw`
+    v1:datetime, v2:datetime, v3*:{datetime, default:N}, v4:datetime`
+
+    const obj = new InternetObject(
+      {
+        v1: parseDateTime(dt21),
+        v2: parseDateTime(dt22),
+        v3: null
+      },
+      schema
+    )
+
+    expect(obj.data.v1.toJSON()).toBe(dt11)
+    expect(dateToDatetimeString(obj.data.v2)).toBe(dt12 + '.000')
+    expect(obj.data.v3).toBeNull()
+    expect(obj.data.v4).toBeUndefined()
   })
 })
