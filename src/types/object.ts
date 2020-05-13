@@ -120,9 +120,9 @@ class ObjectDef implements TypeDef {
         object[key] = typeDef.parse(undefined, memberDef, vars)
       })
     } else {
-      const keys = Object.keys(value)
+      const keys = schema.keys
 
-      keys.forEach((key, index) => {
+      keys.forEach((key: string) => {
         const memberDef: MemberDef = schema.defs[key]
 
         // When memberDef is not found, ignore such member

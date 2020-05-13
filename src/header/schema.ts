@@ -40,9 +40,10 @@ export default class Schema {
    * mapped
    */
   public apply(data: any, vars?: KeyValueCollection) {
-    if (!data) {
+    if (data === undefined || data === null) {
       return data
     }
+
     return _apply(data, this._schema, {}, vars)
   }
 
