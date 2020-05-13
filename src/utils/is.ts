@@ -1,7 +1,7 @@
 import { ASTParserTree, KeyVal, Node } from '../parser/index'
 import { Token } from '../parser'
 import { TypedefRegistry } from '../types/typedef-registry'
-import { datetimeRegExes } from './datetime'
+import { datetimeExp, datetimePlainExp } from './datetime'
 
 /**
  * Checks whether specified value is number or not.
@@ -60,10 +60,8 @@ export const isDTTypeString = (val: any): val is string => {
  * @returns `true` if the value is a datetime otherwise `false`
  */
 export const isDateTimeString = (val: any): val is string => {
-  return (
-    datetimeRegExes.datetimeExp.exec(val) !== null ||
-    datetimeRegExes.datetimePlainExp.exec(val) !== null
-  )
+  const exp = /[\-\:]/.test(val) ? datetimeExp.datetime : datetimePlainExp.datetime
+  return exp.test(val)
 }
 
 /**
@@ -73,11 +71,8 @@ export const isDateTimeString = (val: any): val is string => {
  * @returns `true` if the value is a date otherwise `false`
  */
 export const isDateString = (val: any): val is string => {
-  return (
-    val instanceof Date ||
-    datetimeRegExes.dateExp.exec(val) !== null ||
-    datetimeRegExes.datePlainExp.exec(val) !== null
-  )
+  const exp = /\-/.test(val) ? datetimeExp.date : datetimePlainExp.date
+  return exp.test(val)
 }
 
 /**
@@ -87,9 +82,8 @@ export const isDateString = (val: any): val is string => {
  * @returns `true` if the value is a date otherwise `false`
  */
 export const isTimeString = (val: any): val is string => {
-  return (
-    datetimeRegExes.timeExp.exec(val) !== null || datetimeRegExes.timePlainExp.exec(val) !== null
-  )
+  const exp = /\:/.test(val) ? datetimeExp.time : datetimePlainExp.time
+  return exp.test(val)
 }
 
 /**

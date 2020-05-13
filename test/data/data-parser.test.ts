@@ -32,15 +32,13 @@ describe('Collection', () => {
   it('loads collection values', () => {
     const io = new InternetObject(String.raw`
     ~ a, b, c, d
-    ~ 
+    ~
     ~ T, F, N
-    ~ 
+    ~
     ~ scalar string
     `)
 
     const [o1, o2, o3] = io.data
-
-    console.log(o3)
 
     expect(o1['0']).toBe('a')
     expect(o1['1']).toBe('b')
@@ -59,10 +57,10 @@ describe('Collection', () => {
 
   it('does not treat single collection item as scalar', () => {
     const parser = new ASTParser(String.raw`
-    ~ 
-    ~ 
-    ~ 
-    ~ 
+    ~
+    ~
+    ~
+    ~
     `)
     parser.parse()
     parser.data
@@ -74,10 +72,10 @@ describe('Collection', () => {
 
   it('skips empty collection items', () => {
     const io = new InternetObject(String.raw`
-    ~ 
-    ~ 
-    ~ 
-    ~ 
+    ~
+    ~
+    ~
+    ~
     `)
 
     // Since none of the collection item has any values

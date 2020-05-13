@@ -50,14 +50,17 @@ describe('Datetime Tests', () => {
     expect(isDateTimeString(dt1)).toBeTruthy()
     expect(isDateTimeString(dt2)).toBeTruthy()
 
-    expect(isDateTimeString(date1)).toBeFalsy()
+    expect(isDateTimeString(date1)).toBeTruthy()
+    expect(isDateTimeString(date2)).toBeTruthy()
+    expect(isDateTimeString(date3)).toBeTruthy()
+
     expect(isDateTimeString(time1)).toBeFalsy()
     expect(isDateTimeString(invalidDate)).toBeFalsy()
   })
 
   it('tests the datetime extration', () => {
     testDateTime(parseDateTime(dt1), 2020, 4, 12, 8, 43, 46, 619)
-    testDateTime(parseDateTime(dt2), 2020, 4, 12, 8, 43, 46, 619)
+    testDateTime(parseDateTime('20200412T084346.619Z'), 2020, 4, 12, 8, 43, 46, 619)
   })
 })
 

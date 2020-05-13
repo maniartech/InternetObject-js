@@ -1,24 +1,14 @@
-const datetime = {
-  date: String.raw`((\d{4})(?:\-((?:1[0-2]|0[1-9]))(?:\-([0-2][0-9]|3[0-1]))?)?)`,
-  time: String.raw`(([0-1][0-9]|2[0-3])(?:\:([0-5][0-9])(?:\:([0-5][0-9])(?:\.(\d{3}))?)?)?)`,
-  tz: String.raw`((Z)|((?:\+|-)(?:(?:[0-1][0-9]|2[0-3])(?:\:[0-5][0-9])?)))`
+export const datetimeExp = {
+  datetime: /^((\d{4})(?:\-((?:1[0-2]|0[1-9]))(?:\-([0-2][0-9]|3[0-1]))?)?(T([0-1][0-9]|2[0-3])(?:\:([0-5][0-9])(?:\:([0-5][0-9])(?:\.(\d{3}))?)?)?)?((Z)|((?:\+|-)(?:(?:[0-1][0-9]|2[0-3])(?:\:[0-5][0-9])?)))?)$/,
+  date: /^((\d{4})(?:\-((?:1[0-2]|0[1-9]))(?:\-([0-2][0-9]|3[0-1]))?)?)$/,
+  time: /^(([0-1][0-9]|2[0-3])(?:\:([0-5][0-9])(?:\:([0-5][0-9])(?:\.(\d{3}))?)?)?)$/
 }
 
-const datetimePlain = {
-  date: String.raw`((\d{4})(?:((?:1[0-2]|0[1-9]))(?:([0-2][0-9]|3[0-1]))?)?)`,
-  time: String.raw`([0-1][0-9]|2[0-3])(?:([0-5][0-9])(?:([0-5][0-9])(?:\.(\d{3}))?)?)`,
-  tz: String.raw`((Z)|((?:\+|-)(?:(?:[0-1][0-9]|2[0-3])(?:[0-5][0-9])?)))`
+export const datetimePlainExp = {
+  datetime: /^((\d{4})(?:((?:1[0-2]|0[1-9]))(?:([0-2][0-9]|3[0-1]))?)?(T([0-1][0-9]|2[0-3])(?:([0-5][0-9])(?:([0-5][0-9])(?:\.(\d{3}))?)?)?)?((Z)|((?:\+|-)(?:(?:[0-1][0-9]|2[0-3])(?:[0-5][0-9])?)))?)$/,
+  date: /^((\d{4})(?:((?:1[0-2]|0[1-9]))(?:([0-2][0-9]|3[0-1]))?)?)$/,
+  time: /^(([0-1][0-9]|2[0-3])(?:([0-5][0-9])(?:([0-5][0-9])(?:\.(\d{3}))?)?)?)$/
 }
-
-const datetimeExp = new RegExp(`^(${datetime.date}T${datetime.time}${datetime.tz}?)$`)
-const dateExp = new RegExp(`^${datetime.date}$`)
-const timeExp = new RegExp(`^${datetime.time}$`)
-
-const datetimePlainExp = new RegExp(
-  `^(${datetimePlain.date}T${datetimePlain.time}${datetimePlain.tz}?)$`
-)
-const datePlainExp = new RegExp(`^${datetimePlain.date}$`)
-const timePlainExp = new RegExp(`^${datetimePlain.time}$`)
 
 /**
  * Parses the value string and returns the datetime if the string represents
@@ -26,20 +16,21 @@ const timePlainExp = new RegExp(`^${datetimePlain.time}$`)
  * is found.
  */
 export const parseDateTime = (value: string): Date | null => {
-  let parsed = datetimeExp.exec(value)
-  if (parsed !== null) {
-    return new Date(parsed[0])
+  const exp = /[\-\:]/.test(value) ? datetimeExp.datetime : datetimePlainExp.datetime
+  const d = exp.exec(value)
+  if (d === null) {
+    return null
   }
 
-  const d = datetimePlainExp.exec(value)
-  if (d !== null) {
-    const dateStr =
-      `${d[3]}-${d[4]}-${d[5]}` +
-      `T${d[6] || '00'}:${d[7] || '00'}:${d[8] || '00'}.${d[9] || '000'}Z`
-    return new Date(dateStr)
-  }
+  // When time signature is not defined, makr the date as utc date
+  // otherwise read the utc signature from the value.
+  const utc = d[5] === undefined ? 'Z' : d[10] || ''
 
-  return null
+  const dateStr =
+    `${d[2]}-${d[3] || '01'}-${d[4] || '01'}` +
+    `T${d[6] || '00'}:${d[7] || '00'}:${d[8] || '00'}.${d[9] || '000'}${utc}`
+
+  return new Date(dateStr)
 }
 
 /**
@@ -48,19 +39,14 @@ export const parseDateTime = (value: string): Date | null => {
  * is found.
  */
 export const parseDate = (value: string): Date | null => {
-  let parsed = dateExp.exec(value)
-  if (parsed !== null) {
-    return new Date(parsed[0])
+  const exp = /\-/.test(value) ? datetimeExp.date : datetimePlainExp.date
+  const d = exp.exec(value)
+  if (d === null) {
+    return null
   }
 
-  const d = datePlainExp.exec(value)
-  // console.warn(d, datePlainExp)
-  if (d !== null) {
-    const dateStr = `${d[2]}-${d[3] || 1}-${d[4] || 1}`
-    return new Date(dateStr)
-  }
-
-  return null
+  const dateStr = `${d[2]}-${d[3] || '01'}-${d[4] || '01'}`
+  return new Date(dateStr)
 }
 
 /**
@@ -69,27 +55,51 @@ export const parseDate = (value: string): Date | null => {
  * is found.
  */
 export const parseTime = (value: string): Date | null => {
-  let parsed = timeExp.exec(value)
-  if (parsed !== null) {
-    const dateStr = `1900-01-01T${parsed[2]}:${parsed[3] || '00'}:${parsed[4] ||
-      '00'}.${parsed[5] || '000'}`
-    return new Date(dateStr)
+  const exp = /\:/.test(value) ? datetimeExp.time : datetimePlainExp.time
+  const d = exp.exec(value)
+  if (d === null) {
+    return null
   }
 
-  const d = timePlainExp.exec(value)
-  if (d !== null) {
-    const dateStr = `1900-01-01T${d[1]}:${d[2] || '00'}:${d[3] || '00'}.${d[4] || '000'}`
-    return new Date(dateStr)
-  }
-
-  return null
+  const dateStr = `1900-01-01T${d[2]}:${d[3] || '00'}:${d[4] || '00'}.${d[5] || '000'}`
+  return new Date(dateStr)
 }
 
-export const datetimeRegExes = {
-  datetimeExp,
-  datetimePlainExp,
-  dateExp,
-  datePlainExp,
-  timeExp,
-  timePlainExp
+export const dateToDatetimeString = (date: Date | null) => {
+  if (date === null) return null
+
+  const Y = date.getFullYear()
+  const M = _(date.getMonth() + 1)
+  const D = _(date.getDate())
+  const h = _(date.getHours())
+  const m = _(date.getMinutes())
+  const s = _(date.getSeconds())
+  const ms = _(date.getMilliseconds(), 3)
+
+  return `${Y}-${M}-${D}T${h}:${m}:${s}.${ms}`
+}
+
+export const dateToDateString = (date: Date | null) => {
+  if (date === null) return null
+
+  const Y = date.getFullYear()
+  const M = _(date.getMonth() + 1)
+  const D = _(date.getDate())
+
+  return `${Y}-${M}-${D}`
+}
+
+export const dateToTimeString = (date: Date | null) => {
+  if (date === null) return null
+
+  const h = _(date.getHours())
+  const m = _(date.getMinutes())
+  const s = _(date.getSeconds())
+  const ms = _(date.getMilliseconds(), 3)
+
+  return `${h}:${m}:${s}.${ms}`
+}
+
+const _ = (n: number, pad: number = 2) => {
+  return n.toLocaleString('en-US', { minimumIntegerDigits: pad, useGrouping: false })
 }

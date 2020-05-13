@@ -7,6 +7,7 @@ enum ErrorCodes {
   invalidObject = 'invalid-object',
   valueRequired = 'value-required',
   nullNotAllowed = 'null-not-allowed',
+  notAllowed = 'not-allowed',
 
   // Parser Errors (Header)
   multipleHeaders = 'multiple-headers-found',
@@ -46,7 +47,10 @@ enum ErrorCodes {
   invalidMaxValue = 'invalid-max-value',
 
   // Boolean
-  notABool = 'not-a-bool'
+  notABool = 'not-a-bool',
+
+  // DateTime
+  invalidDateTime = 'invalid-datetime'
 }
 
 export default ErrorCodes

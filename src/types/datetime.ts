@@ -38,8 +38,6 @@ class DateTimeDef implements TypeDef {
 
     if (validatedData === undefined || validatedData === null) {
       return validatedData
-    } else if (validatedData === 'now') {
-      return new Date()
     }
 
     if (vars && isString(value) && value.startsWith('$')) {
@@ -56,17 +54,27 @@ class DateTimeDef implements TypeDef {
     // console.warn(parsed, ofMatchingType(value), value, memberDef)
     if (parsed === false || value === null) {
       throw new InternetObjectValidationError(
-        ErrorCodes.invalidType,
+        ErrorCodes.invalidDateTime,
         `Expecting the value of type '${this._type}'`
       )
     }
 
     return value
-    // return this.validate(data, memberDef, vars)
   }
 
-  load(data: any, memberDef: MemberDef): Date {
+  load(data: any, memberDef: MemberDef): any {
     const value = doCommonTypeCheck(memberDef, data)
+
+    if (value === undefined || value === null) {
+      return value
+    }
+
+    if (value instanceof Date === false) {
+      throw new InternetObjectValidationError(
+        ErrorCodes.invalidDateTime,
+        `Expecting the value of type '${this._type}'`
+      )
+    }
 
     return value
   }
@@ -75,74 +83,15 @@ class DateTimeDef implements TypeDef {
     if (DATETIME_TYPES.indexOf(memberDef.type) === -1) {
       throw new InternetObjectError(ErrorCodes.invalidType)
     }
-    return this.validate(data, memberDef).toString()
+    throw Error('not-implemented')
+    // return this.validate(data, memberDef).toJSON()
   }
 
-  validate(data: any, memberDef: MemberDef, vars?: KeyValueCollection): number {
-    const node = isToken(data) ? data : undefined
-    const value = node ? node.value : data
-    return _validate(this._type, memberDef, value, node, vars)
-  }
-}
-
-// Performs following validations.
-//  * - Value is datetime, date, time
-//  * - Value is optional
-//  * - Value is nullable
-//  * - Value >= schema.min
-//  * - Value <= schema.max
-//  * - Value is in choices
-function _validate(
-  type: any,
-  memberDef: MemberDef,
-  value: any,
-  node?: Node,
-  vars?: KeyValueCollection
-) {
-  const parse = _getParser(type)
-  const isOfType = _getTypeChecker(type)
-
-  if (vars && isString(value) && value.startsWith('$')) {
-    const valueFound = vars.getV(value)
-    value = valueFound !== undefined ? valueFound : value
-  }
-
-  const validatedData = doCommonTypeCheck(memberDef, value, node)
-  if (validatedData !== value || validatedData === undefined) return validatedData
-
-  if (value instanceof Date === false) {
-    if (isOfType(value)) {
-      value = parse(value)
-    }
-  }
-
-  if (!isOfType(value)) {
-    throw new InternetObjectValidationError(ErrorCodes.invalidValue)
-  } else if (isNaN(Number(value))) {
-    throw new InternetObjectValidationError(
-      ErrorCodes.notANumber,
-      `Invalid number encountered for ${memberDef.path}`
-    )
-  }
-
-  // if (memberDef.min !== undefined) {
-  //   if (!memberDef.minDt) {
-  //     memberDef.minDt = parse(memberDef.min)
-  //     if (memberDef.minDt === null) {
-  //       throw new InternetObjectError(ErrorCodes.invalidMemberDefCondition, `The memberDef.min should be a valid ${type}.`)
-  //     }
-  //   }
-  //   const min: Date = memberDef.minDt
-  //   if (value.getTime() < min.getTime()) {
-  //     throw new InternetObjectValidationError(..._invlalidMin(memberDef, value, node))
-  //   }
+  // validate(data: any, memberDef: MemberDef, vars?: KeyValueCollection): Date {
+  //   const node = isToken(data) ? data : undefined
+  //   const value = node ? node.value : data
+  //   // return _validate(this._type, memberDef, value, node, vars)
   // }
-
-  // if (memberDef.max !== undefined && value > memberDef.max) {
-  //   throw new InternetObjectValidationError(..._invlalidMax(memberDef, value, node))
-  // }
-
-  return value
 }
 
 function _getParser(type: string) {
@@ -161,61 +110,6 @@ function _getTypeChecker(type: string) {
     return isDateString
   }
   return isTimeString
-}
-
-function _intValidator(min: number, max: number, memberDef: MemberDef, value: any, node?: Node) {
-  // Validate for integer
-  if (value % 1 !== 0) {
-    throw new InternetObjectValidationError(..._notAnInt(memberDef, value, node))
-  }
-
-  if ((min !== -1 && value < min) || (max !== -1 && value > max)) {
-    throw new InternetObjectValidationError(..._outOfRange(memberDef, value, node))
-  }
-}
-
-function _outOfRange(memberDef: MemberDef, value: any, node?: Node): ErrorArgs {
-  return [
-    ErrorCodes.outOfRange,
-    `The value (${value}) set for "${memberDef.path}" is out of range.`,
-    node
-  ]
-}
-
-function _notAnInt(memberDef: MemberDef, value: any, node?: Node): ErrorArgs {
-  return [
-    ErrorCodes.notAnInteger,
-    `Expecting an integer value for "${memberDef.path}", Currently it is ${value}.`,
-    node
-  ]
-}
-
-function _notANumber(memberDef: MemberDef, value: any, node?: Node): ErrorArgs {
-  return [
-    ErrorCodes.notANumber,
-    `Expecting a number value for "${memberDef.path}", Currently it is ${value}.`,
-    node
-  ]
-}
-
-function _invlalidMin(memberDef: MemberDef, value: any, node?: Node): ErrorArgs {
-  return [
-    ErrorCodes.invalidMinValue,
-    `The "${memberDef.path}" must be greater than or equal to ${
-      memberDef.min
-    }, Currently it is ${value}.`,
-    node
-  ]
-}
-
-function _invlalidMax(memberDef: MemberDef, value: any, node?: Node): ErrorArgs {
-  return [
-    ErrorCodes.invalidMaxValue,
-    `The "${memberDef.path}" must be less than or equal to ${
-      memberDef.max
-    }, Currently it is ${value}.`,
-    node
-  ]
 }
 
 export default DateTimeDef
