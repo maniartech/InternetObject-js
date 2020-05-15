@@ -59,10 +59,13 @@ class ObjectDef implements TypeDef {
       serialized.push(serializedValue)
     })
 
+    console.warn(schema.keys)
     if (isRoot) {
-      return serialized.join(',')
+      // join array and trim off last commas, from the end
+      return serialized.join(',').replace(/,+$/g, '')
     }
-    return `{${serialized.join(',')}}`
+    // join array and trim off last commas, from the end
+    return `{${serialized.join(',').replace(/,+$/g, '')}}`
   }
 
   // Process the parse and load requests
