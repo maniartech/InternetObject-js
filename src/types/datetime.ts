@@ -6,7 +6,14 @@ import MemberDef from './memberdef'
 import TypeDef from './typedef'
 import { doCommonTypeCheck } from './utils'
 import KeyValueCollection from '../header/index'
-import { parseDateTime, parseDate, parseTime } from '../utils/datetime'
+import {
+  parseDateTime,
+  parseDate,
+  parseTime,
+  dateToDatetimeString,
+  dateToDateString,
+  dateToTimeString
+} from '../utils/datetime'
 
 const DATETIME_TYPES = ['datetime', 'date', 'time']
 
@@ -80,18 +87,41 @@ class DateTimeDef implements TypeDef {
   }
 
   serialize = (data: any, memberDef: MemberDef): string => {
-    if (DATETIME_TYPES.indexOf(memberDef.type) === -1) {
-      throw new InternetObjectError(ErrorCodes.invalidType)
-    }
-    throw Error('not-implemented')
-    // return this.validate(data, memberDef).toJSON()
-  }
+    const validatedData = doCommonTypeCheck(memberDef, data)
 
-  // validate(data: any, memberDef: MemberDef, vars?: KeyValueCollection): Date {
-  //   const node = isToken(data) ? data : undefined
-  //   const value = node ? node.value : data
-  //   // return _validate(this._type, memberDef, value, node, vars)
-  // }
+    if (validatedData === undefined) return ''
+    else if (validatedData === null) return 'N'
+
+    if (data instanceof Date) {
+      return _getSerializer(this._type)(data)
+    }
+
+    throw new InternetObjectValidationError(
+      ErrorCodes.invalidDateTime,
+      `Expecting the value of type '${this._type}'`
+    )
+  }
+}
+
+function _serializeDateTime(date: Date): string {
+  return dateToDatetimeString(date, true, true) || ''
+}
+
+function _serializeDate(date: Date): string {
+  return dateToDateString(date, true) || ''
+}
+
+function _serializeTime(date: Date): string {
+  return dateToTimeString(date, true) || ''
+}
+
+function _getSerializer(type: string) {
+  if (type === 'datetime') {
+    return _serializeDateTime
+  } else if (type === 'date') {
+    return _serializeDate
+  }
+  return _serializeTime
 }
 
 function _getParser(type: string) {
