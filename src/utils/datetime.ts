@@ -65,8 +65,13 @@ export const parseTime = (value: string): Date | null => {
   return new Date(dateStr)
 }
 
-export const dateToDatetimeString = (date: Date | null) => {
+export const dateToDatetimeString = (date: Date | null, noSep = false, zuluTime = false) => {
   if (date === null) return null
+
+  if (zuluTime) {
+    if (noSep) return date.toJSON().replace(/[\:\-]/g, '')
+    return date.toJSON()
+  }
 
   const Y = date.getFullYear()
   const M = _(date.getMonth() + 1)
@@ -75,21 +80,24 @@ export const dateToDatetimeString = (date: Date | null) => {
   const m = _(date.getMinutes())
   const s = _(date.getSeconds())
   const ms = _(date.getMilliseconds(), 3)
+
+  if (noSep) return `${Y}${M}${D}T${h}${m}${s}.${ms}`
 
   return `${Y}-${M}-${D}T${h}:${m}:${s}.${ms}`
 }
 
-export const dateToDateString = (date: Date | null) => {
+export const dateToDateString = (date: Date | null, noSep = false) => {
   if (date === null) return null
 
   const Y = date.getFullYear()
   const M = _(date.getMonth() + 1)
   const D = _(date.getDate())
 
+  if (noSep) return `${Y}${M}${D}`
   return `${Y}-${M}-${D}`
 }
 
-export const dateToTimeString = (date: Date | null) => {
+export const dateToTimeString = (date: Date | null, noSep = false) => {
   if (date === null) return null
 
   const h = _(date.getHours())
@@ -97,6 +105,7 @@ export const dateToTimeString = (date: Date | null) => {
   const s = _(date.getSeconds())
   const ms = _(date.getMilliseconds(), 3)
 
+  if (noSep) return `${h}${m}${s}.${ms}`
   return `${h}:${m}:${s}.${ms}`
 }
 
