@@ -4,6 +4,7 @@ import MemberDef from './memberdef'
 import { ErrorArgs, InternetObjectError, InternetObjectValidationError } from '../errors/io-error'
 import { Node } from '../parser/index'
 import { isToken } from '../utils/is'
+import { isString } from '../../../src-with-defs/utils/is'
 
 /**
  * Performs the common validations required before serialization and deserialization
@@ -20,9 +21,9 @@ export function doCommonTypeCheck(memberDef: MemberDef, value?: any, node?: Node
   // console.warn(">>>", JSON.stringify(memberDef, null, 2), value)
   // Check for undefined
   if (isUndefined) {
-    if (memberDef.default) return memberDef.default
+    if (memberDef.default) return _default(memberDef.default)
     if (memberDef.optional) return undefined
-    throw new InternetObjectError(..._valueRequired(memberDef, node))
+    throw new InternetObjectValidationError(..._valueRequired(memberDef, node))
   }
 
   // Check for null
@@ -37,6 +38,16 @@ export function doCommonTypeCheck(memberDef: MemberDef, value?: any, node?: Node
   }
 
   // If everything is okay, return same data
+  return value
+}
+
+function _default(value: any) {
+  if (isString(value)) {
+    if (value === 'N') return null
+    if (value === 'T' || value === 'true') return true
+    if (value === 'F' || value === 'false') return false
+    return value
+  }
   return value
 }
 
