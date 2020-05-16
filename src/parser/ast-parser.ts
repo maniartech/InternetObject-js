@@ -124,7 +124,7 @@ export default class ASTParser {
     // and keep the value slot to null. When the next token arives, push it
     // into the value slot.
     // TODO: Todo check key-value pair is complete.
-    else if (token.value === ':') {
+    else if (token.value === COLON) {
       const obj = this._getObject()
       // TODO: Validate length of the obj.values
       let lastToken: any = obj.values[obj.values.length - 1]
@@ -193,7 +193,7 @@ export default class ASTParser {
     }
 
     // Ready for schema generation
-    else if (token.type === 'datasep') {
+    else if (token.value === DATASEP) {
       // Header is closed when, datasep is found. After the header
       // is closed, throw an error when another datasep is sent!
       if (!this._isHeaderOpen) {
@@ -246,7 +246,6 @@ export default class ASTParser {
             values: [data]
           }
         } else {
-          // console.log("2.", data)
           this._tree.header.values.push(data)
         }
       } else {
@@ -365,6 +364,7 @@ export default class ASTParser {
     if (isToken(value) && value.value === '') return
 
     if ([',', ':', '~', '{', '[', '---'].indexOf(token.value) === -1) {
+      // console.warn(token, value)
       // TODO: Provide better error
       throw new InternetObjectSyntaxError(ErrorCodes.expectingSeparator, '', value)
     }
