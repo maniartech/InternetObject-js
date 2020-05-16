@@ -73,7 +73,7 @@ export default class AnyDef implements TypeDef {
   /**
    * Serializes any value from JavaScript into IO format.
    */
-  serialize(data: any, memberDef: MemberDef, isRoot: boolean = true): string {
+  serialize(data: any, memberDef: MemberDef, isRoot: boolean = false): string {
     return _serialize(data, memberDef, isRoot)
   }
 }
@@ -100,6 +100,16 @@ const _serialize = (data: any, memberDef: MemberDef, isRoot: boolean): string =>
   // data is an array
   if (isArray(data)) {
     return _serializeArray(data, { ...memberDef }, isRoot)
+  }
+
+  // data is null
+  if (data === null) {
+    return 'N'
+  }
+
+  // data is undefined
+  if (data === undefined) {
+    return ''
   }
 
   // data is a plain javascript object
@@ -129,9 +139,9 @@ const _serializeObject = (data: any, memberDef: MemberDef, isRoot: boolean): str
   })
 
   if (isRoot) {
-    return serialized.join(',')
+    return serialized.join(',').replace(/,+$/g, '')
   }
-  return `{${serialized.join(',')}}`
+  return `{${serialized.join(',').replace(/,+$/g, '')}}`
 }
 
 const _serializeArray = (data: any, memberDef: MemberDef, isRoot: boolean): string => {
