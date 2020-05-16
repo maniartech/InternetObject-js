@@ -82,6 +82,19 @@ class ArrayDef implements TypeDef {
       throw new InternetObjectError(ErrorCodes.invalidArray)
     }
 
+    const validatedData = doCommonTypeCheck(memberDef, data)
+    if (validatedData !== data) {
+      // TODO: Test, when the validated data is not same,
+      // can occur in situation when the default value is repaced
+      data = validatedData
+    } else if (validatedData === undefined) {
+      // When undefined allowed
+      return ''
+    } else if (validatedData === null) {
+      // When the null is allowed or the default value is null
+      return 'N'
+    }
+
     const serialized: string[] = []
     const schema = memberDef.schema
     const typeDef = TypedefRegistry.get(schema.type)
