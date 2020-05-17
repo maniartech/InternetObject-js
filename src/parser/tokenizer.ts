@@ -241,7 +241,6 @@ export default class Tokenizer {
       if (isNewLine) {
         this._row += 1
         this._col = 0
-        return this._next()
       }
 
       if ((isNextSep || isNextCollectionSep || isNextDataSep) && isStarted) {
