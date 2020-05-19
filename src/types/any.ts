@@ -1,10 +1,10 @@
 import TypeDef from './typedef'
 import MemberDef from './memberdef'
 import ErrorCodes from '../errors/io-error-codes'
-import DataParser from '../data'
-import KeyValueCollection from '../header'
+import DataParser from '../data/index'
+import KeyValueCollection from '../header/index'
 
-import { appendPath } from '../utils'
+import { appendPath } from '../utils/index'
 import { TypedefRegistry } from './typedef-registry'
 import { doCommonTypeCheck } from './utils'
 import { InternetObjectError } from '../errors/io-error'
