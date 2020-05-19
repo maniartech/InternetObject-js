@@ -89,11 +89,11 @@ describe('String', () => {
   })
 
   it('String with other escapes escaped', () => {
-    const tokenizer = new Tokenizer(`"\\Hello\\nWorld\\t 😀"`)
+    const tokenizer = new Tokenizer(`"  \\Hello\\nWorld\\t 😀  "`)
     tokenizer.readAll()
     let token = tokenizer.get(0)
     expect(tokenizer.length).toBe(1)
-    expect(token.value).toBe(`Hello\nWorld\t 😀`)
+    expect(token.value).toBe(`  Hello\nWorld\t 😀  `)
     expect(token.type).toBe('string')
     expect(token.col).toBe(1)
     expect(token.row).toBe(1)
@@ -125,6 +125,10 @@ describe('String', () => {
     token = tokenizer.readAll().get(0)
     expect(token.value).toBe(`c:\\program
     files\\nodepad++`)
+
+    tokenizer = new Tokenizer(String.raw`'  string with leading and trailing spaces  '`)
+    token = tokenizer.readAll().get(0)
+    expect(token.value).toBe(`  string with leading and trailing spaces  `)
   })
 
   it('Raw strings " escape', () => {

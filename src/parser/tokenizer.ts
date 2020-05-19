@@ -118,22 +118,15 @@ export default class Tokenizer {
 
     let value: any = this._value
     token.token = this._text.substring(this._start, this._end + (this._isQuoatedString ? 1 : 1))
-    // console.warn(">>>", JSON.stringify(this._value))
-    // console.trace()
 
-    const confirmedString = token.token.endsWith(STRING_ENCLOSER)
+    const confirmedString = token.token.endsWith(STRING_ENCLOSER) || token.token.endsWith(QUOTE)
 
     // Trim the white spaces only when the strings does not ends with
     // the string encloser.
     if (!confirmedString) {
       value = this._value.trim()
-      // .replace(/^[\s\uFEFF\xA0]+/g, "") // Trim starting spaces
-      // .replace(/[\s\uFEFF\xA0]+$/g, "") // Trim trailing spaces
     }
 
-    // .replace(/^"+|(\\?")$/g, (g1) => { // Trim end quotes
-    //   return g1 === "\\\"" ? g1 : ""
-    // })
     let numVal = Number(value)
     let type = 'string'
 
