@@ -1,6 +1,6 @@
-import '../types'
+import '../types/index'
 
-import DataParser from '../data'
+import DataParser from '../data/index'
 import ASTParser from '../parser/ast-parser'
 import ErrorCodes from '../errors/io-error-codes'
 
