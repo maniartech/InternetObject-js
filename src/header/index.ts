@@ -1,6 +1,6 @@
 import Schema from './schema'
 import ASTParser from '../parser/ast-parser'
-import DataParser from '../data'
+import DataParser from '../data/index'
 import ErrorCodes from '../errors/io-error-codes'
 
 import { SCHEMA } from '../parser/constants'
