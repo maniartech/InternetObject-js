@@ -2,7 +2,7 @@ import ErrorCodes from '../errors/io-error-codes'
 import { isParserTree } from '../utils/is'
 import MemberDef from './memberdef'
 import TypeDef from './typedef'
-import KeyValueCollection from '../header'
+import KeyValueCollection from '../header/index'
 
 import { isArray } from 'util'
 import { InternetObjectError } from '../errors/io-error'

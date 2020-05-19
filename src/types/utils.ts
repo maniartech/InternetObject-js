@@ -3,8 +3,7 @@ import MemberDef from './memberdef'
 
 import { ErrorArgs, InternetObjectError, InternetObjectValidationError } from '../errors/io-error'
 import { Node } from '../parser/index'
-import { isToken } from '../utils/is'
-import { isString } from '../../../src-with-defs/utils/is'
+import { isToken, isString } from '../utils/is'
 
 /**
  * Performs the common validations required before serialization and deserialization
