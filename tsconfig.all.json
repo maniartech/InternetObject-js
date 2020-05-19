@@ -1,0 +1,10 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "moduleResolution": "node",
+    "target": "es5",
+    "module": "amd",
+    "outFile": "./lib/index.all.js",
+    "declarationDir": null
+  }
+}
