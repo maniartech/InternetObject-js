@@ -1,6 +1,6 @@
 {
   "name": "internet-object",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "A typescript/javascript compiler parser for Internet Object",
   "keywords": [
     "Internet Object",
@@ -10,25 +10,29 @@
     "API",
     "JSON"
   ],
-  "main": "dist/index.umd.js",
-  "module": "dist/index.es5.js",
-  "typings": "dist/types/index.d.ts",
+  "main": "./lib/index.js",
+  "module": "./lib/index.js",
+  "typings": "./lib/types/index.d.ts",
   "files": [
-    "dist"
+    "lib"
   ],
   "author": "Mohamed Aamir Maniar <aamir.maniar@maniartech.com>",
+  "homepage": "https://internetobject.org",
   "repository": {
     "type": "git",
-    "url": ""
+    "url": "git+https://github.com/maniartech/InternetObject-js.git"
   },
   "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/maniartech/InternetObject-js/issues"
+  },
   "engines": {
     "node": ">=6.0.0"
   },
   "scripts": {
     "lint": "tslint  --project tsconfig.json -t codeFrame 'src/**/*.ts' 'test/**/*.ts'",
-    "prebuild": "rimraf dist",
-    "build": "tsc --module commonjs && rollup -c rollup.config.ts && typedoc --out docs --target es6 --theme minimal --mode file src",
+    "prebuild": "rimraf lib",
+    "build": "tsc",
     "start": "rollup -c rollup.config.ts -w",
     "test": "jest",
     "test:full": "jest  --coverage",
@@ -93,6 +97,10 @@
   "devDependencies": {
     "@commitlint/cli": "^7.1.2",
     "@commitlint/config-conventional": "^7.1.2",
+    "@rollup/plugin-commonjs": "^11.1.0",
+    "@rollup/plugin-json": "^4.0.3",
+    "@rollup/plugin-node-resolve": "^7.1.3",
+    "@rollup/plugin-typescript": "3.1.1",
     "@types/jest": "^23.3.10",
     "@types/node": "^10.11.0",
     "colors": "^1.3.2",
@@ -109,12 +117,8 @@
     "prompt": "^1.0.0",
     "replace-in-file": "^3.4.2",
     "rimraf": "^2.6.2",
-    "rollup": "^0.67.0",
-    "rollup-plugin-commonjs": "^9.1.8",
-    "rollup-plugin-json": "^3.1.0",
-    "rollup-plugin-node-resolve": "^3.4.0",
-    "rollup-plugin-sourcemaps": "^0.4.2",
-    "rollup-plugin-typescript2": "^0.21.1",
+    "rollup": "^2.10.3",
+    "rollup-plugin-sourcemaps": "^0.6.2",
     "semantic-release": "^15.13.16",
     "travis-deploy-once": "^5.0.9",
     "ts-jest": "^23.10.2",
