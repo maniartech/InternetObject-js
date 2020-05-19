@@ -1,5 +1,5 @@
-import KeyValueCollection from './header'
-import DataParser from './data'
+import KeyValueCollection from './header/index'
+import DataParser from './data/index'
 import Schema from './header/schema'
 import ASTParser from './parser/ast-parser'
 import ErrorCodes from './errors/io-error-codes'
@@ -40,6 +40,28 @@ export class InternetObject<T = any> {
     this._header = header
   }
 
+  /**
+   * Create or define definitions.
+   * @param callSite
+   * @param substitutions
+   */
+  public static doc(callSite: any = {}, ...substitutions: any[]) {
+    const text = _getText(callSite, substitutions)
+    return new InternetObject(text)
+  }
+
+  // function pro
+
+  /**
+   * Create or define definitions.
+   * @param callSite
+   * @param substitutions
+   */
+  public static defs(callSite: any = {}, ...substitutions: any[]) {
+    const text = _getText(callSite, substitutions)
+    return KeyValueCollection.compile(text)
+  }
+
   private _header: KeyValueCollection
   /**
    * Gets the header section of the object.
@@ -66,6 +88,25 @@ export class InternetObject<T = any> {
   public get data(): T {
     return this._data
   }
+}
+
+function _getText(callSite: any = {}, ...substitutions: any[]) {
+  let template
+  try {
+    template = Array.from(callSite.raw)
+  } catch (e) {
+    throw new TypeError('Cannot convert undefined or null to object')
+  }
+
+  let text = template
+    .map((chunk, i) => {
+      if (callSite.raw.length <= i) {
+        return chunk
+      }
+      return substitutions[i - 1] !== undefined ? substitutions[i - 1] + chunk : chunk
+    })
+    .join('')
+  return text
 }
 
 function _getCompiledSchema(schema?: string | Schema) {
