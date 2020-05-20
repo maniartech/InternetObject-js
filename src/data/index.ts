@@ -1,4 +1,4 @@
-import { isArray, isParserTree, isKeyVal, isToken, isString } from '../utils/is'
+import { isArray, isParserTree, isKeyVal, isToken, isString, isUndefined } from '../utils/is'
 import { ASTParserTree } from '../parser'
 import { ParserTreeValue } from '../parser/index'
 import KeyValueCollection from '../header'
@@ -25,7 +25,7 @@ export default class DataParser {
       if (isToken(val)) {
         return val.value
       }
-      if (val === undefined) {
+      if (isUndefined(val)) {
         return
       }
     }
