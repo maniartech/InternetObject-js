@@ -30,6 +30,7 @@ enum ErrorCodes {
   invalidChar = 'invalid-char',
   invalidEmail = 'invalid-email',
   invalidUrl = 'invalid-url',
+  stringNotClosed = 'string-not-closed',
 
   // -- string, number, date, datetime, time
   valueNotInChoice = 'value-not-in-choice',

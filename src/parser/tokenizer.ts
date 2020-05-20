@@ -132,7 +132,6 @@ export default class Tokenizer {
     // Process quoted string
     if (token.token.startsWith(STRING_ENCLOSER)) {
       if (!token.token.endsWith(STRING_ENCLOSER)) {
-        console.log('~~~~', token.token, this._value)
         throw new InternetObjectSyntaxError(
           ErrorCodes.stringNotClosed,
           'String not closed, expecting " at the end of the string.',

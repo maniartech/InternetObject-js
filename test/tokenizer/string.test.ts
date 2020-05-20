@@ -1,5 +1,6 @@
 import 'jest'
 import Tokenizer from '../../src/parser/tokenizer'
+import ErrorCodes from '../../src/errors/io-error-codes'
 
 describe('String', () => {
   it('parses the simple string', () => {
@@ -50,6 +51,14 @@ describe('String', () => {
     expect(token.col).toBe(4)
     expect(token.row).toBe(1)
     expect(token.index).toBe(3)
+  })
+
+  it('Other open string tets', () => {
+    expect(new Tokenizer(`    Hello World " ' " `).readAll().get(0).value).toBe(
+      'Hello World " \' "'
+    )
+
+    expect(new Tokenizer(`    Hello World " ' `).readAll().get(0).value).toBe('Hello World " \'')
   })
 
   it('String with newline - 2', () => {
@@ -115,6 +124,18 @@ describe('String', () => {
     expect(new Tokenizer('one\rtwo').readAll().get(0).value).toBe(`one\ntwo`)
   })
 
+  it('Other regular string tets', () => {
+    expect(() => {
+      new Tokenizer(`"    Hello World  `).readAll()
+    }).toThrowError()
+
+    expect(new Tokenizer(`    " Hello [ testing ] " `).readAll().get(0).value).toBe(
+      ' Hello [ testing ] '
+    )
+
+    expect(new Tokenizer(`    "---" `).readAll().get(0).value).toBe('---')
+  })
+
   it('Raw strings', () => {
     let tokenizer = new Tokenizer(String.raw`'c:\program files\nodepad++'`)
     let token = tokenizer.readAll().get(0)
@@ -135,5 +156,17 @@ describe('String', () => {
     let tokenizer = new Tokenizer(String.raw`'alert(''hello world'')'`)
     let token = tokenizer.readAll().get(0)
     expect(token.value).toBe(`alert('hello world')`)
+  })
+
+  it('Other raw string tets', () => {
+    expect(() => {
+      new Tokenizer(`"    Hello World  `).readAll()
+    }).toThrowError()
+
+    expect(new Tokenizer(`    ' Hello [ testing ] ' `).readAll().get(0).value).toBe(
+      ' Hello [ testing ] '
+    )
+
+    expect(new Tokenizer(`    '---' `).readAll().get(0).value).toBe('---')
   })
 })
