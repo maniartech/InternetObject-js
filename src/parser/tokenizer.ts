@@ -116,39 +116,67 @@ export default class Tokenizer {
 
     // if (this._start === -1 || this._end === -1) return null
 
+    let type = 'string'
     let value: any = this._value
     token.token = this._text.substring(this._start, this._end + (this._isQuoatedString ? 1 : 1))
 
-    const confirmedString = token.token.endsWith(STRING_ENCLOSER) || token.token.endsWith(QUOTE)
+    // console.log(JSON.stringify(token.token, null, 2))
+    // const confirmedString = token.token.endsWith(STRING_ENCLOSER) || token.token.endsWith(QUOTE)
 
     // Trim the white spaces only when the strings does not ends with
     // the string encloser.
-    if (!confirmedString) {
-      value = this._value.trim()
-    }
+    // if (!confirmedString) {
+    //   value = this._value.trim()
+    // }
 
-    let numVal = Number(value)
-    let type = 'string'
-
-    if (SEPARATORS.indexOf(value) >= 0 || value === TILDE) {
-      type = 'sep'
-    } else if (value === DATASEP) {
-      type = 'datasep'
+    // Process quoted string
+    if (token.token.startsWith(STRING_ENCLOSER)) {
+      if (!token.token.endsWith(STRING_ENCLOSER)) {
+        console.log('~~~~', token.token, this._value)
+        throw new InternetObjectSyntaxError(
+          ErrorCodes.stringNotClosed,
+          'String not closed, expecting " at the end of the string.',
+          token
+        )
+      }
     }
-    // When validating isNaN, check value is not a blank ''.
-    // When the value is blank, Number(value) will set the numVal to 0
-    else if (!isNaN(numVal) && value.trim() !== '') {
-      value = numVal
-      type = 'number'
-    } else if (confirmedString === false && (value === TRUE || value === TRUE_F)) {
-      value = true
-      type = 'boolean'
-    } else if (confirmedString === false && (value === FALSE || value === FALSE_F)) {
-      value = false
-      type = 'boolean'
-    } else if (confirmedString === false && (value === NULL || value === NULL_F)) {
-      value = null
-      type = 'null'
+    // Process raw string
+    else if (token.token.startsWith(QUOTE)) {
+      if (!token.token.endsWith(QUOTE)) {
+        throw new InternetObjectSyntaxError(
+          ErrorCodes.stringNotClosed,
+          "String not closed, expecting ' at the end of the string.",
+          token
+        )
+      }
+    }
+    // Process open string
+    else {
+      // console.warn(">>>", JSON.stringify(token.token), JSON.stringify(value))
+      // value = token.token.trim() // Trim surrounding whitespaces
+      value = value.trim()
+      let numVal = Number(value)
+
+      if (SEPARATORS.indexOf(value) >= 0 || value === TILDE) {
+        type = 'sep'
+      } else if (value === DATASEP) {
+        type = 'datasep'
+      }
+      // When validating isNaN, check value is not a blank ''.
+      // When the value is blank, Number(value) will set the numVal to 0
+      else if (!isNaN(numVal) && value.trim() !== '') {
+        value = numVal
+        type = 'number'
+      } else if (value === TRUE || value === TRUE_F) {
+        value = true
+        type = 'boolean'
+      } else if (value === FALSE || value === FALSE_F) {
+        value = false
+        type = 'boolean'
+      } else if (value === NULL || value === NULL_F) {
+        value = null
+        type = 'null'
+      }
     }
 
     token.value = value
@@ -224,7 +252,7 @@ export default class Tokenizer {
         if (nextCh === '\n') {
           return this._next()
         }
-        ch = '\n' // Else replace \r with \n
+        ch = '\n' // Else replace \r wit= '\n' // Else replace \r with \n
         isNewLine = true
       }
 
@@ -236,9 +264,11 @@ export default class Tokenizer {
         this._col = 0
       }
 
-      if ((isNextSep || isNextCollectionSep || isNextDataSep) && isStarted) {
-        if (this._col === 0) this._col = 1
-        return this._returnToken()
+      if (!this._isQuoatedString && !this._isRawString) {
+        if ((isNextSep || isNextCollectionSep || isNextDataSep) && isStarted) {
+          if (this._col === 0) this._col = 1
+          return this._returnToken()
+        }
       }
 
       return this._next()
@@ -294,10 +324,10 @@ export default class Tokenizer {
     if (this._isQuoatedString) {
       if (ch === STRING_ENCLOSER) {
         // Start the string
-        if (this._tokenLength === 1) {
-          this._isQuoatedString = true
-          return this._next()
-        }
+        // if (this._tokenLength === 1) {
+        //   this._isQuoatedString = true
+        //   return this._next()
+        // }
 
         // End the string
         if (this._isEscaping === false) {
@@ -324,10 +354,10 @@ export default class Tokenizer {
     if (this._isRawString) {
       if (ch === QUOTE) {
         // Start the string
-        if (this._tokenLength === 1) {
-          this._isRawString = true
-          return this._next()
-        }
+        // if (this._tokenLength === 1) {
+        //   this._isRawString = true
+        //   return this._next()
+        // }
 
         // When the first of two consicutive '' are found in the raw string,
         // activate escaping mode and skip to the next char
@@ -354,7 +384,7 @@ export default class Tokenizer {
     }
 
     // Character processing during open mode!
-    if (!(this._isQuoatedString || this._isRawString)) {
+    if (!this._isQuoatedString && !this._isRawString) {
       // Initiate the commenting mode when
       if (ch === HASH) {
         this._isCommenting = true
