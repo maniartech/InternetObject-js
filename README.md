@@ -1,5 +1,7 @@
 <img src="/logo/internet-object.png" height="50px" alt="Internet Object" title="Internet Object">
 
+[![Build Status](https://travis-ci.org/maniartech/InternetObject-js.svg?branch=master)](https://travis-ci.org/maniartech/InternetObject-js)
+
 > **Thin, robust, schema-first yet simple data interchange format for Internet. Best well-planned alternative to JSON!**
 
 ## Internet Object TypeScript/JavaScript Parser
