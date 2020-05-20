@@ -291,7 +291,11 @@ export default class ASTParser {
       delete this._tree.header
 
       if (this._tree.data) {
-        if (this.data.values.length === 1 && this._isCollection === false) {
+        if (
+          this.data.values.length === 1 &&
+          this._isCollection === false &&
+          isToken(this.data.values[0])
+        ) {
           this._tree.data.type = 'scalar'
         }
         // TODO: Add comment

@@ -86,6 +86,11 @@ describe('Internet Object', () => {
     })
   })
 
+  it('loads top level object with curly braces', () => {
+    expect(new InternetObject('{}').data).toMatchObject({})
+    expect(new InternetObject('{test}').data).toMatchObject({ '0': 'test' })
+  })
+
   // TODO: It should throw the error in the following case
   // ~ name:,age:10
 })
