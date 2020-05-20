@@ -2,7 +2,6 @@
 
 > **Thin, robust, schema-first yet simple data interchange format for Internet. Best well-planned alternative to JSON!**
 
-
 ## Internet Object TypeScript/JavaScript Parser
 
 ### ⚠ NOT YET READY - This project is under active development! Don't use, not yet ready!
@@ -13,6 +12,7 @@ import InternetObject from 'internet-object'
 const schema = "name,age"
 
 const o = new InternetObject("Spiderman,25", schema)
+
 
 // Prints Spiderman
 console.log(o.data.name);
@@ -31,7 +31,9 @@ const o = new InternetObject("Spiderman,25,{Bond Street, New York, NY, 50005}", 
 // Print o
 console.log(o.data);
 ```
+
 Outputs following object.
+
 ```
 {
   "name": "Spiderman",
@@ -45,6 +47,21 @@ Outputs following object.
 }
 ```
 
+### Work in Progress
+
+- [x] Tokenizer
+- [x] Tree Parser
+- [x] Schema Parser
+- [x] Number
+- [x] Strings
+- [x] Boolean and Nulls
+- [x] DateTime
+- [x] Collections (WIP)
+- [ ] Definitions (WIP)
+- [ ] Serialization (WIP)
+- [ ] Optimization (WIP)
+- [ ] Testing (WIP)
+
 ### Geting Started (⚠ Not Ready):
 
 1. Fork repository from https://github.com/maniartech/InternetObject-js
@@ -56,5 +73,5 @@ Outputs following object.
 
 For more information about Internet Object architecture - InternetObject.org
 
-> **ISC License:**
-© ManiarTechⓇ 2018-2019
+**ISC License:**
+© ManiarTechⓇ 2018-2020
