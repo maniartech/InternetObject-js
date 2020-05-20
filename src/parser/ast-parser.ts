@@ -109,105 +109,107 @@ export default class ASTParser {
 
     this.status = STARTED
 
-    // Push new object
-    if (token.value === '{') {
-      this._push('object', token.index, token.row, token.col)
-      // console.log("#####", this._stack)
-    }
+    if (token.type === 'sep' || token.type === 'datasep') {
+      // Push new object
+      if (token.value === '{') {
+        this._push('object', token.index, token.row, token.col)
+        // console.log("#####", this._stack)
+      }
 
-    // Push new array
-    else if (token.value === '[') {
-      this._push('array', token.index, token.row, token.col)
-    }
+      // Push new array
+      else if (token.value === '[') {
+        this._push('array', token.index, token.row, token.col)
+      }
 
-    // When a colon is found, consider previous value as key
-    // and keep the value slot to null. When the next token arives, push it
-    // into the value slot.
-    // TODO: Todo check key-value pair is complete.
-    else if (token.value === COLON) {
-      const obj = this._getObject()
-      // TODO: Validate length of the obj.values
-      let lastToken: any = obj.values[obj.values.length - 1]
+      // When a colon is found, consider previous value as key
+      // and keep the value slot to null. When the next token arives, push it
+      // into the value slot.
+      // TODO: Todo check key-value pair is complete.
+      else if (token.value === COLON) {
+        const obj = this._getObject()
+        // TODO: Validate length of the obj.values
+        let lastToken: any = obj.values[obj.values.length - 1]
 
-      if (
-        isToken(lastToken) &&
-        ['string', 'number', 'boolean'].indexOf(typeof lastToken.value) > -1
-      ) {
-        obj.values[obj.values.length - 1] = {
-          key: lastToken.value, // TODO: Test check what happens when an int, null or bool is passed as key
-          value: undefined, // No value
-          index: lastToken.index,
-          row: lastToken.row,
-          col: lastToken.col
+        if (
+          isToken(lastToken) &&
+          ['string', 'number', 'boolean'].indexOf(typeof lastToken.value) > -1
+        ) {
+          obj.values[obj.values.length - 1] = {
+            key: lastToken.value, // TODO: Test check what happens when an int, null or bool is passed as key
+            value: undefined, // No value
+            index: lastToken.index,
+            row: lastToken.row,
+            col: lastToken.col
+          }
+        } else {
+          // TODO:Handle null and other types
+          // Throw Invalid key error!
         }
-      } else {
-        // TODO:Handle null and other types
-        // Throw Invalid key error!
       }
-    }
 
-    // New Token
-    else if (token.value === COMMA) {
-      // Handle consicutive ending commas such as `test,,`
-      if (
-        isFinalToken &&
-        this._lastToken !== undefined &&
-        (this._lastToken.value === COMMA || this._lastToken.value === TILDE)
-      ) {
-        this._addValue(undefined, this._lastToken.index, this._lastToken.row, this._lastToken.col)
-        this._addValue(undefined, token.index, token.row, token.col)
-      } else if (
-        // When the last token is comma such as `value,`
-        isFinalToken ||
-        // When the first token is comma such as `,value`
-        this._lastToken === undefined ||
-        // When comma is found after opening of braces, colon or datasep operators
-        [CURLY_OPEN, SQUARE_OPEN, COLON, DATASEP].indexOf(this._lastToken.value) > -1 ||
-        // When the comma is found just after another comma
-        this._lastToken.value === COMMA ||
-        // When the comma is found just after the tilde (collection) sign
-        this._lastToken.value === TILDE
-      ) {
-        this._addValue(undefined, token.index, token.row, token.col)
+      // New Token
+      else if (token.value === COMMA) {
+        // Handle consicutive ending commas such as `test,,`
+        if (
+          isFinalToken &&
+          this._lastToken !== undefined &&
+          (this._lastToken.value === COMMA || this._lastToken.value === TILDE)
+        ) {
+          this._addValue(undefined, this._lastToken.index, this._lastToken.row, this._lastToken.col)
+          this._addValue(undefined, token.index, token.row, token.col)
+        } else if (
+          // When the last token is comma such as `value,`
+          isFinalToken ||
+          // When the first token is comma such as `,value`
+          this._lastToken === undefined ||
+          // When comma is found after opening of braces, colon or datasep operators
+          [CURLY_OPEN, SQUARE_OPEN, COLON, DATASEP].indexOf(this._lastToken.value) > -1 ||
+          // When the comma is found just after another comma
+          this._lastToken.value === COMMA ||
+          // When the comma is found just after the tilde (collection) sign
+          this._lastToken.value === TILDE
+        ) {
+          this._addValue(undefined, token.index, token.row, token.col)
+        }
       }
-    }
 
-    // Close object and close array
-    else if (token.value === CURLY_CLOSED || token.value === SQUARE_CLOSED) {
-      this._pop(token.value === CURLY_CLOSED ? 'object' : 'array', token)
-    } else if (token.value === TILDE) {
-      // The ~ sign can occur in any section (header/data) first.
-      // If it is a new tree, or header/schema is already been established,
-      // set the collection mode to true.
-      if (this._stack.length === 0) {
-        this._isCollection = true
+      // Close object and close array
+      else if (token.value === CURLY_CLOSED || token.value === SQUARE_CLOSED) {
+        this._pop(token.value === CURLY_CLOSED ? 'object' : 'array', token)
+      } else if (token.value === TILDE) {
+        // The ~ sign can occur in any section (header/data) first.
+        // If it is a new tree, or header/schema is already been established,
+        // set the collection mode to true.
+        if (this._stack.length === 0) {
+          this._isCollection = true
+        }
+        // When the TILDE is encountered second time check collection mode is on,
+        // if not, throw an error
+        else if (!this._isCollection && !this._tree.data) {
+          // TODO: Throw an error here
+          throw new InternetObjectSyntaxError(ErrorCodes.invalidCollection, undefined, token)
+        } else {
+          this._processObject()
+        }
       }
-      // When the TILDE is encountered second time check collection mode is on,
-      // if not, throw an error
-      else if (!this._isCollection && !this._tree.data) {
-        // TODO: Throw an error here
-        throw new InternetObjectSyntaxError(ErrorCodes.invalidCollection, undefined, token)
-      } else {
+
+      // Ready for schema generation
+      else if (token.value === DATASEP) {
+        // Header is closed when, datasep is found. After the header
+        // is closed, throw an error when another datasep is sent!
+        if (!this._isHeaderOpen) {
+          throw new InternetObjectSyntaxError(
+            ErrorCodes.multipleHeaders,
+            'Multiple headers are not allowed.',
+            token
+          )
+        }
         this._processObject()
+        this._isHeaderOpen = false
+        this._isCollection = false
+        this._stack.length = 0
+        // this._addToHeader()
       }
-    }
-
-    // Ready for schema generation
-    else if (token.value === DATASEP) {
-      // Header is closed when, datasep is found. After the header
-      // is closed, throw an error when another datasep is sent!
-      if (!this._isHeaderOpen) {
-        throw new InternetObjectSyntaxError(
-          ErrorCodes.multipleHeaders,
-          'Multiple headers are not allowed.',
-          token
-        )
-      }
-      this._processObject()
-      this._isHeaderOpen = false
-      this._isCollection = false
-      this._stack.length = 0
-      // this._addToHeader()
     } else {
       this._addValue(token, token.index, token.row, token.col)
     }
