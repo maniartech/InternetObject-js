@@ -4,6 +4,17 @@ import { TypedefRegistry } from '../types/typedef-registry'
 import { datetimeExp, datetimePlainExp } from './datetime'
 
 /**
+ * Checks whether specified value is undefined or not.
+ *
+ * @param val The value to be tested for undefined check!
+ * @returns `true` if the value is undefined otherwise `false`
+ */
+export const isUndefined = (val: any): val is undefined => {
+  const _undefined = undefined
+  return val === _undefined
+}
+
+/**
  * Checks whether specified value is number or not.
  *
  * @param val The value to be tested for number check!

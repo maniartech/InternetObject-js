@@ -1,3 +1,5 @@
+import { isUndefined } from './is'
+
 export const datetimeExp = {
   datetime: /^((\d{4})(?:\-((?:1[0-2]|0[1-9]))(?:\-([0-2][0-9]|3[0-1]))?)?(T([0-1][0-9]|2[0-3])(?:\:([0-5][0-9])(?:\:([0-5][0-9])(?:\.(\d{3}))?)?)?)?((Z)|((?:\+|-)(?:(?:[0-1][0-9]|2[0-3])(?:\:[0-5][0-9])?)))?)$/,
   date: /^((\d{4})(?:\-((?:1[0-2]|0[1-9]))(?:\-([0-2][0-9]|3[0-1]))?)?)$/,
@@ -24,7 +26,7 @@ export const parseDateTime = (value: string): Date | null => {
 
   // When time signature is not defined, makr the date as utc date
   // otherwise read the utc signature from the value.
-  const utc = d[5] === undefined ? 'Z' : d[10] || ''
+  const utc = isUndefined(d[5]) ? 'Z' : d[10] || ''
 
   const dateStr =
     `${d[2]}-${d[3] || '01'}-${d[4] || '01'}` +

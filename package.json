@@ -1,6 +1,6 @@
 {
   "name": "internet-object",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "A typescript/javascript compiler parser for Internet Object",
   "keywords": [
     "Internet Object",

@@ -20,6 +20,7 @@ import {
 import { Token } from '.'
 import ErrorCodes from '../errors/io-error-codes'
 import { InternetObjectSyntaxError } from '../errors/io-error'
+import { isUndefined } from '../utils/is'
 
 type NullableToken = Token | null
 
@@ -74,7 +75,7 @@ export default class Tokenizer {
     const token = this._next()
 
     // No character has found while reading the token yet
-    if (this._done && token !== null && token.col === undefined) {
+    if (this._done && token !== null && isUndefined(token.col)) {
       return null
     }
 
@@ -193,7 +194,7 @@ export default class Tokenizer {
 
     // Return token when text ends
     let ch = this._text[index]
-    if (ch === undefined) {
+    if (isUndefined(ch)) {
       // Throw and error when escaping is not closed on last char
       if (this._isEscaping) {
         throw new InternetObjectSyntaxError(
@@ -207,14 +208,10 @@ export default class Tokenizer {
     }
 
     const token = this._lastToken
-    let chCode = ch.charCodeAt(0)
 
-    let prevCh = index > 0 ? this._text[index - 1] : ''
     if (!token) return null // Bypass TS check
 
     let nextCh = this._text[index + 1]
-    let nextChCode = nextCh === undefined ? -1 : nextCh.charCodeAt(0)
-    let isNextWS = nextCh <= SPACE
 
     // Identify char types
     let isWS = ch <= SPACE // Is white space or control char
@@ -415,7 +412,7 @@ export default class Tokenizer {
     // console.log("wow", ch, this._text.length, this._index)
 
     // Return token when text ends
-    if (ch === undefined) {
+    if (isUndefined(ch)) {
       this._done = true
       return
     }

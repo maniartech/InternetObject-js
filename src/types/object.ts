@@ -6,7 +6,7 @@ import KeyValueCollection from '../header'
 import { TypedefRegistry } from './typedef-registry'
 import { doCommonTypeCheck } from './utils'
 import { ParserTreeValue, Node } from '../parser/index'
-import { isParserTree, isKeyVal } from '../utils/is'
+import { isParserTree, isKeyVal, isUndefined } from '../utils/is'
 import { InternetObjectError, InternetObjectSyntaxError } from '../errors/io-error'
 
 /**
@@ -108,7 +108,7 @@ class ObjectDef implements TypeDef {
         }
 
         // When memberDef is not found, ignore such member
-        if (memberDef === undefined) return
+        if (isUndefined(memberDef)) return
         const typeDef: TypeDef = TypedefRegistry.get(memberDef.type)
         object[key] = typeDef.parse(dataValue, memberDef, vars)
       })
@@ -128,7 +128,7 @@ class ObjectDef implements TypeDef {
         const memberDef: MemberDef = schema.defs[key]
 
         // When memberDef is not found, ignore such member
-        if (memberDef === undefined) return
+        if (isUndefined(memberDef)) return
 
         const typeDef: TypeDef = TypedefRegistry.get(memberDef.type)
 

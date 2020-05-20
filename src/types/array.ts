@@ -4,7 +4,6 @@ import MemberDef from './memberdef'
 import TypeDef from './typedef'
 import KeyValueCollection from '../header/index'
 
-import { isArray } from 'util'
 import { InternetObjectError } from '../errors/io-error'
 
 import { Token } from '../parser'
@@ -117,7 +116,7 @@ function _process(
   const validatedData = doCommonTypeCheck(memberDef, value, node)
   if (validatedData !== value || value === undefined) return validatedData
 
-  if (!isArray(value)) throw new Error('invalid-value')
+  if (!Array.isArray(value)) throw new Error('invalid-value')
 
   const schema = memberDef.schema
 

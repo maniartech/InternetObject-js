@@ -1,12 +1,11 @@
 import { InternetObjectError, ErrorArgs, InternetObjectValidationError } from '../errors/io-error'
 import { ParserTreeValue, Node } from '../parser/index'
-import { isNumber, isToken } from '../utils/is'
+import { isNumber, isString, isToken } from '../utils/is'
 import MemberDef from './memberdef'
 import TypeDef from './typedef'
 import { doCommonTypeCheck } from './utils'
 import ErrorCodes from '../errors/io-error-codes'
 import { Token } from '../parser'
-import { isString } from 'util'
 import KeyValueCollection from '../header'
 
 // Reference: RFC 5322 Official Standard
