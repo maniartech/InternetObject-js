@@ -134,6 +134,8 @@ describe('String', () => {
     )
 
     expect(new Tokenizer(`    "---" `).readAll().get(0).value).toBe('---')
+
+    expect(new Tokenizer(`    "123" `).readAll().get(0).value).toBe('123')
   })
 
   it('Raw strings', () => {
@@ -168,5 +170,7 @@ describe('String', () => {
     )
 
     expect(new Tokenizer(`    '---' `).readAll().get(0).value).toBe('---')
+
+    expect(new Tokenizer(`    '123' `).readAll().get(0).value).toBe('123')
   })
 })
