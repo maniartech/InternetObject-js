@@ -107,6 +107,11 @@ export default class ASTParser {
     const isFinalToken = this._isFinalToken
     let stack = this._stack
 
+    // Do not process comments!
+    if (token.type === 'comment') {
+      return
+    }
+
     this.status = STARTED
 
     if (token.type === 'sep' || token.type === 'datasep') {
