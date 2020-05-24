@@ -78,7 +78,6 @@ export default class Tokenizer {
     if (this._done && token !== null && isUndefined(token.col)) {
       return null
     }
-
     return token
   }
 
@@ -121,7 +120,7 @@ export default class Tokenizer {
     let value: any = this._value
     token.token = this._text.substring(this._start, this._end + (this._isQuoatedString ? 1 : 1))
 
-    // console.log(JSON.stringify(token.token, null, 2))
+    // console.log(JSON.stringify(token.token, null, 2), value)
     // const confirmedString = token.token.endsWith(STRING_ENCLOSER) || token.token.endsWith(QUOTE)
 
     // Trim the white spaces only when the strings does not ends with
@@ -149,6 +148,9 @@ export default class Tokenizer {
           token
         )
       }
+    } else if (token.token.startsWith(HASH)) {
+      type = 'comment'
+      value = value.substr(1).trim()
     }
     // Process open string
     else {
@@ -194,6 +196,24 @@ export default class Tokenizer {
 
     // Return token when text ends
     let ch = this._text[index]
+    let nextCh = this._text[index + 1]
+
+    // Identify char types
+    let isWS = ch <= SPACE // Is white space or control char
+    let isNewLine = ch === NEW_LINE // Is new line
+    let isNextNewLine = nextCh === NEW_LINE
+
+    let isSep = SEPARATORS.indexOf(ch) >= 0 // Is separator
+    let isNextSep = SEPARATORS.indexOf(nextCh) >= 0
+
+    const isCollectionSep = ch === TILDE
+    let isNextCollectionSep = nextCh === TILDE
+
+    const isStarted = this._start !== -1
+
+    const isDataSep = this._text.substr(index - 2, 3) === DATASEP
+    let isNextDataSep = this._text.substr(index + 1, 3) === DATASEP
+
     if (isUndefined(ch)) {
       // Throw and error when escaping is not closed on last char
       if (this._isEscaping) {
@@ -207,38 +227,25 @@ export default class Tokenizer {
       return this._returnToken()
     }
 
+    // console.log("###", this._isCommenting, ch)
+    // While the comment mode is active!
+    if (this._isCommenting) {
+      this._end = index
+      this._value += ch
+
+      // Comment mode ends with new line, hence, turn it off when
+      // a new line char is encountered.
+      if (isNextNewLine) {
+        this._isCommenting = false
+        return this._returnToken()
+      }
+      this._tokenLength += 1
+      return this._next()
+    }
+
     const token = this._lastToken
 
     if (!token) return null // Bypass TS check
-
-    let nextCh = this._text[index + 1]
-
-    // Identify char types
-    let isWS = ch <= SPACE // Is white space or control char
-    let isNewLine = ch === NEW_LINE // Is new line
-
-    let isSep = SEPARATORS.indexOf(ch) >= 0 // Is separator
-    let isNextSep = SEPARATORS.indexOf(nextCh) >= 0
-
-    const isCollectionSep = ch === TILDE
-    let isNextCollectionSep = nextCh === TILDE
-
-    const isStarted = this._start !== -1
-
-    const isDataSep = this._text.substr(index - 2, 3) === DATASEP
-    let isNextDataSep = this._text.substr(index + 1, 3) === DATASEP
-
-    // While the comment mode is active!
-    if (this._isCommenting) {
-      // Comment mode ends with new line, hence, turn it off when
-      // a new line char is encountered.
-      if (isNewLine) {
-        this._isCommenting = false
-      } else {
-        // Skip and ignore chars during the comment mode!
-        return this._next()
-      }
-    }
 
     // Handle white-spaces
     if (isWS) {
@@ -260,9 +267,12 @@ export default class Tokenizer {
         this._col = 0
       }
 
-      if (!this._isQuoatedString && !this._isRawString) {
-        if ((isNextSep || isNextCollectionSep || isNextDataSep) && isStarted) {
+      if (!this._isQuoatedString && !this._isRawString && isStarted) {
+        if (isNextSep || isNextCollectionSep || isNextDataSep) {
           if (this._col === 0) this._col = 1
+          return this._returnToken()
+        } else if (nextCh === HASH) {
+          // this._isCommenting = true
           return this._returnToken()
         }
       }
@@ -382,8 +392,14 @@ export default class Tokenizer {
     // Character processing during open mode!
     if (!this._isQuoatedString && !this._isRawString) {
       // Initiate the commenting mode when
+      if (nextCh === HASH) {
+        this._isCommenting = true
+        return this._returnToken()
+      }
+
       if (ch === HASH) {
         this._isCommenting = true
+        this._value += ch
         return this._next()
       }
 
