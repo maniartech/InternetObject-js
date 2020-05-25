@@ -15,8 +15,12 @@ describe('Data Parser Tests', () => {
   })
 
   it('handles empty values in object', () => {
+    let parser = new ASTParser('{}')
+    parser.parse()
+    expect(parser.data.values.length).toBe(0)
+
     // {,,,}  An object with four undefined values
-    let parser = new ASTParser('{,,,}')
+    parser = new ASTParser('{,,,}')
     parser.parse()
     expect(parser.data.values.length).toBe(4)
     expect(parser.data.values[0]).toBeUndefined()
@@ -46,8 +50,12 @@ describe('Data Parser Tests', () => {
   })
 
   it('handles empty values in array', () => {
+    let parser = new ASTParser('[]')
+    parser.parse()
+    expect(parser.data.values.length).toBe(0)
+
     // [,,,]    An array with four undefined values
-    let parser = new ASTParser('[,,,]')
+    parser = new ASTParser('[,,,]')
     parser.parse()
     expect(parser.data.values.length).toBe(4)
     expect(parser.data.values[0]).toBeUndefined()
