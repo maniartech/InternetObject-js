@@ -10,6 +10,7 @@ enum ErrorCodes {
   notAllowed = 'not-allowed',
 
   // Parser Errors (Header)
+  unexpectedColon = 'unexpected-colon',
   multipleHeaders = 'multiple-headers-found',
   invalidCollection = 'invalid-collection',
   invlidHeader = 'invalid-header',
