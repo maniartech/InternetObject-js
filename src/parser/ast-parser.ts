@@ -179,6 +179,9 @@ export default class ASTParser {
 
       // Close object and close array
       else if (token.value === CURLY_CLOSED || token.value === SQUARE_CLOSED) {
+        if (this._lastToken && this._lastToken.value === COMMA) {
+          this._addValue(undefined, token.index, token.row, token.col)
+        }
         this._pop(token.value === CURLY_CLOSED ? 'object' : 'array', token)
       } else if (token.value === TILDE) {
         // The ~ sign can occur in any section (header/data) first.
