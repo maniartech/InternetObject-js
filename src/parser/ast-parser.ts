@@ -147,8 +147,7 @@ export default class ASTParser {
             col: lastToken.col
           }
         } else {
-          // TODO:Handle null and other types
-          // Throw Invalid key error!
+          throw new InternetObjectSyntaxError(ErrorCodes.unexpectedColon, '', token)
         }
       }
 
