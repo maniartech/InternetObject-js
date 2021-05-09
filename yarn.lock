@@ -3408,8 +3408,8 @@ hook-std@^2.0.0:
   resolved "https://registry.yarnpkg.com/hook-std/-/hook-std-2.0.0.tgz#ff9aafdebb6a989a354f729bb6445cf4a3a7077c"
 
 hosted-git-info@^2.1.4, hosted-git-info@^2.7.1, hosted-git-info@^2.8.8:
-  version "2.8.8"
-  resolved "https://registry.yarnpkg.com/hosted-git-info/-/hosted-git-info-2.8.8.tgz#7539bd4bc1e0e0a895815a2e0262420b12858488"
+  version "2.8.9"
+  resolved "https://registry.yarnpkg.com/hosted-git-info/-/hosted-git-info-2.8.9.tgz#dffc0bf9a21c02209090f2aa69429e1414daf3f9"
 
 hosted-git-info@^3.0.0:
   version "3.0.4"
