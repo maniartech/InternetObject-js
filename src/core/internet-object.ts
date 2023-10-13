@@ -230,18 +230,16 @@ class InternetObject<T = any> {
     }
   }
 
-
   /////////// Static ///////////
 
   // InternetObject.fromArray returns an InternetObject from an array of [key, value] pairs
-  static fromArray<T>(array: [string | undefined, T][]): InternetObject<T> {
+  static fromArray<T>(array: [string, T][]): InternetObject<T> {
     const io = new InternetObject<T>();
     for (const [key, value] of array) {
       io.push([key, value]);
     }
     return io;
   }
-
 }
 
 const ioProxyHandler = {
