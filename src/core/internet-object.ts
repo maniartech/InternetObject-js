@@ -10,7 +10,14 @@ class InternetObject<T = any> {
   private _keyIndexMap: { [key: string]: number } = {};
   [key: string | number]: any;
 
-  constructor() {
+  constructor(o?: { [key: string]: T }) {
+    // If an object is passed, populate the InternetObject
+    if (o) {
+      for (const key in o) {
+        this.push([key, o[key]]);
+      }
+    }
+
     return new Proxy(this, ioProxyHandler);
   }
 
@@ -23,8 +30,11 @@ class InternetObject<T = any> {
    */
   public set(key: string, value: T): InternetObject<T> {
     const index = this._keyIndexMap[key];
+
+    // If the key already exists, overwrite the value
     if (index !== undefined) {
       this._values[index][1] = value;
+      return this;
     }
 
     this._keys.push(key);
@@ -219,6 +229,19 @@ class InternetObject<T = any> {
       yield value;
     }
   }
+
+
+  /////////// Static ///////////
+
+  // InternetObject.fromArray returns an InternetObject from an array of [key, value] pairs
+  static fromArray<T>(array: [string | undefined, T][]): InternetObject<T> {
+    const io = new InternetObject<T>();
+    for (const [key, value] of array) {
+      io.push([key, value]);
+    }
+    return io;
+  }
+
 }
 
 const ioProxyHandler = {
@@ -264,5 +287,7 @@ const ioProxyHandler = {
     return Reflect.deleteProperty(target, property);
   }
 };
+
+
 
 export default InternetObject;
