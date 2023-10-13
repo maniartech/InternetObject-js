@@ -2,7 +2,6 @@
 
 Scratch pad for desinging internet object interface and implementation.
 
-
 ```js
 console.log(io.header.schema)
 console.log(io.data[0])
@@ -21,8 +20,6 @@ o2[address] = {
   zip: 10010
 }
 
-
-
 // Through the array
 const o3 = io.InternetObject.fromArray([
   [name, 'John'],
@@ -35,7 +32,5 @@ const o3 = io.InternetObject.fromArray([
     zip: 10010
   }]
 ])
-
-
 
 ```

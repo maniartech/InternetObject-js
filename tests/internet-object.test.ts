@@ -2,6 +2,36 @@ import InternetObject from '../src/core/internet-object';
 
 describe('InternetObject', () => {
 
+  test('should create an InternetObject from an object passed to constructor', () => {
+    const object = { key1: 'value1', key2: 'value2' };
+    const io = new InternetObject(object);
+    expect(io.get('key1')).toBe('value1');
+    expect(io.get('key2')).toBe('value2');
+  });
+
+  test('should return empty InternetObject when no object is passed to constructor', () => {
+    const io = new InternetObject();
+    expect(io.isEmpty()).toBe(true);
+  });
+
+  test('should create an InternetObject from an array of key-value pairs using "fromArray" static method', () => {
+    const io = InternetObject.fromArray<string>([
+      ['key1', 'value1'],
+      ['key2', 'value2']
+    ]);
+    expect(io.get('key1')).toBe('value1');
+    expect(io.get('key2')).toBe('value2');
+  });
+
+  test('should create an InternetObject with only values (no keys) from an array using "fromArray" static method', () => {
+    const io = InternetObject.fromArray([
+      [, 'value1'],
+      [, 'value2']
+    ]);
+    expect(io.getAt(0)).toBe('value1');
+    expect(io.getAt(1)).toBe('value2');
+  });
+
   test('should set and get using a key', () => {
     const io = new InternetObject();
     io.set('key', 'value');
