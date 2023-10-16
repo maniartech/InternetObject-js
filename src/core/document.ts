@@ -3,8 +3,8 @@ import SectionCollection from "./section-collection";
 
 
 class Document {
-  private _header: Header
-  private _sections: SectionCollection
+  private _header: Header;
+  private _sections: SectionCollection;
 
   constructor() {
     this._header = new Header();
