@@ -55,3 +55,32 @@ ioDoc4.data = [
   { age: 30 },
   { married: true }
 ]
+
+```
+
+## Accessing the document
+
+```js
+
+const doc = io.parse(`
+  name, age, married
+  ---
+  John, 30, true
+`)
+
+// Get the header
+const header = doc.header // returns the header
+
+header.schema // returns the schema object
+header.definitions
+
+const data = doc.data // returns the data
+const section = doc.sections[0] // returns the first section of the data
+
+section.name // The name of the section
+section.alias // The alias of the section
+section.schema // The schema of the section
+section.data // The data of the section
+
+
+```
