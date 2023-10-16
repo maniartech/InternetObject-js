@@ -12,6 +12,7 @@ enum Symbols {
   COMMA           = ',',
   R               = 'r',
   B               = 'b',
+  D               = 'd',
   HASH            = '#',
   DOUBLE_QUOTE    = '"',
   SINGLE_QUOTE    = "'",

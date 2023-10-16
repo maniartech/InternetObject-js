@@ -3,6 +3,7 @@ import Token      from "./tokens";
 import TokenType  from "./token-types";
 import Literals   from "./literals";
 import * as is    from "./is";
+import { parseDateTime } from '../../../io-js/src/utils/datetime';
 
 const regexIntDigit = /^[0-9]+$/;
 const regexFloatDigit = /^[0-9.]+$/;
@@ -73,52 +74,7 @@ class Tokenizer {
         while (!this.reachedEnd && this.input[this.pos] !== encloser) {
             // Check if current character is a backslash (escape character)
             if (this.input[this.pos] === Symbols.BACKSLASH) {
-                this.advance();  // Move past the backslash
-                if (this.reachedEnd) {
-                    // If a string ends with a single backslash, throw an error.
-                    throw new Error(`String ends with an unprocessed escape sequence at row ${this.row} and column ${this.col}.`);
-                }
-
-                switch (this.input[this.pos]) {
-                    case 'b':
-                        value += '\b';
-                        break;
-                    case 'f':
-                        value += '\f';
-                        break;
-                    case 'n':
-                        value += '\n';
-                        break;
-                    case 'r':
-                        value += '\r';
-                        break;
-                    case 't':
-                        value += '\t';
-                        break;
-                    case 'u':
-                        const hex = this.input.substring(this.pos + 1, this.pos + 5);
-                        if (regexHex4.test(hex)) { // /^[0-9a-fA-F]{4}$/
-                            value += String.fromCharCode(parseInt(hex, 16));
-                            this.advance(4);  // Move past the 4 hex digits
-                            needToNormalize = true;
-                        } else {
-                            throw new Error(`Invalid Unicode escape sequence \\u${hex} at row ${this.row} and column ${this.col}.`);
-                        }
-                        break;
-                    case 'x':
-                        const hexByte = this.input.substring(this.pos + 1, this.pos + 3);
-                        if (regexHex2.test(hexByte)) { // /^[0-9a-fA-F]{2}$/
-                            value += String.fromCharCode(parseInt(hexByte, 16));
-                            this.advance(2);  // Move past the 2 hex digits
-                            needToNormalize = true;
-                        } else {
-                            throw new Error(`Invalid hex escape sequence \\x${hexByte} at row ${this.row} and column ${this.col}.`);
-                        }
-                        break;
-                    default:
-                        value += this.input[this.pos];  // Treat unrecognized escape sequences as the literal character
-                        break;
-                }
+                ({ value, needToNormalize } = this.escapeString(value, needToNormalize));
             } else {
                 value += this.input[this.pos];
             }
@@ -132,85 +88,140 @@ class Tokenizer {
 
         this.advance();  // Move past the closing quotation mark
 
-        const tokenText = encloser + value + encloser;  // Building the full token text with enclosers
+        const tokenText = this.input.substring(start, this.pos);
 
         // After building the 'value' string, normalize it:
         if (needToNormalize) {
           value = value.normalize('NFC');
         }
 
-        return new Token(start, startRow, startCol, tokenText, value, "STRING", "REGULAR_STRING");
+        return Token.init(start, startRow, startCol, tokenText, value, "STRING", "REGULAR_STRING");
     }
 
-    private parseRawString(): Token {
-        const start = this.pos;
-        const startRow = this.row;
-        const startCol = this.col;
-
-        this.advance();  // Move past the 'r' character
-
-        if (this.reachedEnd) {
-            throw new Error(`Unexpected end of input after 'r' at row ${startRow} and column ${startCol}.`);
-        }
-
-        const encloser = this.input[this.pos];  // This should be either ' or "
-        if (encloser !== '"' && encloser !== "'") {
-            throw new Error(`Expected a quotation mark after 'r' at row ${startRow} and column ${startCol}, but found '${encloser}' instead.`);
-        }
-
-        this.advance();  // Move past the opening quotation mark
-
-        while (!this.reachedEnd && this.input[this.pos] !== encloser) {
-            this.advance();
-        }
-
-        if (this.reachedEnd) {
-            throw new Error(`Raw string starting at row ${startRow} and column ${startCol} is not closed.`);
-        }
-
-        this.advance();  // Move past the closing quotation mark
-
-        const tokenText = this.input.substring(start, this.pos);
-        const value = tokenText.substring(2, tokenText.length - 1);  // Extract the inner value
-        return new Token(start, startRow, startCol, tokenText, value, "STRING", "RAW_STRING");
+  private escapeString(value: string, needToNormalize: boolean) {
+    this.advance(); // Move past the backslash
+    if (this.reachedEnd) {
+      // If a string ends with a single backslash, throw an error.
+      throw new Error(`String ends with an unprocessed escape sequence at row ${this.row} and column ${this.col}.`);
     }
 
-    private parseByteString(): Token {
+    switch (this.input[this.pos]) {
+      case 'b':
+        value += '\b';
+        break;
+      case 'f':
+        value += '\f';
+        break;
+      case 'n':
+        value += '\n';
+        break;
+      case 'r':
+        value += '\r';
+        break;
+      case 't':
+        value += '\t';
+        break;
+      case 'u':
+        const hex = this.input.substring(this.pos + 1, this.pos + 5);
+        if (regexHex4.test(hex)) { // /^[0-9a-fA-F]{4}$/
+          value += String.fromCharCode(parseInt(hex, 16));
+          this.advance(4); // Move past the 4 hex digits
+          needToNormalize = true;
+        } else {
+          throw new Error(`Invalid Unicode escape sequence \\u${hex} at row ${this.row} and column ${this.col}.`);
+        }
+        break;
+      case 'x':
+        const hexByte = this.input.substring(this.pos + 1, this.pos + 3);
+        if (regexHex2.test(hexByte)) { // /^[0-9a-fA-F]{2}$/
+          value += String.fromCharCode(parseInt(hexByte, 16));
+          this.advance(2); // Move past the 2 hex digits
+          needToNormalize = true;
+        } else {
+          throw new Error(`Invalid hex escape sequence \\x${hexByte} at row ${this.row} and column ${this.col}.`);
+        }
+        break;
+      default:
+        value += this.input[this.pos]; // Treat unrecognized escape sequences as the literal character
+        break;
+    }
+    return { value, needToNormalize };
+  }
+
+    private parseAnotatedString(char:string): Token {
       const start = this.pos;
       const startRow = this.row;
       const startCol = this.col;
 
-      this.advance();  // Move past the '@' character
+      this.advance();  // Move past the 'r' character
 
       if (this.reachedEnd) {
-          throw new Error(`Unexpected end of input after 'b' at row ${startRow} and column ${startCol}.`);
+          throw new Error(`Unexpected end of input after '${char}' at row ${startRow} and column ${startCol}.`);
       }
 
       const encloser = this.input[this.pos];  // This should be either ' or "
       if (encloser !== '"' && encloser !== "'") {
-          throw new Error(`Expected a quotation mark after 'b' at row ${startRow} and column ${startCol}, but found '${encloser}' instead.`);
+          throw new Error(`Expected a quotation mark after '${char}' at row ${startRow} and column ${startCol}, but found '${encloser}' instead.`);
       }
 
       this.advance();  // Move past the opening quotation mark
-
       while (!this.reachedEnd && this.input[this.pos] !== encloser) {
-          this.advance();
+        this.advance();
       }
 
       if (this.reachedEnd) {
-          throw new Error(`Binary string starting at row ${startRow} and column ${startCol} is not closed.`);
+          throw new Error(`Raw string starting at row ${startRow} and column ${startCol} is not closed.`);
       }
 
       this.advance();  // Move past the closing quotation mark
 
       const tokenText = this.input.substring(start, this.pos);
-      const base64 = tokenText.substring(2, tokenText.length - 1);  // Extract the inner value
+      const value = tokenText.substring(2, tokenText.length - 1);  // Extract the inner value
+
+      // Prepare the token
+      const token = new Token();
+      token.pos = start;
+      token.row = startRow;
+      token.col = startCol;
+      token.token = tokenText;
+      token.value = value;
+      return token;
+    }
+
+    private parseRawString(): Token {
+      const token = this.parseAnotatedString('r');
+      token.type = TokenType.STRING;
+      token.subType = "RAW_STRING";
+      return token;
+    }
+
+    private parseByteString(): Token {
+
+      const token = this.parseAnotatedString('b');
+      token.type = TokenType.BINARY;
+      token.subType = "BINARY_STRING";
 
       // Conver the base64 string to a byte array
-      const value = Buffer.from(base64, 'base64');
+      token.value = Buffer.from(token.value, 'base64');
+      return token;
+    }
 
-      return new Token(start, startRow, startCol, tokenText, value, TokenType.BINARY, TokenType.BINARY);
-  }
+    private parseDateTime(): Token {
+      const token = this.parseAnotatedString('d');
+
+      // Try to parse RFC 3339 date time
+      const value = Date.parse(token.value);
+      const dt = new Date(value);
+      if (isNaN(dt.getTime())) {
+        throw new Error(`Invalid date time format '${token.value}' at row ${token.row} and column ${token.col}.`);
+      }
+
+      token.value = dt;
+      token.type = TokenType.DATE_TIME;
+      token.subType = "RFC3339";
+
+      return token;
+    }
 
     private parseNumber(): Token | null {
         const start: number = this.pos;
@@ -325,7 +336,7 @@ class Tokenizer {
             numberValue = parseInt(value, base);
         }
 
-        return new Token(start, startRow, startCol, value, numberValue, TokenType.NUMBER, subType);
+        return Token.init(start, startRow, startCol, value, numberValue, TokenType.NUMBER, subType);
     }
 
     private parseLiteralOrOpenString(): Token {
@@ -336,6 +347,8 @@ class Tokenizer {
         let value       = "";
         let startPos    = this.pos;
         let lastPos     = this.pos;
+
+        let normalizeString = false;
 
         while (!this.reachedEnd && is.isValidOpenStringChar(this.input[this.pos])) {
           const char = this.input[this.pos];
@@ -348,35 +361,45 @@ class Tokenizer {
             }
           }
 
+          if (char === Symbols.BACKSLASH) {
+            ({ value, needToNormalize: normalizeString } = this.escapeString(value, normalizeString));
+          } else {
+            value += char;
+          }
+
           if (!is.isWhitespace(char)) {
             lastPos = this.pos;
           }
+
           this.advance();
         }
-        value = this.input.substring(startPos, lastPos + 1);
+
+        if (normalizeString) {
+          value = value.normalize('NFC');
+        }
+
+        // value = this.input.substring(startPos, lastPos + 1);
 
         if (value === "") {
             throw new Error(`Unexpected character '${this.input[this.pos]}' at row ${startRow} and column ${startCol}.`);
         }
 
-        console.log(">>>", value)
-
         switch (value) {
             case Literals.TRUE:
             case Literals.T:
-                return new Token(start, startRow, startCol, value, true, TokenType.BOOLEAN);
+                return Token.init(start, startRow, startCol, value, true, TokenType.BOOLEAN);
 
             case Literals.FALSE:
             case Literals.F:
-                return new Token(start, startRow, startCol, value, false, TokenType.BOOLEAN);
+                return Token.init(start, startRow, startCol, value, false, TokenType.BOOLEAN);
 
             case Literals.NULL:
             case Literals.N:
-                return new Token(start, startRow, startCol, value, null, TokenType.NULL);
+                return Token.init(start, startRow, startCol, value, null, TokenType.NULL);
 
             default:
 
-                return new Token(start, startRow, startCol, value, value, TokenType.STRING, "OPEN_STRING");
+                return Token.init(start, startRow, startCol, value, value, TokenType.STRING, "OPEN_STRING");
         }
     }
 
@@ -416,6 +439,16 @@ class Tokenizer {
                 tokens.push(this.parseRawString());
             }
 
+            // Datetime strings (e.g., d'2023-09-27')
+            else if (
+                char === Symbols.D && (
+                    this.input[this.pos + 1] === Symbols.DOUBLE_QUOTE ||
+                    this.input[this.pos + 1] === Symbols.SINGLE_QUOTE
+                )
+            ) {
+              tokens.push(this.parseDateTime());
+            }
+
             // Byte strings (e.g., b'foo' or b"foo")
             else if (
               char === Symbols.B && (
@@ -430,7 +463,7 @@ class Tokenizer {
             else if (is.isSpecialSymbol(char)) {
                 const startRow = this.row;
                 const startCol = this.col;
-                tokens.push(new Token(this.pos, startRow, startCol, char, char, is.getSymbolTokenType(char)));
+                tokens.push(Token.init(this.pos, startRow, startCol, char, char, is.getSymbolTokenType(char)));
                 this.advance();
             }
 
@@ -446,7 +479,7 @@ class Tokenizer {
                   // If the next two chars are -- that means it is a
                   // data seperator.
                   if (this.input.substring(this.pos, this.pos + 3) === '---') {
-                    tokens.push(new Token(this.pos, this.row, this.col, '---', '---', TokenType.SECTION_SEP))
+                    tokens.push(Token.init(this.pos, this.row, this.col, '---', '---', TokenType.SECTION_SEP))
                     this.advance(3)
                     continue
                   }

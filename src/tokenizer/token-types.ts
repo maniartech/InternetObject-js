@@ -14,6 +14,7 @@ enum TokenType {
   NUMBER            = 'NUMBER',
   BOOLEAN           = 'BOOLEAN',
   NULL              = 'NULL',
+  DATE_TIME         = 'DATE_TIME',
   WHITESPACE        = 'WHITESPACE',
   SECTION_SEP       = 'SECTION_SEP',
   COLLECTION_START  = 'COLLECTION_START',
