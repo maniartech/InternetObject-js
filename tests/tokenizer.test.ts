@@ -1,11 +1,19 @@
 import Tokenizer from "../src/tokenizer";
 
-describe('Tokenizer', () => {
-  it('should tokenize the input string into a series of tokens', () => {
-    const input = `a, b:c, c, d, 10, -9, -0xFF, T, F, N, "\ud83d\ude00", "😀", hello, ---, r"[0-9\n\t\r]"`
+describe('WIP', () => {
+  it('should tokenize various value types', () => {
+    const input = String.raw`2023-09-27`
     const tokenizer = new Tokenizer(input);
     const tokens = tokenizer.tokenize();
     console.log(tokens);
+  });
+});
+
+describe('Tokenizer', () => {
+  it('should tokenize various value types', () => {
+    const input = `a, b:c, c, d, 10, -9, -0xFF, T, F, N, "\ud83d\ude00", "😀", hello, ---, r"[0-9\n\t\r]", "a\nb"`
+    const tokenizer = new Tokenizer(input);
+    const tokens = tokenizer.tokenize();
   });
 
   it('should tokenize the input string object into a series of tokens', () => {
@@ -16,7 +24,6 @@ describe('Tokenizer', () => {
     }`;
     const tokenizer = new Tokenizer(input);
     const tokens = tokenizer.tokenize();
-    console.log(tokens);
   });
 
   it('should tokenize the binary string tokens', () => {
