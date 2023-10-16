@@ -11,6 +11,16 @@ class Token {
   type: string;
   subType?: string;
 
+  constructor() {
+    this.pos = -1;
+    this.row = -1;
+    this.col = -1;
+    this.token = '';
+    this.value = undefined;
+    this.type = '';
+    this.subType = '';
+  }
+
   /**
    * Create a token.
    * @param {number} pos - The starting position of the token in the input.
@@ -20,17 +30,20 @@ class Token {
    * @param {any} value - The parsed value of the token.
    * @param {string} type - A descriptive type name for the token.
    */
-  constructor(pos: number, row: number, col: number, token: string, value: any, type: string, subType?: string) {
-      this.pos = pos;
-      this.row = row;
-      this.col = col;
-      this.token = token;
-      this.value = value;
-      this.type = type;
+  static init(pos: number, row: number, col: number, token: string, value: any, type: string, subType?: string): Token {
+    const t = new Token()
+    t.pos = pos;
+    t.row = row;
+    t.col = col;
+    t.token = token;
+    t.value = value;
+    t.type = type;
 
-      if (subType) {
-        this.subType = subType;
-      }
+    if (subType) {
+      t.subType = subType;
+    }
+
+    return t;
   }
 }
 
