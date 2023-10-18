@@ -6,9 +6,9 @@ class Document {
   private _header: Header;
   private _sections: SectionCollection;
 
-  constructor() {
-    this._header = new Header();
-    this._sections = new SectionCollection();
+  constructor(header: Header, sections: SectionCollection) {
+    this._header = header
+    this._sections = sections
   }
 
   public get header(): Header {

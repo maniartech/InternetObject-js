@@ -1,7 +1,8 @@
-import Section from "./sections";
+import Section from "./section";
 
 class SectionCollection<T = any> {
   private _sections: Array<Section<T>> = [];
+  private _sectionNames: { [key: string]: number } = {};
 
   constructor() {
     return new Proxy(this, proxy);
@@ -15,8 +16,23 @@ class SectionCollection<T = any> {
     return this._sections.length;
   }
 
-  public get(index: number): Section<T> | undefined {
-    return this._sections[index];
+  public get(nameOrIndex: string | number): Section<T> | undefined {
+    if (typeof nameOrIndex === 'string') {
+      const index = this._sectionNames[nameOrIndex];
+      if (index === undefined) {
+        return undefined;
+      }
+      return this._sections[index];
+    }
+
+    return this._sections[nameOrIndex];
+  }
+
+  public push(section: Section<T>) {
+    if (section.name !== undefined) {
+      this._sectionNames[section.name] = this._sections.length;
+    }
+    this._sections.push(section);
   }
 
   /**
@@ -31,9 +47,20 @@ class SectionCollection<T = any> {
 
 const proxy = {
   get: (target: SectionCollection<any>, property: string | symbol) => {
-
     // If the property is a member of the InternetObject, return it
-    return Reflect.get(target, property);
+    if (property in target) {
+      return Reflect.get(target, property);
+    }
+
+    if (typeof property === 'string') {
+      // If the property is a number, get the value at that index
+      if (/^[0-9]+$/.test(property)) {
+        return target.get(Number(property));
+      }
+
+      // Return the string-keyed value
+      return target.get(property);
+    }
   }
 }
 
