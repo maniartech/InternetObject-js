@@ -1,4 +1,4 @@
-import { Node } from '../parser'
+import { Node } from '../parser/ast-parser'
 import { InternetObject } from '../internet-object'
 
 /**
