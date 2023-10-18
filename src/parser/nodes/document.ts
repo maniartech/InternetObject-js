@@ -1,3 +1,5 @@
+import Document from '../../core/document';
+import SectionCollection from '../../core/section-collection';
 import Node         from './nodes';
 import SectionNode  from './sections';
 
@@ -10,13 +12,16 @@ class DocumentNode implements Node {
     this.children = children;
   }
 
-  toValue: () => any = () => {
-    return {
-      header: this.header?.toValue() ?? null,
-      sections: this.children.map((child) => {
-        return child.toValue();
-      })
+  toValue(): any {
+    const header = this.header?.toValue() ?? null
+    const sections = new SectionCollection();
+    for (let i=0; i<this.children.length; i++) {
+      sections.push(
+        this.children[i].toValue()
+      );
     }
+
+    return new Document(header, sections);
   }
 }
 
