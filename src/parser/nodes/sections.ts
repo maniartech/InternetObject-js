@@ -1,3 +1,5 @@
+import Section from "../../core/section";
+import SectionCollection from "../../core/section-collection";
 import CollectionNode from "./collections";
 import Node           from "./nodes";
 import ObjectNode from "./objects";
@@ -7,37 +9,28 @@ type SectionChild = CollectionNode | ObjectNode | null;
 class SectionNode implements Node {
   type: string;
   child: SectionChild;
-
   name?: string;
-  alias?: string;
+  schemaName?: string;
 
-  constructor(child: SectionChild, name?: string, alias?: string) {
+  constructor(child: SectionChild, name?: string, schemaName?: string) {
     this.type = 'section';
     this.child = child;
-
-    if (name) {
-      this.name = name;
-    }
-
-    if (alias) {
-      this.alias = alias;
-    }
+    this.name = name;
+    this.schemaName = schemaName;
   }
 
-  toValue: () => any = () => {
-    const ret:any = {
-      child: this.child?.toValue(),
-    };
+  toValue ():any {
 
-    if (this.name) {
-      ret.name = this.name;
+    let data = null;
+    if (this.child) {
+      data = this.child.toValue();
     }
 
-    if (this.alias) {
-      ret.alias = this.alias;
-    }
-
-    return ret;
+    return new Section(
+      data,
+      this.name,
+      this.schemaName
+    );
   }
 }
 
