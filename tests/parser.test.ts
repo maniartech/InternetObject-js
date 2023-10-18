@@ -1,4 +1,4 @@
-import Parser     from "../src/parser";
+import ASTParser from "../src/parser/ast-parser";
 import Tokenizer  from "../src/tokenizer";
 
 
@@ -24,9 +24,15 @@ describe('Parser', () => {
     // `
 
     const input = `
-      T, 'T', c, {d} # comment
-      ---
-      1 ,2, 3, 4
+    name: Spiderman,
+    age: 25,
+    active: T,
+    address: {
+      street: '123 Fake St.',
+      city: Springfield,
+      state: IL,
+      zip: 62701,
+    }
     `
 
     // const input = `
@@ -45,8 +51,9 @@ describe('Parser', () => {
     const tokens = tokenizer.tokenize();
 
     console.log(tokens);
-    const parser = new Parser(tokens);
-    const result = parser.parse();
-    console.log(result.children[0].child?.children[0]);
+    const parser = new ASTParser(tokens);
+    const result = parser.parse().toValue().sections[0];
+
+    console.log(JSON.stringify(result, null, 2));
   });
 });

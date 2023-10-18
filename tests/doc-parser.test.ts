@@ -1,13 +1,24 @@
-import { doc } from "../src/parser/document";
+import io from "../src/parser/io";
 
 describe('Trial', () => {
   it('should try parsing wip docs', () => {
-    const d = doc`
-    name, age, gender
-    ---
-    Spiderman, 25, M ,[]
-    `;
+    const d = io`
+    name: Spiderman,
+    age: 25,
+    address: {
+      street: '123 Fake St.',
+      city: Springfield,
+      state: IL,
+      zip: 62701,
+    }`;
 
-    console.log(d);
+    const x = new io.Document()
+
+    x.sections.add('name', 'name').data(
+      ['Spiderman', '25', 'M'],
+      ['Batman', '30', 'M'],
+      ['Superman', '35', 'M'],
+    )
+
   });
 });
