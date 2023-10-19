@@ -1,7 +1,7 @@
 import Document from '../../core/document';
 import SectionCollection from '../../core/section-collection';
 import Node         from './nodes';
-import SectionNode  from './sections';
+import SectionNode  from './section';
 
 class DocumentNode implements Node {
   header: SectionNode | null = null;

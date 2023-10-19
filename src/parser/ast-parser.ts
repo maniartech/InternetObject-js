@@ -77,25 +77,25 @@ class ASTParser {
     // the section has started without a section name. A header
     // section does not have a name.
     let name = 'unnamed';
-    let alias:string | undefined;
+    let schema:string | undefined;
 
     if (!first) {
-      // Check if the next token is a section name and alias
-      [name, alias] = this.parseSectionNameAndAlias();
+      // Check if the next token is a section name and schema
+      [name, schema] = this.parseSectionAndSchemaNames();
     }
 
     const section = this.parseSectionContent()
-    return new nodes.SectionNode(section, name, alias);
+    return new nodes.SectionNode(section, name, schema);
   }
 
-  private parseSectionNameAndAlias(): [string, string?] {
+  private parseSectionAndSchemaNames(): [string, string?] {
     let name:string = 'unnamed';
-    let alias:string | undefined;
+    let schema:string | undefined;
     const token = this.peek();
 
     // Name not present, return the defaults
     if (token?.type !== TokenType.STRING) {
-      return [name, alias];
+      return [name, schema];
     }
 
     name = token.value.toString();
@@ -103,26 +103,26 @@ class ASTParser {
     // Consume the section name
     this.advance();
 
-    // Check for the : and alias
+    // Check for the : and schema
     if (this.match([TokenType.COLON])) {
       // Consume the colon
       this.advance();
 
-      // Check for the alias
+      // Check for the schema
       const aliasToken = this.peek();
       if (aliasToken && aliasToken.type === TokenType.STRING) {
-        alias = aliasToken.value.toString();
+        schema = aliasToken.value.toString();
 
-        // Consume the alias
+        // Consume the schema
         this.advance();
       } else {
         throw new Error(
-          `Expected alias after colon at row ${aliasToken ?.row} col ${aliasToken ?.col}`
+          `Expected schema-name after colon at row ${aliasToken ?.row} col ${aliasToken ?.col}`
         );
       }
     }
 
-    return [name, alias];
+    return [name, schema];
   }
 
   public parseSectionContent():
