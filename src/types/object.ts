@@ -8,6 +8,7 @@ import { doCommonTypeCheck } from './utils'
 import { ParserTreeValue, Node } from '../parser/index'
 import { isParserTree, isKeyVal, isUndefined } from '../utils/is'
 import { InternetObjectError, InternetObjectSyntaxError } from '../errors/io-error'
+import Definitions from '../core/definitions'
 
 /**
  * Represents the ObjectTypeDef which is reponsible for parsing,
