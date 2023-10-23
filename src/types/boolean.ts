@@ -6,6 +6,7 @@ import { doCommonTypeCheck } from './utils'
 import ErrorCodes from '../errors/io-error-codes'
 import KeyValueCollection from '../header/index'
 import { InternetObjectValidationError } from '../errors/io-error'
+import Definitions from '../core/definitions'
 
 /**
  * Represents the InternetObject String, performs following validations.
@@ -25,8 +26,8 @@ export default class BooleanDef implements TypeDef {
     return this._type
   }
 
-  parse(data: ParserTreeValue, memberDef: MemberDef, vars?: KeyValueCollection): string {
-    return this.validate(data, memberDef, vars)
+  parse(node: Node, memberDef: MemberDef, definitions?: Definitions): any {
+    return this.validate(node, memberDef, definitions)
   }
 
   load(data: any, memberDef: MemberDef): string {
