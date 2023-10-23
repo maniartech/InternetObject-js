@@ -3,7 +3,7 @@ import MemberDef from './memberdef'
 
 import { ErrorArgs, InternetObjectError, InternetObjectValidationError } from '../errors/io-error'
 import { Node } from '../parser/index'
-import { isToken, isString } from '../utils/is'
+import { isToken } from '../utils/is'
 
 /**
  * Performs the common validations required before serialization and deserialization
@@ -41,7 +41,7 @@ export function doCommonTypeCheck(memberDef: MemberDef, value?: any, node?: Node
 }
 
 function _default(value: any) {
-  if (isString(value)) {
+  if (typeof value === 'string') {
     if (value === 'N') return null
     if (value === 'T' || value === 'true') return true
     if (value === 'F' || value === 'false') return false
