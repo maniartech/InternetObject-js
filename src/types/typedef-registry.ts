@@ -53,6 +53,8 @@ export class TypedefRegistry {
   }
 
   public static isRegisteredType(typeName:string): boolean {
+    // TODO: This is a temporary solution, we need to find a better way
+    return true
     return typeName in defs
   }
 
