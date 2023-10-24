@@ -1,14 +1,18 @@
 import { InternetObjectSyntaxError } from "../errors/io-error";
 import ErrorCodes from "../errors/io-error-codes";
-import { MemberNode, ObjectNode, TokenNode } from "../parser/nodes"
+import ASTParser from "../parser/ast-parser";
+import { ArrayNode, MemberNode, ObjectNode, TokenNode } from "../parser/nodes"
+import Tokenizer from "../tokenizer";
 import TokenType from "../tokenizer/token-types";
 import MemberDef from '../types/memberdef';
 import { TypedefRegistry } from "../types/typedef-registry";
 import Schema from "./schema";
 
-
-export function compileSchema(schema: any) {
-  return schema
+export function compileSchema(schema: string): Schema {
+  const tokens = new Tokenizer(schema).tokenize();
+  const ast = new ASTParser(tokens).parse()
+  const s = parseObject(ast.children[0].child as ObjectNode, new Schema());
+  return s;
 }
 
 function parseObject(o: ObjectNode, schema:Schema): Schema {
@@ -56,6 +60,16 @@ function parseObject(o: ObjectNode, schema:Schema): Schema {
         addMemberDef(memberDef, schema);
       }
 
+      // If the value token is an array, then parse the array definition
+      else if(memberNode.value instanceof ArrayNode) {
+        const arrayDef = parseArrayDef(memberNode.value);
+        const memberDef = {
+          ...fieldInfo,
+          ...arrayDef,
+        } as MemberDef;
+        addMemberDef(memberDef, schema);
+      }
+
     } else {
       const fieldInfo = parseName(memberNode.value.toValue());
       const memberDef = {
@@ -68,6 +82,62 @@ function parseObject(o: ObjectNode, schema:Schema): Schema {
   }
 
   return schema;
+}
+
+function parseArrayDef(a: ArrayNode) {
+
+  // The length of the array child must be <= 1. If the length is > 1, then
+  // it is an invalid schema.
+  if (a.children.length > 1) {
+     // TODO: Better error
+    throw new InternetObjectSyntaxError(ErrorCodes.invalidSchema);
+  }
+
+  // When the array node has one child, then it is a type definition.
+  // For example:
+  // tags: [string], friends: [ { name: string, age: number } ]
+  if (a.children.length === 1) {
+    const child = a.children[0];
+    if (child instanceof TokenNode && child.type === TokenType.STRING) {
+      if (TypedefRegistry.isRegisteredType(child.value)) {
+        return {
+          type: "array",
+          "of": {
+            "type": child.value
+          },
+        } as MemberDef;
+      }
+
+      // If the type is not registered, then it is an invalid type
+      throw new InternetObjectSyntaxError(ErrorCodes.invalidType, child.value);
+    }
+
+    // If the child is an object node, then it is a member type definition
+    // For example:
+    // friends: [ { name: string, age: number } ]
+    if (child instanceof ObjectNode) {
+      return {
+        type: 'array',
+        of: parseObject(child, new Schema())
+
+      } as MemberDef;
+    }
+
+    // Throw an error if the child is not a string or object node
+    throw new InternetObjectSyntaxError(ErrorCodes.invalidSchema);
+  }
+
+
+  // When the array node is empty array, then the type definition is
+  // array without schema definition. Such arrays can accept any type items
+  // in the array.
+  // For example:
+  // tags: []
+  if (a.children.length === 0) {
+    return {
+      type: 'array',
+    } as MemberDef;
+  }
 }
 
 function parseObjectDef(o: ObjectNode) {
@@ -125,7 +195,7 @@ function parseObjectDef(o: ObjectNode) {
   // custom schema.
   return {
     type: 'object',
-    schema: parseObject(o, new Schema()),
+    schema: parseObject(o, new Schema())
   } as MemberDef;
 }
 

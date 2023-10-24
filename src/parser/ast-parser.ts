@@ -359,7 +359,7 @@ class ASTParser {
       );
     }
 
-    return new nodes.ContainerNode('array', arr);
+    return new nodes.ArrayNode(arr);
   }
 
   private parseValue(): nodes.Node {
