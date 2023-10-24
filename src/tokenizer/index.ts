@@ -351,7 +351,7 @@ class Tokenizer {
         let normalizeString = false;
 
         while (!this.reachedEnd && is.isValidOpenStringChar(this.input[this.pos])) {
-          const char = this.input[this.pos];
+          let char = this.input[this.pos];
 
           if (char === Symbols.MINUS) {
             // if the next two chars are -- that means it is a
@@ -363,6 +363,7 @@ class Tokenizer {
 
           if (char === Symbols.BACKSLASH) {
             ({ value, needToNormalize: normalizeString } = this.escapeString(value, normalizeString));
+            char = this.input[this.pos];
           } else {
             value += char;
           }
@@ -378,7 +379,7 @@ class Tokenizer {
           value = value.normalize('NFC');
         }
 
-        // value = this.input.substring(startPos, lastPos + 1);
+        value = this.input.substring(startPos, lastPos + 1);
 
         if (value === "") {
             throw new Error(`Unexpected character '${this.input[this.pos]}' at row ${startRow} and column ${startCol}.`);
