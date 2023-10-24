@@ -1,5 +1,5 @@
-import { Node } from '../parser/ast-parser'
-import { InternetObject } from '../internet-object'
+import { Node } from '../parser/nodes'
+import Token from '../tokenizer/tokens'
 
 /**
  * Represents the base error class in InternetObject.
@@ -42,7 +42,7 @@ export class InternetObjectError extends Error {
    * @param node {Node} The node object, for tracking line and columns. Optional
    * @param ssf {Function} The start statck function, removes the irrelavant frames from the stack trace
    */
-  constructor(errorCode: string, message: string = '', node?: Node, ssf?: any) {
+  constructor(errorCode: string, message: string = '', node?: Token, ssf?: any) {
     super()
 
     let errorMsg: string = errorCode
@@ -53,7 +53,7 @@ export class InternetObjectError extends Error {
     if (node) {
       this.lineNumber = node.row
       this.columnNumber = node.col
-      this.index = node.index
+      this.index = node.pos
       errorMsg = `${errorCode} at (${node.row}, ${node.col})`
     } else {
       errorMsg = errorCode
@@ -81,7 +81,7 @@ export class InternetObjectSyntaxError extends InternetObjectError {
    *
    * @internal
    */
-  constructor(errorCode: string, message: string = '', node?: Node, ssf?: any) {
+  constructor(errorCode: string, message: string = '', node?: Token, ssf?: any) {
     super(errorCode, message, node, ssf)
     this.name = 'InternetObject(SyntaxError)'
   }
@@ -101,7 +101,7 @@ export class InternetObjectValidationError extends InternetObjectError {
    *
    * @internal
    */
-  constructor(errorCode: string, message: string = '', node?: Node, ssf?: any) {
+  constructor(errorCode: string, message: string = '', node?: Token, ssf?: any) {
     super(errorCode, message, node, ssf)
     this.name = 'InternetObject(ValidationError)'
   }
