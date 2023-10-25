@@ -3,13 +3,10 @@ import MemberDef from './memberdef'
 import ErrorCodes from '../errors/io-error-codes'
 
 import { appendPath } from '../utils/index'
-import { TypedefRegistry } from './typedef-registry'
+import TypedefRegistry from './typedef-registry'
 import { doCommonTypeCheck } from './utils'
 import { InternetObjectError } from '../errors/io-error'
 import {
-  isToken,
-  isParserTree,
-  isArray,
   isPlainObject
 } from '../utils/is'
 import Definitions from '../core/definitions'
@@ -31,7 +28,7 @@ export default class AnyDef implements TypeDef {
   /**
    * Parses any value in IO format into JavaScript.
    */
-  parse(node: Node, memberDef: MemberDef, defs?: Definitions): any {
+  parse(node: TokenNode, memberDef: MemberDef, defs?: Definitions): any {
     const validatedData = doCommonTypeCheck(memberDef, node, node)
 
     if (validatedData !== node || validatedData === null || validatedData === undefined) {
