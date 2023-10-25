@@ -1,3 +1,4 @@
+import Definitions from "../../core/definitions";
 import Section from "../../core/section";
 import SectionCollection from "../../core/section-collection";
 import CollectionNode from "./collections";
@@ -19,11 +20,11 @@ class SectionNode implements Node {
     this.schemaName = schemaName;
   }
 
-  toValue ():any {
+  toValue (defs?:Definitions):any {
 
     let data = null;
     if (this.child) {
-      data = this.child.toValue();
+      data = this.child.toValue(defs);
     }
 
     return new Section(
