@@ -2,8 +2,8 @@ import ErrorCodes from '../errors/io-error-codes'
 import MemberDef from './memberdef'
 
 import { ErrorArgs, InternetObjectError, InternetObjectValidationError } from '../errors/io-error'
-import { Node } from '../parser/index'
-import { isToken } from '../utils/is'
+import TokenNode from '../parser/nodes/tokens'
+
 
 /**
  * Performs the common validations required before serialization and deserialization
@@ -13,9 +13,9 @@ import { isToken } from '../utils/is'
  *
  * @internal
  */
-export function doCommonTypeCheck(memberDef: MemberDef, value?: any, node?: Node): any {
+export function doCommonTypeCheck(memberDef: MemberDef, value?: any, node?: TokenNode): any {
   const isUndefined = value === undefined
-  const isNull = isToken(node) ? node.value === null : value === null
+  const isNull = node instanceof TokenNode ? node.value === null : value === null
 
   // console.warn(">>>", JSON.stringify(memberDef, null, 2), value)
   // Check for undefined
@@ -50,16 +50,16 @@ function _default(value: any) {
   return value
 }
 
-function _valueRequired(memberDef: MemberDef, node?: Node): ErrorArgs {
+function _valueRequired(memberDef: MemberDef, node?: TokenNode): ErrorArgs {
   return [ErrorCodes.valueRequired, `Value is missing for '${memberDef.path}'.`, node]
 }
 
-function _nullNotAllowed(memberDef: MemberDef, node?: Node): ErrorArgs {
+function _nullNotAllowed(memberDef: MemberDef, node?: TokenNode): ErrorArgs {
   return [ErrorCodes.nullNotAllowed, `${memberDef.path} does not support null.`]
 }
 
 // Return an invalid choice error parameters
-function _invlalidChoice(memberDef: MemberDef, value: any, node?: Node): ErrorArgs {
+function _invlalidChoice(memberDef: MemberDef, value: any, node?: TokenNode): ErrorArgs {
   if (!memberDef.choices) throw Error('Choices not checked during NumberDef implementation.')
   return [
     ErrorCodes.invalidChoice,
