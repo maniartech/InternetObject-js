@@ -12,7 +12,7 @@ export default interface TypeDef {
    * Validates and parses the value as per the memberDef and returns the results
    * specifying whether the value adhers to the schema or not!
    */
-  parse(value: Node, memberDef: MemberDef, definitions?: Definitions): any
+  parse(node: Node, memberDef: MemberDef, definitions?: Definitions): any
 
   /**
    * Validates and loads the value as per the memberDef and returns the results
