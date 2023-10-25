@@ -1,7 +1,7 @@
 import * as nodes   from "./nodes";
 import Token        from "../tokenizer/tokens";
 import TokenType    from "../tokenizer/token-types";
-import { InternetObjectError } from "../core/io-error";
+import InternetObjectError from "../core/io-error";
 
 class ASTParser {
 
@@ -98,31 +98,35 @@ class ASTParser {
       return [name, schema];
     }
 
-    name = token.value.toString();
+    // TODO: Improve this name, and schema parsing
+    // and uncomment the following code!
+    return [name, schema]
 
-    // Consume the section name
-    this.advance();
+    // name = token.value.toString();
 
-    // Check for the : and schema
-    if (this.match([TokenType.COLON])) {
-      // Consume the colon
-      this.advance();
+    // // Consume the section name
+    // this.advance();
 
-      // Check for the schema
-      const aliasToken = this.peek();
-      if (aliasToken && aliasToken.type === TokenType.STRING) {
-        schema = aliasToken.value.toString();
+    // // Check for the : and schema
+    // if (this.match([TokenType.COLON])) {
+    //   // Consume the colon
+    //   this.advance();
 
-        // Consume the schema
-        this.advance();
-      } else {
-        throw new Error(
-          `Expected schema-name after colon at row ${aliasToken ?.row} col ${aliasToken ?.col}`
-        );
-      }
-    }
+    //   // Check for the schema
+    //   const aliasToken = this.peek();
+    //   if (aliasToken && aliasToken.type === TokenType.STRING) {
+    //     schema = aliasToken.value.toString();
 
-    return [name, schema];
+    //     // Consume the schema
+    //     this.advance();
+    //   } else {
+    //     throw new Error(
+    //       `Expected schema-name after colon at row ${aliasToken ?.row} col ${aliasToken ?.col}`
+    //     );
+    //   }
+    // }
+
+    // return [name, schema];
   }
 
   public parseSectionContent():
