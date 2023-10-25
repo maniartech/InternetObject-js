@@ -1,6 +1,7 @@
+import Definitions from "../../core/definitions";
 
 interface Node {
-  toValue: () => any;
+  toValue: (defs?: Definitions) => any;
 }
 
 export default Node;

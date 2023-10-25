@@ -1,3 +1,4 @@
+import Definitions from "../../core/definitions";
 import Node from "./nodes";
 import TokenNode from "./tokens";
 
@@ -15,13 +16,13 @@ class MemberNode implements Node {
     }
   }
 
-  toValue: () => any = () => {
+  toValue(defs?: Definitions):any {
     if (this.key) {
       return {
-        [this.key.value]: this.value.toValue(),
+        [this.key.value]: this.value.toValue(defs),
       }
     } else {
-      return this.value.toValue();
+      return this.value.toValue(defs);
     }
   }
 }
