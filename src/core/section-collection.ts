@@ -4,6 +4,9 @@ class SectionCollection<T = any> {
   private _sections: Array<Section<T>> = [];
   private _sectionNames: { [key: string]: number } = {};
 
+  // Support index access
+  [key: string]: any
+
   constructor() {
     return new Proxy(this, proxy);
   }
@@ -61,6 +64,10 @@ const proxy = {
       // Return the string-keyed value
       return target.get(property);
     }
+  },
+
+  set: (target: SectionCollection<any>, property: string | number | symbol, value: any) => {
+    throw new Error('Cannot set a value on a SectionCollection');
   }
 }
 

@@ -1,6 +1,6 @@
 import Token from "../tokenizer/tokens";
 
-export class InternetObjectError extends Error {
+export default class InternetObjectError extends Error {
   public errorCode?: string;
   public row?: number;
   public col?: number;
