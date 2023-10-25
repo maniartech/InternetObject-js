@@ -1,3 +1,4 @@
+import Definitions from "../../core/definitions";
 import Token from "../../tokenizer/tokens";
 import Node from "./nodes";
 
@@ -15,7 +16,11 @@ class TokenNode extends Token implements Node {
     this.subType = token.subType;
   }
 
-  toValue: () => any = () => {
+  toValue(defs?: Definitions):any {
+    if (this.type === 'string' && defs !== undefined) {
+      const valueFound = defs.getV(this.value);
+      return valueFound === undefined ? this.value : valueFound;
+    }
     return this.value;
   }
 }
