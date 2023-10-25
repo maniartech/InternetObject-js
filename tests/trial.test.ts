@@ -1,12 +1,15 @@
-import Tokenizer from "../src/tokenizer";
+import parse from "../src/parser";
 
 describe('Trial', () => {
   it('should try wip tasks', () => {
     const input = String.raw`
-    testing
+    name, active:bool, age, address
+    ---
+    ~ John, T, 30, { name: New York, state: NY }
+    ~ Doe,  F, 20, { name: New York, state: NY }
+    ~ Kim,  T, 35, { name: California, state: CA }
     `
-    const tokenizer = new Tokenizer(input);
-    const tokens = tokenizer.tokenize();
-    console.log(tokens);
+
+    console.log(parse(input).toObject())
   });
 });

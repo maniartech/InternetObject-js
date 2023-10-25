@@ -1,6 +1,4 @@
-import { ASTParserTree, KeyVal, Node } from '../parser/index'
-import { Token } from '../parser'
-import { TypedefRegistry } from '../types/typedef-registry'
+import TypedefRegistry from '../types/typedef-registry'
 import { datetimeExp, datetimePlainExp } from './datetime'
 
 /**
@@ -86,56 +84,11 @@ export const isDataType = (val: string): boolean => {
   return TypedefRegistry.isRegisteredType(val)
 }
 
-export function isParserTree(obj: any): obj is ASTParserTree {
-  try {
-    return 'type' in obj && 'values' in obj
-  } catch {
-    return false
-  }
-}
-
-/**
- * Checks whether the specified object is a Token or not!
- * @param obj The object to be validated for the Token check
- * @returns `true` if the value is a Token otherwise `false`
- */
-export function isToken(obj: any): obj is Token {
-  try {
-    return obj && obj.token !== undefined && obj.value !== undefined
-  } catch {
-    return false
-  }
-}
-
-/**
- * Checks whether the specified object is a Token or not!
- * @param obj The object to be validated for the Token check
- * @returns `true` if the value is a Token otherwise `false`
- */
-export function isNode(obj: any): obj is Node {
-  try {
-    return obj && obj.index !== undefined && obj.row !== undefined && obj.col !== undefined
-  } catch {
-    return false
-  }
-}
 
 export function isDefined<T>(val: T | null | undefined): val is T {
   return val !== null && val !== undefined
 }
 
-/**
- * Checks whether the specified object is a KeyVal or not!
- * @param obj The object to be validated for the KeyVal check
- * @returns `true` if the value is a KeyVal otherwise `false`
- */
-export function isKeyVal(obj: any): obj is KeyVal {
-  try {
-    return 'key' in obj && 'value' in obj
-  } catch {
-    return false
-  }
-}
 
 /**
  *

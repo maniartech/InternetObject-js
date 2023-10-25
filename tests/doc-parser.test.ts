@@ -1,3 +1,5 @@
+import Document from "../src/core/document";
+import Header from "../src/core/header";
 import io from "../src/parser/io";
 
 describe('Trial', () => {
@@ -12,13 +14,13 @@ describe('Trial', () => {
       zip: 62701,
     }`;
 
-    const x = new io.Document()
+    // const x = new Document(new Header(), null)
 
-    x.sections.add('name', 'name').data(
-      ['Spiderman', '25', 'M'],
-      ['Batman', '30', 'M'],
-      ['Superman', '35', 'M'],
-    )
+    // x.sections? ('name', 'name').data(
+    //   ['Spiderman', '25', 'M'],
+    //   ['Batman', '30', 'M'],
+    //   ['Superman', '35', 'M'],
+    // )
 
   });
 });
