@@ -4,15 +4,23 @@ import ASTParser from "../parser/ast-parser";
 import { ArrayNode, MemberNode, ObjectNode, TokenNode } from "../parser/nodes"
 import Tokenizer from "../tokenizer";
 import TokenType from "../tokenizer/token-types";
+import registerTypes from "../types";
 import MemberDef from '../types/memberdef';
-import { TypedefRegistry } from "../types/typedef-registry";
+import TypedefRegistry from "../types/typedef-registry";
 import Schema from "./schema";
+
+
+registerTypes();
 
 export function compileSchema(schema: string): Schema {
   const tokens = new Tokenizer(schema).tokenize();
   const ast = new ASTParser(tokens).parse()
   const s = parseObject(ast.children[0].child as ObjectNode, new Schema());
   return s;
+}
+
+export function compileObject(o: ObjectNode): Schema {
+  return parseObject(o, new Schema());
 }
 
 function parseObject(o: ObjectNode, schema:Schema): Schema {
