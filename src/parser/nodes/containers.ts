@@ -1,3 +1,4 @@
+import Definitions from "../../core/definitions";
 import Node from "./nodes";
 
 
@@ -10,10 +11,10 @@ class ContainerNode implements Node {
     this.children = children;
   }
 
-  toValue: () => any = () => {
+  toValue(defs?: Definitions):any {
     return this.children.map((child) => {
       if (child) {
-        return child.toValue();
+        return child.toValue(defs);
       }
 
       return undefined;
