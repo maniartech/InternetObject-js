@@ -1,3 +1,4 @@
+import Definitions from "../../core/definitions";
 import ContainerNode  from "./containers";
 import Node           from "./nodes";
 
@@ -9,10 +10,10 @@ class CollectionNode extends ContainerNode {
   }
 
 
-  toValue: () => any = () => {
+  toValue(defs?: Definitions):any {
     const value = [];
     for (const child of this.children) {
-      value.push(child?.toValue());
+      value.push(child?.toValue(defs));
     }
     return value;
   }
