@@ -221,6 +221,16 @@ class InternetObject<T = any> {
     return this._values.length;
   }
 
+  toObject(): any {
+    const o: any = {};
+    for(let i=0; i<this._values.length; i++) {
+      const [n, v] = this._values[i];
+      o[n || i] = valueToObject(v);
+    }
+
+    return o;
+  }
+
   /**
    * Makes the InternetObject iterable, yielding key-value pairs.
    */
@@ -263,11 +273,17 @@ const ioProxyHandler = {
 
   set: (target: InternetObject<any>, property: string | number | symbol, value: any) => {
     // If the property is a number, get the value at that index
-    if (typeof property === 'string' && /^[0-9]+$/.test(property)) {
-      throw new Error('Direct assignment with numeric index is not supported. Use push, or setAt instead.');
+    if (typeof property === 'string') {
+      // setting of number is not supported through proxy
+      if (/^[0-9]+$/.test(property)) {
+        throw new Error('Direct assignment with numeric index is not supported. Use push, or setAt instead.');
+      }
+
+      // For strings, set the value associated with the key
+      target.set(property, value);
     }
 
-    // If the property is a string, get the value associated with the key
+    // for symbols and other properties, defer to the standard set operation
     return Reflect.set(target, property, value);
   },
 
@@ -285,6 +301,18 @@ const ioProxyHandler = {
     return Reflect.deleteProperty(target, property);
   }
 };
+
+function valueToObject(v:any):any {
+  if (v instanceof InternetObject) {
+    return v.toObject();
+  }
+
+  if (Array.isArray(v)) {
+    return v.map(valueToObject);
+  }
+
+  return v;
+}
 
 
 
