@@ -1,4 +1,4 @@
-import { Node } from '../parser/nodes'
+import { Node, TokenNode } from '../parser/nodes'
 import Token from '../tokenizer/tokens'
 
 /**
@@ -107,4 +107,4 @@ export class InternetObjectValidationError extends InternetObjectError {
   }
 }
 
-export type ErrorArgs = [string, string, Node?]
+export type ErrorArgs = [string, string, TokenNode?]

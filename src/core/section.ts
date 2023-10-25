@@ -24,6 +24,21 @@ class Section<T  = any> {
     return this._data;
   }
 
+  public toObject(): any {
+
+    // Internet Object
+    if (this._data instanceof InternetObject) {
+      return this._data.toObject();
+    }
+
+    // Collection
+    else if (this._data instanceof Collection) {
+      return this._data.toObject();
+    }
+
+    return null;
+  }
+
 }
 
 export default Section;
