@@ -1,12 +1,11 @@
-import { ParserTreeValue, Node } from '../parser/index'
-import { isToken, isBoolean, isString } from '../utils/is'
+import { Node } from '../parser/nodes'
 import MemberDef from './memberdef'
 import TypeDef from './typedef'
 import { doCommonTypeCheck } from './utils'
 import ErrorCodes from '../errors/io-error-codes'
-import KeyValueCollection from '../header/index'
 import { InternetObjectValidationError } from '../errors/io-error'
 import Definitions from '../core/definitions'
+import { TokenNode } from '../parser/nodes'
 
 /**
  * Represents the InternetObject String, performs following validations.
@@ -26,12 +25,12 @@ export default class BooleanDef implements TypeDef {
     return this._type
   }
 
-  parse(node: Node, memberDef: MemberDef, definitions?: Definitions): any {
-    return this.validate(node, memberDef, definitions)
+  parse(node: Node, memberDef: MemberDef, defs?: Definitions): any {
+    return this.validate(node, memberDef, defs)
   }
 
-  load(data: any, memberDef: MemberDef): string {
-    return this.validate(data, memberDef)
+  load(value: any, memberDef: MemberDef): string {
+    return this.validate(value, memberDef)
   }
 
   serialize(data: string, memberDef: MemberDef): string {
@@ -41,12 +40,12 @@ export default class BooleanDef implements TypeDef {
     return value === true ? 'T' : 'F'
   }
 
-  validate(data: any, memberDef: MemberDef, vars?: KeyValueCollection): any {
-    const node = isToken(data) ? data : undefined
+  validate(data: any, memberDef: MemberDef, defs?: Definitions): any {
+    const node = data instanceof TokenNode ? data : undefined
     let value = node ? node.value : data
 
-    if (vars && typeof value === 'string') {
-      const valueFound = vars.getV(value)
+    if (typeof value === 'string') {
+      const valueFound = defs?.getV(value)
       value = valueFound !== undefined ? valueFound : value
     }
 
