@@ -6,6 +6,7 @@ import { doCommonTypeCheck } from './utils'
 import ErrorCodes from '../errors/io-error-codes'
 import Definitions from '../core/definitions'
 import { TokenNode } from '../parser/nodes'
+import Schema from '../schema/schema'
 
 // Reference: RFC 5322 Official Standard
 // http://emailregex.com
@@ -13,6 +14,18 @@ const emailExp = /(?:[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-
 
 // http://urlregex.com
 const urlExp = /((([A-Za-z]{3,9}:(?:\/\/)?)(?:[\-;:&=\+\$,\w]+@)?[A-Za-z0-9\.\-]+|(?:www\.|[\-;:&=\+\$,\w]+@)[A-Za-z0-9\.\-]+)((?:\/[\+~%\/\.\w\-_]*)?\??(?:[\-\+=&;%@\.\w_]*)#?(?:[\.\!\/\\\w]*))?)/
+
+const schema = new Schema(
+  { type:     { type: "string", optional: false, null: false, choices: ["string", "url", "email"] } },
+  { default:  { type: "string", optional: true,  null: false  } },
+  { choices:  { type: "array",  optional: true,  null: false, of: { type: "string" } } },
+  { pattern:  { type: "string", optional: true,  null: false  } },
+  { len:      { type: "number", optional: true,  null: false, min: 0, default: -1 } },
+  { minLen:   { type: "number", optional: true,  null: false, min: 0, default: -1 } },
+  { maxLen:   { type: "number", optional: true,  null: false, min: 0, default: -1 } },
+  { optional: { type: "bool",   optional: true,  null: false, default: false } },
+  { null:     { type: "bool",   optional: true,  null: false, default: false } },
+)
 
 /**
  * Represents the StringTypeDef which is reponsible for parsing,
@@ -77,6 +90,10 @@ export default class StringDef implements TypeDef {
     const value = node ? node.value : data
 
     return _process(memberDef, value, node, defs)
+  }
+
+  get schema() {
+    return schema
   }
 }
 

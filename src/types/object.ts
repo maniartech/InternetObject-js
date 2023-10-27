@@ -6,11 +6,19 @@ import {
        ObjectNode                 } from '../parser/nodes';
 import Node                         from '../parser/nodes/nodes';
 import processObject                from '../schema/object-processor';
+import Schema                       from '../schema/schema';
 import MemberDef                    from './memberdef';
 import TypeDef                      from './typedef';
 import TypedefRegistry              from './typedef-registry';
 import {
        doCommonTypeCheck          } from './utils';
+
+const schema = new Schema(
+  { type:     { type: "string", optional: false, null: false, choices: ["object"] } },
+  { default:  { type: "object", optional: true,  null: false  } },
+  { optional: { type: "bool",   optional: true,  null: false, default: false } },
+  { null:     { type: "bool",   optional: true,  null: false, default: false } },
+)
 
 /**
  * Represents the ObjectTypeDef which is reponsible for parsing,
@@ -68,6 +76,10 @@ class ObjectDef implements TypeDef {
     }
     // join array and trim off last commas, from the end
     return `{${serialized.join(',').replace(/,+$/g, '')}}`
+  }
+
+  get schema() {
+    return schema
   }
 
   // Process the parse and load requests
