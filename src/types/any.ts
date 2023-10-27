@@ -11,6 +11,15 @@ import {
 } from '../utils/is'
 import Definitions from '../core/definitions'
 import { Node, TokenNode } from '../parser/nodes'
+import Schema from '../schema/schema'
+
+const schema = new Schema(
+  { type:     { type: "string", optional: false, null: false, choices: ["any"] } },
+  { default:  { type: "any",    optional: true,  null: false  } },
+  { choices:  { type: "array",  optional: true,  null: false } },
+  { optional: { type: "bool",   optional: true,  null: false, default: false } },
+  { null:     { type: "bool",   optional: true,  null: false, default: false } },
+)
 
 /**
  * Represents the AnyTypeDef which is reponsible for parsing,
@@ -52,6 +61,10 @@ export default class AnyDef implements TypeDef {
    */
   serialize(data: any, memberDef: MemberDef, isRoot: boolean = false): string {
     return _serialize(data, memberDef, isRoot)
+  }
+
+  get schema() {
+    return schema
   }
 }
 
