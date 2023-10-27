@@ -1,6 +1,7 @@
 import MemberDef          from './memberdef'
 import Node               from '../parser/nodes/nodes'
 import Definitions        from '../core/definitions'
+import Schema from '../schema/schema'
 
 /**
  * Defines the SchemaValidator interface.
@@ -19,6 +20,9 @@ export default interface TypeDef {
    * specifying whether the value adhers to the schema or not!
    */
   load(value: any, memberDef: MemberDef): any
+
+
+   get schema(): Schema
 
   // TODO: Hide this from documentation!
   [index: string]: any
