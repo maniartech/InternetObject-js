@@ -20,7 +20,7 @@ export function doCommonTypeCheck(memberDef: MemberDef, value?: any, node?: Node
   // console.warn(">>>", JSON.stringify(memberDef, null, 2), value)
   // Check for undefined
   if (isUndefined) {
-    if (memberDef.default) return _default(memberDef.default)
+    if (memberDef.default !== undefined) return _default(memberDef.default)
     if (memberDef.optional) return undefined
     throw new InternetObjectValidationError(..._valueRequired(memberDef, node))
   }
