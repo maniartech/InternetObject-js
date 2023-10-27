@@ -1,15 +1,25 @@
-import ErrorCodes from '../errors/io-error-codes'
-import { isParserTree } from '../utils/is'
-import MemberDef from './memberdef'
-import TypeDef from './typedef'
-import KeyValueCollection from '../header/index'
+import Definitions              from '../core/definitions';
+import { InternetObjectError  } from '../errors/io-error';
+import ErrorCodes               from '../errors/io-error-codes';
+import ArrayNode                from '../parser/nodes/array';
+import Node                     from '../parser/nodes/nodes';
+import TokenNode                from '../parser/nodes/tokens';
+import Schema                   from '../schema/schema';
+import MemberDef                from './memberdef';
+import TypeDef                  from './typedef';
+import TypedefRegistry          from './typedef-registry';
+import { doCommonTypeCheck    } from './utils';
 
-import { InternetObjectError } from '../errors/io-error'
+const schema = new Schema(
+  { type:     { type: "string", optional: false, null: false, choices: ["array"] } },
+  { default:  { type: "array",  optional: true,  null: false  } },
+  { len:      { type: "number", optional: true,  null: false, min: 0, default: -1 } },
+  { minLen:   { type: "number", optional: true,  null: false, min: 0, default: -1 } },
+  { maxLen:   { type: "number", optional: true,  null: false, min: 0, default: -1 } },
+  { optional: { type: "bool",   optional: true,  null: false, default: false } },
+  { null:     { type: "bool",   optional: true,  null: false, default: false } },
+)
 
-import { Token } from '../parser'
-import { Node, ParserTreeValue } from '../parser/index'
-import { TypedefRegistry } from './typedef-registry'
-import { doCommonTypeCheck } from './utils'
 
 // age?: { number, true, 10, min:10, max:20}
 
@@ -29,19 +39,14 @@ class ArrayDef implements TypeDef {
     return 'array'
   }
 
-  public parse = (data: ParserTreeValue, memberDef: MemberDef, vars?: KeyValueCollection): any => {
-    if (isParserTree(data)) {
-      return _process('parse', memberDef, data.values, data, vars)
-    } else if (data === undefined) {
-      return _process('parse', memberDef, undefined, data, vars)
-    }
-
-    throw new Error('invalid-value')
+  public parse = (node: Node, memberDef: MemberDef, defs?: Definitions): any => {
+    const value = node instanceof ArrayNode ? node : undefined
+    return _processNode(memberDef, value, node, defs)
   }
 
   public load = (data: any, memberDef: MemberDef): any => {
     const value = data === undefined ? undefined : data
-    return _process('load', memberDef, value, data)
+    return _process(memberDef, value, data)
 
     // const validatedData = doCommonTypeCheck(memberDef)
     // if (validatedData !== data) return validatedData
@@ -104,14 +109,52 @@ class ArrayDef implements TypeDef {
 
     return `[${serialized.join(',')}]`
   }
+
+  get schema() {
+    return schema
+  }
 }
 
-function _process(
-  processingFnName: string,
+
+function _processNode(
   memberDef: MemberDef,
   value: any,
   node?: Node,
-  vars?: KeyValueCollection
+  defs?: Definitions
+) {
+  const validatedData = doCommonTypeCheck(memberDef, value, node)
+  if (validatedData !== value || value === undefined) return validatedData
+
+  if (value instanceof ArrayNode === false) throw new Error('invalid-value')
+
+  let typeDef: TypeDef | undefined
+  let arrayMemberDef: MemberDef = {
+    type: 'any'
+  }
+
+  if (memberDef.of?.type) {
+    typeDef = TypedefRegistry.get(memberDef.of.type)
+    arrayMemberDef = memberDef.of
+  } else if (typeof memberDef.of === 'string') {
+    throw new Error('Invalid Memberdef Case')
+  } else {
+    typeDef = TypedefRegistry.get('any')
+  }
+
+  const array: any = []
+  value.children.forEach((item: any) => {
+    const value = typeDef?.parse(item, arrayMemberDef, defs)
+    array.push(value)
+  })
+
+  return array
+}
+
+function _process(
+  memberDef: MemberDef,
+  value: any,
+  node?: Node,
+  defs?: Definitions
 ) {
   const validatedData = doCommonTypeCheck(memberDef, value, node)
   if (validatedData !== value || value === undefined) return validatedData
@@ -122,18 +165,17 @@ function _process(
 
   let typeDef: TypeDef | undefined
 
-  if (schema.type) {
+  if (schema?.type) {
     typeDef = TypedefRegistry.get(schema.type)
   } else {
-    console.assert(false, 'Invalid Case: Array schema must have a type attribute!')
-    throw new Error('Verify this case!')
+    typeDef = TypedefRegistry.get('any')
   }
 
   const array: any = []
 
   value.forEach((item: any) => {
     if (typeDef !== undefined) {
-      const value = typeDef[processingFnName](item, schema, vars)
+      const value = typeDef.load(item, schema)
       array.push(value)
     } else {
       // TODO: Improve this error
@@ -144,7 +186,7 @@ function _process(
   return array
 }
 
-function _invlalidChoice(key: string, token: Token, min: number) {
+function _invlalidChoice(key: string, token: TokenNode, min: number) {
   return [
     ErrorCodes.invalidMinValue,
     `The "${key}" must be greater than or equal to ${min}, Currently it is "${token.value}".`,
@@ -152,7 +194,7 @@ function _invlalidChoice(key: string, token: Token, min: number) {
   ]
 }
 
-function _invlalidMinLength(key: string, token: Token, min: number) {
+function _invlalidMinLength(key: string, token: TokenNode, min: number) {
   return [
     ErrorCodes.invalidMinValue,
     `The "${key}" must be greater than or equal to ${min}, Currently it is "${token.value}".`,
@@ -160,7 +202,7 @@ function _invlalidMinLength(key: string, token: Token, min: number) {
   ]
 }
 
-function _invlalidMaxLength(key: string, token: Token, max: number) {
+function _invlalidMaxLength(key: string, token: TokenNode, max: number) {
   return [
     ErrorCodes.invalidMaxValue,
     `The "${key}" must be less than or equal to ${max}, Currently it is "${token.value}".`,
