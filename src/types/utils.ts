@@ -2,7 +2,7 @@ import ErrorCodes from '../errors/io-error-codes'
 import MemberDef from './memberdef'
 
 import { ErrorArgs, InternetObjectError, InternetObjectValidationError } from '../errors/io-error'
-import TokenNode from '../parser/nodes/tokens'
+import { Node, TokenNode } from '../parser/nodes'
 
 
 /**
@@ -13,7 +13,7 @@ import TokenNode from '../parser/nodes/tokens'
  *
  * @internal
  */
-export function doCommonTypeCheck(memberDef: MemberDef, value?: any, node?: TokenNode): any {
+export function doCommonTypeCheck(memberDef: MemberDef, value?: any, node?: Node): any {
   const isUndefined = value === undefined
   const isNull = node instanceof TokenNode ? node.value === null : value === null
 
@@ -50,16 +50,16 @@ function _default(value: any) {
   return value
 }
 
-function _valueRequired(memberDef: MemberDef, node?: TokenNode): ErrorArgs {
+function _valueRequired(memberDef: MemberDef, node?: Node): ErrorArgs {
   return [ErrorCodes.valueRequired, `Value is missing for '${memberDef.path}'.`, node]
 }
 
-function _nullNotAllowed(memberDef: MemberDef, node?: TokenNode): ErrorArgs {
+function _nullNotAllowed(memberDef: MemberDef, node?: Node): ErrorArgs {
   return [ErrorCodes.nullNotAllowed, `${memberDef.path} does not support null.`]
 }
 
 // Return an invalid choice error parameters
-function _invlalidChoice(memberDef: MemberDef, value: any, node?: TokenNode): ErrorArgs {
+function _invlalidChoice(memberDef: MemberDef, value: any, node?: Node): ErrorArgs {
   if (!memberDef.choices) throw Error('Choices not checked during NumberDef implementation.')
   return [
     ErrorCodes.invalidChoice,

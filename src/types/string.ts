@@ -83,7 +83,7 @@ export default class StringDef implements TypeDef {
 function _process(
   memberDef: MemberDef,
   value: string,
-  node?: TokenNode,
+  node?: Node,
   defs?: Definitions
 ): string {
   // Replace defs
