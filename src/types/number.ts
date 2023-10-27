@@ -3,11 +3,23 @@ import { InternetObjectValidationError, ErrorArgs, InternetObjectError } from '.
 import ErrorCodes from '../errors/io-error-codes'
 import { TokenNode } from '../parser/nodes'
 import Node from '../parser/nodes/nodes'
+import Schema from '../schema/schema'
 import MemberDef from './memberdef'
 import TypeDef from './typedef'
 import { doCommonTypeCheck } from './utils'
 
 const NUMBER_TYPES = ['number', 'int', 'int32', 'int16', 'byte']
+
+const schema = new Schema(
+  { type:     { type: "string", optional: false, null: false, choices: ["number", "byte", "int", "int16", "int32", "int64"] } },
+  { default:  { type: "number", optional: true,  null: false  } },
+  { choices:  { type: "array",  optional: true,  null: false, of: { type: "number" } } },
+  { len:      { type: "number", optional: true,  null: false, min: 0, default: -1 } },
+  { min:      { type: "number", optional: true,  null: false, min: 0, default: -1 } },
+  { max:      { type: "number", optional: true,  null: false, min: 0, default: -1 } },
+  { optional: { type: "bool",   optional: true,  null: false, default: false } },
+  { null:     { type: "bool",   optional: true,  null: false, default: false } },
+)
 
 // age?: { number, true, 10, min:10, max:20}
 
@@ -49,6 +61,10 @@ class NumberDef implements TypeDef {
     const node = data instanceof TokenNode ? data : undefined
     const value = node ? node.value : data
     return _validate(this._validator, memberDef, value, node, defs)
+  }
+
+  get schema() {
+    return schema
   }
 }
 

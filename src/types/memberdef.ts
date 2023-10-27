@@ -5,7 +5,7 @@
 export default interface MemberDef {
   type: string
   optional?: boolean
-  nullable?: any
+  null?: any
   path?: string
   default?: any
   choices?: any[]
