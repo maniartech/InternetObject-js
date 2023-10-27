@@ -6,6 +6,14 @@ import ErrorCodes from '../errors/io-error-codes'
 import { InternetObjectValidationError } from '../errors/io-error'
 import Definitions from '../core/definitions'
 import { TokenNode } from '../parser/nodes'
+import Schema from '../schema/schema'
+
+const schema = new Schema(
+  { type:     { type: "string", optional: false, null: false, choices: ["bool", "boolean"] } },
+  { default:  { type: "bool",   optional: true,  null: false  } },
+  { optional: { type: "bool",   optional: true,  null: false, default: false } },
+  { null:     { type: "bool",   optional: true,  null: false, default: false } },
+)
 
 /**
  * Represents the InternetObject String, performs following validations.
@@ -63,5 +71,9 @@ export default class BooleanDef implements TypeDef {
     }
 
     return value
+  }
+
+  get schema() {
+    return schema
   }
 }

@@ -1,5 +1,5 @@
 import AnyDef from './any'
-// import ArrayDef from './array'
+import ArrayDef from './array'
 import BooleanDef from './boolean'
 import NumberDef from './number'
 import ObjectDef from './object'
@@ -16,6 +16,7 @@ export default function registerTypes() {
   TypedefRegistry.register('any', new AnyDef())
 
   TypedefRegistry.register('bool', new BooleanDef('bool'))
+  TypedefRegistry.register('boolean', new BooleanDef('bool'))
 
   TypedefRegistry.register('string', new StringDef('string'))
   TypedefRegistry.register('email', new StringDef('email'))
@@ -25,13 +26,19 @@ export default function registerTypes() {
   TypedefRegistry.register('byte', new NumberDef('byte'))
   TypedefRegistry.register('int16', new NumberDef('int16'))
   TypedefRegistry.register('int32', new NumberDef('int32'))
+  TypedefRegistry.register('int32', new NumberDef('int64'))
   TypedefRegistry.register('int', new NumberDef('int'))
 
   // TypedefRegistry.register('datetime', new DateTimeDef('datetime'))
   // TypedefRegistry.register('date', new DateTimeDef('date'))
   // TypedefRegistry.register('time', new DateTimeDef('time'))
 
-  // TypedefRegistry.register('array', new ArrayDef())
+  /* The line `// TypedefRegistry.register('array', new ArrayDef())` is commented
+  out, which means it is not being executed. It appears to be registering a type
+  called 'array' with the TypedefRegistry, using an instance of the ArrayDef
+  class. However, since it is commented out, this registration is not taking
+  place. */
+  TypedefRegistry.register('array', new ArrayDef())
   TypedefRegistry.register('object', new ObjectDef())
 
   // TODO: Include Date and DateTime Types
