@@ -42,7 +42,7 @@ export class InternetObjectError extends Error {
    * @param node {Node} The node object, for tracking line and columns. Optional
    * @param ssf {Function} The start statck function, removes the irrelavant frames from the stack trace
    */
-  constructor(errorCode: string, message: string = '', node?: Token, ssf?: any) {
+  constructor(errorCode: string, message: string = '', node?: Node, ssf?: any) {
     super()
 
     let errorMsg: string = errorCode
@@ -50,7 +50,7 @@ export class InternetObjectError extends Error {
 
     this.name = 'InternetObjectError'
 
-    if (node) {
+    if (node instanceof TokenNode) {
       this.lineNumber = node.row
       this.columnNumber = node.col
       this.index = node.pos
@@ -81,7 +81,7 @@ export class InternetObjectSyntaxError extends InternetObjectError {
    *
    * @internal
    */
-  constructor(errorCode: string, message: string = '', node?: Token, ssf?: any) {
+  constructor(errorCode: string, message: string = '', node?: Node, ssf?: any) {
     super(errorCode, message, node, ssf)
     this.name = 'InternetObject(SyntaxError)'
   }
@@ -101,10 +101,10 @@ export class InternetObjectValidationError extends InternetObjectError {
    *
    * @internal
    */
-  constructor(errorCode: string, message: string = '', node?: Token, ssf?: any) {
+  constructor(errorCode: string, message: string = '', node?: Node, ssf?: any) {
     super(errorCode, message, node, ssf)
     this.name = 'InternetObject(ValidationError)'
   }
 }
 
-export type ErrorArgs = [string, string, TokenNode?]
+export type ErrorArgs = [string, string, Node?]

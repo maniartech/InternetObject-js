@@ -25,6 +25,7 @@ enum ErrorCodes {
   invalidSchema = 'invalid-schema',
   invalidKey = 'invalid-key',
   invalidMemberDefCondition = 'invalid-memberdef-condition',
+  invalidMemberDef = 'invalid-memberdef',
 
   // String
   notAString = 'not-a-string',
