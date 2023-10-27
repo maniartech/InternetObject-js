@@ -10,6 +10,7 @@ import TokenType                      from '../tokenizer/token-types';
 import registerTypes                  from '../types';
 import MemberDef                      from '../types/memberdef';
 import TypedefRegistry                from '../types/typedef-registry';
+import processSchema from './processor';
 import Schema                         from './schema';
 
 registerTypes();
@@ -26,7 +27,6 @@ export function compileObject(o: ObjectNode): Schema {
 }
 
 function parseObject(o: ObjectNode, schema:Schema, path:string): Schema {
-
   // Loop through all the children
   for (const child of o.children) {
     if (child === null) {
@@ -167,7 +167,7 @@ function parseObjectDef(o: ObjectNode, path:string) {
   if (!firstNode.key && firstNode.value instanceof TokenNode) {
     const token = firstNode.value;
     if (token.type === TokenType.STRING && TypedefRegistry.isRegisteredType(token.value)) {
-      return parseMemberDef(o);
+      return parseMemberDef(token.value, o);
     }
 
     // If the first member is not a string, then it is an invalid schema
@@ -192,7 +192,7 @@ function parseObjectDef(o: ObjectNode, path:string) {
   // If type exists, and a valid type, then parse the member definition
   if (type !== '') {
     if (TypedefRegistry.isRegisteredType(type)) {
-      return parseMemberDef(o);
+      return parseMemberDef(type, o);
     }
 
     // If the type is not registered, then it is an invalid type
@@ -207,10 +207,30 @@ function parseObjectDef(o: ObjectNode, path:string) {
   } as MemberDef;
 }
 
-function parseMemberDef(o: ObjectNode) {
-  // Parse against the type definition schema
-  throw new Error('Not implemented');
+function parseMemberDef(type:string, o: ObjectNode) {
+  const typeDef = TypedefRegistry.get(type);
+  const memberDef = processSchema(o, typeDef.schema)
+  return memberDef;
 }
+
+// function findType(o: ObjectNode) {
+//   for(let i=0; i<o.children.length; i++) {
+
+//     // If the first member is a string, then it is a type definition
+//     if (i === 0 && o.children[0] instanceof TokenNode && o.children[0].type === TokenType.STRING) {
+//       return o.children[0].value;
+//     }
+
+//     // If the first member is a member node, and key is type
+//     if (i === 0 && o.children[0] instanceof MemberNode && o.children[0].key && o.children[0].key.value === 'type') {
+//       const child = o.children[0].value;
+//       if (child instanceof TokenNode && child.type === TokenType.STRING) {
+//         return child.value;
+//       }
+//     }
+//   }
+//   return '';
+// }
 
 function addMemberDef(memberDef: MemberDef, schema: Schema, path:string) {
   memberDef.path = _(path, memberDef.name);
