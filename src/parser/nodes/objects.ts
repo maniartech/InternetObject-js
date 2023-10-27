@@ -7,7 +7,7 @@ import Definitions from "../../core/definitions";
 
 class ObjectNode extends ContainerNode {
 
-  constructor(children: Array<Node | null> = []) {
+  constructor(children: Array<MemberNode | null> = []) {
     super('object', children);
   }
 

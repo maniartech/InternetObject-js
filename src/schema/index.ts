@@ -1,29 +1,31 @@
-import { InternetObjectSyntaxError } from "../errors/io-error";
-import ErrorCodes from "../errors/io-error-codes";
-import ASTParser from "../parser/ast-parser";
-import { ArrayNode, MemberNode, ObjectNode, TokenNode } from "../parser/nodes"
-import Tokenizer from "../tokenizer";
-import TokenType from "../tokenizer/token-types";
-import registerTypes from "../types";
-import MemberDef from '../types/memberdef';
-import TypedefRegistry from "../types/typedef-registry";
-import Schema from "./schema";
-
+import {
+       InternetObjectSyntaxError    } from '../errors/io-error';
+import ErrorCodes                     from '../errors/io-error-codes';
+import ASTParser                      from '../parser/ast-parser';
+import {
+       ArrayNode, MemberNode,
+       ObjectNode, TokenNode        } from '../parser/nodes';
+import Tokenizer                      from '../tokenizer';
+import TokenType                      from '../tokenizer/token-types';
+import registerTypes                  from '../types';
+import MemberDef                      from '../types/memberdef';
+import TypedefRegistry                from '../types/typedef-registry';
+import Schema                         from './schema';
 
 registerTypes();
 
 export function compileSchema(schema: string): Schema {
   const tokens = new Tokenizer(schema).tokenize();
   const ast = new ASTParser(tokens).parse()
-  const s = parseObject(ast.children[0].child as ObjectNode, new Schema());
+  const s = parseObject(ast.children[0].child as ObjectNode, new Schema(), "");
   return s;
 }
 
 export function compileObject(o: ObjectNode): Schema {
-  return parseObject(o, new Schema());
+  return parseObject(o, new Schema(), "");
 }
 
-function parseObject(o: ObjectNode, schema:Schema): Schema {
+function parseObject(o: ObjectNode, schema:Schema, path:string): Schema {
 
   // Loop through all the children
   for (const child of o.children) {
@@ -53,29 +55,28 @@ function parseObject(o: ObjectNode, schema:Schema): Schema {
           type,
         } as MemberDef;
 
-
         // Add the member def to the schema
-        addMemberDef(memberDef, schema);
+        addMemberDef(memberDef, schema, path);
       }
 
       // If the value token is an object, then parse the object definition
       else if(memberNode.value instanceof ObjectNode) {
-        const objectDef = parseObjectDef(memberNode.value);
+        const objectDef = parseObjectDef(memberNode.value, _(path, fieldInfo.name));
         const memberDef = {
           ...fieldInfo,
           ...objectDef,
         } as MemberDef;
-        addMemberDef(memberDef, schema);
+        addMemberDef(memberDef, schema, path);
       }
 
       // If the value token is an array, then parse the array definition
       else if(memberNode.value instanceof ArrayNode) {
-        const arrayDef = parseArrayDef(memberNode.value);
+        const arrayDef = parseArrayDef(memberNode.value, _(path, fieldInfo.name));
         const memberDef = {
           ...fieldInfo,
           ...arrayDef,
         } as MemberDef;
-        addMemberDef(memberDef, schema);
+        addMemberDef(memberDef, schema, path);
       }
 
     } else {
@@ -85,14 +86,14 @@ function parseObject(o: ObjectNode, schema:Schema): Schema {
         type: 'any'
       } as MemberDef;
 
-      addMemberDef(memberDef, schema);
+      addMemberDef(memberDef, schema, path);
     }
   }
 
   return schema;
 }
 
-function parseArrayDef(a: ArrayNode) {
+function parseArrayDef(a:ArrayNode, path:string) {
 
   // The length of the array child must be <= 1. If the length is > 1, then
   // it is an invalid schema.
@@ -126,15 +127,13 @@ function parseArrayDef(a: ArrayNode) {
     if (child instanceof ObjectNode) {
       return {
         type: 'array',
-        of: parseObject(child, new Schema())
-
+        of: parseObject(child, new Schema(), path)
       } as MemberDef;
     }
 
     // Throw an error if the child is not a string or object node
     throw new InternetObjectSyntaxError(ErrorCodes.invalidSchema);
   }
-
 
   // When the array node is empty array, then the type definition is
   // array without schema definition. Such arrays can accept any type items
@@ -148,8 +147,7 @@ function parseArrayDef(a: ArrayNode) {
   }
 }
 
-function parseObjectDef(o: ObjectNode) {
-
+function parseObjectDef(o: ObjectNode, path:string) {
   // When the object node is empty object, then the type definition is
   // object without schema definition. Such objects can accept any object
   // as value.
@@ -165,8 +163,10 @@ function parseObjectDef(o: ObjectNode) {
   // member as the type name
   // For example:
   // age: { number, min: 10, max: 20 }
-  if (o.children[0] instanceof TokenNode) {
-    if ((o.children[0] as TokenNode).type === TokenType.STRING && TypedefRegistry.isRegisteredType((o.children[0] as TokenNode).value)) {
+  const firstNode = o.children[0] as MemberNode;
+  if (!firstNode.key && firstNode.value instanceof TokenNode) {
+    const token = firstNode.value;
+    if (token.type === TokenType.STRING && TypedefRegistry.isRegisteredType(token.value)) {
       return parseMemberDef(o);
     }
 
@@ -203,7 +203,7 @@ function parseObjectDef(o: ObjectNode) {
   // custom schema.
   return {
     type: 'object',
-    schema: parseObject(o, new Schema())
+    schema: parseObject(o, new Schema(), path)
   } as MemberDef;
 }
 
@@ -212,7 +212,8 @@ function parseMemberDef(o: ObjectNode) {
   throw new Error('Not implemented');
 }
 
-function addMemberDef(memberDef: MemberDef, schema: Schema) {
+function addMemberDef(memberDef: MemberDef, schema: Schema, path:string) {
+  memberDef.path = _(path, memberDef.name);
   schema.names.push(memberDef.name);
   schema.defs[memberDef.name] = memberDef;
 }
@@ -257,4 +258,12 @@ const parseName = (key: string): {
     }
   }
   return { name: key, optional: false, nullable: false }
+}
+
+// concacts the path and key
+function _(path:string, key:string) {
+  if (path === "") {
+    return key;
+  }
+  return `${path}.${key}`;
 }
