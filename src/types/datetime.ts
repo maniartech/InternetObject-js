@@ -1,45 +1,48 @@
 import { InternetObjectValidationError, ErrorArgs, InternetObjectError } from '../errors/io-error'
 import ErrorCodes from '../errors/io-error-codes'
-import { ParserTreeValue, Node } from '../parser/index'
-import { isDateTimeString, isDateString, isTimeString, isToken, isString } from '../utils/is'
-import MemberDef from './memberdef'
+import Node from '../parser/nodes/nodes'
+import MemberDef from './memberdef';
 import TypeDef from './typedef'
 import { doCommonTypeCheck } from './utils'
-import KeyValueCollection from '../header/index'
+
 import {
-  parseDateTime,
-  parseDate,
-  parseTime,
   dateToDatetimeString,
   dateToDateString,
   dateToTimeString
 } from '../utils/datetime'
+import Definitions from '../core/definitions'
+import Schema from '../schema/schema'
+import { TokenNode } from '../parser/nodes'
 
 const DATETIME_TYPES = ['datetime', 'date', 'time']
 
+const schema = new Schema(
+  "datetime",
+  { type:     { type: "string",   optional: false, null: false, choices: DATETIME_TYPES } },
+  { default:  { type: "datetime", optional: true,  null: false  } },
+  { choices:  { type: "array",    optional: true,  null: false, of: { type: "datetime" } } },
+  { min:      { type: "datetime", optional: true,  null: false } },
+  { max:      { type: "datetime", optional: true,  null: false } },
+  { optional: { type: "bool",     optional: true,  null: false, default: false } },
+  { null:     { type: "bool",     optional: true,  null: false, default: false } }
+)
+
+
 /**
- * Represents the various number related data types
- * (such as number, int, byte, int16, int32) in Internet Object.
+ * Represents the various datetime related data types
  *
  * @internal
  */
 class DateTimeDef implements TypeDef {
   private _type: string
 
-  constructor(type: string = 'datetime') {
-    this._type = type
-  }
+  constructor(type: string = 'datetime') { this._type = type }
+  get type() { return this._type }
+  get schema() { return schema }
 
-  getType() {
-    return this._type
-  }
-
-  parse(data: ParserTreeValue, memberDef: MemberDef, vars?: KeyValueCollection): Date {
-    const parse = _getParser(this._type)
-    const ofMatchingType = _getTypeChecker(this._type)
-
-    const node = isToken(data) ? data : undefined
-    let value = node ? node.value : data
+  parse(data: Node, memberDef: MemberDef, defs?: Definitions): Date {
+    const node:TokenNode | undefined = data instanceof TokenNode ? data : undefined
+    let value = node ? node.value : undefined
 
     const validatedData = doCommonTypeCheck(memberDef, value, node)
 
@@ -47,24 +50,15 @@ class DateTimeDef implements TypeDef {
       return validatedData
     }
 
-    if (vars && isString(value) && value.startsWith('$')) {
-      const replaced = vars.getV(value)
-      value = replaced !== undefined ? replaced : value
+    if (defs && typeof value === 'string') {
+      if (value.startsWith('$')) {
+        const replaced = defs.getV(value)
+        value = replaced !== undefined ? replaced : value
+      }
     }
 
-    let parsed = false
-    if (ofMatchingType(value)) {
-      value = parse(value)
-      parsed = true
-    }
-
-    // console.warn(parsed, ofMatchingType(value), value, memberDef)
-    if (parsed === false || value === null) {
-      throw new InternetObjectValidationError(
-        ErrorCodes.invalidDateTime,
-        `Expecting the value of type '${this._type}'`
-      )
-    }
+    // Validate the value
+    this._validate(value, memberDef)
 
     return value
   }
@@ -101,6 +95,28 @@ class DateTimeDef implements TypeDef {
       `Expecting the value of type '${this._type}'`
     )
   }
+
+  _validate(value:Date, memberDef: MemberDef) {
+    if (memberDef.min) {
+      const min = memberDef.min
+      if (min && value < min) {
+        throw new InternetObjectValidationError(
+          ErrorCodes.invalidMinValue,
+          `Expecting the value to be greater than or equal to '${memberDef.min}'`
+        )
+      }
+    }
+
+    if (memberDef.max) {
+      const max = memberDef.max
+      if (max && value > max) {
+        throw new InternetObjectValidationError(
+          ErrorCodes.invalidMaxValue,
+          `Expecting the value to be less than or equal to '${memberDef.max}'`
+        )
+      }
+    }
+  }
 }
 
 function _serializeDateTime(date: Date): string {
@@ -122,24 +138,6 @@ function _getSerializer(type: string) {
     return _serializeDate
   }
   return _serializeTime
-}
-
-function _getParser(type: string) {
-  if (type === 'datetime') {
-    return parseDateTime
-  } else if (type === 'date') {
-    return parseDate
-  }
-  return parseTime
-}
-
-function _getTypeChecker(type: string) {
-  if (type === 'datetime') {
-    return isDateTimeString
-  } else if (type === 'date') {
-    return isDateString
-  }
-  return isTimeString
 }
 
 export default DateTimeDef
