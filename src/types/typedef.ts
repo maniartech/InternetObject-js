@@ -1,7 +1,7 @@
 import MemberDef          from './memberdef'
 import Node               from '../parser/nodes/nodes'
 import Definitions        from '../core/definitions'
-import Schema from '../schema/schema'
+import Schema             from '../schema/schema'
 
 /**
  * Defines the SchemaValidator interface.
