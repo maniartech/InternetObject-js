@@ -7,7 +7,10 @@ import Schema from '../schema/schema'
  * Defines the SchemaValidator interface.
  */
 export default interface TypeDef {
-  getType(): string
+
+  get type(): string
+
+  get schema(): Schema
 
   /**
    * Validates and parses the value as per the memberDef and returns the results
@@ -20,9 +23,6 @@ export default interface TypeDef {
    * specifying whether the value adhers to the schema or not!
    */
   load(value: any, memberDef: MemberDef): any
-
-
-   get schema(): Schema
 
   // TODO: Hide this from documentation!
   [index: string]: any
