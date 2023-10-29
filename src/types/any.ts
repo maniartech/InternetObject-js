@@ -14,6 +14,7 @@ import { Node, TokenNode } from '../parser/nodes'
 import Schema from '../schema/schema'
 
 const schema = new Schema(
+  "any",
   { type:     { type: "string", optional: false, null: false, choices: ["any"] } },
   { default:  { type: "any",    optional: true,  null: false  } },
   { choices:  { type: "array",  optional: true,  null: false } },
@@ -30,9 +31,9 @@ export default class AnyDef implements TypeDef {
    * Returns the type this instance is going to handle.
    * Always returns "any"
    */
-  getType(): string {
-    return 'any'
-  }
+  get type(): string { return 'any' }
+
+  get schema() { return schema }
 
   /**
    * Parses any value in IO format into JavaScript.
@@ -63,9 +64,6 @@ export default class AnyDef implements TypeDef {
     return _serialize(data, memberDef, isRoot)
   }
 
-  get schema() {
-    return schema
-  }
 }
 
 const _serialize = (data: any, memberDef: MemberDef, isRoot: boolean): string => {

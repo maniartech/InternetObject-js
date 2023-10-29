@@ -22,7 +22,7 @@ export default function parse(source: string, o: ParserOptions = {}): Document {
   // documentNode.header
   if (docNode.header) {
     if (docNode.header?.child) {
-      const schema = compileObject(docNode.header.child)
+      const schema = compileObject("schema", docNode.header.child)
       doc.header.schema = schema
     }
   }

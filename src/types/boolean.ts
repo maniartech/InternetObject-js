@@ -9,6 +9,7 @@ import { TokenNode } from '../parser/nodes'
 import Schema from '../schema/schema'
 
 const schema = new Schema(
+  "bool",
   { type:     { type: "string", optional: false, null: false, choices: ["bool", "boolean"] } },
   { default:  { type: "bool",   optional: true,  null: false  } },
   { optional: { type: "bool",   optional: true,  null: false, default: false } },
@@ -25,13 +26,10 @@ const schema = new Schema(
 export default class BooleanDef implements TypeDef {
   private _type: string
 
-  constructor(type: string = 'bool') {
-    this._type = type
-  }
+  constructor(type: string = 'bool') { this._type = type }
 
-  getType() {
-    return this._type
-  }
+  get type() { return this._type }
+  get schema() { return schema }
 
   parse(node: Node, memberDef: MemberDef, defs?: Definitions): any {
     return this.validate(node, memberDef, defs)
@@ -71,9 +69,5 @@ export default class BooleanDef implements TypeDef {
     }
 
     return value
-  }
-
-  get schema() {
-    return schema
   }
 }

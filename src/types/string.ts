@@ -16,6 +16,7 @@ const emailExp = /(?:[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-
 const urlExp = /((([A-Za-z]{3,9}:(?:\/\/)?)(?:[\-;:&=\+\$,\w]+@)?[A-Za-z0-9\.\-]+|(?:www\.|[\-;:&=\+\$,\w]+@)[A-Za-z0-9\.\-]+)((?:\/[\+~%\/\.\w\-_]*)?\??(?:[\-\+=&;%@\.\w_]*)#?(?:[\.\!\/\\\w]*))?)/
 
 const schema = new Schema(
+  "string",
   { type:     { type: "string", optional: false, null: false, choices: ["string", "url", "email"] } },
   { default:  { type: "string", optional: true,  null: false  } },
   { choices:  { type: "array",  optional: true,  null: false, of: { type: "string" } } },
@@ -46,13 +47,8 @@ export default class StringDef implements TypeDef {
     this._type = type
   }
 
-  /**
-   * Returns the type this instance is going to handle.
-   * The return value could be any of the "string", "email", or "url"
-   */
-  getType() {
-    return this._type
-  }
+  get type() { return this._type }
+  get schema() { return schema }
 
   /**
    * Parses the string in IO format into JavaScript strings.
@@ -90,10 +86,6 @@ export default class StringDef implements TypeDef {
     const value = node ? node.value : data
 
     return _process(memberDef, value, node, defs)
-  }
-
-  get schema() {
-    return schema
   }
 }
 

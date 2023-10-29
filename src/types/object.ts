@@ -14,6 +14,7 @@ import {
        doCommonTypeCheck          } from './utils';
 
 const schema = new Schema(
+  "object",
   { type:     { type: "string", optional: false, null: false, choices: ["object"] } },
   { default:  { type: "object", optional: true,  null: false  } },
   { optional: { type: "bool",   optional: true,  null: false, default: false } },
@@ -31,9 +32,8 @@ class ObjectDef implements TypeDef {
    * Returns the type this instance is going to handle.
    * Always returns object
    */
-  getType() {
-    return 'object'
-  }
+  get type() { return 'object' }
+  get schema() { return schema }
 
   /**
    * Parses the object in IO format into JavaScript object.
@@ -76,10 +76,6 @@ class ObjectDef implements TypeDef {
     }
     // join array and trim off last commas, from the end
     return `{${serialized.join(',').replace(/,+$/g, '')}}`
-  }
-
-  get schema() {
-    return schema
   }
 
   // Process the parse and load requests

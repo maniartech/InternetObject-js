@@ -11,6 +11,7 @@ import TypedefRegistry          from './typedef-registry';
 import { doCommonTypeCheck    } from './utils';
 
 const schema = new Schema(
+  "array",
   { type:     { type: "string", optional: false, null: false, choices: ["array"] } },
   { default:  { type: "array",  optional: true,  null: false  } },
   { len:      { type: "number", optional: true,  null: false, min: 0, default: -1 } },
@@ -35,9 +36,8 @@ const schema = new Schema(
 class ArrayDef implements TypeDef {
   private _keys: any = null
 
-  public getType() {
-    return 'array'
-  }
+  public get type() { return 'array' }
+  get schema() { return schema }
 
   public parse = (node: Node, memberDef: MemberDef, defs?: Definitions): any => {
     const value = node instanceof ArrayNode ? node : undefined
@@ -108,10 +108,6 @@ class ArrayDef implements TypeDef {
     })
 
     return `[${serialized.join(',')}]`
-  }
-
-  get schema() {
-    return schema
   }
 }
 

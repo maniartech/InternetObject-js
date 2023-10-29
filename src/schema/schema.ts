@@ -2,12 +2,15 @@ import MemberDef from "../types/memberdef";
 
 export default class Schema {
 
+  public name:string
+
   public names: string[] = [];
   public defs: { [key: string]: MemberDef } = {};
 
   [key: string]: any;
 
-  constructor(...o:{ [key: string]: MemberDef }[]) {
+  constructor(name:string, ...o:{ [key: string]: MemberDef }[]) {
+    this.name = name;
     this.names = [];
     this.defs = {};
 

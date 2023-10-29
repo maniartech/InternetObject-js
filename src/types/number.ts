@@ -11,6 +11,7 @@ import { doCommonTypeCheck } from './utils'
 const NUMBER_TYPES = ['number', 'int', 'int32', 'int16', 'byte']
 
 const schema = new Schema(
+  "number",
   { type:     { type: "string", optional: false, null: false, choices: ["number", "byte", "int", "int16", "int32", "int64"] } },
   { default:  { type: "number", optional: true,  null: false  } },
   { choices:  { type: "array",  optional: true,  null: false, of: { type: "number" } } },
@@ -38,9 +39,8 @@ class NumberDef implements TypeDef {
     this._validator = _getValidator(type)
   }
 
-  getType() {
-    return this._type
-  }
+  get type() { return this._type }
+  get schema() { return schema }
 
   parse(node: Node, memberDef: MemberDef, defs?: Definitions): number {
     return this.validate(node, memberDef, defs)
@@ -61,10 +61,6 @@ class NumberDef implements TypeDef {
     const node = data instanceof TokenNode ? data : undefined
     const value = node ? node.value : data
     return _validate(this._validator, memberDef, value, node, defs)
-  }
-
-  get schema() {
-    return schema
   }
 }
 
@@ -145,6 +141,10 @@ function _getValidator(type: string) {
     }
     case 'int32': {
       const range = 2 ** 32 // -2147483648,2147483647
+      return _intValidator.bind(null, -(range / 2), range / 2 - 1)
+    }
+    case 'int64': {
+      const range = 2 ** 64 // -9223372036854775808,9223372036854775807
       return _intValidator.bind(null, -(range / 2), range / 2 - 1)
     }
     case 'int': {
