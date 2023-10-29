@@ -222,13 +222,10 @@ class InternetObject<T = any> {
   }
 
   toObject(): any {
-    const o: any = {};
-    for(let i=0; i<this._values.length; i++) {
-      const [n, v] = this._values[i];
-      o[n || i] = valueToObject(v);
-    }
-
-    return o;
+    return this._values.reduce((o, [k, v], i) => {
+      o[k || i] = _(v);
+      return o;
+    }, {} as any);
   }
 
   /**
@@ -302,18 +299,19 @@ const ioProxyHandler = {
   }
 };
 
-function valueToObject(v:any):any {
-  if (v instanceof InternetObject) {
-    return v.toObject();
-  }
-
-  if (Array.isArray(v)) {
-    return v.map(valueToObject);
-  }
-
+/**
+ * Normalize the value by checking whether the given value is an
+ * InternetObject or has toObject method. If so, returns the
+ * result of calling toObject on the value. Otherwise, returns
+ * the value itself.
+ * @param v the value to normalize
+ * @returns The normalized value
+ */
+function _(v:any):any {
+  if (v instanceof InternetObject)  return v.toObject();
+  if (Array.isArray(v)) return v.map(_);
   return v;
 }
-
 
 
 export default InternetObject;
