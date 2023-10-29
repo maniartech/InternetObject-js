@@ -19,12 +19,7 @@ class ASTParser {
   }
 
   public parse(): nodes.DocumentNode {
-    try {
-      return this.processDocument();
-    } catch (e) {
-      throw new InternetObjectError("test-error", "Testing error");
-    }
-
+    return this.processDocument();
   }
 
   private processDocument(): nodes.DocumentNode {
@@ -375,6 +370,7 @@ class ASTParser {
       case TokenType.NUMBER:
       case TokenType.BOOLEAN:
       case TokenType.NULL:
+      case TokenType.DATE_TIME:
         return new nodes.TokenNode(token);
       case TokenType.BRACKET_OPEN:
         return this.parseArray();
