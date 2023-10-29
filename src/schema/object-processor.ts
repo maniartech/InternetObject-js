@@ -8,10 +8,26 @@ import Schema             from './schema';
 
 export default function processObject(data: ObjectNode, schema: Schema, defs?: Definitions) {
   const o: InternetObject = new InternetObject();
+  let positional = true;
   for (let i=0; i<schema.names.length; i++) {
-    const name = schema.names[i];
-    const memberDef = schema.defs[name];
-    const member = data.children[i] as MemberNode;
+    let member = data.children[i] as MemberNode;
+    let name = schema.names[i];
+    let memberDef = schema.defs[name];
+
+    if (member) {
+      if (member.key) {
+        if (positional) positional = false;
+        name = member.key.value;
+        memberDef = schema.defs[name];
+      } else {
+        // Once the keyed member is found after the positional flag is set to
+        // false, the positional members must not be allowed.
+        if (positional === false) {
+          throw new Error(`Invalid member ${name} found in the object.`);
+        }
+      }
+    }
+
 
     const val = processMember(member, memberDef, defs);
     if (val !== undefined) o[name] = val;
