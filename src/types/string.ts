@@ -98,7 +98,7 @@ function _process(
   // Replace defs
   if (defs) {
     const valueFound = defs.getV(value)
-    value = valueFound || value
+    value = valueFound !== undefined ? valueFound.value : value
   }
 
   // Run common check
