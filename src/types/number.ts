@@ -15,9 +15,9 @@ const schema = new Schema(
   { type:     { type: "string", optional: false, null: false, choices: ["number", "byte", "int", "int16", "int32", "int64"] } },
   { default:  { type: "number", optional: true,  null: false  } },
   { choices:  { type: "array",  optional: true,  null: false, of: { type: "number" } } },
-  { len:      { type: "number", optional: true,  null: false, min: 0, default: -1 } },
-  { min:      { type: "number", optional: true,  null: false, min: 0, default: -1 } },
-  { max:      { type: "number", optional: true,  null: false, min: 0, default: -1 } },
+  { len:      { type: "number", optional: true,  null: false, min: 0 } },
+  { min:      { type: "number", optional: true,  null: false, min: 0 } },
+  { max:      { type: "number", optional: true,  null: false, min: 0 } },
   { optional: { type: "bool",   optional: true,  null: false, default: false } },
   { null:     { type: "bool",   optional: true,  null: false, default: false } },
 )

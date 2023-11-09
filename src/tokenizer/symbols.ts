@@ -1,4 +1,3 @@
-import { TILDE, HASH } from '../../../io-js/src/parser/constants';
 
 /**
  * Enumeration representing special symbols in IO.
