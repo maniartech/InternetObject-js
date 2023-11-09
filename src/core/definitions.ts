@@ -1,11 +1,11 @@
-
+import Schema from "../schema/schema";
 
 class Definitions {
-  private _definitions: {[key: string]: any} = {};
-
-  constructor() {
-    return new Proxy(this, proxy);
-  }
+  private _defaultSchema:Schema | null = null;
+  private _definitions: {[key: string]: {
+    isSchema: boolean,
+    value: any
+  }} = {};
 
   public get length(): number {
     return Object.keys(this._definitions).length;
@@ -13,6 +13,10 @@ class Definitions {
 
   public get keys(): string[] {
     return Object.keys(this._definitions);
+  }
+
+  public get defaultSchema(): Schema | null {
+    return this._defaultSchema;
   }
 
   /**
@@ -29,13 +33,16 @@ class Definitions {
     }
   }
 
-
-}
-
-const proxy = {
-  get: (target: Definitions, property: string | symbol) => {
-    // If the property is a member of the InternetObject, return it
-    return Reflect.get(target, property);
+  /**
+   * Pushes a new definition to the definitions list.
+   * @param key The key of the definition
+   * @param value The value of the definition
+   */
+  public push(key: string, value: any, isSchema: boolean = false) {
+    this._definitions[key] = { isSchema, value };
+    if (key === "$schema") {
+      this._defaultSchema = value;
+    }
   }
 }
 
