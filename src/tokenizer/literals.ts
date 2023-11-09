@@ -1,4 +1,3 @@
-import { DATASEP } from '../../../io-js/src/parser/constants';
 
 enum Literals {
   NULL = 'null',

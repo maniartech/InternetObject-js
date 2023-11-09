@@ -3,7 +3,6 @@ import Token      from "./tokens";
 import TokenType  from "./token-types";
 import Literals   from "./literals";
 import * as is    from "./is";
-import { parseDateTime } from '../../../io-js/src/utils/datetime';
 
 const regexIntDigit = /^[0-9]+$/;
 const regexFloatDigit = /^[0-9.]+$/;
