@@ -9,6 +9,7 @@ import Schema             from './schema';
 export default function processObject(data: ObjectNode, schema: Schema, defs?: Definitions) {
   const o: InternetObject = new InternetObject();
   let positional = true;
+  const processedNames = new Set<string>();
   for (let i=0; i<schema.names.length; i++) {
     let member = data.children[i] as MemberNode;
     let name = schema.names[i];
@@ -19,6 +20,7 @@ export default function processObject(data: ObjectNode, schema: Schema, defs?: D
         if (positional) positional = false;
         name = member.key.value;
         memberDef = schema.defs[name];
+        processedNames.add(name);
       } else {
         // Once the keyed member is found after the positional flag is set to
         // false, the positional members must not be allowed.
@@ -28,9 +30,25 @@ export default function processObject(data: ObjectNode, schema: Schema, defs?: D
       }
     }
 
-
     const val = processMember(member, memberDef, defs);
     if (val !== undefined) o[name] = val;
+  }
+
+  // If schema supports additional properties, then add them to the object
+  // if any. Otherwise  ignore the additional properties if any,
+  // and return the object as it is.
+  if (!schema.allowAdditionalProperties) return o
+
+  for (let i=0; i < data.children.length; i += 1) {
+    const member = data.children[i] as MemberNode;
+    if (member && member.key) {
+      const name = member.key.value;
+      if (processedNames.has(name) === false) {
+        const memberDef = schema.defs[name];
+        const val = processMember(member, memberDef, defs);
+        o[name] = val;
+      }
+    }
   }
 
   return o

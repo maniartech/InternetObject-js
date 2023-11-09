@@ -7,6 +7,11 @@ export default class Schema {
   public names: string[] = [];
   public defs: { [key: string]: MemberDef } = {};
 
+  /**
+   * When true, allows additional properties in the object.
+   */
+  allowAdditionalProperties: boolean = false;
+
   [key: string]: any;
 
   constructor(name:string, ...o:{ [key: string]: MemberDef }[]) {
