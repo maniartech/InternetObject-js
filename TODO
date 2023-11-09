@@ -1,3 +1,4 @@
 # Error Handling
 - TODO: Standard error handling mechanism
 - FIXME: When an error occurs at the EoF, the position is shown as `undefined` instead of the last position of the file.
+- TODO: Add build, watch and minification script in the package.json
