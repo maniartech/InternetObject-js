@@ -1,3 +1,4 @@
+import Definitions from '../core/definitions';
 import {
        InternetObjectSyntaxError    } from '../errors/io-error';
 import ErrorCodes                     from '../errors/io-error-codes';
@@ -10,7 +11,7 @@ import TokenType                      from '../tokenizer/token-types';
 import registerTypes                  from '../types';
 import MemberDef                      from '../types/memberdef';
 import TypedefRegistry                from '../types/typedef-registry';
-import processSchema from './processor';
+import processSchema                  from './processor';
 import Schema                         from './schema';
 
 registerTypes();
@@ -27,8 +28,14 @@ export function compileObject(name:string, o: ObjectNode): Schema {
 }
 
 function parseObject(o: ObjectNode, schema:Schema, path:string): Schema {
+  if (!o.children) {
+    debugger
+  }
+
   // Loop through all the children
-  for (const child of o.children) {
+  // for (const child of o.children) {
+  for(let index=0; index<o.children.length; index++) {
+    const child = o.children[index];
     if (child === null) {
       throw new InternetObjectSyntaxError(ErrorCodes.invalidSchema);
     }
@@ -80,6 +87,23 @@ function parseObject(o: ObjectNode, schema:Schema, path:string): Schema {
       }
 
     } else {
+      // If the last index and the value is *, then schema allows additional
+      // properties. Star is only allowed at the last position.
+      const isStar = memberNode.value instanceof TokenNode && memberNode.value.type === TokenType.STRING && memberNode.value.value === '*';
+
+      if (isStar) {
+        if (index !== o.children.length - 1) {
+          throw new InternetObjectSyntaxError(ErrorCodes.invalidSchema);
+        }
+        schema.allowAdditionalProperties = true;
+        continue;
+      }
+
+      console.log(">>>", memberNode.value);
+      if (memberNode.value === undefined) {
+        debugger
+      }
+
       const fieldInfo = parseName(memberNode.value.toValue());
       const memberDef = {
         ...fieldInfo,
