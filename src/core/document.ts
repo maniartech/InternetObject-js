@@ -1,7 +1,6 @@
-import Header from "./header";
-import Section from "./section";
-import SectionCollection from "./section-collection";
-
+import Header             from "./header";
+import Section            from "./section";
+import SectionCollection  from "./section-collection";
 
 class Document {
   private _header: Header;
