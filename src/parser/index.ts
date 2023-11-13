@@ -1,4 +1,3 @@
-import Definitions            from '../core/definitions';
 import Document               from '../core/document';
 import Header                 from '../core/header';
 import Section                from '../core/section';
@@ -12,9 +11,9 @@ import TokenType              from '../tokenizer/token-types';
 import ASTParser              from './ast-parser';
 import {
   CollectionNode,
-       MemberNode,
-       Node,
-       ObjectNode           } from './nodes';
+  MemberNode,
+  Node,
+  ObjectNode                } from './nodes';
 import ParserOptions          from './parser-options';
 
 export default function parse(source: string, o: ParserOptions = {}): Document {

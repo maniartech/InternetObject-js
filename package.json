@@ -11,7 +11,8 @@
   "scripts": {
     "test": "jest",
     "clean": "rm -rf dist/*",
-    "build": "npm run clean && tsc",
+    "clean-build": "npm run clean && tsc",
+    "build": "tsc",
     "watch": "tsc -w",
     "minify": "terser dist/index.js -o dist/index.min.js --compress --mangle --source-map"
   },
