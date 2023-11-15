@@ -1,23 +1,26 @@
 import TypeDef from './typedef'
 import MemberDef from './memberdef'
 import ErrorCodes from '../errors/io-error-codes'
-import DataParser from '../data/index'
-import KeyValueCollection from '../header/index'
 
 import { appendPath } from '../utils/index'
-import { TypedefRegistry } from './typedef-registry'
+import TypedefRegistry from './typedef-registry'
 import { doCommonTypeCheck } from './utils'
 import { InternetObjectError } from '../errors/io-error'
-import { ParserTreeValue } from '../parser/index'
 import {
-  isToken,
-  isParserTree,
-  isString,
-  isBoolean,
-  isNumber,
-  isArray,
   isPlainObject
 } from '../utils/is'
+import Definitions from '../core/definitions'
+import { Node, TokenNode } from '../parser/nodes'
+import Schema from '../schema/schema'
+
+const schema = new Schema(
+  "any",
+  { type:     { type: "string", optional: false, null: false, choices: ["any"] } },
+  { default:  { type: "any",    optional: true,  null: false  } },
+  { choices:  { type: "array",  optional: true,  null: false } },
+  { optional: { type: "bool",   optional: true,  null: false, default: false } },
+  { null:     { type: "bool",   optional: true,  null: false, default: false } },
+)
 
 /**
  * Represents the AnyTypeDef which is reponsible for parsing,
@@ -28,37 +31,21 @@ export default class AnyDef implements TypeDef {
    * Returns the type this instance is going to handle.
    * Always returns "any"
    */
-  getType(): string {
-    return 'any'
-  }
+  get type(): string { return 'any' }
+
+  get schema() { return schema }
 
   /**
    * Parses any value in IO format into JavaScript.
    */
-  parse(data: ParserTreeValue, memberDef: MemberDef, vars?: KeyValueCollection): any {
-    const validatedData = doCommonTypeCheck(memberDef, data, data)
+  parse(node: TokenNode, memberDef: MemberDef, defs?: Definitions): any {
+    const validatedData = doCommonTypeCheck(memberDef, node, node)
 
-    if (validatedData !== data || validatedData === null || validatedData === undefined) {
+    if (validatedData !== node || validatedData === null || validatedData === undefined) {
       return validatedData
     }
 
-    if (isToken(data)) {
-      let value: string = data.value
-      if (vars) {
-        const valueFound = vars.getV(value)
-        value = valueFound || value
-      }
-
-      return value
-    }
-
-    if (isParserTree(data)) {
-      return DataParser.parse(data, vars)
-    }
-
-    // TODO: check this case
-    console.assert(false, 'Check this case!')
-    console.warn(data, memberDef)
+    return node.toValue(defs)
   }
 
   /**
@@ -76,6 +63,7 @@ export default class AnyDef implements TypeDef {
   serialize(data: any, memberDef: MemberDef, isRoot: boolean = false): string {
     return _serialize(data, memberDef, isRoot)
   }
+
 }
 
 const _serialize = (data: any, memberDef: MemberDef, isRoot: boolean): string => {
@@ -83,22 +71,22 @@ const _serialize = (data: any, memberDef: MemberDef, isRoot: boolean): string =>
   if (validatedData !== data) return validatedData
 
   // data is a string
-  if (isString(data)) {
+  if (typeof data === 'string') {
     return TypedefRegistry.get('string').serialize(data, { ...memberDef, type: 'string' })
   }
 
   // data is a number
-  if (isNumber(data)) {
+  if (typeof data === 'number') {
     return TypedefRegistry.get('number').serialize(data, { ...memberDef, type: 'number' })
   }
 
   // data is a boolean
-  if (isBoolean(data)) {
+  if (typeof data === 'boolean') {
     return TypedefRegistry.get('bool').serialize(data, { ...memberDef, type: 'bool' })
   }
 
   // data is an array
-  if (isArray(data)) {
+  if (Array.isArray(data)) {
     return _serializeArray(data, { ...memberDef }, isRoot)
   }
 

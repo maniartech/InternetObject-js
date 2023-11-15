@@ -1,405 +1,445 @@
-import Tokenizer from './tokenizer'
-import ErrorCodes from '../errors/io-error-codes'
+import * as nodes   from "./nodes";
+import Token        from "../tokenizer/tokens";
+import TokenType    from "../tokenizer/token-types";
+import InternetObjectError from "../core/io-error";
 
-import { InternetObjectSyntaxError } from '../errors/io-error'
-import { isKeyVal, isToken } from '../utils/is'
-import { ASTParserTree, Token } from './'
-import {
-  COMMA,
-  CURLY_CLOSED,
-  SQUARE_CLOSED,
-  TILDE,
-  DATASEP,
-  SQUARE_OPEN,
-  CURLY_OPEN,
-  COLON
-} from './constants'
+class ASTParser {
 
-const NOT_STARTED = 'not-started'
-const STARTED = 'started'
-const FINISHED = 'finished'
-const ERROR = 'error'
+  // array of tokens produced by the tokenizer
+  private tokens: Token[];
 
-/**
- * Represents the which accepts the raw text and generates abstract syntax tree.
- * The format of the generated AST is somewhat similar to the standard one,
- * but not the same.
- *
- * @internal
- */
-export default class ASTParser {
-  private _isCollection = false
-  private _isHeaderOpen = true
-  private _lastToken?: Token = undefined
-  private _isHeader: boolean
-  private _stack: ASTParserTree[] = []
-  private _text: string
-  private _tokenizer: Tokenizer
-  private _tree: any = {}
-  private _isFinalToken = false
+  // current token index
+  private current: number;
+  private isCollection: boolean;
 
-  // TODO: Don't use public fields, use btter appraoch
-  // such as readonly properties like parser.isFinished...
-  public status = NOT_STARTED
-
-  /**
-   * Initializes the new instance of `ASTParser` class.
-   * @param text {string} The text which needs to be parsed
-   * @param isHeader {boolean} Whether the text is schema or not, `true` if it is schema.
-   */
-  constructor(text: string, isHeader: boolean = false) {
-    this._text = text
-    this._tokenizer = new Tokenizer(text)
-    this._isHeader = isHeader
+  constructor(tokens: Token[]) {
+    this.tokens = tokens;
+    this.current = 0;
+    this.isCollection = false;
   }
 
-  /**
-   * Parses the text.
-   */
-  parse = () => {
-    const tokenizer = this._tokenizer
-
-    while (!tokenizer.done) {
-      let token = tokenizer.read()
-      this._isFinalToken = tokenizer.done
-
-      // When the blank string is passed to the parser, tokenizer
-      // returns the null value
-      if (token !== null) {
-        this._process(token)
-      }
-    }
-    this._finalize()
+  public parse(): nodes.DocumentNode {
+    return this.processDocument();
   }
 
-  /**
-   * Returns the header part. Throws an error if invoked
-   * before the parsing is finished!
-   */
-  public get header() {
-    if (this.status !== FINISHED) {
-      throw new Error('parsing-not-finished')
+  private processDocument(): nodes.DocumentNode {
+    const sections = new Array<nodes.SectionNode>();
+
+    let token: Token | null = this.peek();
+    let first = true;
+
+    while (true) {
+
+      // If the first token is a section separator, it means that
+      // the section has started without a section name. A header
+      // section does not have a name.
+      const section = this.processSection(first);
+      sections.push(section);
+
+      if (first) first = false;
+
+      token = this.peek();
+      if (!token) {
+        break;
+      }
+
+      // If the next token is not a section separator, it means that
+      // the current section is not closed properly. Throw an error
+      if (token.type !== TokenType.SECTION_SEP) {
+        throw new Error(
+          `Unexpected token ${token.type} at row ${token.row} col ${token.col}`
+        );
+      }
+
+      // Move to the next token and check if it is a section separator
+      // or the end of file
+      this.advance();
     }
-    return this._tree.header
+
+    // If there are more than one sections, the first one is the header
+    // section. Remove it from the sections array and return it as the
+    // header
+    if (sections.length > 1) {
+      const header = sections.shift();
+      return new nodes.DocumentNode(header ?? null, sections);
+    }
+
+    return new nodes.DocumentNode(null, sections)
   }
 
-  /**
-   * Returns the data part. Throws an error if invoked
-   * before the parsing is finished!
-   */
-  public get data() {
-    if (this.status !== FINISHED) {
-      throw new Error('parsing-not-finished')
+  private processSection(first: boolean): nodes.SectionNode {
+    // If the first token is a section separator, it means that
+    // the section has started without a section name. A header
+    // section does not have a name.
+    let name = 'unnamed';
+    let schema:string | undefined;
+
+    if (!first) {
+      // Check if the next token is a section name and schema
+      [name, schema] = this.parseSectionAndSchemaNames();
     }
-    return this._tree.data
+
+    const section = this.parseSectionContent()
+    return new nodes.SectionNode(section, name, schema);
   }
 
-  /**
-   * Returns the text this object has parsed or about
-   * to be parsed.
-   */
-  public get text() {
-    return this._text
-  }
+  private parseSectionAndSchemaNames(): [string, string?] {
+    let name:string = 'unnamed';
+    let schema:string | undefined;
+    const token = this.peek();
 
-  // Process the tokens and build ast.
-  private _process = (token: Token) => {
-    const isFinalToken = this._isFinalToken
-    let stack = this._stack
-
-    // Do not process comments!
-    if (token.type === 'comment') {
-      return
+    // Name not present, return the defaults
+    if (token?.type !== TokenType.STRING) {
+      return [name, schema];
     }
 
-    this.status = STARTED
+    // TODO: Improve this name, and schema parsing
+    // and uncomment the following code!
+    return [name, schema]
 
-    if (token.type === 'sep' || token.type === 'datasep') {
-      // Push new object
-      if (token.value === '{') {
-        this._push('object', token.index, token.row, token.col)
-        // console.log("#####", this._stack)
-      }
+    // name = token.value.toString();
 
-      // Push new array
-      else if (token.value === '[') {
-        this._push('array', token.index, token.row, token.col)
-      }
+    // // Consume the section name
+    // this.advance();
 
-      // When a colon is found, consider previous value as key
-      // and keep the value slot to null. When the next token arives, push it
-      // into the value slot.
-      // TODO: Todo check key-value pair is complete.
-      else if (token.value === COLON) {
-        const obj = this._getObject()
-        // TODO: Validate length of the obj.values
-        let lastToken: any = obj.values[obj.values.length - 1]
+    // // Check for the : and schema
+    // if (this.match([TokenType.COLON])) {
+    //   // Consume the colon
+    //   this.advance();
 
-        if (
-          isToken(lastToken) &&
-          ['string', 'number', 'boolean'].indexOf(typeof lastToken.value) > -1
-        ) {
-          obj.values[obj.values.length - 1] = {
-            key: lastToken.value, // TODO: Test check what happens when an int, null or bool is passed as key
-            value: undefined, // No value
-            index: lastToken.index,
-            row: lastToken.row,
-            col: lastToken.col
-          }
-        } else {
-          throw new InternetObjectSyntaxError(ErrorCodes.unexpectedColon, '', token)
-        }
-      }
+    //   // Check for the schema
+    //   const aliasToken = this.peek();
+    //   if (aliasToken && aliasToken.type === TokenType.STRING) {
+    //     schema = aliasToken.value.toString();
 
-      // New Token
-      else if (token.value === COMMA) {
-        // Handle consicutive ending commas such as `test,,`
-        if (
-          isFinalToken &&
-          this._lastToken !== undefined &&
-          (this._lastToken.value === COMMA || this._lastToken.value === TILDE)
-        ) {
-          this._addValue(undefined, this._lastToken.index, this._lastToken.row, this._lastToken.col)
-          this._addValue(undefined, token.index, token.row, token.col)
-        } else if (
-          // When the last token is comma such as `value,`
-          isFinalToken ||
-          // When the first token is comma such as `,value`
-          this._lastToken === undefined ||
-          // When comma is found after opening of braces, colon or datasep operators
-          [CURLY_OPEN, SQUARE_OPEN, COLON, DATASEP].indexOf(this._lastToken.value) > -1 ||
-          // When the comma is found just after another comma
-          this._lastToken.value === COMMA ||
-          // When the comma is found just after the tilde (collection) sign
-          this._lastToken.value === TILDE
-        ) {
-          this._addValue(undefined, token.index, token.row, token.col)
-        }
-      }
-
-      // Close object and close array
-      else if (token.value === CURLY_CLOSED || token.value === SQUARE_CLOSED) {
-        if (this._lastToken && this._lastToken.value === COMMA) {
-          this._addValue(undefined, token.index, token.row, token.col)
-        }
-        this._pop(token.value === CURLY_CLOSED ? 'object' : 'array', token)
-      } else if (token.value === TILDE) {
-        // The ~ sign can occur in any section (header/data) first.
-        // If it is a new tree, or header/schema is already been established,
-        // set the collection mode to true.
-        if (this._stack.length === 0) {
-          this._isCollection = true
-        }
-        // When the TILDE is encountered second time check collection mode is on,
-        // if not, throw an error
-        else if (!this._isCollection && !this._tree.data) {
-          // TODO: Throw an error here
-          throw new InternetObjectSyntaxError(ErrorCodes.invalidCollection, undefined, token)
-        } else {
-          this._processObject()
-        }
-      }
-
-      // Ready for schema generation
-      else if (token.value === DATASEP) {
-        // Header is closed when, datasep is found. After the header
-        // is closed, throw an error when another datasep is sent!
-        if (!this._isHeaderOpen) {
-          throw new InternetObjectSyntaxError(
-            ErrorCodes.multipleHeaders,
-            'Multiple headers are not allowed.',
-            token
-          )
-        }
-        this._processObject()
-        this._isHeaderOpen = false
-        this._isCollection = false
-        this._stack.length = 0
-        // this._addToHeader()
-      }
-    } else {
-      this._addValue(token, token.index, token.row, token.col)
-    }
-
-    this._lastToken = token
-  }
-
-  private _processObject = () => {
-    const isCollection = this._isCollection
-    const isHeaderOpen = this._isHeaderOpen
-    const data = this._stack[0]
-
-    // Nothing to process
-    if (this._stack.length === 0) {
-      // TODO: Handle this case
-      return
-    }
-
-    // When there are open objects and arrays, stack will contain
-    // more than one items.
-    if (this._stack.length > 1) {
-      // TODO: Throw a proper error here
-      throw new InternetObjectSyntaxError(
-        ErrorCodes.openBracket,
-        'Expecting bracket to be closed',
-        this._lastToken || undefined
-      )
-    }
-
-    // Process header section
-    if (isHeaderOpen) {
-      if (isCollection) {
-        if (!this._tree.header) {
-          this._tree.header = {
-            type: 'collection',
-            values: [data]
-          }
-        } else {
-          this._tree.header.values.push(data)
-        }
-      } else {
-        this._tree.header = data
-      }
-    } else {
-      // Process data section
-      if (isCollection) {
-        if (!this._tree.data) {
-          this._tree.data = {
-            type: 'collection',
-            values: [data]
-          }
-        } else {
-          // console.log("3.", data)
-          this._tree.data.values.push(data)
-        }
-      } else {
-        this._tree.data = data
-      }
-    }
-
-    // Reset stack
-    this._stack.length = 0
-  }
-
-  private _finalize = () => {
-    this.status = FINISHED
-
-    this._processObject()
-
-    // console.warn(JSON.stringify(this._tree, null, 2))
-
-    // TODO: Consider the scenario when more than 1 item exists in the stack!
-    if (this._stack.length > 1) {
-      console.warn('Invalid Stack', this._stack)
-    }
-
-    if (this._isHeaderOpen) {
-      this._tree.data = this._tree.header
-      delete this._tree.header
-
-      if (this._tree.data) {
-        if (
-          this.data.values.length === 1 &&
-          this._isCollection === false &&
-          isToken(this.data.values[0])
-        ) {
-          this._tree.data.type = 'scalar'
-        }
-        // TODO: Add comment
-        else if (this._tree.data.type === 'object' && this._tree.data.values.length === 1) {
-          this._tree.data = this._tree.data.values[0]
-        }
-      }
-    }
-
-    if (this._isHeader) {
-      this._tree.header = this._tree.data
-      this._tree.data = undefined // TODO: Replace this with `undefined`
-    }
-  }
-
-  private _getOrCreateObject = (index: number, row: number, col: number) => {
-    if (this._stack.length === 0) {
-      this._stack.push({
-        type: 'object',
-        values: [],
-        index,
-        row,
-        col
-      })
-    }
-
-    let obj = this._stack[this._stack.length - 1]
-    return obj
-  }
-
-  private _getObject = () => {
-    // TODO: Verify and remove the commented code!
-    // if (this._stack.length === 0) {
-    //   this._stack.push({
-    //     type: 'object',
-    //     values: []
-    //   })
+    //     // Consume the schema
+    //     this.advance();
+    //   } else {
+    //     throw new Error(
+    //       `Expected schema-name after colon at row ${aliasToken ?.row} col ${aliasToken ?.col}`
+    //     );
+    //   }
     // }
 
-    let obj = this._stack[this._stack.length - 1]
-    return obj
+    // return [name, schema];
   }
 
-  private _addValue = (value: any, index: number, row: number, col: number) => {
-    let obj = this._getOrCreateObject(index, row, col)
+  public parseSectionContent():
+    nodes.ObjectNode | nodes.CollectionNode | null {
+    const token = this.peek();
+    if (!token) return null;
 
-    // If last token is : then
-    if (this._lastToken && this._lastToken.value === ':') {
-      let lastVal = obj.values[obj.values.length - 1]
+    if (token.type === TokenType.SECTION_SEP) {
+      return null;
+    }
 
-      // When the lastVal is a KeyVal, set the current token as
-      // the value of lastVal
-      if (lastVal && isKeyVal(lastVal)) {
-        lastVal.value = value
-      } else {
-        // TODO: Verify this case!
-        console.warn('Verify this case!')
+    // Parse the collection ~
+    if (token.type === TokenType.COLLECTION_START) {
+      this.isCollection = true;
+      return this.processCollection()
+    }
+
+    // Parse the single object {}
+    return this.processObject()
+  }
+
+  private processCollection(): nodes.CollectionNode {
+    const objects: nodes.Node[] = [];
+
+    while (this.match([TokenType.COLLECTION_START])) {
+      // Consume the COLLECTION_START token
+      this.advance();
+
+      // Parse the object and add to the collection
+      objects.push(this.processObject());
+
+      // No explicit delimiter check is required since the `~`
+      // itself acts as both a delimiter and an indicator for
+      // the next object.
+    }
+
+    return new nodes.CollectionNode(objects);
+  }
+
+  private processObject(): nodes.ObjectNode {
+    const obj = this.parseObject(true);
+
+    // Even after parsing the object, if there is still a token
+    // left, it means that the object is not closed properly.
+    const token = this.peek()
+    this.checkForPendingTokens(token);
+
+    // If there is only one member in the object, and it has no key,
+    // then the object is not an open object. In this case, we need
+    // unwrap the object
+    // For example. { {} } should be unwrapped to {}
+
+    // {} should be unwrapped to []
+    // 'a' should be unwrapped to [a]
+    // 'a', 'b', 'c' should be unwrapped to [a, b, c]
+    // {}, 'b', 'c' should be unwrapped to [{}, b, c]
+    // {{}} should be unwrapped to [{}]
+    if (obj.children.length === 1) {
+      const firstMember = obj.children[0] as nodes.MemberNode;
+      if (!firstMember.key) {
+        if (firstMember.value instanceof nodes.ObjectNode) {
+          return firstMember.value as nodes.ObjectNode;
+        }
       }
-    } else {
-      this._checkValueSlot(value)
-      obj.values.push(value)
+    }
+
+    return obj;
+  }
+
+  private checkForPendingTokens(token: Token | null) {
+    if (!token) return;
+
+    if (token.type === TokenType.SECTION_SEP) return
+
+    if (this.isCollection &&
+      token.type === TokenType.COLLECTION_START) return;
+
+    throw new Error(
+      `Unexpected token ${token.type} at row ${token.row} col ${token.col}`
+    );
+  }
+
+  private parseObject(isOpenObject: boolean): nodes.ObjectNode {
+    const members: Array<nodes.MemberNode | null> = [];
+
+    if (!isOpenObject && !this.advanceIfMatch([TokenType.CURLY_OPEN])) {
+      throw new Error(`Expected { at position ${this.peek() ?.pos}`);
+    }
+
+    let index = 0;
+    while (true) {
+      const nextToken = this.peek();
+
+      if (!nextToken || this.match([TokenType.CURLY_CLOSE, TokenType.COLLECTION_START, TokenType.SECTION_SEP])) {
+        this.backtrack();
+        break;
+      } else if (nextToken.type === TokenType.COMMA) {
+        // If the next token is a comma(, or new object)
+        // it means that the no value is provided.
+        // Consume the comma and continue.
+        if (this.matchNext([TokenType.COMMA, TokenType.CURLY_CLOSE, TokenType.COLLECTION_START, TokenType.SECTION_SEP])) {
+          members.push(null);
+        }
+
+        // If the next one is the end of file add undfined
+        else if (this.current + 1 === this.tokens.length) {
+          members.push(null)
+        }
+
+        this.advance();
+        continue;
+      } else {
+        // The member must be preceded by a comma, open bracket, or
+        // the beginning of the object. Otherwise it is invalid
+        // For example, { a: 1, b: 2 } is valid, but { a: 1 b: 2 } is not
+
+        if (index > 0) {
+          if (!this.matchPrev([TokenType.COMMA, TokenType.CURLY_OPEN])) {
+            throw new Error(
+              `Unexpected token ${nextToken.type} at row ${nextToken.row} col ${nextToken.col}`
+            );
+          }
+        }
+
+        const member = this.parseMember();
+        members.push(member);
+        this.advance();
+
+        if (this.peek() ?.type === TokenType.CURLY_CLOSE) {
+          this.backtrack();
+          break;
+        }
+
+        index++;
+      }
+    }
+
+    // consume closing bracket
+    this.advance();
+    if (!isOpenObject && !this.match([TokenType.CURLY_CLOSE])) {
+      throw new Error(`Expected } at position ${this.peek() ?.pos}`);
+    }
+
+    // If the next token is collection start, backtrack
+    // it so that the collection start can be parsed
+    // if (this.match([TokenType.COLLECTION_START])) {
+    //   this.backtrack();
+    // }
+
+    return new nodes.ObjectNode(members);
+  }
+
+  private parseMember(): nodes.MemberNode {
+    const leftToken = this.peek();
+    if (!leftToken) throw new Error("Unexpected end of input.");
+
+    if (this.matchNext([TokenType.COLON])) {
+      const isValidKey = [
+        TokenType.STRING,
+        TokenType.NUMBER,
+        TokenType.BOOLEAN,
+        TokenType.NULL,
+      ].includes(leftToken.type as TokenType);
+
+      if (isValidKey) {
+        // Consume the key and colon
+        this.advance(2);
+
+        // Parse the value and return the key-value pair
+        const value = this.parseValue();
+        return new nodes.MemberNode(value, leftToken as nodes.TokenNode);
+      } else {
+        throw new Error(
+          `Invalid property key: ${leftToken.value.toString()}` +
+          ` at row ${leftToken.row} col ${leftToken.col}`
+        );
+      }
+    }
+
+    // If the next token is not a colon, that means it is
+    // a value without a key. In this case the key is
+    // the index of the value
+    return new nodes.MemberNode(this.parseValue());
+  }
+
+  private parseArray(): nodes.ArrayNode {
+    const arr: Array<nodes.Node | null> = [];
+
+    // Assume that the current token is the opening bracket
+    // Consume the opening bracket
+    this.advance();
+
+    while (true) {
+      const nextToken = this.peek();
+      if (!nextToken || nextToken.type === TokenType.BRACKET_CLOSE) {
+        this.backtrack();
+        break;
+      } else if (nextToken.type === TokenType.COMMA) {
+        // If the next token is a comma, it means that the array
+        // undefined value. Consume the comma and continue. Add
+        // an undefined value to the array
+        if (this.matchNext([TokenType.COMMA, TokenType.BRACKET_CLOSE])) {
+          arr.push(null);
+        }
+
+        // consume the current comma
+        this.advance();
+        continue;
+      }
+
+      const member = this.parseMember();
+      if (member.key) {
+        arr.push(new nodes.ObjectNode([member]));
+      } else {
+        arr.push(member.value);
+      }
+      // const value = this.parseValue();
+      // arr.push(value);
+      this.advance();
+
+      if (this.peek() ?.type === TokenType.BRACKET_CLOSE) {
+        this.backtrack();
+        break;
+      }
+    }
+
+    // consume closing bracket
+    this.advance();
+
+    const endToken = this.peek();
+    if (!endToken || endToken.type !== TokenType.BRACKET_CLOSE) {
+      throw new Error(
+        `Expected ] at row ${endToken ?.row} col ${endToken ?.col}`
+      );
+    }
+
+    return new nodes.ArrayNode(arr);
+  }
+
+  private parseValue(): nodes.Node {
+    const token = this.peek();
+    if (!token) throw new Error("Unexpected end of input.");
+
+    switch (token.type) {
+      case TokenType.STRING:
+      case TokenType.NUMBER:
+      case TokenType.BOOLEAN:
+      case TokenType.NULL:
+      case TokenType.DATE_TIME:
+        return new nodes.TokenNode(token);
+      case TokenType.BRACKET_OPEN:
+        return this.parseArray();
+      case TokenType.CURLY_OPEN:
+        return this.parseObject(false);
+      default:
+        throw new Error(`Unexpected token type: ${token.type} at row ${token.row} col ${token.col}`);
     }
   }
 
-  // Ensures values can only be added after a separator
-  private _checkValueSlot(value: any) {
-    const token: any = this._lastToken
-    if (token === undefined) return
-
-    if (value === undefined) return // TODO: Check this, replaced null with undefined
-
-    if (isToken(value) && value.value === '') return
-
-    if ([',', ':', '~', '{', '[', '---'].indexOf(token.value) === -1) {
-      // console.warn(token, value)
-      // TODO: Provide better error
-      throw new InternetObjectSyntaxError(ErrorCodes.expectingSeparator, '', value)
-    }
+  /**
+   * Returns the current token without advancing the current index
+   * @returns {Token} the current token or null if eof is reached
+   */
+  private peek(): Token | null {
+    return this.current < this.tokens.length ? this.tokens[this.current] : null;
   }
 
-  private _push = (type = 'object', index: number, row: number, col: number, values = []) => {
-    let object = this._getOrCreateObject(index, row, col)
-    let newObject = { type, values, index, row, col }
-    this._addValue(newObject, index, row, col)
-    this._stack.push(newObject)
+  /**
+   * Advances the current token index by the given number of steps
+   */
+  private advance(steps: number = 1) {
+    this.current += steps;
   }
 
-  private _pop = (type: string, token: Token) => {
-    const obj = this._getObject()
+  private backtrack() {
+    this.current--;
+  }
 
-    if (obj.type !== type) {
-      const message = `Expecting "${obj.type === 'object' ? '}' : ']'}" but found "${
-        obj.type === 'object' ? ']' : '}'
-      }"`
-      this.status = ERROR
-      throw new InternetObjectSyntaxError(ErrorCodes.invalidBracket, message, token)
+  /**
+   * Checks if the current token matches any of the given types.
+   * If a current token is not available, returns false.
+   * @param types
+   * @returns
+   */
+  private match(types: TokenType[]): boolean {
+    const currentToken = this.peek();
+    if (currentToken && types.includes(currentToken.type as TokenType)) {
+      return true;
     }
-    this._stack.pop()
+    return false;
+  }
+
+  private matchPrev(types: TokenType[]): boolean {
+    const prevToken = this.tokens[this.current - 1];
+    if (prevToken && types.includes(prevToken.type as TokenType)) {
+      return true;
+    }
+    return false;
+  }
+
+  /**
+   * Match the next token in the stream without advancing the current index. If the next token matches any of the given types, returns true, otherwise returns false. If the next token is not available, returns false.
+   */
+  private matchNext(types: TokenType[]): boolean {
+    const nextToken = this.tokens[this.current + 1];
+    if (nextToken && types.includes(nextToken.type as TokenType)) {
+      return true;
+    }
+    return false;
+  }
+
+  private advanceIfMatch(types: TokenType[]): boolean {
+    if (this.match(types)) {
+      this.advance();
+      return true;
+    }
+    return false;
   }
 }
+
+export default ASTParser;

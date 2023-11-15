@@ -1,13 +1,25 @@
-import TypeDef from './typedef'
-import MemberDef from './memberdef'
-import ErrorCodes from '../errors/io-error-codes'
-import KeyValueCollection from '../header'
+import Definitions                  from '../core/definitions';
+import {
+       InternetObjectError        } from '../errors/io-error';
+import ErrorCodes                   from '../errors/io-error-codes';
+import {
+       ObjectNode                 } from '../parser/nodes';
+import Node                         from '../parser/nodes/nodes';
+import processObject                from '../schema/object-processor';
+import Schema                       from '../schema/schema';
+import MemberDef                    from './memberdef';
+import TypeDef                      from './typedef';
+import TypedefRegistry              from './typedef-registry';
+import {
+       doCommonTypeCheck          } from './utils';
 
-import { TypedefRegistry } from './typedef-registry'
-import { doCommonTypeCheck } from './utils'
-import { ParserTreeValue, Node } from '../parser/index'
-import { isParserTree, isKeyVal, isUndefined } from '../utils/is'
-import { InternetObjectError, InternetObjectSyntaxError } from '../errors/io-error'
+const schema = new Schema(
+  "object",
+  { type:     { type: "string", optional: false, null: false, choices: ["object"] } },
+  { default:  { type: "object", optional: true,  null: false  } },
+  { optional: { type: "bool",   optional: true,  null: false, default: false } },
+  { null:     { type: "bool",   optional: true,  null: false, default: false } },
+)
 
 /**
  * Represents the ObjectTypeDef which is reponsible for parsing,
@@ -20,16 +32,15 @@ class ObjectDef implements TypeDef {
    * Returns the type this instance is going to handle.
    * Always returns object
    */
-  getType() {
-    return 'object'
-  }
+  get type() { return 'object' }
+  get schema() { return schema }
 
   /**
    * Parses the object in IO format into JavaScript object.
    */
-  parse = (data: ParserTreeValue, memberDef: MemberDef, vars?: KeyValueCollection): any => {
-    const value = isParserTree(data) ? data.values : undefined
-    return this._process(memberDef, value, data, vars)
+  parse = (node: Node, memberDef: MemberDef, defs?: Definitions): any => {
+    const value = node instanceof ObjectNode ? node : undefined
+    return this._process(memberDef, value, node, defs)
   }
 
   /**
@@ -71,8 +82,8 @@ class ObjectDef implements TypeDef {
   private _process = (
     memberDef: MemberDef,
     value: any,
-    node?: ParserTreeValue,
-    vars?: KeyValueCollection
+    node?: Node,
+    defs?: Definitions
   ) => {
     const validatedData = doCommonTypeCheck(memberDef, value, node)
     if (validatedData !== value || validatedData === null || validatedData === undefined) {
@@ -80,62 +91,33 @@ class ObjectDef implements TypeDef {
     }
 
     const schema = memberDef.schema
-    const object: any = {}
-    const fn = isParserTree(node) ? 'parse' : 'load'
+
+    const fn = node instanceof ObjectNode ? 'parse' : 'load'
 
     // When indexMode is on, members are read/loaded from the index.
     let indexMode: boolean = true
 
-    if (isParserTree(node)) {
-      node.values.forEach((dataItem: any, index: number) => {
-        let key: string
-        let memberDef: MemberDef
-        let dataValue: any
-
-        if (isKeyVal(dataItem)) {
-          indexMode = false
-          key = dataItem.key
-          memberDef = schema.defs[key]
-          dataValue = dataItem.value
-        }
-        // Process members only when the indexMode is true.
-        else if (indexMode || dataItem === undefined) {
-          key = schema.keys[index]
-          memberDef = schema.defs[key]
-          dataValue = dataItem
-        } else {
-          throw new InternetObjectSyntaxError(ErrorCodes.positionalMemberAfterKeywordMember)
-        }
-
-        // When memberDef is not found, ignore such member
-        if (isUndefined(memberDef)) return
-        const typeDef: TypeDef = TypedefRegistry.get(memberDef.type)
-        object[key] = typeDef.parse(dataValue, memberDef, vars)
-      })
-
-      // Process the members who have not been included in
-      // the data item.
-      schema.keys.forEach((key: string) => {
-        if (key in object) return
-        const memberDef: MemberDef = schema.defs[key]
-        const typeDef: TypeDef = TypedefRegistry.get(memberDef.type)
-        object[key] = typeDef.parse(undefined, memberDef, vars)
-      })
-    } else {
-      const keys = schema.keys
-
-      keys.forEach((key: string) => {
-        const memberDef: MemberDef = schema.defs[key]
-
-        // When memberDef is not found, ignore such member
-        if (isUndefined(memberDef)) return
-
-        const typeDef: TypeDef = TypedefRegistry.get(memberDef.type)
-
-        const dataItem = value[key]
-        object[key] = typeDef.load(dataItem, memberDef)
-      })
+    if (node instanceof ObjectNode) {
+      return processObject(node, schema, defs)
     }
+
+    const object: any = {}
+    const keys = schema.keys
+
+    keys.forEach((key: string) => {
+      const memberDef: MemberDef = schema.defs[key]
+
+      // When memberDef is not found, assert a failure.
+      // if (isUndefined(memberDef)) return
+      if (typeof memberDef === 'undefined') {
+        throw new InternetObjectError(ErrorCodes.invalidMemberDef)
+      }
+
+      const typeDef: TypeDef = TypedefRegistry.get(memberDef.type)
+
+      const dataItem = value[key]
+      object[key] = typeDef.load(dataItem, memberDef)
+    })
 
     return object
   }

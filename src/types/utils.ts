@@ -2,8 +2,8 @@ import ErrorCodes from '../errors/io-error-codes'
 import MemberDef from './memberdef'
 
 import { ErrorArgs, InternetObjectError, InternetObjectValidationError } from '../errors/io-error'
-import { Node } from '../parser/index'
-import { isToken, isString } from '../utils/is'
+import { Node, TokenNode } from '../parser/nodes'
+
 
 /**
  * Performs the common validations required before serialization and deserialization
@@ -15,12 +15,12 @@ import { isToken, isString } from '../utils/is'
  */
 export function doCommonTypeCheck(memberDef: MemberDef, value?: any, node?: Node): any {
   const isUndefined = value === undefined
-  const isNull = isToken(node) ? node.value === null : value === null
+  const isNull = node instanceof TokenNode ? node.value === null : value === null
 
   // console.warn(">>>", JSON.stringify(memberDef, null, 2), value)
   // Check for undefined
   if (isUndefined) {
-    if (memberDef.default) return _default(memberDef.default)
+    if (memberDef.default !== undefined) return _default(memberDef.default)
     if (memberDef.optional) return undefined
     throw new InternetObjectValidationError(..._valueRequired(memberDef, node))
   }
@@ -41,7 +41,7 @@ export function doCommonTypeCheck(memberDef: MemberDef, value?: any, node?: Node
 }
 
 function _default(value: any) {
-  if (isString(value)) {
+  if (typeof value === 'string') {
     if (value === 'N') return null
     if (value === 'T' || value === 'true') return true
     if (value === 'F' || value === 'false') return false

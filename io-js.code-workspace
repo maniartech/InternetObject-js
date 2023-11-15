@@ -1,0 +1,28 @@
+{
+	"folders": [
+    {
+      "path": "../io-js"
+    },
+    {
+      "path": "."
+    },
+    {
+      "path": "../io-playground"
+    }
+  ],
+  "launch": {
+    "version": "0.2.0",
+    "configurations": [
+
+    ]
+  },
+  "settings": {
+    "editor.tabSize": 2,
+    "prettier.tabWidth": 2,
+    "[typescript]": {
+      "editor.tabSize": 2,
+      "editor.insertSpaces": true
+    },
+    "svg.preview.background": "dark-transparent"
+  }
+}

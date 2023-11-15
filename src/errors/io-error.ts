@@ -1,5 +1,5 @@
-import { Node } from '../parser'
-import { InternetObject } from '../internet-object'
+import { Node, TokenNode } from '../parser/nodes'
+import Token from '../tokenizer/tokens'
 
 /**
  * Represents the base error class in InternetObject.
@@ -50,10 +50,10 @@ export class InternetObjectError extends Error {
 
     this.name = 'InternetObjectError'
 
-    if (node) {
+    if (node instanceof TokenNode) {
       this.lineNumber = node.row
       this.columnNumber = node.col
-      this.index = node.index
+      this.index = node.pos
       errorMsg = `${errorCode} at (${node.row}, ${node.col})`
     } else {
       errorMsg = errorCode

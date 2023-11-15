@@ -5,8 +5,7 @@ import ErrorCodes from "../errors/io-error-codes";
 const defsList:any[] = []
 const defs:any = {}
 
-
-export class TypedefRegistry {
+export default class TypedefRegistry {
 
   /**
    * Registers the TypeDef for the specified type.

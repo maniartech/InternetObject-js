@@ -1,12 +1,12 @@
 import { InternetObjectError, ErrorArgs, InternetObjectValidationError } from '../errors/io-error'
-import { ParserTreeValue, Node } from '../parser/index'
-import { isNumber, isString, isToken } from '../utils/is'
+import { Node } from '../parser/nodes'
 import MemberDef from './memberdef'
 import TypeDef from './typedef'
 import { doCommonTypeCheck } from './utils'
 import ErrorCodes from '../errors/io-error-codes'
-import { Token } from '../parser'
-import KeyValueCollection from '../header'
+import Definitions from '../core/definitions'
+import { TokenNode } from '../parser/nodes'
+import Schema from '../schema/schema'
 
 // Reference: RFC 5322 Official Standard
 // http://emailregex.com
@@ -14,6 +14,19 @@ const emailExp = /(?:[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-
 
 // http://urlregex.com
 const urlExp = /((([A-Za-z]{3,9}:(?:\/\/)?)(?:[\-;:&=\+\$,\w]+@)?[A-Za-z0-9\.\-]+|(?:www\.|[\-;:&=\+\$,\w]+@)[A-Za-z0-9\.\-]+)((?:\/[\+~%\/\.\w\-_]*)?\??(?:[\-\+=&;%@\.\w_]*)#?(?:[\.\!\/\\\w]*))?)/
+
+const schema = new Schema(
+  "string",
+  { type:     { type: "string", optional: false, null: false, choices: ["string", "url", "email"] } },
+  { default:  { type: "string", optional: true,  null: false  } },
+  { choices:  { type: "array",  optional: true,  null: false, of: { type: "string" } } },
+  { pattern:  { type: "string", optional: true,  null: false  } },
+  { len:      { type: "number", optional: true,  null: false, min: 0, default: -1 } },
+  { minLen:   { type: "number", optional: true,  null: false, min: 0, default: -1 } },
+  { maxLen:   { type: "number", optional: true,  null: false, min: 0, default: -1 } },
+  { optional: { type: "bool",   optional: true,  null: false, default: false } },
+  { null:     { type: "bool",   optional: true,  null: false, default: false } },
+)
 
 /**
  * Represents the StringTypeDef which is reponsible for parsing,
@@ -34,19 +47,14 @@ export default class StringDef implements TypeDef {
     this._type = type
   }
 
-  /**
-   * Returns the type this instance is going to handle.
-   * The return value could be any of the "string", "email", or "url"
-   */
-  getType() {
-    return this._type
-  }
+  get type() { return this._type }
+  get schema() { return schema }
 
   /**
    * Parses the string in IO format into JavaScript strings.
    */
-  parse(data: ParserTreeValue, memberDef: MemberDef, vars?: KeyValueCollection): string {
-    return this.validate(data, memberDef, vars)
+  parse(node: Node, memberDef: MemberDef, defs?: Definitions): string {
+    return this.validate(node, memberDef, defs)
   }
 
   /**
@@ -73,24 +81,24 @@ export default class StringDef implements TypeDef {
     return value
   }
 
-  validate(data: any, memberDef: MemberDef, vars?: KeyValueCollection): string {
-    const node = isToken(data) ? data : undefined
+  validate(data: any, memberDef: MemberDef, defs?: Definitions): string {
+    const node = data instanceof TokenNode ? data : undefined
     const value = node ? node.value : data
 
-    return _process(memberDef, value, node, vars)
+    return _process(memberDef, value, node, defs)
   }
 }
 
 function _process(
   memberDef: MemberDef,
   value: string,
-  node?: Token,
-  vars?: KeyValueCollection
+  node?: Node,
+  defs?: Definitions
 ): string {
-  // Replace vars
-  if (vars) {
-    const valueFound = vars.getV(value)
-    value = valueFound || value
+  // Replace defs
+  if (defs) {
+    const valueFound = defs.getV(value)
+    value = valueFound !== undefined ? valueFound.value : value
   }
 
   // Run common check
@@ -100,7 +108,7 @@ function _process(
   }
 
   // Validate
-  if (!isString(value)) {
+  if (typeof value !== 'string') {
     throw new InternetObjectError(ErrorCodes.notAString)
   }
 
@@ -110,7 +118,7 @@ function _process(
   const maxLength = memberDef.maxLength
 
   // Max length check
-  if (maxLength !== undefined && isNumber(maxLength)) {
+  if (maxLength !== undefined && typeof maxLength === 'number') {
     if (value.length > maxLength) {
       throw new InternetObjectValidationError(
         ErrorCodes.invalidMaxLength,
@@ -121,7 +129,7 @@ function _process(
 
   const minLength = memberDef.minLength
   // Max length check
-  if (minLength !== undefined && isNumber(minLength)) {
+  if (minLength !== undefined && typeof minLength === 'number') {
     if (value.length > minLength) {
       throw new InternetObjectError(
         ErrorCodes.invalidMinLength,
@@ -166,11 +174,11 @@ function _validatePattern(memberDef: MemberDef, value: string, node?: Node) {
   }
 }
 
-function _notAString(path: string, data: Token): ErrorArgs {
+function _notAString(path: string, data: TokenNode): ErrorArgs {
   return [ErrorCodes.notAString, `Expecting a string value for "${path}"`, data]
 }
 
-function _invlalidChoice(path: string, data: Token, choices: number[]): ErrorArgs {
+function _invlalidChoice(path: string, data: TokenNode, choices: number[]): ErrorArgs {
   return [
     ErrorCodes.invalidValue,
     `The value of "${path}" must be one of the [${choices.join(',')}]. Currently it is ${
@@ -180,7 +188,7 @@ function _invlalidChoice(path: string, data: Token, choices: number[]): ErrorArg
   ]
 }
 
-function _invlalidMinLength(path: string, data: Token, minLength: number): ErrorArgs {
+function _invlalidMinLength(path: string, data: TokenNode, minLength: number): ErrorArgs {
   return [
     ErrorCodes.invalidMinLength,
     `The length of "${path}" must be ${minLength} or more. Currently it is ${data.value.length}.`,
@@ -188,7 +196,7 @@ function _invlalidMinLength(path: string, data: Token, minLength: number): Error
   ]
 }
 
-function _invlalidMaxLength(path: string, data: Token, maxLength: number): ErrorArgs {
+function _invlalidMaxLength(path: string, data: TokenNode, maxLength: number): ErrorArgs {
   return [
     ErrorCodes.invalidMaxLength,
     `The length of "${path}" must be ${maxLength} or more. Currently it is ${data.value.length}.`,

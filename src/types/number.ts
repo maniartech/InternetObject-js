@@ -1,14 +1,26 @@
+import Definitions from '../core/definitions'
 import { InternetObjectValidationError, ErrorArgs, InternetObjectError } from '../errors/io-error'
 import ErrorCodes from '../errors/io-error-codes'
-import { ParserTreeValue, Node } from '../parser/index'
-import { Token } from '../parser'
-import { isNumber, isToken, isNode, isString } from '../utils/is'
+import { TokenNode } from '../parser/nodes'
+import Node from '../parser/nodes/nodes'
+import Schema from '../schema/schema'
 import MemberDef from './memberdef'
 import TypeDef from './typedef'
 import { doCommonTypeCheck } from './utils'
-import KeyValueCollection from '../header/index'
 
 const NUMBER_TYPES = ['number', 'int', 'int32', 'int16', 'byte']
+
+const schema = new Schema(
+  "number",
+  { type:     { type: "string", optional: false, null: false, choices: ["number", "byte", "int", "int16", "int32", "int64"] } },
+  { default:  { type: "number", optional: true,  null: false  } },
+  { choices:  { type: "array",  optional: true,  null: false, of: { type: "number" } } },
+  { len:      { type: "number", optional: true,  null: false, min: 0 } },
+  { min:      { type: "number", optional: true,  null: false, min: 0 } },
+  { max:      { type: "number", optional: true,  null: false, min: 0 } },
+  { optional: { type: "bool",   optional: true,  null: false, default: false } },
+  { null:     { type: "bool",   optional: true,  null: false, default: false } },
+)
 
 // age?: { number, true, 10, min:10, max:20}
 
@@ -27,12 +39,11 @@ class NumberDef implements TypeDef {
     this._validator = _getValidator(type)
   }
 
-  getType() {
-    return this._type
-  }
+  get type() { return this._type }
+  get schema() { return schema }
 
-  parse(data: ParserTreeValue, memberDef: MemberDef, vars?: KeyValueCollection): number {
-    return this.validate(data, memberDef, vars)
+  parse(node: Node, memberDef: MemberDef, defs?: Definitions): number {
+    return this.validate(node, memberDef, defs)
   }
 
   load(data: any, memberDef: MemberDef): number {
@@ -46,10 +57,10 @@ class NumberDef implements TypeDef {
     return this.validate(data, memberDef).toString()
   }
 
-  validate(data: any, memberDef: MemberDef, vars?: KeyValueCollection): number {
-    const node = isToken(data) ? data : undefined
+  validate(data: any, memberDef: MemberDef, defs?: Definitions): number {
+    const node = data instanceof TokenNode ? data : undefined
     const value = node ? node.value : data
-    return _validate(this._validator, memberDef, value, node, vars)
+    return _validate(this._validator, memberDef, value, node, defs)
   }
 }
 
@@ -64,18 +75,18 @@ function _validate(
   validator: any,
   memberDef: MemberDef,
   value: any,
-  node?: Node,
-  vars?: KeyValueCollection
+  node?: TokenNode,
+  defs?: Definitions
 ) {
-  if (vars && isString(value)) {
-    const valueFound = vars.getV(value)
+  if (defs && typeof value === 'string') {
+    const valueFound = defs.getV(value)
     value = valueFound !== undefined ? valueFound : value
   }
 
   const validatedData = doCommonTypeCheck(memberDef, value, node)
   if (validatedData !== value || validatedData === undefined) return validatedData
 
-  if (!isNumber(value)) {
+  if (typeof value !== 'number') {
     throw new InternetObjectValidationError(ErrorCodes.invalidValue)
   } else if (isNaN(Number(value))) {
     throw new InternetObjectValidationError(
@@ -100,7 +111,7 @@ function _validate(
   return value
 }
 
-function _intValidator(min: number, max: number, memberDef: MemberDef, value: any, node?: Node) {
+function _intValidator(min: number, max: number, memberDef: MemberDef, value: any, node?: TokenNode) {
   // Validate for integer
   if (value % 1 !== 0) {
     throw new InternetObjectValidationError(..._notAnInt(memberDef, value, node))
@@ -114,8 +125,8 @@ function _intValidator(min: number, max: number, memberDef: MemberDef, value: an
 function _getValidator(type: string) {
   switch (type) {
     case 'number': {
-      return (memberDef: MemberDef, value: any, node?: Node) => {
-        if (!isNumber(value) && isNaN(Number(value))) {
+      return (memberDef: MemberDef, value: any, node?: TokenNode) => {
+        if (isNaN(Number(value))) {
           throw new InternetObjectValidationError(..._notANumber(memberDef, value, node))
         }
       }
@@ -132,6 +143,10 @@ function _getValidator(type: string) {
       const range = 2 ** 32 // -2147483648,2147483647
       return _intValidator.bind(null, -(range / 2), range / 2 - 1)
     }
+    case 'int64': {
+      const range = 2 ** 64 // -9223372036854775808,9223372036854775807
+      return _intValidator.bind(null, -(range / 2), range / 2 - 1)
+    }
     case 'int': {
       // Any non fraction number!
       return _intValidator.bind(null, -1, -1)
@@ -142,7 +157,7 @@ function _getValidator(type: string) {
   }
 }
 
-function _outOfRange(memberDef: MemberDef, value: any, node?: Node): ErrorArgs {
+function _outOfRange(memberDef: MemberDef, value: any, node?: TokenNode): ErrorArgs {
   return [
     ErrorCodes.outOfRange,
     `The value (${value}) set for "${memberDef.path}" is out of range.`,
@@ -150,7 +165,7 @@ function _outOfRange(memberDef: MemberDef, value: any, node?: Node): ErrorArgs {
   ]
 }
 
-function _notAnInt(memberDef: MemberDef, value: any, node?: Node): ErrorArgs {
+function _notAnInt(memberDef: MemberDef, value: any, node?: TokenNode): ErrorArgs {
   return [
     ErrorCodes.notAnInteger,
     `Expecting an integer value for "${memberDef.path}", Currently it is ${value}.`,
@@ -158,7 +173,7 @@ function _notAnInt(memberDef: MemberDef, value: any, node?: Node): ErrorArgs {
   ]
 }
 
-function _notANumber(memberDef: MemberDef, value: any, node?: Node): ErrorArgs {
+function _notANumber(memberDef: MemberDef, value: any, node?: TokenNode): ErrorArgs {
   return [
     ErrorCodes.notANumber,
     `Expecting a number value for "${memberDef.path}", Currently it is ${value}.`,
@@ -166,7 +181,7 @@ function _notANumber(memberDef: MemberDef, value: any, node?: Node): ErrorArgs {
   ]
 }
 
-function _invlalidMin(memberDef: MemberDef, value: any, node?: Node): ErrorArgs {
+function _invlalidMin(memberDef: MemberDef, value: any, node?: TokenNode): ErrorArgs {
   return [
     ErrorCodes.invalidMinValue,
     `The "${memberDef.path}" must be greater than or equal to ${memberDef.min}, Currently it is ${value}.`,
@@ -174,7 +189,7 @@ function _invlalidMin(memberDef: MemberDef, value: any, node?: Node): ErrorArgs 
   ]
 }
 
-function _invlalidMax(memberDef: MemberDef, value: any, node?: Node): ErrorArgs {
+function _invlalidMax(memberDef: MemberDef, value: any, node?: TokenNode): ErrorArgs {
   return [
     ErrorCodes.invalidMaxValue,
     `The "${memberDef.path}" must be less than or equal to ${memberDef.max}, Currently it is ${value}.`,

@@ -1,11 +1,20 @@
-import { ParserTreeValue, Node } from '../parser/index'
-import { isToken, isBoolean, isString } from '../utils/is'
+import { Node } from '../parser/nodes'
 import MemberDef from './memberdef'
 import TypeDef from './typedef'
 import { doCommonTypeCheck } from './utils'
 import ErrorCodes from '../errors/io-error-codes'
-import KeyValueCollection from '../header/index'
 import { InternetObjectValidationError } from '../errors/io-error'
+import Definitions from '../core/definitions'
+import { TokenNode } from '../parser/nodes'
+import Schema from '../schema/schema'
+
+const schema = new Schema(
+  "bool",
+  { type:     { type: "string", optional: false, null: false, choices: ["bool", "boolean"] } },
+  { default:  { type: "bool",   optional: true,  null: false  } },
+  { optional: { type: "bool",   optional: true,  null: false, default: false } },
+  { null:     { type: "bool",   optional: true,  null: false, default: false } },
+)
 
 /**
  * Represents the InternetObject String, performs following validations.
@@ -17,20 +26,17 @@ import { InternetObjectValidationError } from '../errors/io-error'
 export default class BooleanDef implements TypeDef {
   private _type: string
 
-  constructor(type: string = 'bool') {
-    this._type = type
+  constructor(type: string = 'bool') { this._type = type }
+
+  get type() { return this._type }
+  get schema() { return schema }
+
+  parse(node: Node, memberDef: MemberDef, defs?: Definitions): any {
+    return this.validate(node, memberDef, defs)
   }
 
-  getType() {
-    return this._type
-  }
-
-  parse(data: ParserTreeValue, memberDef: MemberDef, vars?: KeyValueCollection): string {
-    return this.validate(data, memberDef, vars)
-  }
-
-  load(data: any, memberDef: MemberDef): string {
-    return this.validate(data, memberDef)
+  load(value: any, memberDef: MemberDef): string {
+    return this.validate(value, memberDef)
   }
 
   serialize(data: string, memberDef: MemberDef): string {
@@ -40,12 +46,12 @@ export default class BooleanDef implements TypeDef {
     return value === true ? 'T' : 'F'
   }
 
-  validate(data: any, memberDef: MemberDef, vars?: KeyValueCollection): any {
-    const node = isToken(data) ? data : undefined
+  validate(data: any, memberDef: MemberDef, defs?: Definitions): any {
+    const node = data instanceof TokenNode ? data : undefined
     let value = node ? node.value : data
 
-    if (vars && isString(value)) {
-      const valueFound = vars.getV(value)
+    if (typeof value === 'string') {
+      const valueFound = defs?.getV(value)
       value = valueFound !== undefined ? valueFound : value
     }
 
@@ -54,7 +60,7 @@ export default class BooleanDef implements TypeDef {
       return validatedData
     }
 
-    if (!isBoolean(value)) {
+    if (typeof value !== 'boolean') {
       throw new InternetObjectValidationError(
         ErrorCodes.notABool,
         'Expecting a boolean value',
