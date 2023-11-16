@@ -50,6 +50,8 @@ export class InternetObjectError extends Error {
 
     this.name = 'InternetObjectError'
 
+    console.log("ERROR:", node)
+
     if (node instanceof TokenNode) {
       this.lineNumber = node.row
       this.columnNumber = node.col
