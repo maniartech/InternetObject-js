@@ -17,7 +17,7 @@ export function doCommonTypeCheck(memberDef: MemberDef, value?: any, node?: Node
   const isUndefined = value === undefined
   const isNull = node instanceof TokenNode ? node.value === null : value === null
 
-  // console.warn(">>>", JSON.stringify(memberDef, null, 2), value)
+  console.warn(">>>", JSON.stringify(memberDef, null, 2), value)
   // Check for undefined
   if (isUndefined) {
     if (memberDef.default !== undefined) return _default(memberDef.default)
