@@ -8,9 +8,9 @@ export default class Schema {
   public defs: { [key: string]: MemberDef } = {};
 
   /**
-   * When true, allows additional properties in the object.
+   * When true, allows additional members in the object.
    */
-  allowAdditionalProperties: boolean = false;
+  open: boolean;
 
   [key: string]: any;
 
@@ -18,6 +18,7 @@ export default class Schema {
     this.name = name;
     this.names = [];
     this.defs = {};
+    this.open = false;
 
     o.forEach((item) => {
       const key = Object.keys(item)[0];
