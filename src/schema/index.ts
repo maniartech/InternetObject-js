@@ -1,4 +1,3 @@
-import Definitions from '../core/definitions';
 import {
        InternetObjectSyntaxError    } from '../errors/io-error';
 import ErrorCodes                     from '../errors/io-error-codes';
@@ -29,7 +28,9 @@ export function compileObject(name:string, o: ObjectNode): Schema {
 
 function parseObject(o: ObjectNode, schema:Schema, path:string): Schema {
   if (!o.children) {
-    debugger
+    const schema = new Schema(path);
+    schema.open = true
+    return schema
   }
 
   // Loop through all the children
@@ -95,13 +96,8 @@ function parseObject(o: ObjectNode, schema:Schema, path:string): Schema {
         if (index !== o.children.length - 1) {
           throw new InternetObjectSyntaxError(ErrorCodes.invalidSchema);
         }
-        schema.allowAdditionalProperties = true;
+        schema.open = true;
         continue;
-      }
-
-      console.log(">>>", memberNode.value);
-      if (memberNode.value === undefined) {
-        debugger
       }
 
       const fieldInfo = parseName(memberNode.value.toValue());
@@ -195,7 +191,7 @@ function parseObjectDef(o: ObjectNode, path:string) {
     }
 
     // If the first member is not a string, then it is an invalid schema
-    throw new InternetObjectSyntaxError(ErrorCodes.invalidType, (o.children[0] as TokenNode).value);
+    // throw new InternetObjectSyntaxError(ErrorCodes.invalidType, (o.children[0] as TokenNode).value);
   }
 
   // When the object node is a member type definition defined using the
