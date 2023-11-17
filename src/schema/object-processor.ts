@@ -37,7 +37,7 @@ export default function processObject(data: ObjectNode, schema: Schema, defs?: D
   // If schema supports additional properties, then add them to the object
   // if any. Otherwise  ignore the additional properties if any,
   // and return the object as it is.
-  if (!schema.allowAdditionalProperties) return o
+  if (!schema.open) return o
 
   for (let i=0; i < data.children.length; i += 1) {
     const member = data.children[i] as MemberNode;
