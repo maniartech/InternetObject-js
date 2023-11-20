@@ -1,5 +1,5 @@
 import { Node, TokenNode } from '../parser/nodes'
-import Token from '../tokenizer/tokens'
+
 
 /**
  * Represents the base error class in InternetObject.

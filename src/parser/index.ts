@@ -40,13 +40,18 @@ export default function parse(source: string, o: ParserOptions = {}): Document {
       // Unepxected node
       else { assertFailure(docNode.header.child) }
     }
-  }
 
-  if (doc.header.schema) {
+    if (doc.header.schema) {
+      for (let i=0; i<docNode.children.length; i++) {
+        const sectionNode = docNode.children[i]
+        const result = processSchema(sectionNode.child as ObjectNode, doc.header.schema)
+        doc.sections?.push(new Section(result, sectionNode.name))
+      }
+    }
+  } else {
     for (let i=0; i<docNode.children.length; i++) {
       const sectionNode = docNode.children[i]
-      const result = processSchema(sectionNode.child as ObjectNode, doc.header.schema)
-      doc.sections?.push(new Section(result, sectionNode.name))
+      doc.sections?.push(new Section(sectionNode.child?.toValue(), sectionNode.name))
     }
   }
 
