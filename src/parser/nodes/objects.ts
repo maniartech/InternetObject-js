@@ -1,9 +1,7 @@
-import ContainerNode from "./containers";
-import Node from "./nodes";
-import MemberNode from './members';
-import Definitions from "../../core/definitions";
-
-
+import Definitions    from '../../core/definitions';
+import InternetObject from '../../core/internet-object';
+import ContainerNode  from './containers';
+import MemberNode     from './members';
 
 class ObjectNode extends ContainerNode {
 
@@ -11,7 +9,7 @@ class ObjectNode extends ContainerNode {
     super('object', children);
   }
 
-  toValue(defs?: Definitions):any {
+  toObject(defs?: Definitions):any {
     const value: any = {};
     let index = 0;
     for (const child of this.children as Array<MemberNode>) {
@@ -28,6 +26,22 @@ class ObjectNode extends ContainerNode {
       index++;
     }
     return value;
+  }
+
+  toValue (defs?: Definitions): InternetObject {
+    const o = new InternetObject();
+    for (let i=0; i<this.children.length; i++) {
+      const member = this.children[i] as MemberNode;
+      if (member) {
+        if (member.key) {
+          o[member.key.value] = member.value.toValue(defs);
+        } else {
+          o.push(member.value.toValue(defs))
+        }
+      }
+    }
+
+    return o;
   }
 }
 
