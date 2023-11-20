@@ -26,7 +26,7 @@ const schema = new Schema(
  * validating, loading and serializing Objects.
  */
 class ObjectDef implements TypeDef {
-  private _keys: any = null
+  private _names: any = null
 
   /**
    * Returns the type this instance is going to handle.
@@ -62,7 +62,7 @@ class ObjectDef implements TypeDef {
     const serialized: string[] = []
     const schema = memberDef.schema
 
-    schema.keys.forEach((key: string, index: number) => {
+    schema.names.forEach((key: string, index: number) => {
       const memberDef: MemberDef = schema.defs[key]
       const typeDef = TypedefRegistry.get(memberDef.type)
       const value = validatedData[key]
@@ -92,19 +92,21 @@ class ObjectDef implements TypeDef {
 
     const schema = memberDef.schema
 
-    const fn = node instanceof ObjectNode ? 'parse' : 'load'
+    // const fn = node instanceof ObjectNode ? 'parse' : 'load'
 
     // When indexMode is on, members are read/loaded from the index.
-    let indexMode: boolean = true
+    // let indexMode: boolean = true
 
     if (node instanceof ObjectNode) {
       return processObject(node, schema, defs)
     }
 
-    const object: any = {}
-    const keys = schema.keys
+    // Load the object
 
-    keys.forEach((key: string) => {
+    const object:Record<string, any> = {}
+    const names = schema.names
+
+    names.forEach((key: string) => {
       const memberDef: MemberDef = schema.defs[key]
 
       // When memberDef is not found, assert a failure.

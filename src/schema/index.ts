@@ -28,7 +28,6 @@ export function compileObject(name:string, o: ObjectNode): Schema {
 
 function parseObject(o: ObjectNode, schema:Schema, path:string): Schema {
   if (!o.children) {
-    const schema = new Schema(path);
     schema.open = true
     return schema
   }
@@ -174,8 +173,12 @@ function parseObjectDef(o: ObjectNode, path:string) {
   // For example:
   // address: {},
   if (o.children.length === 0) {
+    const schema = new Schema(path);
+    schema.open = true;
     return {
       type: 'object',
+      schema
+
     } as MemberDef;
   }
 

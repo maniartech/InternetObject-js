@@ -9,9 +9,10 @@ import Schema             from './schema';
 export default function processObject(data: ObjectNode, schema: Schema, defs?: Definitions) {
   const o: InternetObject = new InternetObject();
   let positional = true;
+
   const processedNames = new Set<string>();
   for (let i=0; i<schema.names.length; i++) {
-    let member = data.children[i] as MemberNode;
+    const member = data.children[i] as MemberNode;
     let name = schema.names[i];
     let memberDef = schema.defs[name];
 
@@ -39,14 +40,16 @@ export default function processObject(data: ObjectNode, schema: Schema, defs?: D
   // and return the object as it is.
   if (!schema.open) return o
 
-  for (let i=0; i < data.children.length; i += 1) {
+  console.log(schema.names, data.children.length)
+
+  for (let i=schema.names.length; i < data.children.length; i += 1) {
     const member = data.children[i] as MemberNode;
-    if (member && member.key) {
-      const name = member.key.value;
-      if (processedNames.has(name) === false) {
-        const memberDef = schema.defs[name];
-        const val = processMember(member, memberDef, defs);
-        o[name] = val;
+    if (member) {
+      if (member.key) {
+        const name = member.key.value;
+        o[name] = member.value.toValue(defs);
+      } else {
+        o.push(member.value.toValue(defs));
       }
     }
   }
