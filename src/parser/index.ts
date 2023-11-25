@@ -44,7 +44,7 @@ export default function parse(source: string, o: ParserOptions = {}): Document {
     if (doc.header.schema) {
       for (let i=0; i<docNode.children.length; i++) {
         const sectionNode = docNode.children[i]
-        const result = processSchema(sectionNode.child as ObjectNode, doc.header.schema)
+        const result = processSchema(sectionNode.child as ObjectNode, doc.header.schema, doc.header.definitions || undefined)
         doc.sections?.push(new Section(result, sectionNode.name))
       }
     }
