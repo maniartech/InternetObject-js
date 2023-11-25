@@ -5,6 +5,7 @@ import ArrayNode                from '../parser/nodes/array';
 import Node                     from '../parser/nodes/nodes';
 import TokenNode                from '../parser/nodes/tokens';
 import Schema                   from '../schema/schema';
+import TokenType                from '../tokenizer/token-types';
 import MemberDef                from './memberdef';
 import TypeDef                  from './typedef';
 import TypedefRegistry          from './typedef-registry';
@@ -40,7 +41,7 @@ class ArrayDef implements TypeDef {
   get schema() { return schema }
 
   public parse = (node: Node, memberDef: MemberDef, defs?: Definitions): any => {
-    const value = node instanceof ArrayNode ? node : undefined
+    const value = node instanceof ArrayNode || node instanceof TokenNode ? node : undefined
     return _processNode(memberDef, value, node, defs)
   }
 
@@ -111,7 +112,6 @@ class ArrayDef implements TypeDef {
   }
 }
 
-
 function _processNode(
   memberDef: MemberDef,
   value: any,
@@ -121,8 +121,7 @@ function _processNode(
   const validatedData = doCommonTypeCheck(memberDef, value, node)
   if (validatedData !== value || value === undefined) return validatedData
 
-  if (value instanceof ArrayNode === false) throw new Error('invalid-value')
-
+  // Find the right typeDef
   let typeDef: TypeDef | undefined
   let arrayMemberDef: MemberDef = {
     type: 'any'
@@ -138,12 +137,36 @@ function _processNode(
   }
 
   const array: any = []
-  value.children.forEach((item: any) => {
-    const value = typeDef?.parse(item, arrayMemberDef, defs)
-    array.push(value)
-  })
+
+  if (node instanceof TokenNode && node.type === TokenType.STRING) {
+    const arr = defs?.getV(node.value) || []
+    arr.forEach((item: any) => {
+      const value = typeDef?.parse(item, arrayMemberDef, defs)
+      array.push(value)
+    })
+  } else if (value instanceof ArrayNode) {
+    value.children.forEach((item: any) => {
+      const value = typeDef?.parse(item, arrayMemberDef, defs)
+      array.push(value)
+    })
+  } else {
+    throw new Error('invalid-value')
+  }
+
+  // value.children.forEach((item: any) => {
+  //   const value = typeDef?.parse(item, arrayMemberDef, defs)
+  //   array.push(value)
+  // })
 
   return array
+}
+
+function _processArrayNode(value:ArrayNode, memberDef:MemberDef, defs?:Definitions) {
+
+}
+
+function _processArray(value:Array<any>, memberDef:MemberDef, defs?:Definitions) {
+
 }
 
 function _process(
