@@ -1,11 +1,13 @@
 import Schema from "../schema/schema";
 
+type DefinitionValue = {
+  isSchema: boolean,
+  value: any
+}
+
 class Definitions {
   private _defaultSchema:Schema | null = null;
-  private _definitions: {[key: string]: {
-    isSchema: boolean,
-    value: any
-  }} = {};
+  private _definitions: {[key: string]: DefinitionValue} = {};
 
   public get length(): number {
     return Object.keys(this._definitions).length;
@@ -13,6 +15,11 @@ class Definitions {
 
   public get keys(): string[] {
     return Object.keys(this._definitions);
+  }
+
+  public at(index: number): { key: string, value: DefinitionValue } {
+    const key = this.keys[index];
+    return { key, value: this._definitions[key] };
   }
 
   public get defaultSchema(): Schema | null {
@@ -29,7 +36,12 @@ class Definitions {
    */
   public getV(key: any) {
     if (typeof key === 'string' && key.startsWith('$') && key.length > 1) {
-      return this._definitions[key.substring(1)];
+      const def = this._definitions[key.substring(1)];
+      if (!def.isSchema) {
+        return def.value;
+      }
+
+      return undefined;
     }
   }
 
