@@ -25,25 +25,44 @@ class Document {
   public toObject(): any {
     const sectionsLen = this._sections?.length || 0
 
+    let data:any = null
 
     // Only one section
     if (sectionsLen === 1) {
       const section = this._sections?.get(0) as Section
-      return section.toObject()
+      data = section.toObject()
     }
 
-    // Multiple sections
-    if (sectionsLen > 1) {
-      const result: any = {}
+    // More than one section
+    else {
+      data = {}
       for (let i=0; i<sectionsLen; i++) {
         const section = this._sections?.get(i) as Section
-        result[section.name as string] = section.toObject()
+        data[section.name as string] = section.toObject()
       }
-      return result
     }
 
-    // No sections
-    return null
+    if (this.header.definitions?.length) {
+      const header:any = {}
+      const defs = this.header.definitions
+      for (let i=0; i<defs.length; i++) {
+        const def = defs.at(i)
+        if (def.value.isSchema) {
+          continue
+        }
+
+        header[def.key] = def.value.value
+      }
+
+      if (Object.keys(header).length) {
+        return {
+          header,
+          data
+        }
+      }
+    }
+
+    return data
   }
 }
 
