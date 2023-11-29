@@ -1,4 +1,4 @@
 
-export function assertFailure(x: never): never {
-  throw new Error("Assert failure: " + x);
+export function assertNever(x: never): never {
+  throw new Error("Assert never: " + x);
 }
