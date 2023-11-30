@@ -13,6 +13,21 @@ class DocumentNode implements Node {
     this.children = children;
   }
 
+  get row(): number {
+    if (this.header) return this.header.row;
+    return this.children[0]?.row ?? 0;
+  }
+
+  get col(): number {
+    if (this.header) return this.header.col;
+    return this.children[0]?.col ?? 0;
+  }
+
+  get pos(): number {
+    if (this.header) return this.header.pos;
+    return this.children[0]?.pos ?? 0;
+  }
+
   toValue(defs?: Definitions):any {
     const header = this.header?.toValue(defs) ?? null
     const sections = new SectionCollection();

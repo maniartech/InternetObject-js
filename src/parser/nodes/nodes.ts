@@ -1,6 +1,7 @@
 import Definitions from "../../core/definitions";
+import Position from "../../tokenizer/position";
 
-interface Node {
+interface Node extends Position {
   toValue: (defs?: Definitions) => any;
 }
 

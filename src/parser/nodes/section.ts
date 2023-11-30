@@ -20,6 +20,21 @@ class SectionNode implements Node {
     this.schemaName = schemaName;
   }
 
+  get row(): number {
+    if (this.child) return this.child.row;
+    return 0;
+  }
+
+  get col(): number {
+    if (this.child) return this.child.col;
+    return 0;
+  }
+
+  get pos(): number {
+    if (this.child) return this.child.pos;
+    return 0;
+  }
+
   toValue (defs?:Definitions):any {
 
     let data = null;

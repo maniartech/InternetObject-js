@@ -16,6 +16,21 @@ class MemberNode implements Node {
     }
   }
 
+  get row(): number {
+    if (this.key) return this.key.row;
+    return this.value.row;
+  }
+
+  get col(): number {
+    if (this.key) return this.key.col;
+    return this.value.col;
+  }
+
+  get pos(): number {
+    if (this.key) return this.key.pos;
+    return this.value.pos;
+  }
+
   toValue(defs?: Definitions):any {
     if (this.key) {
       return {
