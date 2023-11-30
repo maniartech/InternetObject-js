@@ -1,12 +1,12 @@
 enum ErrorCodes {
   // General
-  // invalidType = 'invalid-type',
+  invalidType = 'invalid-type',
   // tokenNotReady = 'token-not-ready',
-  // invalidValue = 'invalid-value',
-  // invalidArray = 'invalid-array',
-  // invalidObject = 'invalid-object',
-  // valueRequired = 'value-required',
-  // nullNotAllowed = 'null-not-allowed',
+  invalidValue = 'invalid-value',
+  invalidArray = 'invalid-array',
+  invalidObject = 'invalid-object',
+  valueRequired = 'value-required',
+  nullNotAllowed = 'null-not-allowed',
   // notAllowed = 'not-allowed',
 
   // Parser Errors (Header)
@@ -23,39 +23,40 @@ enum ErrorCodes {
   // positionalMemberAfterKeywordMember = 'positional-member-after-keyword-member',
 
   // Parser Errors (Schema)
-  // invalidSchema = 'invalid-schema',
-  // invalidKey = 'invalid-key',
+  invalidSchema = 'invalid-schema',
+  invalidKey = 'invalid-key',
   // invalidMemberDefCondition = 'invalid-memberdef-condition',
-  // invalidMemberDef = 'invalid-memberdef',
+  invalidMemberDef = 'invalid-memberdef',
 
   // String
-  // notAString = 'not-a-string',
+  notAString = 'not-a-string',
   // invalidChar = 'invalid-char',
-  // invalidEmail = 'invalid-email',
-  // invalidUrl = 'invalid-url',
-  // stringNotClosed = 'string-not-closed',
+  invalidEmail = 'invalid-email',
+  invalidUrl = 'invalid-url',
+  stringNotClosed = 'string-not-closed',
   invalidEscapeSequence = 'invalid-escape-sequence',
 
   // -- string, number, date, datetime, time
   // valueNotInChoice = 'value-not-in-choice',
-  // invalidChoice = 'invalid-choice',
+  invalidChoice = 'invalid-choice',
 
   // -- string, array
-  // invalidMinLength = 'invalid-min-length',
-  // invalidMaxLength = 'invalid-max-length',
+  invalidMinLength = 'invalid-min-length',
+  invalidMaxLength = 'invalid-max-length',
+  invalidPattern = 'invalid-pattern',
 
   // Number
-  // notANumber = 'not-a-number',
-  // notAnInteger = 'not-an-integer',
-  // outOfRange = 'out-of-range',
-  // invalidMinValue = 'invalid-min-value',
-  // invalidMaxValue = 'invalid-max-value',
+  notANumber = 'not-a-number',
+  notAnInteger = 'not-an-integer',
+  outOfRange = 'out-of-range',
+  invalidMinValue = 'invalid-min-value',
+  invalidMaxValue = 'invalid-max-value',
 
   // Boolean
-  // notABool = 'not-a-bool',
+  notABool = 'not-a-bool',
 
   // DateTime
-  // invalidDateTime = 'invalid-datetime'
+  invalidDateTime = 'invalid-datetime'
 }
 
 export default ErrorCodes
