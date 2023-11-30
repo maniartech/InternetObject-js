@@ -1,3 +1,4 @@
+import Position from "../tokenizer/position"
 import Token from "../tokenizer/tokens"
 import InternetObjectError from "./io-error"
 
@@ -16,9 +17,10 @@ class InternetObjectSyntaxError extends InternetObjectError {
    *
    * @internal
    */
-  constructor(errorCode: string, message: string = '', token?: Token, ssf?: any) {
-    super(errorCode, message, token, ssf)
+  constructor(errorCode: string, fact?: string, pos?: Position, isEof: boolean = false, ssf?: any) {
+    super(errorCode, fact, pos, isEof, ssf)
     this.name = 'InternetObject(SyntaxError)'
+    this.updateMessage()
   }
 }
 

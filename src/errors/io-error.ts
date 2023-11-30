@@ -1,5 +1,4 @@
-import { Node, TokenNode } from '../parser/nodes'
-import Token from '../tokenizer/tokens'
+import Position from "../tokenizer/position"
 
 
 /**
@@ -15,56 +14,66 @@ class InternetObjectError extends Error {
   /**
    * An error-code associated with the current error.
    */
-  public errorCode?: string
+  public errorCode: string
 
   /**
-   * A line number (in the text) where error has occured.
-   * Only available with some errors while parsting text data.
+   * A fact object, which may contain additional information about the error.
    */
-  public row?: number
+  public fact?: string
 
   /**
-   * Column number (in the text) where error has occured.
-   * Only available with some errors while parsting text data.
+   * A position object, for tracking line and columns.
    */
-  public col?: number
+  public position?: Position
 
   /**
-   * The index (in the text) where error has occured.
-   * Only available with some errors while parsting text data.
+   * Indicates whether the error is caused by EOF.
    */
-  public pos?: number
+  public isEof: boolean
 
   /**
    * Initialize the new instance of `InternetObjectError`.
    *
    * @param errorCode {string} An error-code associated with this error
-   * @param message {string} The error message
-   * @param node {Node} The node object, for tracking line and columns. Optional
+   * @param fact {string} The  reason for the error
+   * @param pos {Position} The position object, for tracking line and columns. Optional
+   * @param isEof {boolean} Indicates whether the error is caused by EOF. Optional
    * @param ssf {Function} The start statck function, removes the irrelavant frames from the stack trace
    */
-  constructor(errorCode: string, message: string, token?: Token, ssf?: any) {
+  constructor(errorCode: string, fact?: string, position?: Position, isEof: boolean = false, ssf?: any) {
     super()
 
-    let errorMsg: string = errorCode
-    this.errorCode = errorCode
+    this.errorCode  = errorCode
+    this.fact       = fact
+    this.position   = position
+    this.isEof      = isEof
+    this.name       = 'InternetObjectError'
 
-    this.name = 'InternetObjectError'
-
-    if (token) {
-      this.row = token.row
-      this.col = token.col
-      this.pos = token.pos
-      errorMsg = `${errorCode} at (${token.row}, ${token.col})`
-    } else {
-      errorMsg = errorCode
-    }
-    this.message = message !== '' ? `${errorMsg}: ${message}` : errorMsg
+    // Format the error message
+    this.updateMessage()
 
     // TODO: After stability, change the SSF class
     Error.captureStackTrace(this, InternetObjectError)
     // Error.captureStackTrace(this, ssf || InternetObject)
     this.__proto__ = new.target.prototype
+  }
+
+
+
+  protected updateMessage() {
+    let errorMsg = `"${this.errorCode}" `
+    if (this.fact) {
+      errorMsg += `"${this.fact}" `
+    }
+
+    if (this.isEof) {
+      errorMsg += `at EOF`
+    } else if (this.position) {
+      // Handle case where position is just Position
+      errorMsg += `at ${this.position.row}:${this.position.col}(${this.position.pos})`
+    }
+
+    this.message = errorMsg
   }
 }
 
