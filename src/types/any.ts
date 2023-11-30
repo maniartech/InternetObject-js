@@ -5,7 +5,7 @@ import ErrorCodes from '../errors/io-error-codes'
 import { appendPath } from '../utils/index'
 import TypedefRegistry from './typedef-registry'
 import { doCommonTypeCheck } from './utils'
-import { InternetObjectError } from '../errors/io-error'
+import InternetObjectError from '../errors/io-error'
 import {
   isPlainObject
 } from '../utils/is'

@@ -3,7 +3,7 @@ import MemberDef from './memberdef'
 import TypeDef from './typedef'
 import { doCommonTypeCheck } from './utils'
 import ErrorCodes from '../errors/io-error-codes'
-import { InternetObjectValidationError } from '../errors/io-error'
+import ValidationError from '../errors/io-error'
 import Definitions from '../core/definitions'
 import { TokenNode } from '../parser/nodes'
 import Schema from '../schema/schema'
@@ -61,7 +61,7 @@ export default class BooleanDef implements TypeDef {
     }
 
     if (typeof value !== 'boolean') {
-      throw new InternetObjectValidationError(
+      throw new ValidationError(
         ErrorCodes.notABool,
         'Expecting a boolean value',
         node

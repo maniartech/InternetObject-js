@@ -1,5 +1,5 @@
 import Definitions              from '../core/definitions';
-import { InternetObjectError  } from '../errors/io-error';
+import InternetObjectError      from '../errors/io-error';
 import ErrorCodes               from '../errors/io-error-codes';
 import ArrayNode                from '../parser/nodes/array';
 import Node                     from '../parser/nodes/nodes';
