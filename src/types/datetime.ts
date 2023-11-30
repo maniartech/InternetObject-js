@@ -1,4 +1,4 @@
-import { InternetObjectValidationError, ErrorArgs, InternetObjectError } from '../errors/io-error'
+import ValidationError from '../errors/io-validation-error'
 import ErrorCodes from '../errors/io-error-codes'
 import Node from '../parser/nodes/nodes'
 import MemberDef from './memberdef';
@@ -71,7 +71,7 @@ class DateTimeDef implements TypeDef {
     }
 
     if (value instanceof Date === false) {
-      throw new InternetObjectValidationError(
+      throw new ValidationError(
         ErrorCodes.invalidDateTime,
         `Expecting the value of type '${this._type}'`
       )
@@ -90,7 +90,7 @@ class DateTimeDef implements TypeDef {
       return _getSerializer(this._type)(data)
     }
 
-    throw new InternetObjectValidationError(
+    throw new ValidationError(
       ErrorCodes.invalidDateTime,
       `Expecting the value of type '${this._type}'`
     )
@@ -100,7 +100,7 @@ class DateTimeDef implements TypeDef {
     if (memberDef.min) {
       const min = memberDef.min
       if (min && value < min) {
-        throw new InternetObjectValidationError(
+        throw new ValidationError(
           ErrorCodes.invalidMinValue,
           `Expecting the value to be greater than or equal to '${memberDef.min}'`
         )
@@ -110,7 +110,7 @@ class DateTimeDef implements TypeDef {
     if (memberDef.max) {
       const max = memberDef.max
       if (max && value > max) {
-        throw new InternetObjectValidationError(
+        throw new ValidationError(
           ErrorCodes.invalidMaxValue,
           `Expecting the value to be less than or equal to '${memberDef.max}'`
         )

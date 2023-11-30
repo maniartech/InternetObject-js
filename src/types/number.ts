@@ -1,5 +1,7 @@
 import Definitions from '../core/definitions'
-import { InternetObjectValidationError, ErrorArgs, InternetObjectError } from '../errors/io-error'
+import ValidationError from '../errors/io-validation-error'
+import ErrorArgs from '../errors/error-args'
+import InternetObjectError from '../errors/io-error'
 import ErrorCodes from '../errors/io-error-codes'
 import { TokenNode } from '../parser/nodes'
 import Node from '../parser/nodes/nodes'
@@ -75,7 +77,7 @@ function _validate(
   validator: any,
   memberDef: MemberDef,
   value: any,
-  node?: TokenNode,
+  node?: Node,
   defs?: Definitions
 ) {
   if (defs && typeof value === 'string') {
@@ -87,9 +89,9 @@ function _validate(
   if (validatedData !== value || validatedData === undefined) return validatedData
 
   if (typeof value !== 'number') {
-    throw new InternetObjectValidationError(ErrorCodes.invalidValue)
+    throw new ValidationError(ErrorCodes.notANumber, value, node)
   } else if (isNaN(Number(value))) {
-    throw new InternetObjectValidationError(
+    throw new ValidationError(
       ErrorCodes.notANumber,
       `Invalid number encountered for ${memberDef.path}`
     )
@@ -100,34 +102,34 @@ function _validate(
   if (memberDef.min !== undefined) {
     const min = memberDef.min
     if (memberDef.min !== undefined && value < min) {
-      throw new InternetObjectValidationError(..._invlalidMin(memberDef, value, node))
+      throw new ValidationError(..._invlalidMin(memberDef, value, node))
     }
   }
 
   if (memberDef.max !== undefined && value > memberDef.max) {
-    throw new InternetObjectValidationError(..._invlalidMax(memberDef, value, node))
+    throw new ValidationError(..._invlalidMax(memberDef, value, node))
   }
 
   return value
 }
 
-function _intValidator(min: number, max: number, memberDef: MemberDef, value: any, node?: TokenNode) {
+function _intValidator(min: number, max: number, memberDef: MemberDef, value: any, node?: Node) {
   // Validate for integer
   if (value % 1 !== 0) {
-    throw new InternetObjectValidationError(..._notAnInt(memberDef, value, node))
+    throw new ValidationError(..._notAnInt(memberDef, value, node))
   }
 
   if ((min !== -1 && value < min) || (max !== -1 && value > max)) {
-    throw new InternetObjectValidationError(..._outOfRange(memberDef, value, node))
+    throw new ValidationError(..._outOfRange(memberDef, value, node))
   }
 }
 
 function _getValidator(type: string) {
   switch (type) {
     case 'number': {
-      return (memberDef: MemberDef, value: any, node?: TokenNode) => {
+      return (memberDef: MemberDef, value: any, node?: Node) => {
         if (isNaN(Number(value))) {
-          throw new InternetObjectValidationError(..._notANumber(memberDef, value, node))
+          throw new ValidationError(..._notANumber(memberDef, value, node))
         }
       }
     }
@@ -157,7 +159,7 @@ function _getValidator(type: string) {
   }
 }
 
-function _outOfRange(memberDef: MemberDef, value: any, node?: TokenNode): ErrorArgs {
+function _outOfRange(memberDef: MemberDef, value: any, node?: Node): ErrorArgs {
   return [
     ErrorCodes.outOfRange,
     `The value (${value}) set for "${memberDef.path}" is out of range.`,
@@ -165,7 +167,7 @@ function _outOfRange(memberDef: MemberDef, value: any, node?: TokenNode): ErrorA
   ]
 }
 
-function _notAnInt(memberDef: MemberDef, value: any, node?: TokenNode): ErrorArgs {
+function _notAnInt(memberDef: MemberDef, value: any, node?: Node): ErrorArgs {
   return [
     ErrorCodes.notAnInteger,
     `Expecting an integer value for "${memberDef.path}", Currently it is ${value}.`,
@@ -173,7 +175,7 @@ function _notAnInt(memberDef: MemberDef, value: any, node?: TokenNode): ErrorArg
   ]
 }
 
-function _notANumber(memberDef: MemberDef, value: any, node?: TokenNode): ErrorArgs {
+function _notANumber(memberDef: MemberDef, value: any, node?: Node): ErrorArgs {
   return [
     ErrorCodes.notANumber,
     `Expecting a number value for "${memberDef.path}", Currently it is ${value}.`,
@@ -181,7 +183,7 @@ function _notANumber(memberDef: MemberDef, value: any, node?: TokenNode): ErrorA
   ]
 }
 
-function _invlalidMin(memberDef: MemberDef, value: any, node?: TokenNode): ErrorArgs {
+function _invlalidMin(memberDef: MemberDef, value: any, node?: Node): ErrorArgs {
   return [
     ErrorCodes.invalidMinValue,
     `The "${memberDef.path}" must be greater than or equal to ${memberDef.min}, Currently it is ${value}.`,
@@ -189,7 +191,7 @@ function _invlalidMin(memberDef: MemberDef, value: any, node?: TokenNode): Error
   ]
 }
 
-function _invlalidMax(memberDef: MemberDef, value: any, node?: TokenNode): ErrorArgs {
+function _invlalidMax(memberDef: MemberDef, value: any, node?: Node): ErrorArgs {
   return [
     ErrorCodes.invalidMaxValue,
     `The "${memberDef.path}" must be less than or equal to ${memberDef.max}, Currently it is ${value}.`,
