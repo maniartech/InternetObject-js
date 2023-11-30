@@ -1,3 +1,4 @@
+import assertNever from '../errors/asserts/asserts';
 import ErrorCodes from '../errors/io-error-codes';
 import SyntaxError from '../errors/io-syntax-error';
 import { assertInvalidReach } from '../utils/asserts';
@@ -160,9 +161,6 @@ class Tokenizer {
           this.advance(2); // Move past the 2 hex digits
           needToNormalize = true;
         } else {
-          // throw new Error(
-          //   `Invalid hex escape sequence \\x${hexByte} at row ${this.row} and column ${this.col}.`
-          // );
           new SyntaxError(
             ErrorCodes.invalidEscapeSequence,
             hexByte,this.currentPosition);
@@ -176,29 +174,32 @@ class Tokenizer {
   }
 
   private get currentPosition(): Position | undefined {
-    // if (!this.reachedEnd) {
-      return { pos: this.pos, row: this.row, col: this.col };
-    // }
+    return { pos: this.pos, row: this.row, col: this.col };
   }
 
   private parseAnotatedString(char: string): Token {
-    const start = this.pos;
+    const start    = this.pos;
     const startRow = this.row;
     const startCol = this.col;
 
     this.advance(); // Move past the 'r' character
 
     if (this.reachedEnd) {
-      throw new Error(
-        `Unexpected end of input after '${char}' at row ${startRow} and column ${startCol}.`
-      );
+      assertNever(this.input[this.pos]);
+      // TODO: Clean up this error message after testing.
+      // throw new SyntaxError(
+      //   ErrorCodes.stringNotClosed,
+      //   void 0, this.currentPosition, true);
     }
 
     const encloser = this.input[this.pos]; // This should be either ' or "
     if (encloser !== '"' && encloser !== "'") {
-      throw new Error(
-        `Expected a quotation mark after '${char}' at row ${startRow} and column ${startCol}, but found '${encloser}' instead.`
-      );
+      assertNever(encloser);
+
+      // TODO: Clean up this error message after testing.
+      // throw new Error(
+      //   `Expected a quotation mark after '${char}' at row ${startRow} and column ${startCol}, but found '${encloser}' instead.`
+      // );
     }
 
     this.advance(); // Move past the opening quotation mark
@@ -207,9 +208,7 @@ class Tokenizer {
     }
 
     if (this.reachedEnd) {
-      throw new Error(
-        `Raw string starting at row ${startRow} and column ${startCol} is not closed.`
-      );
+      throw new SyntaxError(ErrorCodes.stringNotClosed,void 0, this.currentPosition);
     }
 
     this.advance(); // Move past the closing quotation mark
@@ -219,11 +218,12 @@ class Tokenizer {
 
     // Prepare the token
     const token = new Token();
-    token.pos = start;
-    token.row = startRow;
-    token.col = startCol;
+    token.pos   = start;
+    token.row   = startRow;
+    token.col   = startCol;
     token.token = tokenText;
     token.value = value;
+
     return token;
   }
 
@@ -251,9 +251,8 @@ class Tokenizer {
     const value = Date.parse(token.value);
     const dt = new Date(value);
     if (isNaN(dt.getTime())) {
-      throw new Error(
-        `Invalid date time format '${token.value}' at row ${token.row} and column ${token.col}.`
-      );
+      throw new SyntaxError(ErrorCodes.invalidDateTime,token.value,
+        this.currentPosition);
     }
 
     token.value = dt;
@@ -430,11 +429,15 @@ class Tokenizer {
     value = this.input.substring(startPos, lastPos + 1);
 
     if (value === "") {
-      throw new Error(
-        `Unexpected character '${
-          this.input[this.pos]
-        }' at row ${startRow} and column ${startCol}.`
-      );
+      assertNever(this.input[this.pos])
+      // TODO: Clean up this error message after testing.
+      // throw new Error(
+      //   `Unexpected character '${
+      //     this.input[this.pos]
+      //   }' at row ${startRow} and column ${startCol}.`
+      // );
+      // throw new SyntaxError(
+      //   ErrorCodes.unexpectedToken, this.input[this.pos], this.currentPosition);
     }
 
     switch (value) {
