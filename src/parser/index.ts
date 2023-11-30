@@ -2,7 +2,7 @@ import Document               from '../core/document';
 import Header                 from '../core/header';
 import Section                from '../core/section';
 import SectionCollection      from '../core/section-collection';
-import { assertFailure      } from '../errors/asserts';
+import assertNever            from '../errors/asserts/asserts';
 import {
        compileObject        } from '../schema';
 import processSchema          from '../schema/processor';
@@ -38,7 +38,7 @@ export default function parse(source: string, o: ParserOptions = {}): Document {
       }
 
       // Unepxected node
-      else { assertFailure(docNode.header.child) }
+      else { assertNever(docNode.header.child) }
     }
 
     if (doc.header.schema) {

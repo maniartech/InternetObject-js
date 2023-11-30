@@ -1,7 +1,10 @@
 import * as nodes   from "./nodes";
 import Token        from "../tokenizer/tokens";
 import TokenType    from "../tokenizer/token-types";
-import InternetObjectError from "../core/io-error";
+import InternetObjectError from "../errors/io-error";
+import ErrorCodes from "../errors/io-error-codes";
+import SyntaxError from "../errors/io-syntax-error";
+
 
 class ASTParser {
 
@@ -46,8 +49,10 @@ class ASTParser {
       // If the next token is not a section separator, it means that
       // the current section is not closed properly. Throw an error
       if (token.type !== TokenType.SECTION_SEP) {
-        throw new Error(
-          `Unexpected token ${token.type} at row ${token.row} col ${token.col}`
+        throw new SyntaxError(
+          ErrorCodes.unexpectedToken,
+          `Unexpected token ${token.type} at row ${token.row} col ${token.col}`,
+          token
         );
       }
 
