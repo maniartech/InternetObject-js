@@ -1,8 +1,13 @@
 import ErrorCodes from '../errors/io-error-codes'
 import MemberDef from './memberdef'
 
-import { ErrorArgs, InternetObjectError, InternetObjectValidationError } from '../errors/io-error'
-import { Node, TokenNode } from '../parser/nodes'
+import ValidationError from '../errors/io-validation-error'
+import InternetObjectError from '../errors/io-error'
+import ErrorArgs from '../errors/error-args'
+
+import { ContainerNode, Node, TokenNode } from '../parser/nodes'
+import Token from '../tokenizer/tokens'
+import InternetObjectValidationError from '../errors/io-validation-error'
 
 
 /**
@@ -27,7 +32,8 @@ export function doCommonTypeCheck(memberDef: MemberDef, value?: any, node?: Node
   // Check for null
   if (isNull) {
     if (memberDef.null) return null
-    throw new InternetObjectError(..._nullNotAllowed(memberDef, node))
+    // throw new InternetObjectValidationError(..._nullNotAllowed(memberDef, node))
+    throw new InternetObjectValidationError(ErrorCodes.nullNotAllowed, `Null is not allowed for ${memberDef.path}.`, node)
   }
 
   // Validate choices
@@ -50,11 +56,12 @@ function _default(value: any) {
 }
 
 function _valueRequired(memberDef: MemberDef, node?: Node): ErrorArgs {
+  console.log("node", node)
   return [ErrorCodes.valueRequired, `Value is missing for '${memberDef.path}'.`, node]
 }
 
 function _nullNotAllowed(memberDef: MemberDef, node?: Node): ErrorArgs {
-  return [ErrorCodes.nullNotAllowed, `${memberDef.path} does not support null.`]
+  return [ErrorCodes.nullNotAllowed, `${memberDef.path} does not support null.`, node]
 }
 
 // Return an invalid choice error parameters

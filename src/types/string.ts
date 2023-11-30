@@ -1,4 +1,6 @@
-import { InternetObjectError, ErrorArgs, InternetObjectValidationError } from '../errors/io-error'
+import ValidationError from '../errors/io-validation-error'
+import InternetObjectError from '../errors/io-error'
+import ErrorArgs from '../errors/error-args'
 import { Node } from '../parser/nodes'
 import MemberDef from './memberdef'
 import TypeDef from './typedef'
@@ -21,6 +23,7 @@ const schema = new Schema(
   { default:  { type: "string", optional: true,  null: false  } },
   { choices:  { type: "array",  optional: true,  null: false, of: { type: "string" } } },
   { pattern:  { type: "string", optional: true,  null: false  } },
+  { flags:    { type: "string", optional: true,  null: false } },
   { len:      { type: "number", optional: true,  null: false, min: 0, default: -1 } },
   { minLen:   { type: "number", optional: true,  null: false, min: 0, default: -1 } },
   { maxLen:   { type: "number", optional: true,  null: false, min: 0, default: -1 } },
@@ -120,7 +123,7 @@ function _process(
   // Max length check
   if (maxLength !== undefined && typeof maxLength === 'number') {
     if (value.length > maxLength) {
-      throw new InternetObjectValidationError(
+      throw new ValidationError(
         ErrorCodes.invalidMaxLength,
         `Invalid maxLength for ${memberDef.path}.`
       )
@@ -148,16 +151,26 @@ function _validatePattern(memberDef: MemberDef, value: string, node?: Node) {
     let re = memberDef.re
     if (!re) {
       let pattern = memberDef.pattern
-      // Add ^ and $ at the begging and end of the pattern respectively
+      let flags = memberDef.flags
+      // Add ^ and $ at the beginning and end of the pattern respectively
       // if these characters are not set in the pattern
-      pattern = pattern.startsWith('^') ? pattern : `^${pattern}`
-      pattern = pattern.endsWith('$') ? pattern : `${pattern}$`
+      // pattern = pattern.startsWith('^') ? pattern : `^${pattern}`
+      // pattern = pattern.endsWith('$') ? pattern : `${pattern}$`
 
       // Compile the expression and cache it into the memberDef
-      re = memberDef.re = new RegExp(pattern)
+      try {
+        if (flags) {
+          re = memberDef.re = new RegExp(pattern, flags)
+        } else {
+          re = memberDef.re = new RegExp(pattern)
+        }
+        memberDef.re = re // Cache the compiled expression
+      } catch {
+        throw new ValidationError(ErrorCodes.invalidPattern, value, node as TokenNode)
+      }
     }
     if (!re.test(value)) {
-      throw new InternetObjectError(ErrorCodes.invalidValue)
+      throw new ValidationError(ErrorCodes.invalidPattern, value, node as TokenNode)
     }
   }
   // Validate email
@@ -175,7 +188,7 @@ function _validatePattern(memberDef: MemberDef, value: string, node?: Node) {
 }
 
 function _notAString(path: string, data: TokenNode): ErrorArgs {
-  return [ErrorCodes.notAString, `Expecting a string value for "${path}"`, data]
+  return [ErrorCodes.notAString, `Expecting a string value for '${path}'`, data]
 }
 
 function _invlalidChoice(path: string, data: TokenNode, choices: number[]): ErrorArgs {
