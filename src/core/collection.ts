@@ -1,4 +1,4 @@
-import { assertFailure } from '../errors/asserts';
+import assertNever from '../errors/asserts/asserts';
 import InternetObject from './internet-object';
 
 class Collection<T = InternetObject> {
@@ -138,7 +138,7 @@ const proxy = {
         return target.get(Number(property));
       }
 
-      assertFailure(property as never);
+      assertNever(property as never);
     }
   },
 
