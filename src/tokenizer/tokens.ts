@@ -1,8 +1,9 @@
+import Position from "./position";
 
 /**
 * Represents a parsed token.
 */
-class Token {
+class Token implements Position {
   pos: number;
   row: number;
   col: number;
@@ -44,6 +45,22 @@ class Token {
     }
 
     return t;
+  }
+
+  /**
+   * Returns the ending position (row, col, pos) of the token.
+   * Useful for debugging and generating error messages.
+   */
+  getEndPosition(): { row: number, col: number, pos: number } {
+    const text      = this.token.trimEnd();
+    const lines     = text.split('\n');
+    const lastLine  = lines[lines.length - 1];
+
+    const row = this.row + lines.length - 1;
+    const col = lines.length > 1 ? lastLine.length : this.col + lastLine.length;
+    const pos = this.pos + text.length;
+
+    return { row, col, pos };
   }
 }
 

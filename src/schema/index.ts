@@ -1,5 +1,4 @@
-import {
-       InternetObjectSyntaxError    } from '../errors/io-error';
+import SyntaxError                    from '../errors/io-error';
 import ErrorCodes                     from '../errors/io-error-codes';
 import ASTParser                      from '../parser/ast-parser';
 import {
@@ -37,7 +36,7 @@ function parseObject(o: ObjectNode, schema:Schema, path:string): Schema {
   for(let index=0; index<o.children.length; index++) {
     const child = o.children[index];
     if (child === null) {
-      throw new InternetObjectSyntaxError(ErrorCodes.invalidSchema);
+      throw new SyntaxError(ErrorCodes.invalidSchema);
     }
 
     const memberNode = child as MemberNode;
@@ -54,7 +53,7 @@ function parseObject(o: ObjectNode, schema:Schema, path:string): Schema {
       if (memberNode.value instanceof TokenNode && memberNode.value.type === TokenType.STRING) {
 
         if (TypedefRegistry.isRegisteredType(memberNode.value.value) === false) {
-          throw new InternetObjectSyntaxError(ErrorCodes.invalidType, memberNode.value.value);
+          throw new SyntaxError(ErrorCodes.invalidType, memberNode.value.value);
         }
         const type = memberNode.value.value as string;
         const memberDef = {
@@ -93,7 +92,7 @@ function parseObject(o: ObjectNode, schema:Schema, path:string): Schema {
 
       if (isStar) {
         if (index !== o.children.length - 1) {
-          throw new InternetObjectSyntaxError(ErrorCodes.invalidSchema);
+          throw new SyntaxError(ErrorCodes.invalidSchema);
         }
         schema.open = true;
         continue;
@@ -118,7 +117,7 @@ function parseArrayDef(a:ArrayNode, path:string) {
   // it is an invalid schema.
   if (a.children.length > 1) {
      // TODO: Better error
-    throw new InternetObjectSyntaxError(ErrorCodes.invalidSchema);
+    throw new SyntaxError(ErrorCodes.invalidSchema);
   }
 
   // When the array node has one child, then it is a type definition.
@@ -137,7 +136,7 @@ function parseArrayDef(a:ArrayNode, path:string) {
       }
 
       // If the type is not registered, then it is an invalid type
-      throw new InternetObjectSyntaxError(ErrorCodes.invalidType, child.value);
+      throw new SyntaxError(ErrorCodes.invalidType, child.value);
     }
 
     // If the child is an object node, then it is a member type definition
@@ -151,7 +150,7 @@ function parseArrayDef(a:ArrayNode, path:string) {
     }
 
     // Throw an error if the child is not a string or object node
-    throw new InternetObjectSyntaxError(ErrorCodes.invalidSchema);
+    throw new SyntaxError(ErrorCodes.invalidSchema);
   }
 
   // When the array node is empty array, then the type definition is
@@ -194,7 +193,7 @@ function parseObjectDef(o: ObjectNode, path:string) {
     }
 
     // If the first member is not a string, then it is an invalid schema
-    // throw new InternetObjectSyntaxError(ErrorCodes.invalidType, (o.children[0] as TokenNode).value);
+    // throw new SyntaxError(ErrorCodes.invalidType, (o.children[0] as TokenNode).value);
   }
 
   // When the object node is a member type definition defined using the
@@ -219,7 +218,7 @@ function parseObjectDef(o: ObjectNode, path:string) {
     }
 
     // If the type is not registered, then it is an invalid type
-    throw new InternetObjectSyntaxError(ErrorCodes.invalidType, type);
+    throw new SyntaxError(ErrorCodes.invalidType, type);
   }
 
   // If the type is not defined, then consider it an object type with
@@ -252,7 +251,7 @@ const parseName = (key: string): {
   const optNullExp = /(\?\*)|(\*\?)$/
 
   if (typeof key !== 'string') {
-    throw new InternetObjectSyntaxError(ErrorCodes.invalidKey)
+    throw new SyntaxError(ErrorCodes.invalidKey)
   }
 
   // Optional and nullable

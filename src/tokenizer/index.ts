@@ -1,6 +1,9 @@
+import ErrorCodes from '../errors/io-error-codes';
+import SyntaxError from '../errors/io-syntax-error';
 import { assertInvalidReach } from '../utils/asserts';
 import * as is from './is';
 import Literals from './literals';
+import Position from './position';
 import Symbols from './symbols';
 import TokenType from './token-types';
 import Token from './tokens';
@@ -88,9 +91,7 @@ class Tokenizer {
 
     if (this.reachedEnd) {
       // Handle string not being closed before the end of the input
-      throw new Error(
-        `String starting at row ${startRow} and column ${startCol} is not closed.`
-      );
+      throw new SyntaxError(ErrorCodes.stringNotClosed,void 0, this.currentPosition);
     }
 
     this.advance(); // Move past the closing quotation mark
@@ -116,10 +117,10 @@ class Tokenizer {
   private escapeString(value: string, needToNormalize: boolean) {
     this.advance(); // Move past the backslash
     if (this.reachedEnd) {
-      // If a string ends with a single backslash, throw an error.
-      throw new Error(
-        `String ends with an unprocessed escape sequence at row ${this.row} and column ${this.col}.`
-      );
+      throw new SyntaxError(
+        ErrorCodes.invalidEscapeSequence,
+        void 0, this.currentPosition, true
+      )
     }
 
     switch (this.input[this.pos]) {
@@ -146,9 +147,9 @@ class Tokenizer {
           this.advance(4); // Move past the 4 hex digits
           needToNormalize = true;
         } else {
-          throw new Error(
-            `Invalid Unicode escape sequence \\u${hex} at row ${this.row} and column ${this.col}.`
-          );
+          throw new SyntaxError(
+            ErrorCodes.invalidEscapeSequence,
+            hex,this.currentPosition);
         }
         break;
       case "x":
@@ -159,9 +160,12 @@ class Tokenizer {
           this.advance(2); // Move past the 2 hex digits
           needToNormalize = true;
         } else {
-          throw new Error(
-            `Invalid hex escape sequence \\x${hexByte} at row ${this.row} and column ${this.col}.`
-          );
+          // throw new Error(
+          //   `Invalid hex escape sequence \\x${hexByte} at row ${this.row} and column ${this.col}.`
+          // );
+          new SyntaxError(
+            ErrorCodes.invalidEscapeSequence,
+            hexByte,this.currentPosition);
         }
         break;
       default:
@@ -169,6 +173,12 @@ class Tokenizer {
         break;
     }
     return { value, needToNormalize };
+  }
+
+  private get currentPosition(): Position | undefined {
+    // if (!this.reachedEnd) {
+      return { pos: this.pos, row: this.row, col: this.col };
+    // }
   }
 
   private parseAnotatedString(char: string): Token {
