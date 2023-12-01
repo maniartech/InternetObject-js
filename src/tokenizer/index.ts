@@ -426,18 +426,8 @@ class Tokenizer {
       value = value.normalize("NFC");
     }
 
-    value = this.input.substring(startPos, lastPos + 1);
-
     if (value === "") {
       assertNever(this.input[this.pos])
-      // TODO: Clean up this error message after testing.
-      // throw new Error(
-      //   `Unexpected character '${
-      //     this.input[this.pos]
-      //   }' at row ${startRow} and column ${startCol}.`
-      // );
-      // throw new SyntaxError(
-      //   ErrorCodes.unexpectedToken, this.input[this.pos], this.currentPosition);
     }
 
     switch (value) {
@@ -503,6 +493,16 @@ class Tokenizer {
     token.subType = second.subType;
     return token;
     }
+
+  private skipWhitespaces() {
+    var spaces = '';
+    while (!this.reachedEnd && is.isWhitespace(this.input[this.pos])) {
+      spaces += this.input[this.pos];
+      this.advance();
+    }
+
+    return spaces;
+  }
 
   /**
    * Tokenize the input string.
@@ -601,20 +601,29 @@ class Tokenizer {
         }
 
         const token = this.parseNumber();
+
         if (token) {
-          // If the next character (2abc) is not a symbol or whitespace, then
-          // it must be a literal or open string. Parse it and merge it
-          // with the number token.
-          if (
-            !is.isSpecialSymbol(this.input[this.pos]) &&
-            !is.isWhitespace(this.input[this.pos])
-          ) {
-            const nextToken = this.parseLiteralOrOpenString();
-            tokens.push(this.mergeTokens(token, nextToken));
+          const spaces = this.skipWhitespaces();
+          if (!this.reachedEnd) {
+            // If the next character (2abc) is not a symbol or whitespace, then
+            // it must be a literal or open string. Parse it and merge it
+            // with the number token.
+            if (
+              !is.isSpecialSymbol(this.input[this.pos]) &&
+              !is.isWhitespace(this.input[this.pos])
+            ) {
+              const nextToken = this.parseLiteralOrOpenString();
+              if (spaces.length > 0) {
+                nextToken.token = spaces + nextToken.token;
+                nextToken.value = spaces + nextToken.value;
+              }
+              tokens.push(this.mergeTokens(token, nextToken));
+            } else {
+              tokens.push(token);
+            }
           } else {
             tokens.push(token);
           }
-
         } else {
           // It wasn't a number, so it must be a literal or open string
           tokens.push(this.parseLiteralOrOpenString());
