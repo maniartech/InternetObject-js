@@ -78,6 +78,11 @@ class Tokenizer {
     let needToNormalize = false;
 
     while (!this.reachedEnd && this.input[this.pos] !== encloser) {
+      if (is.isWhitespace(this.input[this.pos])) {
+        value += this.skipWhitespaces();
+        continue;
+      }
+
       // Check if current character is a backslash (escape character)
       if (this.input[this.pos] === Symbols.BACKSLASH) {
         ({ value, needToNormalize } = this.escapeString(
@@ -389,13 +394,15 @@ class Tokenizer {
     const startCol = this.col;
 
     let value = "";
-    let startPos = this.pos;
-    let lastPos = this.pos;
-
     let normalizeString = false;
 
     while (!this.reachedEnd && is.isValidOpenStringChar(this.input[this.pos])) {
       let char = this.input[this.pos];
+
+      if (is.isWhitespace(char)) {
+        value += this.skipWhitespaces();
+        continue;
+      }
 
       if (char === Symbols.MINUS) {
         // if the next two chars are -- that means it is a
@@ -414,13 +421,10 @@ class Tokenizer {
       } else {
         value += char;
       }
-
-      if (!is.isWhitespace(char)) {
-        lastPos = this.pos;
-      }
-
       this.advance();
     }
+
+    value = value.trimEnd();
 
     if (normalizeString) {
       value = value.normalize("NFC");
@@ -494,10 +498,24 @@ class Tokenizer {
     return token;
     }
 
-  private skipWhitespaces() {
-    var spaces = '';
+  /**
+   * Skip over any whitespaces and return them as a string.
+   * @returns {string} The skipped whitespaces.
+   */
+  private skipWhitespaces():string {
+    let spaces = '';
     while (!this.reachedEnd && is.isWhitespace(this.input[this.pos])) {
-      spaces += this.input[this.pos];
+      const space = this.input[this.pos];
+      // replace \r\n or \r with \n. This behavior is configurable
+      // with the normalizeNewline option
+      if (space === '\r') {
+        if (this.input[this.pos + 1] === '\n') {
+          this.advance();
+        }
+        spaces += '\n';
+      } else {
+        spaces += space;
+      }
       this.advance();
     }
 
