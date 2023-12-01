@@ -11,6 +11,7 @@ import TokenType              from '../tokenizer/token-types';
 import ASTParser              from './ast-parser';
 import {
   CollectionNode,
+  DocumentNode,
   MemberNode,
   Node,
   ObjectNode                } from './nodes';
@@ -42,20 +43,34 @@ export default function parse(source: string, o: ParserOptions = {}): Document {
     }
 
     if (doc.header.schema) {
-      for (let i=0; i<docNode.children.length; i++) {
-        const sectionNode = docNode.children[i]
-        const result = processSchema(sectionNode.child as ObjectNode, doc.header.schema, doc.header.definitions || undefined)
-        doc.sections?.push(new Section(result, sectionNode.name))
-      }
+      parseDataWithSchema(docNode, doc);
+    } else {
+      parseData(docNode, doc);
     }
   } else {
-    for (let i=0; i<docNode.children.length; i++) {
-      const sectionNode = docNode.children[i]
-      doc.sections?.push(new Section(sectionNode.child?.toValue(), sectionNode.name))
-    }
+    parseData(docNode, doc);
   }
 
   return doc;
+}
+
+function parseData(docNode: DocumentNode, doc: Document) {
+  for (let i = 0; i < docNode.children.length; i++) {
+    const sectionNode = docNode.children[i];
+    doc.sections?.push(new Section(sectionNode.child?.toValue(doc.header.definitions || undefined), sectionNode.name));
+  }
+}
+
+function parseDataWithSchema(docNode: DocumentNode, doc: Document) {
+  if (!doc.header.schema) {
+    assertNever("Schema is required");
+  }
+
+  for (let i = 0; i < docNode.children.length; i++) {
+    const sectionNode = docNode.children[i];
+    const result = processSchema(sectionNode.child as ObjectNode, doc.header.schema, doc.header.definitions || undefined);
+    doc.sections?.push(new Section(result, sectionNode.name));
+  }
 }
 
 function parseDefs(doc:Document, cols:CollectionNode) {
