@@ -53,7 +53,7 @@ class InternetObjectError extends Error {
     this.updateMessage()
 
     // TODO: After stability, change the SSF class
-    Error.captureStackTrace(this, InternetObjectError)
+    // Error.captureStackTrace(this, InternetObjectError)
     // Error.captureStackTrace(this, ssf || InternetObject)
     this.__proto__ = new.target.prototype
   }
