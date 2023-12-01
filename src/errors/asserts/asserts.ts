@@ -4,7 +4,10 @@
  * @param x The object which needs to be asserted as never
  */
 function assertNever(x: any): never {
-  throw new Error("Assert never: " + x.toString());
+  if (x === undefined) {
+    throw new Error("Assert never");
+  }
+  throw new Error("Assert never: " + x ?? x.toString());
 }
 
 export default assertNever;
