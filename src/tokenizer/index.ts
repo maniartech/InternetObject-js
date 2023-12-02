@@ -536,6 +536,7 @@ class Tokenizer {
       if (is.isWhitespace(char)) {
         // Skip over the whitespace
         this.advance();
+        continue;
       }
 
       // Single-line comments
