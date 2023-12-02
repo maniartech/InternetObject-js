@@ -4,6 +4,7 @@ import TokenType    from "../tokenizer/token-types";
 import InternetObjectError from "../errors/io-error";
 import ErrorCodes from "../errors/io-error-codes";
 import SyntaxError from "../errors/io-syntax-error";
+import Symbols from "../tokenizer/symbols";
 
 
 class ASTParser {
@@ -204,8 +205,10 @@ class ASTParser {
     if (this.isCollection &&
       token.type === TokenType.COLLECTION_START) return;
 
-    throw new Error(
-      `Unexpected token ${token.type} at row ${token.row} col ${token.col}`
+    throw new SyntaxError(
+      ErrorCodes.unexpectedToken,
+      token.value.toString(),
+      token, false
     );
   }
 
@@ -213,6 +216,7 @@ class ASTParser {
     const members: Array<nodes.MemberNode | null> = [];
 
     if (!isOpenObject && !this.advanceIfMatch([TokenType.CURLY_OPEN])) {
+      // TODO: Reproduce this error
       throw new Error(`Expected { at position ${this.peek() ?.pos}`);
     }
 
@@ -242,11 +246,12 @@ class ASTParser {
         // The member must be preceded by a comma, open bracket, or
         // the beginning of the object. Otherwise it is invalid
         // For example, { a: 1, b: 2 } is valid, but { a: 1 b: 2 } is not
-
         if (index > 0) {
           if (!this.matchPrev([TokenType.COMMA, TokenType.CURLY_OPEN])) {
-            throw new Error(
-              `Unexpected token ${nextToken.type} at row ${nextToken.row} col ${nextToken.col}`
+            throw new SyntaxError(
+              ErrorCodes.unexpectedToken,
+              nextToken.value.toString(),
+              nextToken, false
             );
           }
         }
@@ -267,7 +272,9 @@ class ASTParser {
     // consume closing bracket
     this.advance();
     if (!isOpenObject && !this.match([TokenType.CURLY_CLOSE])) {
-      throw new Error(`Expected } at position ${this.peek() ?.pos}`);
+      const lastToken = this.peek()
+      throw new SyntaxError(ErrorCodes.expectingBracket, Symbols.CURLY_CLOSE,
+        lastToken === null ? void 0 : lastToken, lastToken === null);
     }
 
     // If the next token is collection start, backtrack
@@ -281,6 +288,7 @@ class ASTParser {
 
   private parseMember(): nodes.MemberNode {
     const leftToken = this.peek();
+    // TODO: Reproduce this error
     if (!leftToken) throw new Error("Unexpected end of input.");
 
     if (this.matchNext([TokenType.COLON])) {
@@ -299,10 +307,8 @@ class ASTParser {
         const value = this.parseValue();
         return new nodes.MemberNode(value, leftToken as nodes.TokenNode);
       } else {
-        throw new Error(
-          `Invalid property key: ${leftToken.value.toString()}` +
-          ` at row ${leftToken.row} col ${leftToken.col}`
-        );
+        throw new SyntaxError(ErrorCodes.invalidKey, leftToken.token, leftToken,
+          false);
       }
     }
 
@@ -358,8 +364,11 @@ class ASTParser {
 
     const endToken = this.peek();
     if (!endToken || endToken.type !== TokenType.BRACKET_CLOSE) {
-      throw new Error(
-        `Expected ] at row ${endToken ?.row} col ${endToken ?.col}`
+      throw new SyntaxError(
+        ErrorCodes.expectingBracket,
+        Symbols.BRACKET_CLOSE,
+        endToken === null ? void 0 : endToken,
+        endToken === null
       );
     }
 
@@ -368,7 +377,10 @@ class ASTParser {
 
   private parseValue(): nodes.Node {
     const token = this.peek();
-    if (!token) throw new Error("Unexpected end of input.");
+    if (!token) {
+      throw new SyntaxError(ErrorCodes.valueRequired, "Value required",
+        void 0, true);
+    }
 
     switch (token.type) {
       case TokenType.STRING:
@@ -382,7 +394,11 @@ class ASTParser {
       case TokenType.CURLY_OPEN:
         return this.parseObject(false);
       default:
-        throw new Error(`Unexpected token type: ${token.type} at row ${token.row} col ${token.col}`);
+        throw new SyntaxError(
+          ErrorCodes.unexpectedToken,
+          token.value,
+          token, token === null
+        );
     }
   }
 
