@@ -1,11 +1,9 @@
 import * as nodes   from "./nodes";
 import Token        from "../tokenizer/tokens";
 import TokenType    from "../tokenizer/token-types";
-import InternetObjectError from "../errors/io-error";
-import ErrorCodes from "../errors/io-error-codes";
-import SyntaxError from "../errors/io-syntax-error";
-import Symbols from "../tokenizer/symbols";
-
+import ErrorCodes   from "../errors/io-error-codes";
+import SyntaxError  from "../errors/io-syntax-error";
+import Symbols      from "../tokenizer/symbols";
 
 class ASTParser {
 
@@ -276,12 +274,6 @@ class ASTParser {
       throw new SyntaxError(ErrorCodes.expectingBracket, Symbols.CURLY_CLOSE,
         lastToken === null ? void 0 : lastToken, lastToken === null);
     }
-
-    // If the next token is collection start, backtrack
-    // it so that the collection start can be parsed
-    // if (this.match([TokenType.COLLECTION_START])) {
-    //   this.backtrack();
-    // }
 
     return new nodes.ObjectNode(members);
   }
