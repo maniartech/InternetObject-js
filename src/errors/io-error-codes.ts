@@ -11,6 +11,7 @@ enum ErrorCodes {
 
   // Parser Errors (Header)
   unexpectedToken = 'unexpected-token',
+  expectingBracket = 'expecting-bracket',
   // unexpectedColon = 'unexpected-colon',
   // multipleHeaders = 'multiple-headers-found',
   // invalidCollection = 'invalid-collection',
