@@ -4,6 +4,7 @@ import TokenType    from "../tokenizer/token-types";
 import ErrorCodes   from "../errors/io-error-codes";
 import SyntaxError  from "../errors/io-syntax-error";
 import Symbols      from "../tokenizer/symbols";
+import assertNever from "../errors/asserts/asserts";
 
 class ASTParser {
 
@@ -214,8 +215,8 @@ class ASTParser {
     const members: Array<nodes.MemberNode | null> = [];
 
     if (!isOpenObject && !this.advanceIfMatch([TokenType.CURLY_OPEN])) {
-      // TODO: Reproduce this error
-      throw new Error(`Expected { at position ${this.peek() ?.pos}`);
+      assertNever("The caller must ensure that this function is called " +
+        "only when the next token is {");
     }
 
     let index = 0;
@@ -280,8 +281,11 @@ class ASTParser {
 
   private parseMember(): nodes.MemberNode {
     const leftToken = this.peek();
-    // TODO: Reproduce this error
-    if (!leftToken) throw new Error("Unexpected end of input.");
+
+    if (!leftToken) {
+      assertNever("The caller must ensure that this function is called " +
+        "only when the member has at least one token");
+    }
 
     if (this.matchNext([TokenType.COLON])) {
       const isValidKey = [
