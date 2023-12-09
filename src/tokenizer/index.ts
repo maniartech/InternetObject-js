@@ -9,14 +9,14 @@ import Symbols from './symbols';
 import TokenType from './token-types';
 import Token from './tokens';
 
-const regexIntDigit = /^[0-9]+$/;
-const regexFloatDigit = /^[0-9.]+$/;
-const regexHex = /^[0-9a-fA-F]+$/;
 const regexHex4 = /^[0-9a-fA-F]{4}$/;
 const regexHex2 = /^[0-9a-fA-F]{2}$/;
+const reFloatDigit = /^[0-9.]+$/;
 
-const regexOctal = /^[0-7]+$/;
-const regexBinary = /^[01]+$/;
+const reIntDigit = /^[0-9]+$/;
+const reHex = /^[0-9a-fA-F]+$/;
+const reOctal = /^[0-7]+$/;
+const reBinary = /^[01]+$/;
 
 const nonDecimalPrefixes = ["x", "X", "c", "C", "b", "B"];
 
@@ -275,6 +275,7 @@ class Tokenizer {
     let base = 10; // default is decimal
     let hasDecimal = false;
     let hasExponent = false;
+    let prefix = "";
     let subType: string | undefined;
 
     // Allow for a leading - sign.
@@ -301,9 +302,9 @@ class Tokenizer {
         case "x":
           base = 16; // Hexadecimal
           subType = "HEX";
-          value += this.input[this.pos] + this.input[this.pos + 1];
+          prefix = this.input[this.pos] + this.input[this.pos + 1];
           this.advance(2);
-          while (/[0-9a-fA-F]/.test(this.input[this.pos])) {
+          while (reHex.test(this.input[this.pos])) {
             value += this.input[this.pos];
             this.advance();
           }
@@ -313,9 +314,9 @@ class Tokenizer {
         case "c":
           base = 8; // Octal
           subType = "OCTAL";
-          value += this.input[this.pos] + this.input[this.pos + 1];
+          prefix = this.input[this.pos] + this.input[this.pos + 1];
           this.advance(2);
-          while (/[0-7]/.test(this.input[this.pos])) {
+          while (reOctal.test(this.input[this.pos])) {
             value += this.input[this.pos];
             this.advance();
           }
@@ -325,20 +326,20 @@ class Tokenizer {
         case "b":
           base = 2; // Binary
           subType = "BINARY";
-          value += this.input[this.pos] + this.input[this.pos + 1];
+          prefix = this.input[this.pos] + this.input[this.pos + 1];
           this.advance(2);
-          while (/[01]/.test(this.input[this.pos])) {
+          while (reBinary.test(this.input[this.pos])) {
             value += this.input[this.pos];
             this.advance();
           }
           break;
 
         default:
-          assertInvalidReach(`Invalid number format '0${this.input[this.pos + 1]}'`);
+          assertNever(this.input[this.pos + 1]);
       }
     } else {
       // Parse whole part
-      while (/[0-9]/.test(this.input[this.pos])) {
+      while (reIntDigit.test(this.input[this.pos])) {
         value += this.input[this.pos];
         this.advance();
       }
@@ -348,7 +349,7 @@ class Tokenizer {
         hasDecimal = true;
         value += ".";
         this.advance();
-        while (/[0-9]/.test(this.input[this.pos])) {
+        while (reIntDigit.test(this.input[this.pos])) {
           value += this.input[this.pos];
           this.advance();
         }
@@ -363,7 +364,7 @@ class Tokenizer {
           value += this.input[this.pos];
           this.advance();
         }
-        while (/[0-9]/.test(this.input[this.pos])) {
+        while (reIntDigit.test(this.input[this.pos])) {
           value += this.input[this.pos];
           this.advance();
         }
@@ -375,6 +376,10 @@ class Tokenizer {
       numberValue = parseFloat(value);
     } else {
       numberValue = parseInt(value, base);
+    }
+
+    if (isNaN(numberValue)) {
+      throw new SyntaxError(ErrorCodes.notANumber, prefix + value, this.currentPosition);
     }
 
     return Token.init(
