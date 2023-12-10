@@ -3,6 +3,8 @@ import Header                 from '../core/header';
 import Section                from '../core/section';
 import SectionCollection      from '../core/section-collection';
 import assertNever            from '../errors/asserts/asserts';
+import InternetObjectError from '../errors/io-error';
+import ErrorCodes from '../errors/io-error-codes';
 import {
        compileObject        } from '../schema';
 import processSchema          from '../schema/processor';
@@ -84,24 +86,27 @@ function parseDefs(doc:Document, cols:CollectionNode) {
 
     // Must be an object node
     if (child instanceof ObjectNode === false) {
-      throw new Error("Invalid typedef definition");
+      assertNever("Invalid definition, must be object");
     }
 
     // Must not be null
     if (child.children[0] === null) {
-      throw new Error("Invalid typedef definition");
+      // throw new InternetObjectError(ErrorCodes.invalidDefinition)
+      assertNever("Invalid definition");
     }
 
     // Must have only one child
     if (child.children.length !== 1) {
-      throw new Error("Invalid typedef definition");
+      // throw new InternetObjectError(ErrorCodes.invalidDefinition, child.children?.[1], child.children?[1])
     }
 
-    const keyToken  = (child.children[0] as MemberNode).key
+
+    const memberNode  = (child.children[0] as MemberNode)
 
     // Must have a key
-    if (!keyToken) {
-      throw new Error("Invalid typedef definition");
+    if (!memberNode.key) {
+      debugger
+      throw new InternetObjectError(ErrorCodes.invalidDefinition, memberNode.value.toValue().toString(), memberNode.value)
     }
 
     // Key must be a string
