@@ -25,6 +25,7 @@ enum ErrorCodes {
 
   // Parser Errors (Schema)
   invalidSchema = 'invalid-schema',
+  invalidDefinition = 'invalid-definition',
   invalidKey = 'invalid-key',
   // invalidMemberDefCondition = 'invalid-memberdef-condition',
   invalidMemberDef = 'invalid-memberdef',
