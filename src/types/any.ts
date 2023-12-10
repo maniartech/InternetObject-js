@@ -1,17 +1,14 @@
-import TypeDef from './typedef'
-import MemberDef from './memberdef'
-import ErrorCodes from '../errors/io-error-codes'
-
-import { appendPath } from '../utils/index'
-import TypedefRegistry from './typedef-registry'
-import { doCommonTypeCheck } from './utils'
-import InternetObjectError from '../errors/io-error'
-import {
-  isPlainObject
-} from '../utils/is'
-import Definitions from '../core/definitions'
-import { Node, TokenNode } from '../parser/nodes'
-import Schema from '../schema/schema'
+import Definitions            from '../core/definitions';
+import InternetObjectError    from '../errors/io-error';
+import ErrorCodes             from '../errors/io-error-codes';
+import { Node,              } from '../parser/nodes';
+import Schema                 from '../schema/schema';
+import { appendPath         } from '../utils/index';
+import { isPlainObject      } from '../utils/is';
+import MemberDef              from './memberdef';
+import TypeDef                from './typedef';
+import TypedefRegistry        from './typedef-registry';
+import { doCommonTypeCheck  } from './utils';
 
 const schema = new Schema(
   "any",
@@ -38,9 +35,8 @@ export default class AnyDef implements TypeDef {
   /**
    * Parses any value in IO format into JavaScript.
    */
-  parse(node: TokenNode, memberDef: MemberDef, defs?: Definitions): any {
+  parse(node: Node, memberDef: MemberDef, defs?: Definitions): any {
     const validatedData = doCommonTypeCheck(memberDef, node, node)
-
     if (validatedData !== node || validatedData === null || validatedData === undefined) {
       return validatedData
     }
@@ -53,17 +49,19 @@ export default class AnyDef implements TypeDef {
    */
   load(data: any, memberDef: MemberDef): any {
     const validatedData = doCommonTypeCheck(memberDef, data)
+    // When validated data is not equal to data, it means
+    // that the value is changed. So we return the validated data.
     if (validatedData !== data) return validatedData
+
     return data
   }
 
   /**
-   * Serializes any value from JavaScript into IO format.
+   * Serializes any value from JavaScript object into IO format.
    */
   serialize(data: any, memberDef: MemberDef, isRoot: boolean = false): string {
     return _serialize(data, memberDef, isRoot)
   }
-
 }
 
 const _serialize = (data: any, memberDef: MemberDef, isRoot: boolean): string => {

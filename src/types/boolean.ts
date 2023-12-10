@@ -17,7 +17,8 @@ const schema = new Schema(
 )
 
 /**
- * Represents the InternetObject String, performs following validations.
+ * Represents the InternetObject Boolean definition.
+ * Performs following validations.
  *
  * - Value is boolean
  * - Value is optional
@@ -61,11 +62,7 @@ export default class BooleanDef implements TypeDef {
     }
 
     if (typeof value !== 'boolean') {
-      throw new ValidationError(
-        ErrorCodes.notABool,
-        'Expecting a boolean value',
-        node
-      )
+      throw new ValidationError(ErrorCodes.notABool, value, node)
     }
 
     return value
