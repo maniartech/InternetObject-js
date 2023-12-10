@@ -335,6 +335,7 @@ class Tokenizer {
           break;
 
         default:
+          // assertInvalidReach(`Invalid number format '0${this.input[this.pos + 1]}'`);
           assertNever(this.input[this.pos + 1]);
       }
     } else {
