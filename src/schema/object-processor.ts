@@ -3,10 +3,10 @@ import InternetObject     from '../core/internet-object';
 import MemberNode         from '../parser/nodes/members';
 import ObjectNode         from '../parser/nodes/objects';
 import MemberDef          from '../types/memberdef';
-import TypedefRegistry    from '../types/typedef-registry';
+import TypedefRegistry    from './typedef-registry';
 import Schema             from './schema';
 
-export default function processObject(data: ObjectNode, schema: Schema, defs?: Definitions) {
+export default function processObject(data: ObjectNode, schema: Schema, defs?: Definitions, collectionIndex?: number) {
   const o: InternetObject = new InternetObject();
   let positional = true;
 
@@ -39,8 +39,6 @@ export default function processObject(data: ObjectNode, schema: Schema, defs?: D
   // if any. Otherwise  ignore the additional properties if any,
   // and return the object as it is.
   if (!schema.open) return o
-
-  console.log(schema.names, data.children.length)
 
   for (let i=schema.names.length; i < data.children.length; i += 1) {
     const member = data.children[i] as MemberNode;

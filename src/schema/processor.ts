@@ -24,7 +24,7 @@ function processCollection(data: CollectionNode, schema: Schema, defs?: Definiti
   const coll = new Collection<InternetObject>();
   for (let i=0; i<data.children.length; i++) {
     const member = data.children[i] as ObjectNode;
-    coll.push(processObject(member, schema, defs));
+    coll.push(processObject(member, schema, defs, i));
   }
 
   return coll;
