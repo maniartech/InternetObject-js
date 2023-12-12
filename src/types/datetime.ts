@@ -2,8 +2,8 @@ import ValidationError from '../errors/io-validation-error'
 import ErrorCodes from '../errors/io-error-codes'
 import Node from '../parser/nodes/nodes'
 import MemberDef from './memberdef';
-import TypeDef from './typedef'
-import { doCommonTypeCheck } from './utils'
+import TypeDef from '../schema/typedef'
+import { doCommonTypeCheck } from './common-type'
 
 import {
   dateToDatetimeString,

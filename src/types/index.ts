@@ -6,7 +6,7 @@ import ObjectDef from './object'
 import StringDef from './string'
 import DateTimeDef from './datetime'
 
-import TypedefRegistry from './typedef-registry'
+import TypedefRegistry from '../schema/typedef-registry'
 
 let registered = false
 
