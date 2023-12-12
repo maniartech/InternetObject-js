@@ -1,4 +1,4 @@
-import SyntaxError                    from '../errors/io-error';
+import SyntaxError                    from '../errors/io-syntax-error';
 import ErrorCodes                     from '../errors/io-error-codes';
 import ASTParser                      from '../parser/ast-parser';
 import {
@@ -8,7 +8,7 @@ import Tokenizer                      from '../tokenizer';
 import TokenType                      from '../tokenizer/token-types';
 import registerTypes                  from '../types';
 import MemberDef                      from '../types/memberdef';
-import TypedefRegistry                from '../types/typedef-registry';
+import TypedefRegistry                from './typedef-registry';
 import processSchema                  from './processor';
 import Schema                         from './schema';
 
@@ -53,7 +53,7 @@ function parseObject(o: ObjectNode, schema:Schema, path:string): Schema {
       if (memberNode.value instanceof TokenNode && memberNode.value.type === TokenType.STRING) {
 
         if (TypedefRegistry.isRegisteredType(memberNode.value.value) === false) {
-          throw new SyntaxError(ErrorCodes.invalidType, memberNode.value.value);
+          throw new SyntaxError(ErrorCodes.invalidType, memberNode.value.value, memberNode.value);
         }
         const type = memberNode.value.value as string;
         const memberDef = {

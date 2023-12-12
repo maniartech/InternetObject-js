@@ -16,7 +16,8 @@ import {
   DocumentNode,
   MemberNode,
   Node,
-  ObjectNode                } from './nodes';
+  ObjectNode,
+  TokenNode} from './nodes';
 import ParserOptions          from './parser-options';
 
 export default function parse(source: string, o: ParserOptions = {}): Document {
@@ -70,7 +71,7 @@ function parseDataWithSchema(docNode: DocumentNode, doc: Document) {
 
   for (let i = 0; i < docNode.children.length; i++) {
     const sectionNode = docNode.children[i];
-    const result = processSchema(sectionNode.child as ObjectNode, doc.header.schema, doc.header.definitions || undefined);
+    const result = processSchema(sectionNode.child, doc.header.schema, doc.header.definitions || undefined);
     doc.sections?.push(new Section(result, sectionNode.name));
   }
 }
@@ -105,9 +106,10 @@ function parseDefs(doc:Document, cols:CollectionNode) {
 
     // Must have a key
     if (!memberNode.key) {
-      debugger
       throw new InternetObjectError(ErrorCodes.invalidDefinition, memberNode.value.toValue().toString(), memberNode.value)
     }
+
+    const keyToken = memberNode.key as TokenNode
 
     // Key must be a string
     if (keyToken.type !== TokenType.STRING) {
