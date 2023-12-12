@@ -1,4 +1,4 @@
-import TypedefRegistry from '../types/typedef-registry'
+import TypedefRegistry from '../schema/typedef-registry'
 import { datetimeExp, datetimePlainExp } from './datetime'
 
 /**
