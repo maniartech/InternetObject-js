@@ -7,10 +7,10 @@ import Node                         from '../parser/nodes/nodes';
 import processObject                from '../schema/object-processor';
 import Schema                       from '../schema/schema';
 import MemberDef                    from './memberdef';
-import TypeDef                      from './typedef';
-import TypedefRegistry              from './typedef-registry';
+import TypeDef                      from '../schema/typedef';
+import TypedefRegistry              from '../schema/typedef-registry';
 import {
-       doCommonTypeCheck          } from './utils';
+       doCommonTypeCheck          } from './common-type';
 
 const schema = new Schema(
   "object",

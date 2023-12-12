@@ -7,8 +7,8 @@ import { TokenNode } from '../parser/nodes'
 import Node from '../parser/nodes/nodes'
 import Schema from '../schema/schema'
 import MemberDef from './memberdef'
-import TypeDef from './typedef'
-import { doCommonTypeCheck } from './utils'
+import TypeDef from '../schema/typedef'
+import { doCommonTypeCheck } from './common-type'
 
 const NUMBER_TYPES = ['number', 'int', 'int32', 'int16', 'byte']
 
