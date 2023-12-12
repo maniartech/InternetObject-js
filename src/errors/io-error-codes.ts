@@ -43,6 +43,7 @@ enum ErrorCodes {
   invalidChoice = 'invalid-choice',
 
   // -- string, array
+  invalidLength = 'invalid-length',
   invalidMinLength = 'invalid-min-length',
   invalidMaxLength = 'invalid-max-length',
   invalidPattern = 'invalid-pattern',
