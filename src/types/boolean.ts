@@ -1,12 +1,12 @@
-import { Node } from '../parser/nodes'
-import MemberDef from './memberdef'
-import TypeDef from './typedef'
-import { doCommonTypeCheck } from './utils'
-import ErrorCodes from '../errors/io-error-codes'
-import ValidationError from '../errors/io-error'
-import Definitions from '../core/definitions'
-import { TokenNode } from '../parser/nodes'
-import Schema from '../schema/schema'
+import Definitions          from '../core/definitions'
+import ValidationError      from '../errors/io-error'
+import ErrorCodes           from '../errors/io-error-codes'
+import Node                 from '../parser/nodes/nodes'
+import TokenNode            from '../parser/nodes/tokens'
+import Schema               from '../schema/schema'
+import TypeDef              from '../schema/typedef'
+import doCommonTypeCheck    from './common-type'
+import MemberDef            from './memberdef'
 
 const schema = new Schema(
   "bool",
@@ -34,17 +34,6 @@ export default class BooleanDef implements TypeDef {
 
   parse(node: Node, memberDef: MemberDef, defs?: Definitions): any {
     return this.validate(node, memberDef, defs)
-  }
-
-  load(value: any, memberDef: MemberDef): string {
-    return this.validate(value, memberDef)
-  }
-
-  serialize(data: string, memberDef: MemberDef): string {
-    let value = this.validate(data, memberDef)
-
-    if (value === undefined) return ''
-    return value === true ? 'T' : 'F'
   }
 
   validate(data: any, memberDef: MemberDef, defs?: Definitions): any {
