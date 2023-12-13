@@ -1,18 +1,12 @@
-import ValidationError from '../errors/io-validation-error'
-import ErrorCodes from '../errors/io-error-codes'
-import Node from '../parser/nodes/nodes'
-import MemberDef from './memberdef';
-import TypeDef from '../schema/typedef'
-import { doCommonTypeCheck } from './common-type'
-
-import {
-  dateToDatetimeString,
-  dateToDateString,
-  dateToTimeString
-} from '../utils/datetime'
-import Definitions from '../core/definitions'
-import Schema from '../schema/schema'
-import { TokenNode } from '../parser/nodes'
+import Definitions        from '../core/definitions';
+import ErrorCodes         from '../errors/io-error-codes';
+import ValidationError    from '../errors/io-validation-error';
+import Node               from '../parser/nodes/nodes';
+import TokenNode          from '../parser/nodes/tokens';
+import Schema             from '../schema/schema';
+import TypeDef            from '../schema/typedef';
+import doCommonTypeCheck  from './common-type';
+import MemberDef          from './memberdef';
 
 const DATETIME_TYPES = ['datetime', 'date', 'time']
 
@@ -80,22 +74,6 @@ class DateTimeDef implements TypeDef {
     return value
   }
 
-  serialize = (data: any, memberDef: MemberDef): string => {
-    const validatedData = doCommonTypeCheck(memberDef, data)
-
-    if (validatedData === undefined) return ''
-    else if (validatedData === null) return 'N'
-
-    if (data instanceof Date) {
-      return _getSerializer(this._type)(data)
-    }
-
-    throw new ValidationError(
-      ErrorCodes.invalidDateTime,
-      `Expecting the value of type '${this._type}'`
-    )
-  }
-
   _validate(value:Date, memberDef: MemberDef) {
     if (memberDef.min) {
       const min = memberDef.min
@@ -117,27 +95,6 @@ class DateTimeDef implements TypeDef {
       }
     }
   }
-}
-
-function _serializeDateTime(date: Date): string {
-  return dateToDatetimeString(date, true, true) || ''
-}
-
-function _serializeDate(date: Date): string {
-  return dateToDateString(date, true) || ''
-}
-
-function _serializeTime(date: Date): string {
-  return dateToTimeString(date, true) || ''
-}
-
-function _getSerializer(type: string) {
-  if (type === 'datetime') {
-    return _serializeDateTime
-  } else if (type === 'date') {
-    return _serializeDate
-  }
-  return _serializeTime
 }
 
 export default DateTimeDef
