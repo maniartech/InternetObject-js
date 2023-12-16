@@ -4,7 +4,9 @@ import Tokenizer from "../src/tokenizer";
 describe('Trial', () => {
   it('should try wip tasks', () => {
     const input = String.raw`
-    1abc
+    dt'2021-01-01T00:00:00.000Z',
+    d'2021-01-01',
+    t'02:30',
     `
 
     const tokenizer = new Tokenizer(input);
