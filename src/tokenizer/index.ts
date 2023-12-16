@@ -2,6 +2,7 @@ import assertNever from '../errors/asserts/asserts';
 import ErrorCodes from '../errors/io-error-codes';
 import SyntaxError from '../errors/io-syntax-error';
 import { assertInvalidReach } from '../utils/asserts';
+import * as dtParser from '../utils/datetime';
 import * as is from './is';
 import Literals from './literals';
 import Position from './position';
@@ -19,6 +20,7 @@ const reOctal = /^[0-7]+$/;
 const reBinary = /^[01]+$/;
 
 const nonDecimalPrefixes = ["x", "X", "c", "C", "b", "B"];
+const reAnotatedStrStart = /^(?<name>[a-zA-Z]{1,4})(?<quote>['"])/;
 
 /**
  * Tokenizer for IO format.
@@ -182,12 +184,28 @@ class Tokenizer {
     return { pos: this.pos, row: this.row, col: this.col };
   }
 
-  private parseAnotatedString(char: string): Token {
+
+  private checkIfAnotatedString(): { name: string, quote: string } | null {
+    // Annotated strings starts with a letter and can have a maximum of 4 letters
+    // followed by a quotation mark (single or double).
+    const match = reAnotatedStrStart.exec(this.input.substring(this.pos, this.pos + 5));
+    if (!match) {
+      return null;
+    }
+
+    return match.groups as any;
+  }
+
+  private parseAnotatedString(annotation: string): Token {
     const start    = this.pos;
     const startRow = this.row;
     const startCol = this.col;
 
-    this.advance(); // Move past the 'r' character
+    // Skip over the anotation characters
+    for (let i = 0; i < annotation.length; i++) {
+      this.advance();
+    }
+
 
     if (this.reachedEnd) {
       assertNever(this.input[this.pos]);
@@ -219,7 +237,7 @@ class Tokenizer {
     this.advance(); // Move past the closing quotation mark
 
     const tokenText = this.input.substring(start, this.pos);
-    const value = tokenText.substring(2, tokenText.length - 1); // Extract the inner value
+    const value = tokenText.substring(annotation.length + 1, tokenText.length - 1); // Extract the inner value
 
     // Prepare the token
     const token = new Token();
@@ -249,21 +267,36 @@ class Tokenizer {
     return token;
   }
 
-  private parseDateTime(): Token {
-    const token = this.parseAnotatedString("d");
+  private parseDateTime(annotation:string): Token {
+    const token = this.parseAnotatedString(annotation);
 
-    // Try to parse RFC 3339 date time
-    const value = Date.parse(token.value);
-    const dt = new Date(value);
-    if (isNaN(dt.getTime())) {
-      throw new SyntaxError(ErrorCodes.invalidDateTime,token.value,
-        this.currentPosition);
+    let fn = (value: string): Date | null => null
+
+
+    switch (annotation) {
+      case "dt":
+        fn = dtParser.parseDateTime;
+        token.subType = TokenType.DATE_TIME
+        break;
+      case "d":
+        fn = dtParser.parseDate;
+        token.subType = TokenType.DATE
+        break;
+      case "t":
+        fn = dtParser.parseTime;
+        token.subType = TokenType.TIME
+        break;
+      default:
+      assertNever(annotation);
+    }
+
+    const dt = fn(token.value);
+    if (!dt) {
+      throw new SyntaxError(ErrorCodes.invalidDateTime, token.value, token);
     }
 
     token.value = dt;
     token.type = TokenType.DATE_TIME;
-    token.subType = "RFC3339";
-
     return token;
   }
 
@@ -556,31 +589,31 @@ class Tokenizer {
       }
 
       // Raw strings (e.g., r'foo' or r"foo")
-      else if (
-        char === Symbols.R &&
-        (this.input[this.pos + 1] === Symbols.DOUBLE_QUOTE ||
-          this.input[this.pos + 1] === Symbols.SINGLE_QUOTE)
-      ) {
-        tokens.push(this.parseRawString());
-      }
+      // else if (
+      //   char === Symbols.R &&
+      //   (this.input[this.pos + 1] === Symbols.DOUBLE_QUOTE ||
+      //     this.input[this.pos + 1] === Symbols.SINGLE_QUOTE)
+      // ) {
+      //   tokens.push(this.parseRawString());
+      // }
 
       // Datetime strings (e.g., d'2023-09-27')
-      else if (
-        char === Symbols.D &&
-        (this.input[this.pos + 1] === Symbols.DOUBLE_QUOTE ||
-          this.input[this.pos + 1] === Symbols.SINGLE_QUOTE)
-      ) {
-        tokens.push(this.parseDateTime());
-      }
+      // else if (
+      //   (char === Symbols.DT || char === Symbols.D || char === Symbols.T) &&
+      //   (this.input[this.pos + 1] === Symbols.DOUBLE_QUOTE ||
+      //     this.input[this.pos + 1] === Symbols.SINGLE_QUOTE)
+      // ) {
+      //   tokens.push(this.parseDateTime(char));
+      // }
 
       // Byte strings (e.g., b'foo' or b"foo")
-      else if (
-        char === Symbols.B &&
-        (this.input[this.pos + 1] === Symbols.DOUBLE_QUOTE ||
-          this.input[this.pos + 1] === Symbols.SINGLE_QUOTE)
-      ) {
-        tokens.push(this.parseByteString());
-      }
+      // else if (
+      //   char === Symbols.B &&
+      //   (this.input[this.pos + 1] === Symbols.DOUBLE_QUOTE ||
+      //     this.input[this.pos + 1] === Symbols.SINGLE_QUOTE)
+      // ) {
+      //   tokens.push(this.parseByteString());
+      // }
 
       // Special symbols (e.g., curly braces, brackets, etc.)
       else if (is.isSpecialSymbol(char)) {
@@ -657,7 +690,30 @@ class Tokenizer {
 
       // Literals or open strings
       else {
-        tokens.push(this.parseLiteralOrOpenString());
+
+        const anotation = this.checkIfAnotatedString();
+        if (anotation) {
+          switch (anotation.name) {
+            case "r":
+              tokens.push(this.parseRawString());
+              break;
+
+            case "b":
+              tokens.push(this.parseByteString());
+              break;
+
+            case "d":
+            case "dt":
+            case "t":
+              tokens.push(this.parseDateTime(anotation.name));
+              break;
+
+            default:
+              assertInvalidReach(`Invalid anotation '${anotation.name}'`);
+          }
+        } else {
+          tokens.push(this.parseLiteralOrOpenString());
+        }
       }
     }
 
