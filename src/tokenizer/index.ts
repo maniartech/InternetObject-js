@@ -276,7 +276,7 @@ class Tokenizer {
     switch (annotation) {
       case "dt":
         fn = dtParser.parseDateTime;
-        token.subType = TokenType.DATE_TIME
+        token.subType = TokenType.DATETIME
         break;
       case "d":
         fn = dtParser.parseDate;
@@ -296,7 +296,7 @@ class Tokenizer {
     }
 
     token.value = dt;
-    token.type = TokenType.DATE_TIME;
+    token.type = TokenType.DATETIME;
     return token;
   }
 
