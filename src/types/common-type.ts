@@ -65,7 +65,7 @@ function _invlalidChoice(memberDef: MemberDef, value: any, node?: Node): ErrorAr
   return [
     ErrorCodes.invalidChoice,
     `The value of "${memberDef.path}" must be one of the [${memberDef.choices.join(
-      ','
+      ', '
     )}]. Currently it is ${value}.`,
     node
   ]
