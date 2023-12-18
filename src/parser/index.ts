@@ -101,7 +101,6 @@ function parseDefs(doc:Document, cols:CollectionNode) {
       // throw new InternetObjectError(ErrorCodes.invalidDefinition, child.children?.[1], child.children?[1])
     }
 
-
     const memberNode  = (child.children[0] as MemberNode)
 
     // Must have a key
@@ -121,6 +120,12 @@ function parseDefs(doc:Document, cols:CollectionNode) {
     // If key starts with $, then it is a schema. Compille it
     if (key.startsWith('$')) {
       (doc.header as any).definitions.push(key, compileObject(key, (child.children[0] as any).value), true);
+      continue;
+    }
+
+    // If key starts with @, then it is a variable. Keep it as it is
+    if (key.startsWith('@')) {
+      (doc.header as any).definitions.push(key, memberNode.value, false, true);
       continue;
     }
 
