@@ -383,7 +383,7 @@ class ASTParser {
       case TokenType.NUMBER:
       case TokenType.BOOLEAN:
       case TokenType.NULL:
-      case TokenType.DATE_TIME:
+      case TokenType.DATETIME:
         return new nodes.TokenNode(token);
       case TokenType.BRACKET_OPEN:
         return this.parseArray();
