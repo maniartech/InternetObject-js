@@ -14,7 +14,7 @@ import doCommonTypeCheck      from './common-type'
 const schema = new Schema(
   "array",
   { type:     { type: "string", optional: false, null: false, choices: ["array"] } },
-  { default:  { type: "array",  optional: true,  null: false  } },
+  { default:  { type: "array",  optional: true,  null: false } },
   { len:      { type: "number", optional: true,  null: false, min: 0, default: -1 } },
   { minLen:   { type: "number", optional: true,  null: false, min: 0, default: -1 } },
   { maxLen:   { type: "number", optional: true,  null: false, min: 0, default: -1 } },
@@ -62,12 +62,8 @@ function _processNode(
   // Check if the value is a definition string starting with $
   // If yes, then get the value from the definitions
   if (node instanceof TokenNode && node.type === TokenType.STRING) {
-    const arr = defs?.getV(node.value) || []
-    arr.forEach((item: any) => {
-      const value = typeDef?.parse(item, arrayMemberDef, defs)
-      array.push(value)
-    })
-  } else if (value instanceof ArrayNode === false) {
+    value = defs?.getV(node.value)
+  } else if (!!value && value instanceof ArrayNode === false) {
     throw new Error('invalid-value')
   }
 
