@@ -2,6 +2,7 @@ import Schema from "../schema/schema";
 
 type DefinitionValue = {
   isSchema: boolean,
+  isVariable: boolean,
   value: any
 }
 
@@ -35,9 +36,9 @@ class Definitions {
    * @returns The value associated with the variable
    */
   public getV(key: any) {
-    if (typeof key === 'string' && key.startsWith('$') && key.length > 1) {
-      const def = this._definitions[key.substring(1)];
-      if (!def.isSchema) {
+    if (typeof key === 'string' && key.startsWith('@') && key.length > 1) {
+      const def = this._definitions[key];
+      if (def.isVariable) {
         return def.value;
       }
 
@@ -50,8 +51,8 @@ class Definitions {
    * @param key The key of the definition
    * @param value The value of the definition
    */
-  public push(key: string, value: any, isSchema: boolean = false) {
-    this._definitions[key] = { isSchema, value };
+  public push(key: string, value: any, isSchema: boolean = false, isVariable: boolean = false) {
+    this._definitions[key] = { isSchema, isVariable, value };
     if (key === "$schema") {
       this._defaultSchema = value;
     }
