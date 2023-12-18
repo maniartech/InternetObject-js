@@ -1,16 +1,11 @@
 import Definitions                  from '../core/definitions';
-import InternetObjectError          from '../errors/io-error';
-import ErrorCodes                   from '../errors/io-error-codes';
-import {
-       ObjectNode                 } from '../parser/nodes';
+import ObjectNode                   from '../parser/nodes/objects'
 import Node                         from '../parser/nodes/nodes';
 import processObject                from '../schema/object-processor';
 import Schema                       from '../schema/schema';
-import MemberDef                    from './memberdef';
 import TypeDef                      from '../schema/typedef';
-import TypedefRegistry              from '../schema/typedef-registry';
-import {
-       doCommonTypeCheck          } from './common-type';
+import doCommonTypeCheck            from './common-type';
+import MemberDef                    from './memberdef';
 
 const schema = new Schema(
   "object",
@@ -49,34 +44,6 @@ class ObjectDef implements TypeDef {
     return this._process(memberDef, data)
   }
 
-  /**
-   * Serializes the object into IO format.
-   */
-  public serialize = (data: any, memberDef: MemberDef, isRoot: boolean = false): string => {
-    if (memberDef.type !== 'object') {
-      throw new InternetObjectError(ErrorCodes.invalidObject)
-    }
-
-    const validatedData = doCommonTypeCheck(memberDef, data)
-    const serialized: string[] = []
-    const schema = memberDef.schema
-
-    schema.names.forEach((key: string, index: number) => {
-      const memberDef: MemberDef = schema.defs[key]
-      const typeDef = TypedefRegistry.get(memberDef.type)
-      const value = validatedData[key]
-      const serializedValue = typeDef.serialize(value, memberDef)
-      serialized.push(serializedValue)
-    })
-
-    if (isRoot) {
-      // join array and trim off last commas, from the end
-      return serialized.join(',').replace(/,+$/g, '')
-    }
-    // join array and trim off last commas, from the end
-    return `{${serialized.join(',').replace(/,+$/g, '')}}`
-  }
-
   // Process the parse and load requests
   private _process = (
     memberDef: MemberDef,
@@ -100,27 +67,7 @@ class ObjectDef implements TypeDef {
       return processObject(node, schema, defs)
     }
 
-    // Load the object
-
-    const object:Record<string, any> = {}
-    const names = schema.names
-
-    names.forEach((key: string) => {
-      const memberDef: MemberDef = schema.defs[key]
-
-      // When memberDef is not found, assert a failure.
-      // if (isUndefined(memberDef)) return
-      if (typeof memberDef === 'undefined') {
-        throw new InternetObjectError(ErrorCodes.invalidMemberDef)
-      }
-
-      const typeDef: TypeDef = TypedefRegistry.get(memberDef.type)
-
-      const dataItem = value[key]
-      object[key] = typeDef.load(dataItem, memberDef)
-    })
-
-    return object
+    // Object loading should be hadled here!
   }
 }
 
