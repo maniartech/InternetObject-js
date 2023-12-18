@@ -45,16 +45,18 @@ class Document {
     if (this.header.definitions?.length) {
       const header:any = {}
       const defs = this.header.definitions
+      let keysCount = 0
       for (let i=0; i<defs.length; i++) {
         const def = defs.at(i)
-        if (def.value.isSchema) {
+        if (def.value.isSchema || def.value.isVariable) {
           continue
         }
 
         header[def.key] = def.value.value
+        keysCount++
       }
 
-      if (Object.keys(header).length) {
+      if (keysCount) {
         return {
           header,
           data
