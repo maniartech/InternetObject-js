@@ -1,14 +1,13 @@
-import assertNever from '../errors/asserts/asserts';
-import ErrorCodes from '../errors/io-error-codes';
-import SyntaxError from '../errors/io-syntax-error';
-import { assertInvalidReach } from '../utils/asserts';
-import * as dtParser from '../utils/datetime';
-import * as is from './is';
-import Literals from './literals';
-import Position from './position';
-import Symbols from './symbols';
-import TokenType from './token-types';
-import Token from './tokens';
+import assertNever      from '../errors/asserts/asserts';
+import ErrorCodes       from '../errors/io-error-codes';
+import SyntaxError      from '../errors/io-syntax-error';
+import * as dtParser    from '../utils/datetime';
+import * as is          from './is';
+import Literals         from './literals';
+import Position         from './position';
+import Symbols          from './symbols';
+import TokenType        from './token-types';
+import Token            from './tokens';
 
 const regexHex4 = /^[0-9a-fA-F]{4}$/;
 const regexHex2 = /^[0-9a-fA-F]{2}$/;
@@ -185,7 +184,7 @@ class Tokenizer {
   }
 
 
-  private checkIfAnotatedString(): { name: string, quote: string } | null {
+  private checkIfAnotatedString(): Annotation | null {
     // Annotated strings starts with a letter and can have a maximum of 4 letters
     // followed by a quotation mark (single or double).
     const match = reAnotatedStrStart.exec(this.input.substring(this.pos, this.pos + 5));
@@ -196,13 +195,13 @@ class Tokenizer {
     return match.groups as any;
   }
 
-  private parseAnotatedString(annotation: string): Token {
+  private parseAnotatedString(annotation: Annotation): Token {
     const start    = this.pos;
     const startRow = this.row;
     const startCol = this.col;
 
-    // Skip over the anotation characters
-    for (let i = 0; i < annotation.length; i++) {
+    // Skip over the annotation characters
+    for (let i = 0; i < annotation.name.length; i++) {
       this.advance();
     }
 
@@ -237,7 +236,7 @@ class Tokenizer {
     this.advance(); // Move past the closing quotation mark
 
     const tokenText = this.input.substring(start, this.pos);
-    const value = tokenText.substring(annotation.length + 1, tokenText.length - 1); // Extract the inner value
+    const value = tokenText.substring(annotation.name.length + 1, tokenText.length - 1); // Extract the inner value
 
     // Prepare the token
     const token = new Token();
@@ -250,15 +249,15 @@ class Tokenizer {
     return token;
   }
 
-  private parseRawString(): Token {
-    const token = this.parseAnotatedString("r");
+  private parseRawString(annotation: Annotation): Token {
+    const token = this.parseAnotatedString(annotation);
     token.type = TokenType.STRING;
     token.subType = "RAW_STRING";
     return token;
   }
 
-  private parseByteString(): Token {
-    const token = this.parseAnotatedString("b");
+  private parseByteString(annotation: Annotation): Token {
+    const token = this.parseAnotatedString(annotation);
     token.type = TokenType.BINARY;
     token.subType = "BINARY_STRING";
 
@@ -267,13 +266,11 @@ class Tokenizer {
     return token;
   }
 
-  private parseDateTime(annotation:string): Token {
+  private parseDateTime(annotation:Annotation): Token {
     const token = this.parseAnotatedString(annotation);
-
     let fn = (value: string): Date | null => null
 
-
-    switch (annotation) {
+    switch (annotation.name) {
       case "dt":
         fn = dtParser.parseDateTime;
         token.subType = TokenType.DATETIME
@@ -368,7 +365,6 @@ class Tokenizer {
           break;
 
         default:
-          // assertInvalidReach(`Invalid number format '0${this.input[this.pos + 1]}'`);
           assertNever(this.input[this.pos + 1]);
       }
     } else {
@@ -569,54 +565,27 @@ class Tokenizer {
     const tokens: Token[] = [];
 
     while (this.pos < this.input.length) {
-      const char = this.input[this.pos];
+      const ch = this.input[this.pos];
 
       // Whitespaces
-      if (is.isWhitespace(char)) {
+      if (is.isWhitespace(ch)) {
         // Skip over the whitespace
         this.advance();
         continue;
       }
 
       // Single-line comments
-      else if (char === Symbols.HASH) {
+      else if (ch === Symbols.HASH) {
         this.parseSingleLineComment();
       }
 
       // Regular strings
-      else if (char === Symbols.DOUBLE_QUOTE || char === Symbols.SINGLE_QUOTE) {
-        tokens.push(this.parseRegularString(char));
+      else if (ch === Symbols.DOUBLE_QUOTE || ch === Symbols.SINGLE_QUOTE) {
+        tokens.push(this.parseRegularString(ch));
       }
 
-      // Raw strings (e.g., r'foo' or r"foo")
-      // else if (
-      //   char === Symbols.R &&
-      //   (this.input[this.pos + 1] === Symbols.DOUBLE_QUOTE ||
-      //     this.input[this.pos + 1] === Symbols.SINGLE_QUOTE)
-      // ) {
-      //   tokens.push(this.parseRawString());
-      // }
-
-      // Datetime strings (e.g., d'2023-09-27')
-      // else if (
-      //   (char === Symbols.DT || char === Symbols.D || char === Symbols.T) &&
-      //   (this.input[this.pos + 1] === Symbols.DOUBLE_QUOTE ||
-      //     this.input[this.pos + 1] === Symbols.SINGLE_QUOTE)
-      // ) {
-      //   tokens.push(this.parseDateTime(char));
-      // }
-
-      // Byte strings (e.g., b'foo' or b"foo")
-      // else if (
-      //   char === Symbols.B &&
-      //   (this.input[this.pos + 1] === Symbols.DOUBLE_QUOTE ||
-      //     this.input[this.pos + 1] === Symbols.SINGLE_QUOTE)
-      // ) {
-      //   tokens.push(this.parseByteString());
-      // }
-
       // Special symbols (e.g., curly braces, brackets, etc.)
-      else if (is.isSpecialSymbol(char)) {
+      else if (is.isSpecialSymbol(ch)) {
         const startRow = this.row;
         const startCol = this.col;
         tokens.push(
@@ -624,22 +593,18 @@ class Tokenizer {
             this.pos,
             startRow,
             startCol,
-            char,
-            char,
-            is.getSymbolTokenType(char)
+            ch,
+            ch,
+            is.getSymbolTokenType(ch)
           )
         );
         this.advance();
       }
 
       // Numbers
-      else if (
-        char === Symbols.PLUS ||
-        char === Symbols.MINUS ||
-        is.isDigit(char)
-      ) {
+      else if (ch === Symbols.PLUS || ch === Symbols.MINUS ||is.isDigit(ch)) {
         // Check if it is a SECTION_SEP ---
-        if (char === Symbols.MINUS) {
+        if (ch === Symbols.MINUS) {
           // If the next two chars are -- that means it is a
           // data seperator.
           if (this.input.substring(this.pos, this.pos + 3) === "---") {
@@ -691,25 +656,25 @@ class Tokenizer {
       // Literals or open strings
       else {
 
-        const anotation = this.checkIfAnotatedString();
-        if (anotation) {
-          switch (anotation.name) {
+        const annotation = this.checkIfAnotatedString();
+        if (annotation) {
+          switch (annotation.name) {
             case "r":
-              tokens.push(this.parseRawString());
+              tokens.push(this.parseRawString(annotation));
               break;
 
             case "b":
-              tokens.push(this.parseByteString());
+              tokens.push(this.parseByteString(annotation));
               break;
 
             case "d":
             case "dt":
             case "t":
-              tokens.push(this.parseDateTime(anotation.name));
+              tokens.push(this.parseDateTime(annotation));
               break;
 
             default:
-              assertInvalidReach(`Invalid anotation '${anotation.name}'`);
+              assertNever(annotation.name);
           }
         } else {
           tokens.push(this.parseLiteralOrOpenString());
@@ -719,6 +684,11 @@ class Tokenizer {
 
     return tokens;
   }
+}
+
+type Annotation = {
+  name: string;
+  quote: string;
 }
 
 export default Tokenizer;
