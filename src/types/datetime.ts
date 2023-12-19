@@ -21,7 +21,6 @@ const schema = new Schema(
   { null:     { type: "bool",     optional: true,  null: false, default: false } }
 )
 
-
 /**
  * Represents the various datetime related data types
  *
@@ -46,8 +45,7 @@ class DateTimeDef implements TypeDef {
 
     if (defs && typeof value === 'string') {
       if (value.startsWith('$')) {
-        const replaced = defs.getV(value)
-        value = replaced !== undefined ? replaced : value
+        value = defs.getV(value)
       }
     }
 

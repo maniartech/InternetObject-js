@@ -205,18 +205,12 @@ class Tokenizer {
       this.advance();
     }
 
-
     if (this.reachedEnd) {
       assertNever(this.input[this.pos]);
     }
 
-    const encloser = this.input[this.pos]; // This should be either ' or "
-    if (encloser !== '"' && encloser !== "'") {
-      assertNever(encloser);
-    }
-
     this.advance(); // Move past the opening quotation mark
-    while (!this.reachedEnd && this.input[this.pos] !== encloser) {
+    while (!this.reachedEnd && this.input[this.pos] !== annotation.quote) {
       this.advance();
     }
 

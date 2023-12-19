@@ -2,7 +2,6 @@ import Position from "../tokenizer/position"
 import Token from "../tokenizer/tokens"
 import InternetObjectError from "./io-error"
 
-
 /**
  * Represents the validation error in InternetObject. This error is thrown when a validation
  * issue is found while validating the internet-object data against the associated schema.
