@@ -2,6 +2,8 @@ import Definitions        from '../core/definitions';
 import InternetObject     from '../core/internet-object';
 import MemberNode         from '../parser/nodes/members';
 import ObjectNode         from '../parser/nodes/objects';
+import TokenNode          from '../parser/nodes/tokens';
+import TokenType          from '../tokenizer/token-types';
 import MemberDef          from '../types/memberdef';
 import TypedefRegistry    from './typedef-registry';
 import Schema             from './schema';
@@ -62,5 +64,16 @@ function processMember(member: MemberNode, memberDef: MemberDef, defs?: Definiti
     throw new Error(`Type ${memberDef.type} is not registered.`);
   }
 
-  return typeDef.parse(member?.value, memberDef, defs);
+  // Check if the values is present and it is a variable that starts
+  // with @. If so, then unwrap the variable and return the value.
+  let value = member?.value
+
+  if (value instanceof TokenNode && value.type === TokenType.STRING) {
+    const variable = value.value as string;
+    if (variable.startsWith('@')) {
+      value = defs?.getV(variable);
+    }
+  }
+
+  return typeDef.parse(value, memberDef, void 0);
 }
