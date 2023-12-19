@@ -1,6 +1,5 @@
-import Position from "../tokenizer/position"
-import Token from "../tokenizer/tokens"
-import InternetObjectError from "./io-error"
+import Position             from "../tokenizer/position"
+import InternetObjectError  from "./io-error"
 
 /**
  * Represents the validation error in InternetObject. This error is thrown when a validation
