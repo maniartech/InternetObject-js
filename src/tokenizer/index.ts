@@ -192,7 +192,7 @@ class Tokenizer {
       return null;
     }
 
-    return match.groups as any;
+    return match.groups as Annotation;
   }
 
   private parseAnotatedString(annotation: Annotation): Token {
@@ -208,20 +208,11 @@ class Tokenizer {
 
     if (this.reachedEnd) {
       assertNever(this.input[this.pos]);
-      // TODO: Clean up this error message after testing.
-      // throw new SyntaxError(
-      //   ErrorCodes.stringNotClosed,
-      //   void 0, this.currentPosition, true);
     }
 
     const encloser = this.input[this.pos]; // This should be either ' or "
     if (encloser !== '"' && encloser !== "'") {
       assertNever(encloser);
-
-      // TODO: Clean up this error message after testing.
-      // throw new Error(
-      //   `Expected a quotation mark after '${char}' at row ${startRow} and column ${startCol}, but found '${encloser}' instead.`
-      // );
     }
 
     this.advance(); // Move past the opening quotation mark
