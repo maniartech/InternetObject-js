@@ -1,9 +1,10 @@
 import SyntaxError                    from '../errors/io-syntax-error';
 import ErrorCodes                     from '../errors/io-error-codes';
 import ASTParser                      from '../parser/ast-parser';
-import {
-       ArrayNode, MemberNode,
-       ObjectNode, TokenNode        } from '../parser/nodes';
+import ArrayNode                      from '../parser/nodes/array';
+import MemberNode                     from '../parser/nodes/members';
+import ObjectNode                     from '../parser/nodes/objects';
+import TokenNode                      from '../parser/nodes/tokens';
 import Tokenizer                      from '../tokenizer';
 import TokenType                      from '../tokenizer/token-types';
 import registerTypes                  from '../types';

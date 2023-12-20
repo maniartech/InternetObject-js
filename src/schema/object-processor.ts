@@ -66,14 +66,14 @@ function processMember(member: MemberNode, memberDef: MemberDef, defs?: Definiti
 
   // Check if the values is present and it is a variable that starts
   // with @. If so, then unwrap the variable and return the value.
-  let value = member?.value
+  let valueNode = member?.value
 
-  if (value instanceof TokenNode && value.type === TokenType.STRING) {
-    const variable = value.value as string;
-    if (variable.startsWith('@')) {
-      value = defs?.getV(variable);
-    }
-  }
+  // if (valueNode instanceof TokenNode && valueNode.type === TokenType.STRING) {
+  //   const variable = valueNode.value as string;
+  //   if (variable.startsWith('@')) {
+  //     valueNode = defs?.getV(variable);
+  //   }
+  // }
 
-  return typeDef.parse(value, memberDef, void 0);
+  return typeDef.parse(valueNode, memberDef, defs);
 }
