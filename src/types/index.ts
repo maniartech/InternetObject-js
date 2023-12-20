@@ -33,15 +33,8 @@ export default function registerTypes() {
   TypedefRegistry.register('date', new DateTimeDef('date'))
   TypedefRegistry.register('time', new DateTimeDef('time'))
 
-  /* The line `// TypedefRegistry.register('array', new ArrayDef())` is commented
-  out, which means it is not being executed. It appears to be registering a type
-  called 'array' with the TypedefRegistry, using an instance of the ArrayDef
-  class. However, since it is commented out, this registration is not taking
-  place. */
   TypedefRegistry.register('array', new ArrayDef())
   TypedefRegistry.register('object', new ObjectDef())
-
-  // TODO: Include Date and DateTime Types
 
   registered = true
 }

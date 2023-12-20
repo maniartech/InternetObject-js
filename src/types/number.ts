@@ -1,14 +1,14 @@
-import Definitions from '../core/definitions'
-import ValidationError from '../errors/io-validation-error'
-import ErrorArgs from '../errors/error-args'
-import InternetObjectError from '../errors/io-error'
-import ErrorCodes from '../errors/io-error-codes'
-import { TokenNode } from '../parser/nodes'
-import Node from '../parser/nodes/nodes'
-import Schema from '../schema/schema'
-import MemberDef from './memberdef'
-import TypeDef from '../schema/typedef'
-import doCommonTypeCheck from './common-type'
+import Definitions        from '../core/definitions'
+import ValidationError    from '../errors/io-validation-error'
+import ErrorArgs          from '../errors/error-args'
+import ErrorCodes         from '../errors/io-error-codes'
+import Node               from '../parser/nodes/nodes'
+import TokenNode          from '../parser/nodes/tokens'
+import Schema             from '../schema/schema'
+import TokenType          from '../tokenizer/token-types'
+import MemberDef          from './memberdef'
+import TypeDef            from '../schema/typedef'
+import doCommonTypeCheck  from './common-type'
 
 const NUMBER_TYPES = ['number', 'int', 'int32', 'int16', 'byte']
 
@@ -45,24 +45,7 @@ class NumberDef implements TypeDef {
   get schema() { return schema }
 
   parse(node: Node, memberDef: MemberDef, defs?: Definitions): number {
-    return this.validate(node, memberDef, defs)
-  }
-
-  load(data: any, memberDef: MemberDef): number {
-    return this.validate(data, memberDef)
-  }
-
-  serialize = (data: any, memberDef: MemberDef): string => {
-    if (NUMBER_TYPES.indexOf(memberDef.type) === -1) {
-      throw new InternetObjectError(ErrorCodes.invalidType)
-    }
-    return this.validate(data, memberDef).toString()
-  }
-
-  validate(data: any, memberDef: MemberDef, defs?: Definitions): number {
-    const node = data instanceof TokenNode ? data : undefined
-    const value = node ? node.value : data
-    return _validate(this._validator, memberDef, value, node, defs)
+    return _validate(this._validator, node, memberDef, defs)
   }
 }
 
@@ -75,25 +58,17 @@ class NumberDef implements TypeDef {
 //  * - Value is in choices
 function _validate(
   validator: any,
-  memberDef: MemberDef,
-  value: any,
-  node?: Node,
-  defs?: Definitions
+  node: Node, memberDef: MemberDef, defs?: Definitions
 ) {
-  if (defs && typeof value === 'string') {
-    const valueFound = defs.getV(value)
-    value = valueFound !== undefined ? valueFound : value
-  }
+  const valueNode = defs?.getV(node) || node
+  const { value, changed } = doCommonTypeCheck(memberDef, valueNode, node, defs)
+  if (changed) return value
 
-  const validatedData = doCommonTypeCheck(memberDef, value, node)
-  if (validatedData !== value || validatedData === undefined) return validatedData
-
-  if (typeof value !== 'number') {
-    throw new ValidationError(ErrorCodes.notANumber, value, node)
-  } else if (isNaN(Number(value))) {
+  if (valueNode instanceof TokenNode === false && valueNode.type !== TokenType.NUMBER) {
     throw new ValidationError(
       ErrorCodes.notANumber,
-      `Invalid number encountered for ${memberDef.path}`
+      `Invalid number encountered for ${memberDef.path}`,
+      node
     )
   }
 
