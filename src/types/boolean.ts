@@ -5,6 +5,7 @@ import Node                 from '../parser/nodes/nodes'
 import TokenNode            from '../parser/nodes/tokens'
 import Schema               from '../schema/schema'
 import TypeDef              from '../schema/typedef'
+import TokenType            from '../tokenizer/token-types'
 import doCommonTypeCheck    from './common-type'
 import MemberDef            from './memberdef'
 
@@ -36,24 +37,15 @@ export default class BooleanDef implements TypeDef {
     return this.validate(node, memberDef, defs)
   }
 
-  validate(data: any, memberDef: MemberDef, defs?: Definitions): any {
-    const node = data instanceof TokenNode ? data : undefined
-    let value = node ? node.value : data
+  validate(node: Node, memberDef: MemberDef, defs?: Definitions): any {
+    const valueNode = defs?.getV(node) || node
+    const { value, changed } = doCommonTypeCheck(memberDef, valueNode, node, defs)
+    if (changed) return value
 
-    if (typeof value === 'string') {
-      const valueFound = defs?.getV(value)
-      value = valueFound !== undefined ? valueFound : value
+    if (valueNode instanceof TokenNode === false && valueNode.type !== TokenType.BOOLEAN) {
+      throw new ValidationError(ErrorCodes.notABool, `Expecting a boolean value for '${memberDef.path}'`, node as TokenNode)
     }
 
-    const validatedData = doCommonTypeCheck(memberDef, value, node)
-    if (validatedData !== value || validatedData === null || validatedData === undefined) {
-      return validatedData
-    }
-
-    if (typeof value !== 'boolean') {
-      throw new ValidationError(ErrorCodes.notABool, value, node)
-    }
-
-    return value
+    return valueNode.value
   }
 }
