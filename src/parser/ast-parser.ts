@@ -1,10 +1,17 @@
-import * as nodes   from "./nodes";
-import Token        from "../tokenizer/tokens";
-import TokenType    from "../tokenizer/token-types";
-import ErrorCodes   from "../errors/io-error-codes";
-import SyntaxError  from "../errors/io-syntax-error";
-import Symbols      from "../tokenizer/symbols";
-import assertNever from "../errors/asserts/asserts";
+import assertNever      from '../errors/asserts/asserts';
+import ErrorCodes       from '../errors/io-error-codes';
+import SyntaxError      from '../errors/io-syntax-error';
+import Symbols          from '../tokenizer/symbols';
+import TokenType        from '../tokenizer/token-types';
+import Token            from '../tokenizer/tokens';
+import ArrayNode        from './nodes/array';
+import CollectionNode   from './nodes/collections';
+import DocumentNode     from './nodes/document';
+import MemberNode       from './nodes/members';
+import Node             from './nodes/nodes';
+import ObjectNode       from './nodes/objects';
+import SectionNode      from './nodes/section';
+import TokenNode        from './nodes/tokens';
 
 class ASTParser {
 
@@ -21,12 +28,12 @@ class ASTParser {
     this.isCollection = false;
   }
 
-  public parse(): nodes.DocumentNode {
+  public parse(): DocumentNode {
     return this.processDocument();
   }
 
-  private processDocument(): nodes.DocumentNode {
-    const sections = new Array<nodes.SectionNode>();
+  private processDocument(): DocumentNode {
+    const sections = new Array<SectionNode>();
 
     let token: Token | null = this.peek();
     let first = true;
@@ -66,13 +73,13 @@ class ASTParser {
     // header
     if (sections.length > 1) {
       const header = sections.shift();
-      return new nodes.DocumentNode(header ?? null, sections);
+      return new DocumentNode(header ?? null, sections);
     }
 
-    return new nodes.DocumentNode(null, sections)
+    return new DocumentNode(null, sections)
   }
 
-  private processSection(first: boolean): nodes.SectionNode {
+  private processSection(first: boolean): SectionNode {
     // If the first token is a section separator, it means that
     // the section has started without a section name. A header
     // section does not have a name.
@@ -85,7 +92,7 @@ class ASTParser {
     }
 
     const section = this.parseSectionContent()
-    return new nodes.SectionNode(section, name, schema);
+    return new SectionNode(section, name, schema);
   }
 
   private parseSectionAndSchemaNames(): [string, string?] {
@@ -130,7 +137,7 @@ class ASTParser {
   }
 
   public parseSectionContent():
-    nodes.ObjectNode | nodes.CollectionNode | null {
+    ObjectNode | CollectionNode | null {
     const token = this.peek();
     if (!token) return null;
 
@@ -148,8 +155,8 @@ class ASTParser {
     return this.processObject()
   }
 
-  private processCollection(): nodes.CollectionNode {
-    const objects: nodes.Node[] = [];
+  private processCollection(): CollectionNode {
+    const objects: Node[] = [];
 
     while (this.match([TokenType.COLLECTION_START])) {
       // Consume the COLLECTION_START token
@@ -163,10 +170,10 @@ class ASTParser {
       // the next object.
     }
 
-    return new nodes.CollectionNode(objects);
+    return new CollectionNode(objects);
   }
 
-  private processObject(): nodes.ObjectNode {
+  private processObject(): ObjectNode {
     const obj = this.parseObject(true);
 
     // Even after parsing the object, if there is still a token
@@ -185,10 +192,10 @@ class ASTParser {
     // {}, 'b', 'c' should be unwrapped to [{}, b, c]
     // {{}} should be unwrapped to [{}]
     if (obj.children.length === 1) {
-      const firstMember = obj.children[0] as nodes.MemberNode;
+      const firstMember = obj.children[0] as MemberNode;
       if (!firstMember.key) {
-        if (firstMember.value instanceof nodes.ObjectNode) {
-          return firstMember.value as nodes.ObjectNode;
+        if (firstMember.value instanceof ObjectNode) {
+          return firstMember.value as ObjectNode;
         }
       }
     }
@@ -211,8 +218,8 @@ class ASTParser {
     );
   }
 
-  private parseObject(isOpenObject: boolean): nodes.ObjectNode {
-    const members: Array<nodes.MemberNode | null> = [];
+  private parseObject(isOpenObject: boolean): ObjectNode {
+    const members: Array<MemberNode | null> = [];
 
     if (!isOpenObject && !this.advanceIfMatch([TokenType.CURLY_OPEN])) {
       assertNever("The caller must ensure that this function is called " +
@@ -276,10 +283,10 @@ class ASTParser {
         lastToken === null ? void 0 : lastToken, lastToken === null);
     }
 
-    return new nodes.ObjectNode(members);
+    return new ObjectNode(members);
   }
 
-  private parseMember(): nodes.MemberNode {
+  private parseMember(): MemberNode {
     const leftToken = this.peek();
 
     if (!leftToken) {
@@ -301,7 +308,7 @@ class ASTParser {
 
         // Parse the value and return the key-value pair
         const value = this.parseValue();
-        return new nodes.MemberNode(value, leftToken as nodes.TokenNode);
+        return new MemberNode(value, leftToken as TokenNode);
       } else {
         throw new SyntaxError(ErrorCodes.invalidKey, leftToken.token, leftToken,
           false);
@@ -311,11 +318,11 @@ class ASTParser {
     // If the next token is not a colon, that means it is
     // a value without a key. In this case the key is
     // the index of the value
-    return new nodes.MemberNode(this.parseValue());
+    return new MemberNode(this.parseValue());
   }
 
-  private parseArray(): nodes.ArrayNode {
-    const arr: Array<nodes.Node | null> = [];
+  private parseArray(): ArrayNode  {
+    const arr: Array<Node | null> = [];
 
     // Assume that the current token is the opening bracket
     // Consume the opening bracket
@@ -341,7 +348,7 @@ class ASTParser {
 
       const member = this.parseMember();
       if (member.key) {
-        arr.push(new nodes.ObjectNode([member]));
+        arr.push(new ObjectNode([member]));
       } else {
         arr.push(member.value);
       }
@@ -368,10 +375,10 @@ class ASTParser {
       );
     }
 
-    return new nodes.ArrayNode(arr);
+    return new ArrayNode(arr);
   }
 
-  private parseValue(): nodes.Node {
+  private parseValue(): Node {
     const token = this.peek();
     if (!token) {
       throw new SyntaxError(ErrorCodes.valueRequired, "Value required",
@@ -384,7 +391,7 @@ class ASTParser {
       case TokenType.BOOLEAN:
       case TokenType.NULL:
       case TokenType.DATETIME:
-        return new nodes.TokenNode(token);
+        return new TokenNode(token);
       case TokenType.BRACKET_OPEN:
         return this.parseArray();
       case TokenType.CURLY_OPEN:

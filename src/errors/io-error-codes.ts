@@ -30,6 +30,9 @@ enum ErrorCodes {
   // invalidMemberDefCondition = 'invalid-memberdef-condition',
   invalidMemberDef = 'invalid-memberdef',
 
+  // Array
+  notAnArray = 'not-an-array',
+
   // String
   notAString = 'not-a-string',
   // invalidChar = 'invalid-char',
