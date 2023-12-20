@@ -6,6 +6,8 @@ import Schema                       from '../schema/schema';
 import TypeDef                      from '../schema/typedef';
 import doCommonTypeCheck            from './common-type';
 import MemberDef                    from './memberdef';
+import ValidationError from '../errors/io-validation-error';
+import ErrorCodes from '../errors/io-error-codes';
 
 const schema = new Schema(
   "object",
@@ -33,40 +35,24 @@ class ObjectDef implements TypeDef {
    * Parses the object in IO format into JavaScript object.
    */
   parse = (node: Node, memberDef: MemberDef, defs?: Definitions): any => {
-    const value = node instanceof ObjectNode ? node : undefined
-    return this._process(memberDef, value, node, defs)
+    return this._process(node, memberDef, defs)
   }
 
-  /**
-   * Loads the JavaScript object.
-   */
-  load = (data: any, memberDef: MemberDef): any => {
-    return this._process(memberDef, data)
-  }
 
   // Process the parse and load requests
   private _process = (
-    memberDef: MemberDef,
-    value: any,
-    node?: Node,
-    defs?: Definitions
+    node: Node, memberDef: MemberDef, defs?: Definitions
   ) => {
-    const validatedData = doCommonTypeCheck(memberDef, value, node)
-    if (validatedData !== value || validatedData === null || validatedData === undefined) {
-      return validatedData
-    }
+    const valueNode = defs?.getV(node) || node
+    const { value, changed } = doCommonTypeCheck(memberDef, valueNode, node, defs)
+    if (changed) return value
 
     const schema = memberDef.schema
-
-    // const fn = node instanceof ObjectNode ? 'parse' : 'load'
-
-    // When indexMode is on, members are read/loaded from the index.
-    // let indexMode: boolean = true
-
-    if (node instanceof ObjectNode) {
-      return processObject(node, schema, defs)
+    if (node instanceof ObjectNode === false) {
+      throw new ValidationError(ErrorCodes.invalidObject, `Expecting an object value for '${memberDef.path}'`, node as ObjectNode)
     }
 
+    return processObject(node, schema, defs)
     // Object loading should be hadled here!
   }
 }

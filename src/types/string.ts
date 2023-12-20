@@ -1,11 +1,11 @@
 import Definitions          from '../core/definitions'
 import ValidationError      from '../errors/io-validation-error'
-import InternetObjectError  from '../errors/io-error'
 import ErrorCodes           from '../errors/io-error-codes'
 import ErrorArgs            from '../errors/error-args'
 import Node                 from '../parser/nodes/nodes'
-import TypeDef              from '../schema/typedef'
 import TokenNode            from '../parser/nodes/tokens'
+import TypeDef              from '../schema/typedef'
+import TokenType            from '../tokenizer/token-types'
 import Schema               from '../schema/schema'
 import MemberDef            from './memberdef'
 import doCommonTypeCheck    from './common-type'
@@ -56,63 +56,18 @@ export default class StringDef implements TypeDef {
   /**
    * Parses the string in IO format into JavaScript strings.
    */
-  parse(node: Node, memberDef: MemberDef, defs?: Definitions): string {
-    return this.validate(node, memberDef, defs)
-  }
-
-  /**
-   * Loads the JavaScript string.
-   */
-  load(data: any, memberDef: MemberDef): string {
-    return this.validate(data, memberDef)
-  }
-
-  /**
-   * Serializes the string into IO format.
-   */
-  serialize(data: string, memberDef: MemberDef): string {
-    let value = this.validate(data, memberDef)
-
-    const regexSep = /[~,:\{\}\[\]\@]|(?:---)/g
-
-    // When a separator is found in the data,
-    // enclose the result string in a quoration
-    if (regexSep.exec(value) !== null) {
-      value = '"' + value + '"'
-    }
-
-    return value
-  }
-
-  validate(data: any, memberDef: MemberDef, defs?: Definitions): string {
-    const node = data instanceof TokenNode ? data : undefined
-    const value = node ? node.value : data
-
-    return _process(memberDef, value, node, defs)
+  parse(valueNode: Node, memberDef: MemberDef, defs?: Definitions): string {
+    return _process(valueNode, memberDef, defs)
   }
 }
 
-function _process(
-  memberDef: MemberDef,
-  value: string,
-  node?: Node,
-  defs?: Definitions
-): string {
-  // Replace defs
-  if (defs) {
-    const valueFound = defs.getV(value)
-    value = valueFound !== undefined ? valueFound.value : value
-  }
+function _process(node: Node, memberDef: MemberDef, defs?: Definitions): string {
+  const valueNode = defs?.getV(node) || node
+  const { value, changed } = doCommonTypeCheck(memberDef, valueNode, node, defs)
+  if (changed) return value
 
-  // Run common check
-  const validatedData = doCommonTypeCheck(memberDef, value, node)
-  if (validatedData !== value || validatedData === null || validatedData === undefined) {
-    return validatedData
-  }
-
-  // Validate
-  if (typeof value !== 'string') {
-    throw new InternetObjectError(ErrorCodes.notAString)
+  if (valueNode instanceof TokenNode === false && valueNode.type !== TokenType.STRING) {
+    throw new ValidationError(ErrorCodes.notAString, `Expecting a string value for '${memberDef.path}'`, node as TokenNode)
   }
 
   // TODO: Validate Data for subtypes
@@ -134,7 +89,7 @@ function _process(
   // Max length check
   if (minLength !== undefined && typeof minLength === 'number') {
     if (value.length > minLength) {
-      throw new InternetObjectError(
+      throw new ValidationError(
         ErrorCodes.invalidMinLength,
         `Invalid minLength for ${memberDef.path}.`
       )
@@ -176,13 +131,13 @@ function _validatePattern(memberDef: MemberDef, value: string, node?: Node) {
   // Validate email
   else if (type === 'email') {
     if (!emailExp.test(value)) {
-      throw new InternetObjectError(ErrorCodes.invalidEmail)
+      throw new ValidationError(ErrorCodes.invalidEmail)
     }
   }
   // Validate url
   else if (type === 'url') {
     if (!urlExp.test(value)) {
-      throw new InternetObjectError(ErrorCodes.invalidUrl)
+      throw new ValidationError(ErrorCodes.invalidUrl)
     }
   }
 }
