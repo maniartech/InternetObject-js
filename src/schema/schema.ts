@@ -23,6 +23,7 @@ export default class Schema {
     o.forEach((item) => {
       const key = Object.keys(item)[0];
       const value = item[key];
+      if (value.path === undefined) value.path = key;
       this.names.push(key);
       this.defs[key] = value;
     });
