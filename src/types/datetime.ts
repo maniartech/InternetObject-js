@@ -5,6 +5,7 @@ import Node               from '../parser/nodes/nodes';
 import TokenNode          from '../parser/nodes/tokens';
 import Schema             from '../schema/schema';
 import TypeDef            from '../schema/typedef';
+import TokenType          from '../tokenizer/token-types';
 import doCommonTypeCheck  from './common-type';
 import MemberDef          from './memberdef';
 
@@ -33,41 +34,20 @@ class DateTimeDef implements TypeDef {
   get type() { return this._type }
   get schema() { return schema }
 
-  parse(data: Node, memberDef: MemberDef, defs?: Definitions): Date {
-    const node:TokenNode | undefined = data instanceof TokenNode ? data : undefined
-    let value = node ? node.value : undefined
+  parse(node: Node, memberDef: MemberDef, defs?: Definitions): Date {
+    const valueNode = defs?.getV(node) || node
+    const { value, changed } = doCommonTypeCheck(memberDef, valueNode, node, defs)
+    if (changed) return value
 
-    const validatedData = doCommonTypeCheck(memberDef, value, node)
-
-    if (validatedData === undefined || validatedData === null) {
-      return validatedData
-    }
-
-    if (defs && typeof value === 'string') {
-      if (value.startsWith('$')) {
-        value = defs.getV(value)
-      }
+    if (
+      valueNode instanceof TokenNode === false &&
+      valueNode.type !== TokenType.DATETIME
+    ) {
+      throw new ValidationError(ErrorCodes.invalidDateTime, `Expecting a datetime value for '${memberDef.path}'`, node as TokenNode)
     }
 
     // Validate the value
     this._validate(value, memberDef)
-
-    return value
-  }
-
-  load(data: any, memberDef: MemberDef): any {
-    const value = doCommonTypeCheck(memberDef, data)
-
-    if (value === undefined || value === null) {
-      return value
-    }
-
-    if (value instanceof Date === false) {
-      throw new ValidationError(
-        ErrorCodes.invalidDateTime,
-        `Expecting the value of type '${this._type}'`
-      )
-    }
 
     return value
   }

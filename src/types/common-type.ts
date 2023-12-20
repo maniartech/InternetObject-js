@@ -1,9 +1,15 @@
+import Definitions                    from '../core/definitions'
 import ErrorCodes                     from '../errors/io-error-codes'
-import MemberDef                      from './memberdef'
 import ErrorArgs                      from '../errors/error-args'
 import Node                           from '../parser/nodes/nodes'
 import TokenNode                      from '../parser/nodes/tokens'
 import InternetObjectValidationError  from '../errors/io-validation-error'
+import MemberDef                      from './memberdef'
+
+type CommonTypeCheckResult = {
+  value: any,
+  changed: boolean
+}
 
 /**
  * Performs the common validations required before serialization and deserialization
@@ -13,31 +19,34 @@ import InternetObjectValidationError  from '../errors/io-validation-error'
  *
  * @internal
  */
-function doCommonTypeCheck(memberDef: MemberDef, value?: any, node?: Node, collectionIndex?: number): any {
+function doCommonTypeCheck(memberDef: MemberDef, value?: any, node?: Node, defs?: Definitions, collectionIndex?: number): CommonTypeCheckResult {
   const isUndefined = value === undefined
   const isNull = node instanceof TokenNode ? node.value === null : value === null
 
   // Check for undefined
   if (isUndefined) {
-    if (memberDef.default !== undefined) return _default(memberDef.default)
-    if (memberDef.optional) return undefined
+    if (memberDef.default !== undefined) return { value:_default(memberDef.default), changed: true }
+    if (memberDef.optional) return { value: undefined, changed: true }
     throw new InternetObjectValidationError(..._valueRequired(memberDef, node, collectionIndex))
   }
 
   // Check for null
   if (isNull) {
-    if (memberDef.null) return null
+    if (memberDef.null) return { value: null, changed: true }
     const msg = `Null is not allowed for ${memberDef.path}` + (collectionIndex !== undefined ? ` at index ${collectionIndex}` : '')
     throw new InternetObjectValidationError(ErrorCodes.nullNotAllowed, msg, node)
   }
 
+  value = (typeof value === 'object' && value.toValue) ? value.toValue(defs) : value
+
   // Validate choices
   if (memberDef.choices !== undefined && memberDef.choices.indexOf(value) === -1) {
+    debugger
     throw new InternetObjectValidationError(..._invlalidChoice(memberDef, value, node))
   }
 
   // If everything is okay, return same data
-  return value
+  return { value: value, changed: false }
 }
 
 function _default(value: any) {
