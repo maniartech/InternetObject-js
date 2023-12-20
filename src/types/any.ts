@@ -31,11 +31,10 @@ export default class AnyDef implements TypeDef {
    * Parses any value in IO format into JavaScript.
    */
   parse(node: Node, memberDef: MemberDef, defs?: Definitions, collectionIndex?: number): any {
-    const validatedData = doCommonTypeCheck(memberDef, node, node)
-    if (validatedData !== node || validatedData === null || validatedData === undefined) {
-      return validatedData
-    }
+    const valueNode = defs?.getV(node) || node
+    const { value, changed } = doCommonTypeCheck(memberDef, valueNode, node, defs)
+    if (changed) return value
 
-    return node.toValue(defs)
+    return value
   }
 }
