@@ -3,22 +3,20 @@ import Header                 from '../core/header';
 import Section                from '../core/section';
 import SectionCollection      from '../core/section-collection';
 import assertNever            from '../errors/asserts/asserts';
-import InternetObjectError from '../errors/io-error';
-import ErrorCodes from '../errors/io-error-codes';
-import {
-       compileObject        } from '../schema';
+import InternetObjectError    from '../errors/io-error';
+import ErrorCodes             from '../errors/io-error-codes';
+import { compileObject      } from '../schema';
 import processSchema          from '../schema/processor';
 import Tokenizer              from '../tokenizer';
 import TokenType              from '../tokenizer/token-types';
 import ASTParser              from './ast-parser';
-import {
-  CollectionNode,
-  DocumentNode,
-  MemberNode,
-  Node,
-  ObjectNode,
-  TokenNode} from './nodes';
+import CollectionNode         from './nodes/collections';
+import DocumentNode           from './nodes/document';
+import MemberNode             from './nodes/members';
+import ObjectNode             from './nodes/objects';
+import TokenNode              from './nodes/tokens';
 import ParserOptions          from './parser-options';
+import Node                   from './nodes/nodes';
 
 export default function parse(source: string, o: ParserOptions = {}): Document {
   const tokenizer = new Tokenizer(source);
