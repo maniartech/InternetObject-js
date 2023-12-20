@@ -1,4 +1,6 @@
-import Schema from "../schema/schema";
+import TokenNode  from "../parser/nodes/tokens";
+import TokenType  from "../tokenizer/token-types";
+import Schema     from "../schema/schema";
 
 type DefinitionValue = {
   isSchema: boolean,
@@ -36,6 +38,13 @@ class Definitions {
    * @returns The value associated with the variable
    */
   public getV(key: any) {
+    if (key instanceof TokenNode && key.type === TokenType.STRING && key.value.startsWith('@')) {
+      const def = this._definitions[key.value];
+      if (def.isVariable) {
+        return def.value;
+      }
+    }
+
     if (typeof key === 'string' && key.startsWith('@') && key.length > 1) {
       const def = this._definitions[key];
       if (def.isVariable) {
