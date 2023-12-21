@@ -131,7 +131,8 @@ function parseArrayDef(a:ArrayNode, path:string) {
         return {
           type: "array",
           "of": {
-            "type": child.value
+            "type": child.value,
+            path,
           },
         } as MemberDef;
       }
@@ -146,7 +147,8 @@ function parseArrayDef(a:ArrayNode, path:string) {
     if (child instanceof ObjectNode) {
       return {
         type: 'array',
-        of: parseObject(child, new Schema(path), path)
+        of: parseObject(child, new Schema(path), path),
+        path,
       } as MemberDef;
     }
 
@@ -162,6 +164,10 @@ function parseArrayDef(a:ArrayNode, path:string) {
   if (a.children.length === 0) {
     return {
       type: 'array',
+      of: {
+        type: 'any',
+        path,
+      },
     } as MemberDef;
   }
 }
@@ -177,6 +183,7 @@ function parseObjectDef(o: ObjectNode, path:string) {
     schema.open = true;
     return {
       type: 'object',
+      path,
       schema
 
     } as MemberDef;
@@ -226,7 +233,8 @@ function parseObjectDef(o: ObjectNode, path:string) {
   // custom schema.
   return {
     type: 'object',
-    schema: parseObject(o, new Schema(path), path)
+    schema: parseObject(o, new Schema(path), path),
+    path,
   } as MemberDef;
 }
 
