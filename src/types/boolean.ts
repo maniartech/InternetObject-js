@@ -42,8 +42,8 @@ export default class BooleanDef implements TypeDef {
     const { value, changed } = doCommonTypeCheck(memberDef, valueNode, node, defs)
     if (changed) return value
 
-    if (valueNode instanceof TokenNode === false && valueNode.type !== TokenType.BOOLEAN) {
-      throw new ValidationError(ErrorCodes.notABool, `Expecting a boolean value for '${memberDef.path}'`, node as TokenNode)
+    if (valueNode instanceof TokenNode === false || valueNode.type !== TokenType.BOOLEAN) {
+      throw new ValidationError(ErrorCodes.notABool, `Expecting a boolean value for '${memberDef.path}' but found ${valueNode.toValue()}.`, node)
     }
 
     return valueNode.value

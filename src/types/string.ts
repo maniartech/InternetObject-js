@@ -66,8 +66,10 @@ function _process(node: Node, memberDef: MemberDef, defs?: Definitions): string 
   const { value, changed } = doCommonTypeCheck(memberDef, valueNode, node, defs)
   if (changed) return value
 
-  if (valueNode instanceof TokenNode === false && valueNode.type !== TokenType.STRING) {
-    throw new ValidationError(ErrorCodes.notAString, `Expecting a string value for '${memberDef.path}'`, node as TokenNode)
+  if (valueNode instanceof TokenNode === false || valueNode.type !== TokenType.STRING) {
+    throw new ValidationError(ErrorCodes.notAString,
+      `Expecting a string value for '${memberDef.path}' but found ${valueNode.toValue()}.`,
+      node)
   }
 
   // TODO: Validate Data for subtypes
