@@ -41,7 +41,6 @@ function doCommonTypeCheck(memberDef: MemberDef, value?: any, node?: Node, defs?
 
   // Validate choices
   if (memberDef.choices !== undefined && memberDef.choices.indexOf(value) === -1) {
-    debugger
     throw new InternetObjectValidationError(..._invlalidChoice(memberDef, value, node))
   }
 

@@ -2,8 +2,6 @@ import Definitions        from '../core/definitions';
 import InternetObject     from '../core/internet-object';
 import MemberNode         from '../parser/nodes/members';
 import ObjectNode         from '../parser/nodes/objects';
-import TokenNode          from '../parser/nodes/tokens';
-import TokenType          from '../tokenizer/token-types';
 import MemberDef          from '../types/memberdef';
 import TypedefRegistry    from './typedef-registry';
 import Schema             from './schema';
