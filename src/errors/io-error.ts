@@ -24,7 +24,12 @@ class InternetObjectError extends Error {
   /**
    * A position object, for tracking line and columns.
    */
-  public position?: Position
+  #position?: Position
+  get position() { return this.#position }
+  set position(value: Position | undefined) {
+    this.#position = value
+    this.updateMessage()
+  }
 
   /**
    * Indicates whether the error is caused by EOF.
