@@ -11,7 +11,7 @@ describe('Schema Parser', () => {
       }
     ]
     `
-    const schema = compileSchema(input);
+    const schema = compileSchema("tesT", input);
     console.log(schema);
   });
 });
