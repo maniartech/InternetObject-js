@@ -47,13 +47,29 @@ class ObjectDef implements TypeDef {
     const { value, changed } = doCommonTypeCheck(memberDef, valueNode, node, defs)
     if (changed) return value
 
+    console.log('Processing object', memberDef.path, valueNode)
+
     const schema = memberDef.schema
-    if (node instanceof ObjectNode === false) {
-      throw new ValidationError(ErrorCodes.invalidObject, `Expecting an object value for '${memberDef.path}'`, node as ObjectNode)
+    if (valueNode instanceof ObjectNode === false) {
+      throw new ValidationError(ErrorCodes.invalidObject, `Expecting an object value for '${memberDef.path}'`, node)
     }
 
-    return processObject(node, schema, defs)
-    // Object loading should be hadled here!
+    if (valueNode === node) {
+      return processObject(valueNode as ObjectNode, schema, defs)
+    }
+
+    // valueNode fetched from defs. Hence, in case of an error, replace the
+    // error position with the original node.
+    try {
+      return processObject(valueNode as ObjectNode, schema, defs)
+    } catch (err) {
+      if (err instanceof ValidationError) {
+        err.position = node
+      }
+      throw err
+    }
+
+    return processObject(valueNode as ObjectNode, schema, defs)
   }
 }
 

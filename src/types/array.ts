@@ -44,6 +44,9 @@ function _processNode(
   const { value, changed } = doCommonTypeCheck(memberDef, valueNode, node, defs)
   if (changed) return value
 
+  if (valueNode instanceof ArrayNode === false) {
+    throw new ValidationError(ErrorCodes.notAnArray, `Expecting an array value for '${memberDef.path}'`, node)
+  }
 
   // Find the right typeDef
   let typeDef: TypeDef | undefined
@@ -60,15 +63,23 @@ function _processNode(
     typeDef = TypedefRegistry.get('any')
   }
 
-
-  if (valueNode instanceof ArrayNode === false) {
-    throw new ValidationError(ErrorCodes.notAnArray, `Expecting an array value for '${memberDef.path}'`, node)
-  }
-
   const array: any = []
   valueNode.children.forEach((item: any) => {
-    const value = typeDef?.parse(item, arrayMemberDef, defs)
-    array.push(value)
+    // If it is a definition
+    if (valueNode !== node) {
+      try {
+        array.push(typeDef?.parse(item, arrayMemberDef, defs))
+      } catch (err) {
+        // Before rethrowing the error, change the position of the error to
+        // the original node.
+        if (err instanceof ValidationError) {
+          err.position = node
+        }
+        throw err
+      }
+    } else {
+      array.push(typeDef?.parse(item, arrayMemberDef, defs))
+    }
   })
 
   return array
