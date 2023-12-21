@@ -30,6 +30,9 @@ enum ErrorCodes {
   // invalidMemberDefCondition = 'invalid-memberdef-condition',
   invalidMemberDef = 'invalid-memberdef',
 
+  // Variables
+  variableNotDefined = 'variable-not-defined',
+
   // Array
   notAnArray = 'not-an-array',
 
