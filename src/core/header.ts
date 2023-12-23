@@ -21,6 +21,16 @@ class Header {
     return this._definitions;
   }
 
+  merge(other: Header, override: boolean = false) {
+    if (override && other.schema) {
+      this._schema = other.schema;
+    }
+
+    if (other.definitions) {
+      this._definitions.merge(other.definitions, override);
+    }
+  }
+
 }
 
 
