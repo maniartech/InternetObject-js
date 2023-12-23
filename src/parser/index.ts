@@ -1,3 +1,4 @@
+import Definitions            from '../core/definitions';
 import Document               from '../core/document';
 import Header                 from '../core/header';
 import Section                from '../core/section';
@@ -5,7 +6,7 @@ import SectionCollection      from '../core/section-collection';
 import assertNever            from '../errors/asserts/asserts';
 import InternetObjectError    from '../errors/io-error';
 import ErrorCodes             from '../errors/io-error-codes';
-import { compileObject      } from '../schema';
+import compileObject          from '../schema/compile-object';
 import processSchema          from '../schema/processor';
 import Tokenizer              from '../tokenizer';
 import TokenType              from '../tokenizer/token-types';
@@ -18,17 +19,27 @@ import TokenNode              from './nodes/tokens';
 import ParserOptions          from './parser-options';
 import Node                   from './nodes/nodes';
 
-export default function parse(source: string, o: ParserOptions = {}): Document {
+
+export default function parse(source: string, externalDefs: Definitions | null,  o: ParserOptions = {}): Document {
+  // Tokenize the source
   const tokenizer = new Tokenizer(source);
   const tokens    = tokenizer.tokenize();
-  const parser    = new ASTParser(tokens);
+
+  // If the source is empty, then return empty document
   const doc       = new Document(new Header(), new SectionCollection())
+  if (tokens.length === 0) { return doc; }
+
+  // Parse the tokens into AST
+  const parser    = new ASTParser(tokens);
   const docNode   = parser.parse();
 
-  // documentNode.header
+  // If the docNode contains header, then parse it
   if (docNode.header) {
     if (docNode.header?.child) {
       // If ObjectNode, it is a default schema
+      //
+      // name, age, address  # <-- This is a schema
+      // ---
       if (docNode.header.child instanceof ObjectNode) {
         const schema = compileObject("schema", docNode.header.child)
         doc.header.schema = schema
