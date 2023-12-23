@@ -74,6 +74,21 @@ class Definitions {
       this._defaultSchema = value;
     }
   }
+
+  /**
+   * Merges the definitions with the other definitions.
+   * @param other     The other definitions to merge with
+   * @param override  If true, the other definitions will override the current
+   *                  definitions
+   */
+  public merge(other: Definitions, override: boolean = false) {
+    for (let i=0; i<other.length; i++) {
+      const { key, value } = other.at(i);
+      if (override || !this._definitions[key]) {
+        this.push(key, value.value, value.isSchema, value.isVariable);
+      }
+    }
+  }
 }
 
 export default Definitions;
