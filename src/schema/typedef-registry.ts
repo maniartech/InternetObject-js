@@ -2,8 +2,8 @@ import TypeDef from "./typedef";
 import InternetObjectError from "../errors/io-error";
 import ErrorCodes from "../errors/io-error-codes";
 
-const defsList:any[] = []
-const defs:any = {}
+const typeDefList:any[] = []
+const typeDefs:any = {}
 
 export default class TypedefRegistry {
 
@@ -13,9 +13,9 @@ export default class TypedefRegistry {
    * @param typeDef The associated TypeDef ojbect
    */
   public static register(type:string, typeDef:TypeDef) {
-    if (defs[type] === undefined) {
-      defs[type] = typeDef
-      defsList.push(type)
+    if (typeDefs[type] === undefined) {
+      typeDefs[type] = typeDef
+      typeDefList.push(type)
     }
   }
 
@@ -24,10 +24,10 @@ export default class TypedefRegistry {
    * @param type The type name
    */
   public static unregister(type:string) {
-    if (defs[type] !== undefined) {
-      delete defs[type]
-      const index = defsList.indexOf(type)
-      defsList.splice(index, 1)
+    if (typeDefs[type] !== undefined) {
+      delete typeDefs[type]
+      const index = typeDefList.indexOf(type)
+      typeDefList.splice(index, 1)
     }
   }
 
@@ -35,7 +35,7 @@ export default class TypedefRegistry {
    * Gets the array of registered type names.
    */
   public static get types():string[] {
-    return [...defsList]
+    return [...typeDefList]
   }
 
   /**
@@ -44,7 +44,7 @@ export default class TypedefRegistry {
    * @param type The registered type
    */
   public static get(type:string): TypeDef {
-    const typeDef = defs[type]
+    const typeDef = typeDefs[type]
     if (typeDef === undefined) {
       throw new InternetObjectError(ErrorCodes.invalidType, type)
     }
@@ -52,7 +52,9 @@ export default class TypedefRegistry {
   }
 
   public static isRegisteredType(typeName:string): boolean {
-    return typeName in defs
+    if (typeName in typeDefs === false) {
+      debugger
+    }
+    return typeName in typeDefs
   }
-
 }
