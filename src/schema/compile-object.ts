@@ -5,10 +5,13 @@ import MemberNode                     from '../parser/nodes/members';
 import ObjectNode                     from '../parser/nodes/objects';
 import TokenNode                      from '../parser/nodes/tokens';
 import TokenType                      from '../tokenizer/token-types';
+import registerTypes                  from '../types';
 import MemberDef                      from '../types/memberdef';
 import TypedefRegistry                from './typedef-registry';
 import processSchema                  from './processor';
 import Schema                         from './schema';
+
+registerTypes();
 
 export default function compileObject(name:string, o: ObjectNode): Schema {
   return parseObject(o, new Schema(name), "");
