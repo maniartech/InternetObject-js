@@ -42,7 +42,7 @@ export default function parse(source: string, externalDefs: Definitions | null, 
       // ---
       if (docNode.header.child instanceof ObjectNode) {
         const schema = compileObject("schema", docNode.header.child)
-        doc.header.schema = schema
+        doc.header.definitions?.push("$shema", schema, true)
       }
 
       // If CollectionNode, it is a definitions
@@ -52,6 +52,10 @@ export default function parse(source: string, externalDefs: Definitions | null, 
 
       // Unepxected node
       else { assertNever(docNode.header.child) }
+
+      if (externalDefs) {
+        doc.header.definitions?.merge(externalDefs, false);
+      }
     }
 
     if (doc.header.schema) {
