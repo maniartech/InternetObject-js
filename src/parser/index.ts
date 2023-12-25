@@ -42,7 +42,7 @@ export default function parse(source: string, externalDefs: Definitions | null, 
       // ---
       if (docNode.header.child instanceof ObjectNode) {
         const schema = compileObject("schema", docNode.header.child)
-        doc.header.definitions?.push("$shema", schema, true)
+        doc.header.definitions?.push("$schema", schema, true)
       }
 
       // If CollectionNode, it is a definitions
