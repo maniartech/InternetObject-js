@@ -1,13 +1,13 @@
-import Definitions                  from '../core/definitions';
-import ObjectNode                   from '../parser/nodes/objects'
-import Node                         from '../parser/nodes/nodes';
-import processObject                from '../schema/object-processor';
-import Schema                       from '../schema/schema';
-import TypeDef                      from '../schema/typedef';
-import doCommonTypeCheck            from './common-type';
-import MemberDef                    from './memberdef';
-import ValidationError from '../errors/io-validation-error';
-import ErrorCodes from '../errors/io-error-codes';
+import Definitions          from '../core/definitions';
+import ValidationError      from '../errors/io-validation-error';
+import ErrorCodes           from '../errors/io-error-codes';
+import ObjectNode           from '../parser/nodes/objects'
+import Node                 from '../parser/nodes/nodes';
+import processObject        from '../schema/object-processor';
+import Schema               from '../schema/schema';
+import TypeDef              from '../schema/typedef';
+import doCommonTypeCheck    from './common-type';
+import MemberDef            from './memberdef';
 
 const schema = new Schema(
   "object",
@@ -46,8 +46,6 @@ class ObjectDef implements TypeDef {
     const valueNode = defs?.getV(node) || node
     const { value, changed } = doCommonTypeCheck(memberDef, valueNode, node, defs)
     if (changed) return value
-
-    console.log('Processing object', memberDef.path, valueNode)
 
     const schema = memberDef.schema
     if (valueNode instanceof ObjectNode === false) {
