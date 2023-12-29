@@ -47,6 +47,18 @@ class Token implements Position {
     return t;
   }
 
+  clone(): Token {
+    const t = new Token();
+    t.pos = this.pos;
+    t.row = this.row;
+    t.col = this.col;
+    t.token = this.token;
+    t.value = this.value;
+    t.type = this.type;
+    t.subType = this.subType;
+    return t;
+  }
+
   /**
    * Returns the ending position (row, col, pos) of the token.
    * Useful for debugging and generating error messages.
