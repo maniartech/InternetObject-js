@@ -1,14 +1,15 @@
 import Definitions                    from '../core/definitions'
 import ErrorCodes                     from '../errors/io-error-codes'
+import InternetObjectValidationError  from '../errors/io-validation-error'
 import ErrorArgs                      from '../errors/error-args'
 import Node                           from '../parser/nodes/nodes'
 import TokenNode                      from '../parser/nodes/tokens'
-import InternetObjectValidationError  from '../errors/io-validation-error'
+import TokenType                      from '../tokenizer/token-types'
 import MemberDef                      from './memberdef'
 
 type CommonTypeCheckResult = {
-  value: any,
-  changed: boolean
+  value:    any,
+  changed:  boolean
 }
 
 /**
@@ -19,8 +20,8 @@ type CommonTypeCheckResult = {
  *
  * @internal
  */
-function doCommonTypeCheck(memberDef: MemberDef, value?: any, node?: Node, defs?: Definitions, collectionIndex?: number): CommonTypeCheckResult {
-  const isUndefined = value === undefined
+function doCommonTypeCheck(memberDef: MemberDef, value: any, node?: Node, defs?: Definitions, collectionIndex?: number): CommonTypeCheckResult {
+  const isUndefined = value === undefined || value instanceof TokenNode &&  value.type === TokenType.UNDEFINED
   const isNull = node instanceof TokenNode ? node.value === null : value === null
 
   // Check for undefined
