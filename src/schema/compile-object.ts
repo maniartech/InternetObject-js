@@ -1,3 +1,4 @@
+import assertNever                    from '../errors/asserts/asserts';
 import SyntaxError                    from '../errors/io-syntax-error';
 import ErrorCodes                     from '../errors/io-error-codes';
 import ArrayNode                      from '../parser/nodes/array';
@@ -27,11 +28,19 @@ function parseObject(o: ObjectNode, schema:Schema, path:string): Schema {
   // for (const child of o.children) {
   for(let index=0; index<o.children.length; index++) {
     const child = o.children[index];
+
     if (child === null) {
-      throw new SyntaxError(ErrorCodes.invalidSchema);
+      assertNever("Child value must not be null in schema definition.")
     }
 
     const memberNode = child as MemberNode;
+
+    console.log("> memberNode", memberNode);
+    if (memberNode.value instanceof TokenNode && memberNode.value.type === TokenType.UNDEFINED) {
+      throw new SyntaxError(ErrorCodes.emptyMemberDef, "The next member definition is empty.", memberNode.value);
+    }
+
+
     // If key and value both presents in the member node, then fetch
     // the key and typedef from key and value respectively. Generally
     // the value is always present, but in case of member node with
