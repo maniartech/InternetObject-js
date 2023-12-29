@@ -219,7 +219,7 @@ class ASTParser {
   }
 
   private parseObject(isOpenObject: boolean): ObjectNode {
-    const members: Array<MemberNode | null> = [];
+    const members: Array<MemberNode> = [];
 
     if (!isOpenObject && !this.advanceIfMatch([TokenType.CURLY_OPEN])) {
       assertNever("The caller must ensure that this function is called " +
@@ -238,12 +238,12 @@ class ASTParser {
         // it means that the no value is provided.
         // Consume the comma and continue.
         if (this.matchNext([TokenType.COMMA, TokenType.CURLY_CLOSE, TokenType.COLLECTION_START, TokenType.SECTION_SEP])) {
-          members.push(null);
+          this.pushUndefinedMember(members, nextToken);
         }
 
         // If the next one is the end of file add undfined
         else if (this.current + 1 === this.tokens.length) {
-          members.push(null)
+          this.pushUndefinedMember(members, nextToken);
         }
 
         this.advance();
@@ -403,6 +403,15 @@ class ASTParser {
           token, token === null
         );
     }
+  }
+
+  private pushUndefinedMember(members: MemberNode[], curerntCommaToken:Token) {
+    const nextToken = this.peek();
+    const valueNode = curerntCommaToken.clone();
+    valueNode.type = TokenType.UNDEFINED;
+    const member = new MemberNode(new TokenNode(valueNode));
+
+    members.push(member);
   }
 
   /**
