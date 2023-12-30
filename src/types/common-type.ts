@@ -1,5 +1,4 @@
 import Definitions                    from '../core/definitions'
-import assertNever                    from '../errors/asserts/asserts'
 import ErrorCodes                     from '../errors/io-error-codes'
 import InternetObjectValidationError  from '../errors/io-validation-error'
 import ErrorArgs                      from '../errors/error-args'

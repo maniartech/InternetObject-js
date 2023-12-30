@@ -406,9 +406,9 @@ class ASTParser {
   }
 
   private pushUndefinedMember(members: MemberNode[], curerntCommaToken:Token) {
-    const nextToken = this.peek();
     const valueNode = curerntCommaToken.clone();
     valueNode.type = TokenType.UNDEFINED;
+    valueNode.value = void 0;
     const member = new MemberNode(new TokenNode(valueNode));
 
     members.push(member);
