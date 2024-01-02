@@ -40,6 +40,7 @@ class MemberNode implements Node {
       return this.value.toValue(defs);
     }
   }
+
 }
 
 export default MemberNode;

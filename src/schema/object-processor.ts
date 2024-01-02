@@ -12,7 +12,7 @@ export default function processObject(data: ObjectNode, schema: Schema, defs?: D
 
   const processedNames = new Set<string>();
   for (let i=0; i<schema.names.length; i++) {
-    const member = data.children[i] as MemberNode;
+    let member = data.children[i] as MemberNode;
     let name = schema.names[i];
     let memberDef = schema.defs[name];
 
@@ -29,6 +29,9 @@ export default function processObject(data: ObjectNode, schema: Schema, defs?: D
           throw new Error(`Invalid member ${name} found in the object.`);
         }
       }
+    } else {
+      // TODO: If the member is not found, then we must provide way to
+      // show the current object in the error state.
     }
 
     const val = processMember(member, memberDef, defs);

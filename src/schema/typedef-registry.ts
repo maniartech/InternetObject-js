@@ -52,9 +52,6 @@ export default class TypedefRegistry {
   }
 
   public static isRegisteredType(typeName:string): boolean {
-    if (typeName in typeDefs === false) {
-      debugger
-    }
     return typeName in typeDefs
   }
 }
