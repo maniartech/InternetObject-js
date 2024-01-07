@@ -1,4 +1,4 @@
-import { compileSchema } from "../src/schema";
+import compileSchema from "../src/schema";
 
 describe('Schema Parser', () => {
   it('should parse the schema', () => {
