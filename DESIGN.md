@@ -10,7 +10,7 @@ they are also applicable to JavaScript.
 ```ts
 import io from 'iojs';
 
-const doc:io.Document = io`
+const doc:io.Document = io.doc`
   name, age, gender, address: {street, city, state, zip}
   ---
   ~ John, 25, M, {123 Main St, Anytown, CA, 12345}
@@ -24,7 +24,7 @@ console.log(doc);
 ```ts
 import io from 'iojs';
 
-const defs = io.parseDefs`
+const defs = io.defs`
   ~ @red: 0xff0000
   ~ @blue: 0x0000ff
   ~ @green: 0x00ff00
@@ -64,7 +64,7 @@ const arr = [ "John Doe", 25, "M", "@green", new io.Object("123 Main St", "Anyto
 const o2 = new io.Object(...arr);
 
 // Using string interpolation
-const o3 = io.Object.parse`John Doe, 25, M, @green, {123 Main St, Anytown, CA, 12345}`;
+const o3 = io.object`John Doe, 25, M, @green, {123 Main St, Anytown, CA, 12345}`;
 
 // Using the Object.import method
 const o4 = io.Object.import({
