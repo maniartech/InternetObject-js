@@ -18,6 +18,16 @@ registerTypes();
 
 export default function compileObject(name:string, node: Node, defs?:Definitions): Schema {
 
+  // Check if the node is a string token and starts with $. If yes, then
+  // it is a schema variable. In this case, fetch the schema from the
+  // definitions and return it.
+  if (node instanceof TokenNode && node.type === TokenType.STRING && node.value.startsWith('$')) {
+    const schema = defs?.getV(node.value)
+    if (schema) {
+      return schema
+    }
+  }
+
   if (node instanceof ObjectNode === false) {
     throw new SyntaxError(ErrorCodes.invalidSchema, "Schema must be an object.", node);
   }
