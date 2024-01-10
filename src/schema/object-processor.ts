@@ -1,5 +1,7 @@
 import Definitions        from '../core/definitions';
 import InternetObject     from '../core/internet-object';
+import ErrorCodes         from '../errors/io-error-codes';
+import SyntaxError        from '../errors/io-syntax-error';
 import MemberNode         from '../parser/nodes/members';
 import ObjectNode         from '../parser/nodes/objects';
 import MemberDef          from '../types/memberdef';
@@ -26,7 +28,7 @@ export default function processObject(data: ObjectNode, schema: Schema, defs?: D
         // Once the keyed member is found after the positional flag is set to
         // false, the positional members must not be allowed.
         if (positional === false) {
-          throw new Error(`Invalid member ${name} found in the object.`);
+          throw new SyntaxError(ErrorCodes.unexpectedPositionalMember, "Positional members must not be allowed after the keyed member is found.", member);
         }
       }
     } else {

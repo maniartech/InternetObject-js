@@ -21,7 +21,7 @@ enum ErrorCodes {
   // openBracket = 'open-bracket',
   // invalidBracket = 'invalid-bracket',
   // incompleteEscapeSequence = 'incomplete-escape-sequence',
-  // positionalMemberAfterKeywordMember = 'positional-member-after-keyword-member',
+  unexpectedPositionalMember = 'unexpected-positional-member',
 
   // Parser Errors (Schema)
   invalidSchema = 'invalid-schema',
