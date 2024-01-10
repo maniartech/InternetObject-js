@@ -1,8 +1,10 @@
+import Definitions                    from '../core/definitions';
 import assertNever                    from '../errors/asserts/asserts';
 import SyntaxError                    from '../errors/io-syntax-error';
 import ErrorCodes                     from '../errors/io-error-codes';
 import ArrayNode                      from '../parser/nodes/array';
 import MemberNode                     from '../parser/nodes/members';
+import Node                           from '../parser/nodes/nodes';
 import ObjectNode                     from '../parser/nodes/objects';
 import TokenNode                      from '../parser/nodes/tokens';
 import TokenType                      from '../tokenizer/token-types';
@@ -14,11 +16,17 @@ import Schema                         from './schema';
 
 registerTypes();
 
-export default function compileObject(name:string, o: ObjectNode): Schema {
-  return parseObject(o, new Schema(name), "");
+export default function compileObject(name:string, node: Node, defs?:Definitions): Schema {
+
+  if (node instanceof ObjectNode === false) {
+    throw new SyntaxError(ErrorCodes.invalidSchema, "Schema must be an object.", node);
+  }
+
+  const o = node as ObjectNode;
+  return parseObject(o, new Schema(name), "", defs);
 }
 
-function parseObject(o: ObjectNode, schema:Schema, path:string): Schema {
+function parseObject(o: ObjectNode, schema:Schema, path:string, defs?:Definitions): Schema {
   if (!o.children) {
     schema.open = true
     return schema
@@ -32,10 +40,7 @@ function parseObject(o: ObjectNode, schema:Schema, path:string): Schema {
     if (child === null) {
       assertNever("Child value must not be null in schema definition.")
     }
-
     const memberNode = child as MemberNode;
-
-    console.log("> memberNode", memberNode);
     if (memberNode.value instanceof TokenNode && memberNode.value.type === TokenType.UNDEFINED) {
       throw new SyntaxError(ErrorCodes.emptyMemberDef, "The next member definition is empty.", memberNode.value);
     }
@@ -53,10 +58,24 @@ function parseObject(o: ObjectNode, schema:Schema, path:string): Schema {
       // name: string, age: number
       if (memberNode.value instanceof TokenNode && memberNode.value.type === TokenType.STRING) {
 
-        if (TypedefRegistry.isRegisteredType(memberNode.value.value) === false) {
+        const type = memberNode.value.value as string;
+
+        // If the type string starts with $, then it is a schema variable
+        if (type.startsWith('$')) {
+          const of = defs?.getV(type)
+          const memberDef = {
+            ...fieldInfo,
+            type: "object",
+            schema: of,
+          } as MemberDef;
+          addMemberDef(memberDef, schema, path);
+          continue;
+        }
+
+        if (TypedefRegistry.isRegisteredType(type) === false) {
           throw new SyntaxError(ErrorCodes.invalidType, memberNode.value.value, memberNode.value);
         }
-        const type = memberNode.value.value as string;
+
         const memberDef = {
           ...fieldInfo,
           type,
@@ -78,7 +97,7 @@ function parseObject(o: ObjectNode, schema:Schema, path:string): Schema {
 
       // If the value token is an array, then parse the array definition
       else if(memberNode.value instanceof ArrayNode) {
-        const arrayDef = parseArrayDef(memberNode.value, _(path, fieldInfo.name));
+        const arrayDef = parseArrayDef(memberNode.value, _(path, fieldInfo.name), defs);
         const memberDef = {
           ...fieldInfo,
           ...arrayDef,
@@ -109,10 +128,14 @@ function parseObject(o: ObjectNode, schema:Schema, path:string): Schema {
     }
   }
 
+  if (schema.names.length === 0) {
+    schema.open = true;
+  }
+
   return schema;
 }
 
-function parseArrayDef(a:ArrayNode, path:string) {
+function parseArrayDef(a:ArrayNode, path:string, defs?:Definitions) {
 
   // The length of the array child must be <= 1. If the length is > 1, then
   // it is an invalid schema.
@@ -127,7 +150,8 @@ function parseArrayDef(a:ArrayNode, path:string) {
   if (a.children.length === 1) {
     const child = a.children[0];
     if (child instanceof TokenNode && child.type === TokenType.STRING) {
-      if (TypedefRegistry.isRegisteredType(child.value)) {
+      const type = child.value as string;
+      if (TypedefRegistry.isRegisteredType(type)) {
         return {
           type: "array",
           "of": {
@@ -135,6 +159,17 @@ function parseArrayDef(a:ArrayNode, path:string) {
             path,
           },
         } as MemberDef;
+      } else if (!!defs && type.startsWith('$')) {
+        const of = defs.getV(type)
+        const memberDef = {
+          type: "array",
+          "of": {
+            "type": "object",
+            schema: of,
+            path,
+          }
+        } as MemberDef;
+        return memberDef;
       }
 
       // If the type is not registered, then it is an invalid type
@@ -147,7 +182,7 @@ function parseArrayDef(a:ArrayNode, path:string) {
     if (child instanceof ObjectNode) {
       return {
         type: 'array',
-        of: parseObject(child, new Schema(path), path),
+        of: parseObject(child, new Schema(path), path, defs),
         path,
       } as MemberDef;
     }
@@ -221,6 +256,7 @@ function parseObjectDef(o: ObjectNode, path:string) {
 
   // If type exists, and a valid type, then parse the member definition
   if (type !== '') {
+
     if (TypedefRegistry.isRegisteredType(type)) {
       return parseMemberDef(type, o);
     }

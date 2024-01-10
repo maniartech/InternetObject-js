@@ -36,7 +36,7 @@ class ObjectNode extends ContainerNode {
         if (member.key) {
           o[member.key.value] = member.value.toValue(defs);
         } else {
-          o.push(member.value.toValue(defs))
+          o.pushValues(member.value.toValue(defs))
         }
       }
     }
