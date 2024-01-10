@@ -39,27 +39,26 @@ class Definitions {
    * @param key {any} The varialbe key starting with $
    * @returns The value associated with the variable
    */
-  public getV(key: any) {
-    if (key instanceof TokenNode && key.type === TokenType.STRING && key.value.startsWith('@')) {
-      const def = this._definitions[key.value];
-      if (!def) {
-        throw new ValidationError(ErrorCodes.variableNotDefined, `Variable ${key.value} is not defined.`, key);
-      }
-      if (def.isVariable) {
-        return def.value;
-      }
+  public getV(k: any) {
+    let key:string = ""
+
+    if (k instanceof TokenNode && k.type === TokenType.STRING) {
+      key = k.value;
+    } else if (typeof k === 'string') {
+      key = k;
+    } else {
+      return;
     }
 
-    if (typeof key === 'string' && key.startsWith('@') && key.length > 1) {
+    // If key is not
+    if (key.startsWith("$") || key.startsWith("@")) {
       const def = this._definitions[key];
       if (!def) {
-        throw new ValidationError(ErrorCodes.variableNotDefined, `Variable ${key} is not defined.`);
+        throw new ValidationError(ErrorCodes.variableNotDefined, `Variable ${key} is not defined.`, k instanceof TokenNode ? k : undefined);
       }
-      if (def.isVariable) {
+      if (def.isVariable || def.isSchema) {
         return def.value;
       }
-
-      return undefined;
     }
   }
 
