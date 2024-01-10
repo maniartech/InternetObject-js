@@ -79,6 +79,16 @@ class InternetObject<T = any> {
   }
 
   /**
+   * Pushes values to the end of the InternetObject without keys.
+   * @param value - The value to push.
+   */
+  pushValues(...values: T[]) {
+    for (const value of values) {
+      this._values.push([undefined, value]);
+    }
+  }
+
+  /**
    * Returns the keys set in the InternetObject.
    * @returns Array of keys.
    */

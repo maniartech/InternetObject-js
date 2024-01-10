@@ -54,7 +54,7 @@ export default function parse(source: string, externalDefs: Definitions | null, 
       else { assertNever(docNode.header.child) }
 
       if (externalDefs) {
-        doc.header.definitions?.merge(externalDefs, false);
+        doc.header.definitions.merge(externalDefs, false);
       }
     }
 
@@ -64,7 +64,14 @@ export default function parse(source: string, externalDefs: Definitions | null, 
       parseData(docNode, doc);
     }
   } else {
-    parseData(docNode, doc);
+    if (externalDefs) {
+      doc.header.definitions.merge(externalDefs, false);
+    }
+    if (doc.header.schema) {
+      parseDataWithSchema(docNode, doc);
+    } else {
+      parseData(docNode, doc);
+    }
   }
 
   return doc;
@@ -90,6 +97,7 @@ function parseDataWithSchema(docNode: DocumentNode, doc: Document) {
 }
 
 function parseDefs(doc:Document, cols:CollectionNode) {
+  const defs = (doc.header as any).definitions
   for (let i=0; i<cols.children.length; i++) {
     const child = cols.children[i] as ObjectNode;
 
@@ -132,17 +140,17 @@ function parseDefs(doc:Document, cols:CollectionNode) {
 
     // If key starts with $, then it is a schema. Compille it
     if (key.startsWith('$')) {
-      (doc.header as any).definitions.push(key, compileObject(key, (child.children[0] as any).value), true);
+      defs.push(key, compileObject(key, (child.children[0] as any).value, defs), true);
       continue;
     }
 
     // If key starts with @, then it is a variable. Keep it as it is
     if (key.startsWith('@')) {
-      (doc.header as any).definitions.push(key, memberNode.value, false, true);
+      defs.push(key, memberNode.value, false, true);
       continue;
     }
 
     let value:Node = (child.children[0] as MemberNode).value;
-    (doc.header as any).definitions.push(key, value.toValue(doc.header.definitions || undefined));
+    defs.push(key, value.toValue(doc.header.definitions || undefined));
   }
 }

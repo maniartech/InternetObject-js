@@ -17,7 +17,7 @@ class Header {
     this._schema = value;
   }
 
-  get definitions(): Definitions | null {
+  get definitions(): Definitions {
     return this._definitions;
   }
 
