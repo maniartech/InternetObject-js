@@ -107,8 +107,8 @@ const tokens = io.parser.tokenize(code)
 const ast = io.parser.parse(tokens)
 
 // Convert AST to Document
-const doc = io.parser.compileToDoc(ast)
+const doc = io.parser.compile(ast)
 
 // Convert AST to Definitions
-const defs = io.parser.compileToDefs(ast)
+const defs = io.parser.compileDefs(ast)
 ```
