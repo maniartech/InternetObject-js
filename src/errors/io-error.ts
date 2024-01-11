@@ -1,6 +1,5 @@
 import Position from "../tokenizer/position"
 
-
 /**
  * Represents the base error class in InternetObject.
  */
@@ -64,7 +63,6 @@ class InternetObjectError extends Error {
   }
 
 
-
   protected updateMessage() {
     let errorMsg = `"${this.errorCode}" `
     if (this.fact) {
@@ -75,7 +73,7 @@ class InternetObjectError extends Error {
       errorMsg += `at EOF`
     } else if (this.position) {
       // Handle case where position is just Position
-      errorMsg += `at ${this.position.row}:${this.position.col}(${this.position.pos})`
+      errorMsg += `at ${this.position.row}:${this.position.col}`
     }
 
     this.message = errorMsg

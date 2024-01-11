@@ -39,11 +39,8 @@ class DateTimeDef implements TypeDef {
     const { value, changed } = doCommonTypeCheck(memberDef, valueNode, node, defs)
     if (changed) return value
 
-    if (
-      valueNode instanceof TokenNode === false &&
-      valueNode.type !== TokenType.DATETIME
-    ) {
-      throw new ValidationError(ErrorCodes.invalidDateTime, `Expecting a datetime value for '${memberDef.path}'`, node as TokenNode)
+    if (valueNode.type !== TokenType.DATETIME) {
+      throw new ValidationError(ErrorCodes.invalidDateTime, `Expecting a ${memberDef.type.toUpperCase()} value for ${memberDef.path}, currently ${valueNode.value}, a ${valueNode.type} value`, node as TokenNode)
     }
 
     // Validate the value
