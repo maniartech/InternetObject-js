@@ -44,6 +44,7 @@ enum ErrorCodes {
   invalidUrl = 'invalid-url',
   stringNotClosed = 'string-not-closed',
   invalidEscapeSequence = 'invalid-escape-sequence',
+  unsupportedAnnotation = 'unsupported-annotation',
 
   // -- string, number, date, datetime, time
   // valueNotInChoice = 'value-not-in-choice',

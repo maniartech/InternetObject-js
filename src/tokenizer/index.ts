@@ -659,7 +659,7 @@ class Tokenizer {
               break;
 
             default:
-              assertNever(annotation.name);
+              throw new SyntaxError(ErrorCodes.unsupportedAnnotation, `The annotation '${annotation.name}' is not supported`, this.currentPosition);
           }
         } else {
           tokens.push(this.parseLiteralOrOpenString());
