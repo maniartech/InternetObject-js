@@ -35,7 +35,7 @@ export default function parse(source: string, externalDefs: Definitions | null, 
 
   // If the docNode contains header, then parse it
   if (docNode.header) {
-    if (docNode.header?.child) {
+    if (docNode.header.child) {
       // If ObjectNode, it is a default schema
       //
       // name, age, address  # <-- This is a schema
@@ -53,6 +53,10 @@ export default function parse(source: string, externalDefs: Definitions | null, 
       // Unepxected node
       else { assertNever(docNode.header.child) }
 
+      if (externalDefs) {
+        doc.header.definitions.merge(externalDefs, false);
+      }
+    } else {
       if (externalDefs) {
         doc.header.definitions.merge(externalDefs, false);
       }
