@@ -83,7 +83,8 @@ function parseObject(o: ObjectNode, schema:Schema, path:string, defs?:Definition
         }
 
         if (TypedefRegistry.isRegisteredType(type) === false) {
-          throw new SyntaxError(ErrorCodes.invalidType, memberNode.value.value, memberNode.value);
+          throw new SyntaxError(ErrorCodes.invalidType,
+            `The specified value '${type}' is not a valid type.`, memberNode.value);
         }
 
         const memberDef = {
@@ -122,7 +123,7 @@ function parseObject(o: ObjectNode, schema:Schema, path:string, defs?:Definition
 
       if (isStar) {
         if (index !== o.children.length - 1) {
-          throw new SyntaxError(ErrorCodes.invalidSchema);
+          throw new SyntaxError(ErrorCodes.invalidSchema, "The * is only allowed at the last position.", memberNode.value);
         }
         schema.open = true;
         continue;
@@ -150,8 +151,9 @@ function parseArrayDef(a:ArrayNode, path:string, defs?:Definitions) {
   // The length of the array child must be <= 1. If the length is > 1, then
   // it is an invalid schema.
   if (a.children.length > 1) {
+    console.log(a.children[1])
      // TODO: Better error
-    throw new SyntaxError(ErrorCodes.invalidSchema);
+    throw new SyntaxError(ErrorCodes.invalidSchema, "The array definition must have only one child.", a.children[1] as Node);
   }
 
   // When the array node has one child, then it is a type definition.
@@ -183,7 +185,7 @@ function parseArrayDef(a:ArrayNode, path:string, defs?:Definitions) {
       }
 
       // If the type is not registered, then it is an invalid type
-      throw new SyntaxError(ErrorCodes.invalidType, child.value);
+      throw new SyntaxError(ErrorCodes.invalidType,"The specified value is not a valid type.", child);
     }
 
     // If the child is an object node, then it is a member type definition
@@ -198,7 +200,8 @@ function parseArrayDef(a:ArrayNode, path:string, defs?:Definitions) {
     }
 
     // Throw an error if the child is not a string or object node
-    throw new SyntaxError(ErrorCodes.invalidSchema);
+    throw new SyntaxError(ErrorCodes.invalidSchema,
+      "The array of type definition must be a string or object.", child!);
   }
 
   // When the array node is empty array, then the type definition is
@@ -254,11 +257,13 @@ function parseObjectDef(o: ObjectNode, path:string) {
   // For example:
   // name: { min: 10, max: 20, type: string }
   let type = '';
+  let typeNode = null;
   for(let i=0; i<o.children.length; i++) {
     const child = o.children[i];
     if (child instanceof MemberNode && child.key && child.key.value === 'type') {
       if (child.value instanceof TokenNode && child.value.type === TokenType.STRING) {
         type = child.value.value;
+        typeNode = child.value;
         break;
       }
     }
@@ -272,7 +277,7 @@ function parseObjectDef(o: ObjectNode, path:string) {
     }
 
     // If the type is not registered, then it is an invalid type
-    throw new SyntaxError(ErrorCodes.invalidType, type);
+    throw new SyntaxError(ErrorCodes.invalidType, `The specified value '${type}' is not a valid type.`, typeNode!);
   }
 
   // If the type is not defined, then consider it an object type with
