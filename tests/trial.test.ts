@@ -1,17 +1,19 @@
 import parse from "../src/parser";
 import Tokenizer from "../src/tokenizer";
+import ASTParser from "../src/parser/ast-parser";
 
 describe('Trial', () => {
   it('should try wip tasks', () => {
     const input = String.raw`
-    dt'2021-01-01T00:00:00.000Z',
-    d'2021-01-01',
-    t'02:30',
+    test: string
+    --- $a : test abc
+    ~ name: string
     `
 
     const tokenizer = new Tokenizer(input);
     const tokens = tokenizer.tokenize();
-    console.log(tokens);
+    const ast = new ASTParser(tokens).parse();
+    console.log(ast);
 
     // const input = String.raw`~ recordCount: 22
     // ~ page: 3
