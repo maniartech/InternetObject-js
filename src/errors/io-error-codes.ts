@@ -7,6 +7,7 @@ enum ErrorCodes {
   invalidObject = 'invalid-object',
   valueRequired = 'value-required',
   nullNotAllowed = 'null-not-allowed',
+  invalidSchemaName = 'invalid-schema-name',
   // notAllowed = 'not-allowed',
 
   // Parser Errors (Header)
@@ -25,6 +26,8 @@ enum ErrorCodes {
 
   // Parser Errors (Schema)
   invalidSchema = 'invalid-schema',
+  schemaNotFound = 'schema-not-found',
+
   emptyMemberDef = 'empty-memberdef',
   invalidDefinition = 'invalid-definition',
   invalidKey = 'invalid-key',

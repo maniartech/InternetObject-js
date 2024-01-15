@@ -68,10 +68,10 @@ class ASTParser {
       this.advance();
     }
 
-    // If there are more than one sections, the first one is the header
-    // section. Remove it from the sections array and return it as the
-    // header
-    if (sections.length > 1) {
+    // If there are more than one sections, and the document does not start
+    // with --- then the first one is the header.
+    // section. Remove it from the sections array and return it as the header
+    if (sections.length > 1 && this.tokens[0].type !== TokenType.SECTION_SEP) {
       const header = sections.shift();
       return new DocumentNode(header ?? null, sections);
     }
@@ -83,57 +83,46 @@ class ASTParser {
     // If the first token is a section separator, it means that
     // the section has started without a section name. A header
     // section does not have a name.
-    let name = 'unnamed';
-    let schema:string | undefined;
+    let schema:string;
+    let name: string;
 
-    if (!first) {
+    // if (!first) {
       // Check if the next token is a section name and schema
-      [name, schema] = this.parseSectionAndSchemaNames();
-    }
+      [schema, name] = this.parseSectionAndSchemaNames();
+    // }
 
     const section = this.parseSectionContent()
     return new SectionNode(section, name, schema);
   }
 
-  private parseSectionAndSchemaNames(): [string, string?] {
+  private parseSectionAndSchemaNames(): [string, string] {
+    let schema:string = '$schema';
     let name:string = 'unnamed';
-    let schema:string | undefined;
-    const token = this.peek();
+    let token = this.peek();
 
-    // Name not present, return the defaults
-    if (token?.type !== TokenType.STRING) {
-      return [name, schema];
+    // Consume the section separator if present
+    if (token?.type === TokenType.SECTION_SEP) {
+      this.advance();
     }
 
-    // TODO: Improve this name, and schema parsing
-    // and uncomment the following code!
-    return [name, schema]
+    token = this.peek();
+    if (token?.type === TokenType.SECTION_SCHEMA) {
+      schema = token!.value
 
-    // name = token.value.toString();
+      // Consume the section schema
+      this.advance();
 
-    // // Consume the section name
-    // this.advance();
+      token = this.peek();
+      if (token?.type === TokenType.SECTION_NAME) {
+        name = token!.value
+        // Consume the section name
+        this.advance();
+      } else {
+        name = schema?.substring(1) ?? name
+      }
+    }
 
-    // // Check for the : and schema
-    // if (this.match([TokenType.COLON])) {
-    //   // Consume the colon
-    //   this.advance();
-
-    //   // Check for the schema
-    //   const aliasToken = this.peek();
-    //   if (aliasToken && aliasToken.type === TokenType.STRING) {
-    //     schema = aliasToken.value.toString();
-
-    //     // Consume the schema
-    //     this.advance();
-    //   } else {
-    //     throw new Error(
-    //       `Expected schema-name after colon at row ${aliasToken ?.row} col ${aliasToken ?.col}`
-    //     );
-    //   }
-    // }
-
-    // return [name, schema];
+    return [schema, name]
   }
 
   public parseSectionContent():
