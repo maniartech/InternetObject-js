@@ -20,6 +20,8 @@ enum TokenType {
   TIME              = 'TIME',
   WHITESPACE        = 'WHITESPACE',
   SECTION_SEP       = 'SECTION_SEP',
+  SECTION_SCHEMA    = 'SECTION_SCHEMA',
+  SECTION_NAME      = 'SECTION_NAME',
   COLLECTION_START  = 'COLLECTION_START',
   UNKNOWN           = 'UNKNOWN',
 }

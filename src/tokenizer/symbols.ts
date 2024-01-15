@@ -16,6 +16,7 @@ enum Symbols {
   TILDE           = '~',
   PLUS            = '+',
   MINUS           = '-',
+  DOLLAR          = '$',
 }
 
 export default Symbols;
