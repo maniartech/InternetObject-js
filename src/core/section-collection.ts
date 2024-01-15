@@ -7,7 +7,10 @@ class SectionCollection<T = any> {
   // Support index access
   [key: string]: any
 
-  constructor() {
+  constructor() {/* The `return new Proxy(this, proxy)` statement in the
+  constructor of the `SectionCollection` class is creating a
+  proxy object for the instance of the class. */
+
     return new Proxy(this, proxy);
   }
 
