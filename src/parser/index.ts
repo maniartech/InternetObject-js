@@ -62,20 +62,20 @@ export default function parse(source: string, externalDefs: Definitions | null, 
       }
     }
 
-    if (doc.header.schema) {
-      parseDataWithSchema(docNode, doc);
-    } else {
-      parseData(docNode, doc);
-    }
+    parseDataWithSchema(docNode, doc);
+    // if (doc.header) {
+    // } else {
+    //   parseData(docNode, doc);
+    // }
   } else {
     if (externalDefs) {
       doc.header.definitions.merge(externalDefs, false);
     }
-    if (doc.header.schema) {
-      parseDataWithSchema(docNode, doc);
-    } else {
-      parseData(docNode, doc);
-    }
+    parseDataWithSchema(docNode, doc);
+    // if (doc.header) {
+    // } else {
+    //   parseData(docNode, doc);
+    // }
   }
 
   return doc;
@@ -89,14 +89,22 @@ function parseData(docNode: DocumentNode, doc: Document) {
 }
 
 function parseDataWithSchema(docNode: DocumentNode, doc: Document) {
-  if (!doc.header.schema) {
-    assertNever("Schema is required");
-  }
+  // if (!doc.header.schema) {
+  //   assertNever("Schema is required");
+  // }
 
   for (let i = 0; i < docNode.children.length; i++) {
     const sectionNode = docNode.children[i];
-    const result = processSchema(sectionNode.child, doc.header.schema, doc.header.definitions || undefined);
-    doc.sections?.push(new Section(result, sectionNode.name));
+    const schemaName = sectionNode.schemaName
+    const schema = schemaName === "$schema" ? doc.header.schema : doc.header.definitions?.getV(schemaName)
+
+    if (!schema) {
+      parseData(docNode, doc)
+      continue
+    }
+
+    const result = processSchema(sectionNode.child, schema, doc.header.definitions || undefined);
+    doc.sections?.push(new Section(result, sectionNode.name, schemaName));
   }
 }
 
