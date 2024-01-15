@@ -1,6 +1,9 @@
 import Symbols from "./symbols";
 import TokenType from "./token-types";
 
+const reSpaces = /\s/;
+const reHSpaces = /[ \t]+/;
+
 /**
   * Check if the given character is a special symbol.
   * @param {string} char - Character to check.
@@ -35,11 +38,19 @@ export const isDigit = (char: string): boolean => {
   * @param {string} char - Character to check.
   * @returns {boolean} True if the character is a whitespace, else false.
   */
-export const isWhitespace  = (char: string): boolean => {
+export const isWhitespace  = (char: string, hspacesOnly:boolean = false): boolean => {
   // https://chat.openai.com/c/7afa551e-4739-46be-a1d6-bc168e809baf
 
   // If the character is a unicode whitespace character, return true.
-  return /\s/.test(char);
+  return (!hspacesOnly ? reSpaces : reHSpaces).test(char);
+}
+
+/**
+ * Check if the given character is valid newline character. It is valid if it
+ * is either a carriage return or a line feed.
+ */
+export const isValidNewline = (char: string): boolean => {
+  return char === '\r' || char === '\n';
 }
 
 /**
