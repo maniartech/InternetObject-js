@@ -18,7 +18,11 @@ export const isSpecialSymbol = (char: string): boolean => {
     Symbols.BRACKET_CLOSE,
     Symbols.COLON,
     Symbols.COMMA,
-    Symbols.TILDE
+    Symbols.TILDE,
+
+    // TODO: Ensure that the following symbols are good to be included here.
+    Symbols.DOUBLE_QUOTE,
+    Symbols.SINGLE_QUOTE,
   ]
 
   return symbols.includes(char as Symbols);
