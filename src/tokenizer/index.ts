@@ -18,6 +18,9 @@ const reHex = /^[0-9a-fA-F]+$/;
 const reOctal = /^[0-7]+$/;
 const reBinary = /^[01]+$/;
 
+// https://regex101.com/r/HOVtCj/1
+const reSectionSchemaName = /^(?<schema>\$[\p{L}\p{M}\p{N}\-_]+)(?:[ \t]*:[ \t]*(?<name>[\p{L}\p{M}\p{N}\-_]+))?/u;
+
 const nonDecimalPrefixes = ["x", "X", "c", "C", "b", "B"];
 const reAnotatedStrStart = /^(?<name>[a-zA-Z]{1,4})(?<quote>['"])/;
 
@@ -594,17 +597,6 @@ class Tokenizer {
           // data seperator.
           if (this.input.substring(this.pos, this.pos + 3) === "---") {
             this.parseSectionSeparator(tokens);
-            // tokens.push(
-            //   Token.init(
-            //     this.pos,
-            //     this.row,
-            //     this.col,
-            //     "---",
-            //     "---",
-            //     TokenType.SECTION_SEP
-            //   )
-            // );
-            // this.advance(3);
             continue;
           }
         }
@@ -641,7 +633,6 @@ class Tokenizer {
 
       // Literals or open strings
       else {
-
         const annotation = this.checkIfAnotatedString();
         if (annotation) {
           switch (annotation.name) {
@@ -684,100 +675,45 @@ class Tokenizer {
     );
     this.advance(3); // Advance past the "---"
     this.skipWhitespaces(true);
-    if (this.parseSectionSchemaName(tokens)) return;
-    this.skipWhitespaces(true);
-    this.parseSectionName(tokens)
-  }
 
-  private parseSectionSchemaName(tokens: Token[]): boolean {
-    // If the next token is a newline then return true to indicate that the
-    // end of the section was reached.
-    if (this.reachedEnd || is.isValidNewline(this.input[this.pos])) {
-      return true
+    const match = reSectionSchemaName.exec(this.input.substring(this.pos));
+
+    if (match) {
+      const schema  = match.groups!.schema;
+      const name    = match.groups?.name;
+
+      if (schema) {
+        tokens.push(
+            Token.init(
+                this.pos,
+                this.row,
+                this.col,
+                schema,
+                schema,
+                TokenType.SECTION_SCHEMA
+            )
+        );
+        this.advance(schema.length);
+        this.skipWhitespaces(true);
+      }
+
+      if (name) {
+        this.advance(); // Advance past the colon
+        this.skipWhitespaces(true);
+        tokens.push(
+            Token.init(
+                this.pos,
+                this.row,
+                this.col,
+                name,
+                name,
+                TokenType.SECTION_NAME
+            )
+        );
+        this.advance(name.length);
+        this.skipWhitespaces(true);
+      }
     }
-
-    // If token other than $ is encountered, then throw an error.
-    if (this.input[this.pos] !== Symbols.DOLLAR) {
-      throw new SyntaxError(ErrorCodes.unexpectedToken, `Unexpected token '${this.input[this.pos]}'`, this.currentPosition);
-    }
-
-    const start = this.pos;
-    const startRow = this.row;
-    const startCol = this.col;
-    this.advance(); // Advance past the $
-    while (!this.reachedEnd &&
-      !is.isSpecialSymbol(this.input[this.pos]) &&
-      !is.isValidNewline(this.input[this.pos])) {
-      this.advance();
-    }
-    const tokenText = this.input.substring(start, this.pos).trimEnd();
-
-    // If the tokenText is not a valid schema name, then throw an error.
-    // Schema name can't be just $.
-    if (tokenText.length < 2) {
-      throw new SyntaxError(ErrorCodes.invalidSchemaName, `Invalid schema name '${tokenText}'`, this.currentPosition);
-    }
-
-    tokens.push(
-      Token.init(
-        start,
-        startRow,
-        startCol,
-        tokenText,
-        tokenText,
-        TokenType.SECTION_SCHEMA
-      )
-    );
-
-    return false;
-  }
-
-  private parseSectionName(tokens: Token[]): boolean {
-    if (this.reachedEnd || is.isValidNewline(this.input[this.pos])) {
-      return true;
-    }
-
-    if (this.input[this.pos] !== Symbols.COLON) {
-      throw new SyntaxError(ErrorCodes.unexpectedToken, `Unexpected token '${this.input[this.pos]}'`, this.currentPosition);
-    }
-
-    this.advance(); // Advance past the colon
-    this.skipWhitespaces(true);
-
-    const start = this.pos;
-    const startRow = this.row;
-    const startCol = this.col;
-    this.advance(); // Advance past the colon
-    while (!this.reachedEnd &&
-      !is.isSpecialSymbol(this.input[this.pos]) &&
-      !is.isValidNewline(this.input[this.pos])) {
-      this.advance();
-    }
-    const tokenText = this.input.substring(start, this.pos);
-
-    if (tokenText.length < 1) {
-      throw new SyntaxError(ErrorCodes.invalidSchemaName, `Invalid schema name '${tokenText}'`, this.currentPosition);
-    }
-
-    tokens.push(
-      Token.init(
-        start,
-        startRow,
-        startCol,
-        tokenText,
-        tokenText,
-        TokenType.SECTION_NAME
-      )
-    );
-
-    // If the next token is a newline, then the section schema name
-    // return true to indicate that the section schema name was parsed
-    // and no more parsing is needed.
-    if (this.reachedEnd || is.isValidNewline(this.input[this.pos])) {
-      return true;
-    }
-
-    throw new SyntaxError(ErrorCodes.unexpectedToken, `Unexpected token '${this.input[this.pos]}'`, this.currentPosition);
   }
 }
 
