@@ -6,7 +6,7 @@ describe('Trial', () => {
   it('should try wip tasks', () => {
     const input = String.raw`
     test: string
-    --- $a : test abc
+    --- $a : test # asdfasdfasdf
     ~ name: string
     `
 
