@@ -33,7 +33,7 @@ function doCommonTypeCheck(memberDef: MemberDef, value: any, node?: Node, defs?:
 
   // Check for null
   if (isNull) {
-    if (memberDef.null) return { value: null, changed: true }
+    if (memberDef.nullable) return { value: null, changed: true }
     const msg = `Null is not allowed for ${memberDef.path}` + (collectionIndex !== undefined ? ` at index ${collectionIndex}` : '')
     throw new InternetObjectValidationError(ErrorCodes.nullNotAllowed, msg, node)
   }
