@@ -106,20 +106,25 @@ class ASTParser {
     }
 
     token = this.peek();
-    if (token?.type === TokenType.SECTION_SCHEMA) {
-      schema = token!.value
+    if (token?.type === TokenType.SECTION_NAME) {
+      name = token!.value
 
-      // Consume the section schema
+      // Consume the section name
       this.advance();
 
       token = this.peek();
-      if (token?.type === TokenType.SECTION_NAME) {
-        name = token!.value
+      if (token?.type === TokenType.SECTION_SCHEMA) {
+        schema = token!.value
         // Consume the section name
         this.advance();
-      } else {
-        name = schema?.substring(1) ?? name
       }
+    } else if (token?.type === TokenType.SECTION_SCHEMA) {
+      schema = token!.value
+      // Consume the section name
+      this.advance();
+
+      token = this.peek();
+      name = schema?.substring(1) ?? name
     }
 
     return [schema, name]
