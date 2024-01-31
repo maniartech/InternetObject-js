@@ -17,6 +17,7 @@ class ASTParser {
 
   // array of tokens produced by the tokenizer
   private tokens: Token[];
+  private sectionNames: { [key: string]: boolean } = {};
 
   // current token index
   private current: number;
@@ -34,17 +35,28 @@ class ASTParser {
 
   private processDocument(): DocumentNode {
     const sections = new Array<SectionNode>();
+    let header: SectionNode | null = null;
 
     let token: Token | null = this.peek();
     let first = true;
 
     while (true) {
 
-      // If the first token is a section separator, it means that
-      // the section has started without a section name. A header
-      // section does not have a name.
+      if (first) {
+        // When the first token is a section separator, it means that
+        // header section is not present. Just skip the section separator
+        if (token?.type === TokenType.SECTION_SEP) {
+          first = false;
+        }
+      }
+
       const section = this.processSection(first);
-      sections.push(section);
+
+      if (first) {
+        header = section;
+      } else {
+        sections.push(section);
+      }
 
       if (first) first = false;
 
@@ -71,12 +83,12 @@ class ASTParser {
     // If there are more than one sections, and the document does not start
     // with --- then the first one is the header.
     // section. Remove it from the sections array and return it as the header
-    if (sections.length > 1 && this.tokens[0].type !== TokenType.SECTION_SEP) {
-      const header = sections.shift();
-      return new DocumentNode(header ?? null, sections);
-    }
+    // if (sections.length > 1 && this.tokens[0].type !== TokenType.SECTION_SEP) {
+    //   const header = sections.shift();
+    //   return new DocumentNode(header ?? null, sections);
+    // }
 
-    return new DocumentNode(null, sections)
+    return new DocumentNode(header, sections)
   }
 
   private processSection(first: boolean): SectionNode {
@@ -85,11 +97,27 @@ class ASTParser {
     // section does not have a name.
     let schema:string;
     let name: string;
+    let token = this.peek();
 
-    // if (!first) {
-      // Check if the next token is a section name and schema
-      [schema, name] = this.parseSectionAndSchemaNames();
-    // }
+    // Consume the section separator if present
+    if (token?.type === TokenType.SECTION_SEP) {
+      this.advance();
+    }
+
+    [schema, name] = this.parseSectionAndSchemaNames();
+
+    // Check if the section name is already used
+    if (this.sectionNames[name]) {
+      throw new SyntaxError(
+        ErrorCodes.unexpectedToken,
+        `Duplicate section name ${name}`,
+        void 0, false
+        );
+      }
+
+    if (!first || (first && name !== 'unnamed' && this.peek()?.type !== TokenType.SECTION_SEP)) {
+      this.sectionNames[name] = true;
+    }
 
     const section = this.parseSectionContent()
     return new SectionNode(section, name, schema);
@@ -99,13 +127,6 @@ class ASTParser {
     let schema:string = '$schema';
     let name:string = 'unnamed';
     let token = this.peek();
-
-    // Consume the section separator if present
-    if (token?.type === TokenType.SECTION_SEP) {
-      this.advance();
-    }
-
-    token = this.peek();
     if (token?.type === TokenType.SECTION_NAME) {
       name = token!.value
 
