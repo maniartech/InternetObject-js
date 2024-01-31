@@ -27,6 +27,7 @@ enum ErrorCodes {
   // Parser Errors (Schema)
   invalidSchema = 'invalid-schema',
   schemaNotFound = 'schema-not-found',
+  schemaMissing = 'schema-missing',
 
   emptyMemberDef = 'empty-memberdef',
   invalidDefinition = 'invalid-definition',

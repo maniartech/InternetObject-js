@@ -19,7 +19,10 @@ const reOctal = /^[0-7]+$/;
 const reBinary = /^[01]+$/;
 
 // https://regex101.com/r/HOVtCj/1
-const reSectionSchemaName = /^(?<schema>\$[\p{L}\p{M}\p{N}\-_]+)(?:[ \t]*:[ \t]*(?<name>[\p{L}\p{M}\p{N}\-_]+))?/u;
+// const reSectionSchemaName = /^(?<schema>\$[\p{L}\p{M}\p{N}\-_]+)(?:[ \t]*:[ \t]*(?<name>[\p{L}\p{M}\p{N}\-_]+))?/u;
+
+// https://regex101.com/r/jaWr0V/2
+const reSectionSchemaName = /^(?:(?:(?<name>[\p{L}\p{M}\p{N}\-_]+)(?<sep>[ \t]*:[ \t]*)?)(?<schema>\$[\p{L}\p{M}\p{N}\-_]+)?|(?<schema2>\$[\p{L}\p{M}\p{N}\-_]+))/u
 
 const nonDecimalPrefixes = ["x", "X", "c", "C", "b", "B"];
 const reAnotatedStrStart = /^(?<name>[a-zA-Z]{1,4})(?<quote>['"])/;
@@ -679,27 +682,33 @@ class Tokenizer {
     const match = reSectionSchemaName.exec(this.input.substring(this.pos));
 
     if (match) {
-      const schema  = match.groups!.schema;
-      const name    = match.groups?.name;
+      let schema: string | undefined;
+      let name: string | undefined;
+      let sep = match.groups?.sep;
+      let schema2: string | undefined;
 
-      if (schema) {
+      if (match.groups) {
+        schema = match.groups.schema;
+        name = match.groups.name;
+        schema2 = match.groups.schema2;
+      }
+
+
+      // When only a schema is provided, the schema is the name
+      if (schema2) {
         tokens.push(
             Token.init(
                 this.pos,
                 this.row,
                 this.col,
-                schema,
-                schema,
+                schema2,
+                schema2,
                 TokenType.SECTION_SCHEMA
             )
         );
-        this.advance(schema.length);
+        this.advance(schema2.length);
         this.skipWhitespaces(true);
-      }
-
-      if (name) {
-        this.advance(); // Advance past the colon
-        this.skipWhitespaces(true);
+      } else if (name) {
         tokens.push(
             Token.init(
                 this.pos,
@@ -712,6 +721,30 @@ class Tokenizer {
         );
         this.advance(name.length);
         this.skipWhitespaces(true);
+
+        if (sep) {
+          // skip over the separator when it is present
+          this.advance(sep.length);
+          this.skipWhitespaces(true);
+
+          // Once the sep is detected, the schema must be present
+          if (!schema) {
+            throw new SyntaxError(ErrorCodes.schemaMissing, void 0, this.currentPosition);
+          }
+
+          tokens.push(
+            Token.init(
+              this.pos,
+              this.row,
+              this.col,
+              schema,
+              schema,
+              TokenType.SECTION_SCHEMA
+            )
+          );
+          this.advance(schema.length);
+          this.skipWhitespaces(true);
+        }
       }
     }
   }
