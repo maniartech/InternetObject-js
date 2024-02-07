@@ -41,7 +41,6 @@ class ASTParser {
     let first = true;
 
     while (true) {
-
       if (first) {
         // When the first token is a section separator, it means that
         // header section is not present. Just skip the section separator
@@ -52,6 +51,12 @@ class ASTParser {
 
       const section = this.processSection(first);
 
+      token = this.peek();
+      if (!token) {
+        sections.push(section);
+        break;
+      }
+
       if (first) {
         header = section;
       } else {
@@ -59,11 +64,6 @@ class ASTParser {
       }
 
       if (first) first = false;
-
-      token = this.peek();
-      if (!token) {
-        break;
-      }
 
       // If the next token is not a section separator, it means that
       // the current section is not closed properly. Throw an error
