@@ -414,7 +414,7 @@ class Tokenizer {
     );
   }
 
-  private parseLiteralOrOpenString(): Token {
+  private parseLiteralOrOpenString(): Token | null {
     const start = this.pos;
     const startRow = this.row;
     const startCol = this.col;
@@ -457,7 +457,8 @@ class Tokenizer {
     }
 
     if (value === "") {
-      assertNever(this.input[this.pos])
+      return null
+      // assertNever(this.input[this.pos])
     }
 
     switch (value) {
@@ -617,11 +618,15 @@ class Tokenizer {
               !is.isWhitespace(this.input[this.pos])
             ) {
               const nextToken = this.parseLiteralOrOpenString();
-              if (spaces.length > 0) {
-                nextToken.token = spaces + nextToken.token;
-                nextToken.value = spaces + nextToken.value;
+              if (nextToken) {
+                if (spaces.length > 0) {
+                  nextToken.token = spaces + nextToken.token;
+                  nextToken.value = spaces + nextToken.value;
+                }
+                tokens.push(this.mergeTokens(token, nextToken));
+              } else {
+                tokens.push(token);
               }
-              tokens.push(this.mergeTokens(token, nextToken));
             } else {
               tokens.push(token);
             }
@@ -630,7 +635,10 @@ class Tokenizer {
           }
         } else {
           // It wasn't a number, so it must be a literal or open string
-          tokens.push(this.parseLiteralOrOpenString());
+          const token = this.parseLiteralOrOpenString();
+          if (token) {
+            tokens.push(token);
+          }
         }
       }
 
@@ -657,7 +665,10 @@ class Tokenizer {
               throw new SyntaxError(ErrorCodes.unsupportedAnnotation, `The annotation '${annotation.name}' is not supported`, this.currentPosition);
           }
         } else {
-          tokens.push(this.parseLiteralOrOpenString());
+          const token = this.parseLiteralOrOpenString();
+          if (token) {
+            tokens.push(token);
+          }
         }
       }
     }
