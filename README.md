@@ -1,12 +1,12 @@
-<img src="/logo/internet-object.png" height="50px" alt="Internet Object" title="Internet Object">
+# <img src="./logo/internet-object-logo.png" height="24px" alt="Internet Object" title="Internet Object"> Internet Object
 
-[![Build Status](https://travis-ci.org/maniartech/InternetObject-js.svg?branch=master)](https://travis-ci.org/maniartech/InternetObject-js)
+Thin, robust, schema-first yet simple data interchange format for Internet. Best well-planned alternative to JSON!
 
-> **Thin, robust, schema-first yet simple data interchange format for Internet. Best well-planned alternative to JSON!**
+## 🚧 NOT READY (WIP) - API WILL CHANGE
 
-## Internet Object TypeScript/JavaScript Parser
+## Example Usage
 
-### ⚠ NOT YET READY - This project is under active development! Don't use, not yet ready!
+The following example demonstrates how to use Internet Object to parse a simp[le internet object document. Please note that the API is not yet ready and published. This is just a demonstration.
 
 ```JS
 import InternetObject from 'internet-object'
@@ -36,7 +36,7 @@ console.log(o.data);
 
 Outputs following object.
 
-```
+``` JSON
 {
   "name": "Spiderman",
   "age": 25,
@@ -52,21 +52,22 @@ Outputs following object.
 ### Work in Progress
 
 - [x] Tokenizer
-- [x] Tree Parser
+- [x] AST Parser
 - [x] Schema Parser
 - [x] Number
 - [x] Strings
 - [x] Boolean and Nulls
 - [x] DateTime
-- [x] Collections (WIP)
-- [ ] Definitions (WIP)
+- [x] Collections
+- [x] Definitions
 - [ ] Serialization (WIP)
+- [ ] Deserialization (WIP)
 - [ ] Optimization (WIP)
 - [ ] Testing (WIP)
 
-### Geting Started (⚠ Not Ready):
+### Geting Started (⚠ Not Ready)
 
-1. Fork repository from https://github.com/maniartech/InternetObject-js
+1. Fork repository from <https://github.com/maniartech/InternetObject-js>
 1. Install dependencies `npm install` or `yarn install`
 1. Make changes in `./src`
 1. Update tests in `./tests/`
@@ -76,4 +77,4 @@ Outputs following object.
 For more information about Internet Object architecture - InternetObject.org
 
 **ISC License:**
-© ManiarTechⓇ 2018-2020
+© ManiarTechⓇ 2018-2024. All rights reserved.
