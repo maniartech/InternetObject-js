@@ -1,0 +1,8 @@
+{
+  // No html in markdown
+  "MD033": false,
+
+  // Line length Unnecessary
+  "MD013": false
+
+}
