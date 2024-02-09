@@ -2,18 +2,23 @@ import parse from "../src/parser";
 import Tokenizer from "../src/tokenizer";
 import ASTParser from "../src/parser/ast-parser";
 
+// ⚠️ This is a trial test file to try out new features and test cases
+// ⚠️ It's not a part of the main test suite. It's just for testing
+// ⚠️ work in progress features and test cases.
+
 describe('Trial', () => {
   it('should try wip tasks', () => {
     const input = String.raw`
-    test: string
-    --- $a : test # asdfasdfasdf
-    ~ name: string
+    ~ pos: 10
+    ---
+    City Central Library
     `
 
     const tokenizer = new Tokenizer(input);
     const tokens = tokenizer.tokenize();
-    const ast = new ASTParser(tokens).parse();
-    console.log(ast);
+    console.log(tokens);
+    // const ast = new ASTParser(tokens).parse();
+    // console.log(ast);
 
     // const input = String.raw`~ recordCount: 22
     // ~ page: 3
