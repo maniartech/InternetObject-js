@@ -2,51 +2,121 @@
 
 Thin, robust, schema-first yet simple data interchange format for Internet. Best well-planned alternative to JSON!
 
-## 🚧 NOT READY (WIP) - API WILL CHANGE
+For specification and more information, visit [InternetObject.org Docs](https://docs.internetobject.org).
+
+## 🚧 Work In Progress - API WILL CHANGE
 
 ## Example Usage
 
-The following example demonstrates how to use Internet Object to parse a simp[le internet object document. Please note that the API is not yet ready and published. This is just a demonstration.
+The following example demonstrates how to use Internet Object to parse a simple internet object document. Please note that the API is not yet ready and published. This is just a demonstration.
 
-```JS
-import InternetObject from 'internet-object'
+### Parsing strings into documents
 
-const schema = "name,age"
+```ts
+import io from 'internet-object';
 
-const o = new InternetObject("Spiderman,25", schema)
+const doc:io.Document = io.doc`
+  name, age, gender, address: {street, city, state, zip}
+  ---
+  ~ John, 25, M, {123 Main St, Anytown, CA, 12345}
+  ~ Jane, 30, F, {456 Main St, Anytown, CA, 12345}`;
 
-
-// Prints Spiderman
-console.log(o.data.name);
-
-// Prints 25
-console.log(o.data.age);
+console.log(doc);
 ```
 
-```JS
-import InternetObject from 'internet-object'
+### Parsing with separate definitions
 
-const schema = "name,age,address:{street,city,state,zip}"
+```ts
+import io from 'internet-object';
 
-const o = new InternetObject("Spiderman,25,{Bond Street, New York, NY, 50005}", schema)
+const defs = io.defs`
+  ~ @red: 0xff0000
+  ~ @blue: 0x0000ff
+  ~ @green: 0x00ff00
+  ~ $schema: {
+    name, age, gender, color, address: {street, city, state, zip}
+  }`;
 
-// Print o
-console.log(o.data);
+// Parse document with external definitions
+const doc = io.parseWith(defs)`
+  ~ John, 25, M, @green, {123 Main St, Anytown, CA, 12345}
+  ~ Jane, 30, F, @blue, {456 Main St, Anytown, CA, 12345}`;
 ```
 
-Outputs following object.
+### Working with documents
 
-``` JSON
-{
-  "name": "Spiderman",
-  "age": 25,
-  "address": {
-    "street": "Bond Street",
-    "city": "New York",
-    "state": "NY",
-    "zip": 50005
-  }
+```ts
+const collection = new io.Collection();
+collection.push(
+  io.Object("John Doe", 25, "M", "@green", new io.Object("123 Main St", "Anytown", "CA", "12345")),
+  io.Object("Jane Doe", 30, "F", "@blue", new io.Object("456 Main St", "Anytown", "CA", "12345")),
+)
+
+const doc = new io.Document();
+doc.data.pushToFirst(collection);
+```
+
+### Building Objects
+
+Objects are the core and the building blocks in Internet Object. Objects can
+be created in many ways. The following are some examples.
+
+```ts
+// Using the Object constructor
+const o1 = new io.Object("John Doe", 25, "M", "@green", new io.Object("123 Main St", "Anytown", "CA", "12345"));
+
+// Using the Object constructor with an array
+const arr = [ "John Doe", 25, "M", "@green", new io.Object("123 Main St", "Anytown", "CA", "12345") ]
+const o2 = new io.Object(...arr);
+
+// Using string interpolation
+const o3 = io.object`John Doe, 25, M, @green, {123 Main St, Anytown, CA, 12345}`;
+
+// Using the Object.import method
+const o4 = io.Object.import({
+    name: "John Doe",
+    age: 25,
+    gender: "M",
+    color: "@green",
+    address: {
+      street: "123 Main St",
+      city: "Anytown",
+      state: "CA",
+      zip: "12345"
+    }
+  })
+```
+
+### Validate Document with external schema
+
+Many times before sending a document to a remote, it is necessary to validate
+the document against a schema/defs. While validating, if an invalid value is
+encountered, a ValidationError is thrown.
+
+```ts
+try {
+  doc.validate(defs);
+  console.log("Document is valid");
+} catch (e) {
+  console.log(e);
 }
+```
+
+### Core Tokenization and Parsing Interfaces
+
+While performing tokenization and parsing, if an error is encountered, an
+exception is thrown. The exception contains the line and column number of
+the error. The exception may contain the token that caused the error.
+
+```ts
+const tokens = io.parser.tokenize(code)
+const ast = io.parser.parse(tokens)
+
+// Convert AST to Document
+const doc = io.parser.compile(ast)
+
+// Convert AST to Definitions
+const defs = io.parser.compileDefs(ast)
 ```
 
 ### Work in Progress
@@ -61,20 +131,20 @@ Outputs following object.
 - [x] Collections
 - [x] Definitions
 - [ ] Serialization (WIP)
-- [ ] Deserialization (WIP)
 - [ ] Optimization (WIP)
 - [ ] Testing (WIP)
 
-### Geting Started (⚠ Not Ready)
+### Development Process
 
 1. Fork repository from <https://github.com/maniartech/InternetObject-js>
-1. Install dependencies `npm install` or `yarn install`
+1. Install dependencies `yarn install`
 1. Make changes in `./src`
 1. Update tests in `./tests/`
-1. Run tests, `npm test` or `yarn test`
+1. Run tests, `yarn test`
 1. Send pull request(s)
 
-For more information about Internet Object architecture - InternetObject.org
+For more information about Internet Object, read specification at [docs.InternetObject.org](https://docs.internetobject.org).
 
 **ISC License:**
-© ManiarTechⓇ 2018-2024. All rights reserved.
+
+© ManiarTech®️ 2018-2024. All rights reserved.
