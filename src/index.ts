@@ -36,6 +36,16 @@ namespace iosf {
 
     return parseDefinitions(input, null);
   }
+
+  export function parseWith(defs: Definitions): (strings: TemplateStringsArray, ...args: any[]) => Document {
+    return (strings: TemplateStringsArray, ...args: any[]) => {
+      const input = strings.reduce((acc, str, i) => {
+        return acc + str + (args[i] === undefined ? '' : args[i]);
+      }, '');
+
+      return parse(input, defs);
+    }
+  }
 }
 
 export default iosf;
