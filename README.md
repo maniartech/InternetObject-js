@@ -13,9 +13,9 @@ The following example demonstrates how to use Internet Object to parse a simple 
 ### Parsing strings into documents
 
 ```ts
-import io from 'internet-object';
+import iosf from 'internet-object';
 
-const doc:io.Document = io.doc`
+const doc = iosf.doc`
   name, age, gender, address: {street, city, state, zip}
   ---
   ~ John, 25, M, {123 Main St, Anytown, CA, 12345}
@@ -27,9 +27,9 @@ console.log(doc);
 ### Parsing with separate definitions
 
 ```ts
-import io from 'internet-object';
+import iosf from 'internet-object';
 
-const defs = io.defs`
+const defs = iosf.defs`
   ~ @red: 0xff0000
   ~ @blue: 0x0000ff
   ~ @green: 0x00ff00
@@ -38,7 +38,7 @@ const defs = io.defs`
   }`;
 
 // Parse document with external definitions
-const doc = io.parseWith(defs)`
+const doc = iosf.parseWith(defs)`
   ~ John, 25, M, @green, {123 Main St, Anytown, CA, 12345}
   ~ Jane, 30, F, @blue, {456 Main St, Anytown, CA, 12345}`;
 ```
@@ -46,13 +46,13 @@ const doc = io.parseWith(defs)`
 ### Working with documents
 
 ```ts
-const collection = new io.Collection();
+const collection = new iosf.Collection();
 collection.push(
   io.Object("John Doe", 25, "M", "@green", new io.Object("123 Main St", "Anytown", "CA", "12345")),
   io.Object("Jane Doe", 30, "F", "@blue", new io.Object("456 Main St", "Anytown", "CA", "12345")),
 )
 
-const doc = new io.Document();
+const doc = new iosf.Document();
 doc.data.pushToFirst(collection);
 ```
 
@@ -63,7 +63,7 @@ be created in many ways. The following are some examples.
 
 ```ts
 // Using the Object constructor
-const o1 = new io.Object("John Doe", 25, "M", "@green", new io.Object("123 Main St", "Anytown", "CA", "12345"));
+const o1 = new iosf.Object("John Doe", 25, "M", "@green", new io.Object("123 Main St", "Anytown", "CA", "12345"));
 
 // Using the Object constructor with an array
 const arr = [ "John Doe", 25, "M", "@green", new io.Object("123 Main St", "Anytown", "CA", "12345") ]
