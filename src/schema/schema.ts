@@ -2,9 +2,19 @@ import MemberDef from "../types/memberdef";
 
 export default class Schema {
 
-  public name:string
+  /**
+   * Name of the schema
+   */
+  public name: string;
 
+  /**
+   * The names of the members (properties) in the schema
+   */
   public names: string[] = [];
+
+  /**
+   * The definitions of the members (properties) in the schema
+   */
   public defs: { [key: string]: MemberDef } = {};
 
   /**
@@ -14,6 +24,11 @@ export default class Schema {
 
   [key: string]: any;
 
+  /**
+   * Creates a new instance of Internet Object Schema.
+   * @param name The name of the schema
+   * @param o The member definitions
+   */
   constructor(name:string, ...o:{ [key: string]: MemberDef }[]) {
     this.name = name;
     this.names = [];
