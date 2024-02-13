@@ -113,6 +113,8 @@ function parseObject(o: ObjectNode, schema:Schema, path:string, defs?:Definition
           ...arrayDef,
         } as MemberDef;
         addMemberDef(memberDef, schema, path);
+      } else {
+        throw new SyntaxError(ErrorCodes.invalidSchema, `The specified value '${memberNode.value.toValue()}' is not a valid type.`, memberNode.value);
       }
 
     } else {
