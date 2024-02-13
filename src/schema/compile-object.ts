@@ -22,7 +22,7 @@ export default function compileObject(name:string, node: Node, defs?:Definitions
   // it is a schema variable. In this case, fetch the schema from the
   // definitions and return it.
   if (node instanceof TokenNode && node.type === TokenType.STRING && node.value.startsWith('$')) {
-    const schema = defs?.getV(node.value)
+    const schema = defs?.getV(node.value);
     if (schema) {
       return schema
     }
@@ -55,7 +55,6 @@ function parseObject(o: ObjectNode, schema:Schema, path:string, defs?:Definition
       throw new SyntaxError(ErrorCodes.emptyMemberDef, "The next member definition is empty.", memberNode.value);
     }
 
-
     // If key and value both presents in the member node, then fetch
     // the key and typedef from key and value respectively. Generally
     // the value is always present, but in case of member node with
@@ -67,12 +66,12 @@ function parseObject(o: ObjectNode, schema:Schema, path:string, defs?:Definition
       // For example:
       // name: string, age: number
       if (memberNode.value instanceof TokenNode && memberNode.value.type === TokenType.STRING) {
-
         const type = memberNode.value.value as string;
 
         // If the type string starts with $, then it is a schema variable
         if (type.startsWith('$')) {
-          const of = defs?.getV(type)
+          // const of = defs?.getV(type)
+          const of = getV(memberNode.value, schema, defs);
           const memberDef = {
             ...fieldInfo,
             type: "object",
@@ -108,7 +107,7 @@ function parseObject(o: ObjectNode, schema:Schema, path:string, defs?:Definition
 
       // If the value token is an array, then parse the array definition
       else if(memberNode.value instanceof ArrayNode) {
-        const arrayDef = parseArrayDef(memberNode.value, _(path, fieldInfo.name), defs);
+        const arrayDef = parseArrayDef(memberNode.value, schema, _(path, fieldInfo.name), defs);
         const memberDef = {
           ...fieldInfo,
           ...arrayDef,
@@ -146,7 +145,7 @@ function parseObject(o: ObjectNode, schema:Schema, path:string, defs?:Definition
   return schema;
 }
 
-function parseArrayDef(a:ArrayNode, path:string, defs?:Definitions) {
+function parseArrayDef(a:ArrayNode, schema: Schema, path:string, defs?:Definitions) {
 
   // The length of the array child must be <= 1. If the length is > 1, then
   // it is an invalid schema.
@@ -172,7 +171,8 @@ function parseArrayDef(a:ArrayNode, path:string, defs?:Definitions) {
           },
         } as MemberDef;
       } else if (!!defs && type.startsWith('$')) {
-        const of = defs.getV(type)
+        // const of = defs.getV(type)
+        const of = getV(child, schema, defs);
         const memberDef = {
           type: "array",
           "of": {
@@ -349,4 +349,14 @@ function _(path:string, key:string) {
     return key;
   }
   return `${path}.${key}`;
+}
+
+function getV(node: TokenNode, schema: Schema, defs: Definitions | undefined) {
+  const k = node.value;
+  // If key is not
+  if (k == "$self") {
+    return schema
+  }
+
+  return defs?.getV(k);
 }
