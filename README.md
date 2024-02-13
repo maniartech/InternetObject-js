@@ -146,8 +146,9 @@ const defs = io.parser.compileDefs(ast)
   - [x] Binary Data
 - [x] Collections
 - [x] Definitions
-- [ ] API Interface Finalization (WIP)
 - [ ] Serialization (WIP)
+- [ ] API Interface Finalization (WIP)
+- [ ] Errors Standardization (WIP)
 - [ ] Optimization (WIP)
 - [ ] Testing (WIP)
 
