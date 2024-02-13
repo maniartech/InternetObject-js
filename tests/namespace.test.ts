@@ -1,10 +1,13 @@
-import iosf from '../src/index';
-
+import {
+  ioDocument,
+  ioDefinitions,
+} from '../src/';
 
 describe('IO Namescpae', () => {
 
   test('should be able to parse the document', () => {
-    const doc = iosf.doc`
+
+    const doc = ioDocument`
       name, age, address: { street, city, zip }
       ---
       John, 30, { ${123} Main St, Springfield, 12345 }
@@ -19,7 +22,7 @@ describe('IO Namescpae', () => {
   });
 
   test('should be able to parse the object', () => {
-    const defs = iosf.defs`
+    const defs = ioDefinitions`
       name, age, address: { street, city, zip }
     `;
 
@@ -27,7 +30,7 @@ describe('IO Namescpae', () => {
       throw new Error('Defs is null');
     }
 
-    const obj = iosf.parseWith(defs)`
+    const obj = ioDocument.with(defs)`
       John, 30, { ${123} Main St, Springfield, 12345 }
     `;
 
