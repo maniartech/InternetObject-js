@@ -4,18 +4,18 @@ Thin, robust, schema-first yet simple data interchange format for Internet. Best
 
 For specification and more information, visit [InternetObject.org Docs](https://docs.internetobject.org).
 
-## 🚧 Work In Progress - API WILL CHANGE
+## 🚧 Work In Progress - API WILL CHANGE ⚠️
 
-## Example Usage
+### Example Usage
 
 The following example demonstrates how to use Internet Object to parse a simple internet object document. Please note that the API is not yet ready and published. This is just a demonstration.
 
-### Parsing strings into documents
+#### Parsing strings into documents
 
 ```ts
-import iosf from 'internet-object';
+import { ioDocument } from 'internet-object';
 
-const doc = iosf.doc`
+const doc = ioDocument`
   name, age, gender, address: {street, city, state, zip}
   ---
   ~ John, 25, M, {123 Main St, Anytown, CA, 12345}
@@ -24,12 +24,12 @@ const doc = iosf.doc`
 console.log(doc);
 ```
 
-### Parsing with separate definitions
+#### Parsing with separate definitions
 
 ```ts
-import iosf from 'internet-object';
+import { ioDefinitions, ioDocument } from 'internet-object';
 
-const defs = iosf.defs`
+const defs = ioDefinitions`
   ~ @red: 0xff0000
   ~ @blue: 0x0000ff
   ~ @green: 0x00ff00
@@ -38,32 +38,34 @@ const defs = iosf.defs`
   }`;
 
 // Parse document with external definitions
-const doc = iosf.parseWith(defs)`
+const doc = ioDocument.with(defs)`
   ~ John, 25, M, @green, {123 Main St, Anytown, CA, 12345}
   ~ Jane, 30, F, @blue, {456 Main St, Anytown, CA, 12345}`;
 ```
 
-### Working with documents
+#### Working with documents
 
 ```ts
-const collection = new iosf.Collection();
+import { Collection, Document, InternetObject } from 'internet-object';
+
+const collection = new Collection();
 collection.push(
-  io.Object("John Doe", 25, "M", "@green", new io.Object("123 Main St", "Anytown", "CA", "12345")),
-  io.Object("Jane Doe", 30, "F", "@blue", new io.Object("456 Main St", "Anytown", "CA", "12345")),
+  new InternetObject("John Doe", 25, "M", "@green", new io.Object("123 Main St", "Anytown", "CA", "12345")),
+  new InternetObject("Jane Doe", 30, "F", "@blue", new io.Object("456 Main St", "Anytown", "CA", "12345")),
 )
 
-const doc = new iosf.Document();
+const doc = new Document();
 doc.data.pushToFirst(collection);
 ```
 
-### Building Objects
+#### Building Objects
 
 Objects are the core and the building blocks in Internet Object. Objects can
 be created in many ways. The following are some examples.
 
 ```ts
 // Using the Object constructor
-const o1 = new iosf.Object("John Doe", 25, "M", "@green", new io.Object("123 Main St", "Anytown", "CA", "12345"));
+const o1 = new InternetObject("John Doe", 25, "M", "@green", new io.Object("123 Main St", "Anytown", "CA", "12345"));
 
 // Using the Object constructor with an array
 const arr = [ "John Doe", 25, "M", "@green", new io.Object("123 Main St", "Anytown", "CA", "12345") ]
@@ -73,7 +75,7 @@ const o2 = new io.Object(...arr);
 const o3 = io.object`John Doe, 25, M, @green, {123 Main St, Anytown, CA, 12345}`;
 
 // Using the Object.import method
-const o4 = io.Object.import({
+const o4 = InternetObject.import({
     name: "John Doe",
     age: 25,
     gender: "M",
@@ -87,7 +89,7 @@ const o4 = io.Object.import({
   })
 ```
 
-### Validate Document with external schema
+#### Validate Document with external schema
 
 Many times before sending a document to a remote, it is necessary to validate
 the document against a schema/defs. While validating, if an invalid value is
@@ -102,7 +104,7 @@ try {
 }
 ```
 
-### Core Tokenization and Parsing Interfaces
+#### Core Tokenization and Parsing Interfaces
 
 While performing tokenization and parsing, if an error is encountered, an
 exception is thrown. The exception contains the line and column number of
@@ -119,17 +121,32 @@ const doc = io.parser.compile(ast)
 const defs = io.parser.compileDefs(ast)
 ```
 
-### Work in Progress
+### Work in Progress Status
 
 - [x] Tokenizer
 - [x] AST Parser
-- [x] Schema Parser
-- [x] Number
-- [x] Strings
-- [x] Boolean and Nulls
-- [x] DateTime
+- [x] Schema
+  - [x] Parsing
+  - [x] Validation
+- [x] Data Types
+  - [x] Numbers
+    - [x] Decimal Numbers
+    - [x] Binary Number
+    - [x] Hex Numbers
+    - [x] Octal Numbers
+  - [x] Strings
+    - [x] Open Strings
+    - [x] Regular Strings
+    - [x] Raw Strings
+  - [x] Boolean and Nulls
+  - [x] DateTime
+    - [x] DateTime
+    - [x] Date
+    - [x] Time
+  - [x] Binary Data
 - [x] Collections
 - [x] Definitions
+- [ ] API Interface Finalization (WIP)
 - [ ] Serialization (WIP)
 - [ ] Optimization (WIP)
 - [ ] Testing (WIP)
