@@ -15,6 +15,7 @@ const schema = new Schema(
   "array",
   { type:     { type: "string", optional: false, null: false, choices: ["array"] } },
   { default:  { type: "array",  optional: true,  null: false } },
+  { of:       { type: "any",    optional: true,  null: false } },
   { len:      { type: "number", optional: true,  null: false, min: 0, default: -1 } },
   { minLen:   { type: "number", optional: true,  null: false, min: 0, default: -1 } },
   { maxLen:   { type: "number", optional: true,  null: false, min: 0, default: -1 } },
@@ -54,7 +55,10 @@ function _processNode(
     type: 'any'
   }
 
-  if (memberDef.of?.type) {
+  if (memberDef.of instanceof Schema) {
+    typeDef = TypedefRegistry.get('object')
+    arrayMemberDef.schema = memberDef.of
+  } else if (memberDef.of?.type) {
     typeDef = TypedefRegistry.get(memberDef.of.type)
     arrayMemberDef = memberDef.of
   } else if (typeof memberDef.of === 'string') {
