@@ -619,6 +619,8 @@ class Tokenizer {
             ) {
               const nextToken = this.parseLiteralOrOpenString();
               if (nextToken) {
+                nextToken.type = TokenType.STRING;
+                nextToken.subType = "OPEN_STRING";
                 if (spaces.length > 0) {
                   nextToken.token = spaces + nextToken.token;
                   nextToken.value = spaces + nextToken.value;
