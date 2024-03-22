@@ -39,7 +39,7 @@ class Definitions {
    * @param key {any} The varialbe key starting with $
    * @returns The value associated with the variable
    */
-  public getV(k: any) {
+  public getV(k: any): any {
     let key:string = ""
 
     if (k instanceof TokenNode && k.type === TokenType.STRING) {
@@ -56,9 +56,21 @@ class Definitions {
       if (!def) {
         throw new ValidationError(ErrorCodes.variableNotDefined, `Variable ${key} is not defined.`, k instanceof TokenNode ? k : undefined);
       }
-      if (def.isVariable || def.isSchema) {
+      if (def.isVariable) {
         return def.value;
       }
+
+      // Check nested references. If yes, then resolve them and set in the
+      // place of the variable.
+      if (def.value instanceof TokenNode) {
+        const schema = this.getV(def.value);
+        if (schema instanceof Schema) {
+          this.set(key, schema);
+          return schema;
+        }
+      }
+
+      return def.value;
     }
   }
 
