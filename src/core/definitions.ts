@@ -62,6 +62,15 @@ class Definitions {
     }
   }
 
+  public set(k: string, v: any) {
+    const dv = {
+      isSchema: k.startsWith("$"),
+      isVariable: k.startsWith("@"),
+      value: v
+    }
+    this._definitions[k] = dv;
+  }
+
   /**
    * Pushes a new definition to the definitions list.
    * @param key The key of the definition
