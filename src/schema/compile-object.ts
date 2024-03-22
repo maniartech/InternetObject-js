@@ -16,16 +16,17 @@ import Schema                         from './schema';
 
 registerTypes();
 
-export default function compileObject(name:string, node: Node, defs?:Definitions): Schema {
+export default function compileObject(
+  name:string, node: Node, defs?:Definitions): Schema | TokenNode {
 
   // Check if the node is a string token and starts with $. If yes, then
   // it is a schema variable. In this case, fetch the schema from the
   // definitions and return it.
-  if (node instanceof TokenNode && node.type === TokenType.STRING && node.value.startsWith('$')) {
-    const schema = defs?.getV(node.value);
-    if (schema) {
-      return schema
-    }
+  if (
+    node instanceof TokenNode &&
+    node.type === TokenType.STRING &&
+    node.value.startsWith('$')) {
+    return node
   }
 
   if (node instanceof ObjectNode === false) {
@@ -70,8 +71,8 @@ function parseObject(o: ObjectNode, schema:Schema, path:string, defs?:Definition
 
         // If the type string starts with $, then it is a schema variable
         if (type.startsWith('$')) {
-          // const of = defs?.getV(type)
-          const of = getV(memberNode.value, schema, defs);
+          // const of = getV(type)
+          const of = defs?.getV(memberNode.value);
           const memberDef = {
             ...fieldInfo,
             type: "object",
@@ -147,7 +148,7 @@ function parseObject(o: ObjectNode, schema:Schema, path:string, defs?:Definition
   return schema;
 }
 
-function parseArrayDef(a:ArrayNode, schema: Schema, path:string, defs?:Definitions) {
+function parseArrayDef(a:ArrayNode, schema: Schema, path:string, defs?:Definitions) :any {
 
   // The length of the array child must be <= 1. If the length is > 1, then
   // it is an invalid schema.
@@ -173,13 +174,11 @@ function parseArrayDef(a:ArrayNode, schema: Schema, path:string, defs?:Definitio
           },
         } as MemberDef;
       } else if (!!defs && type.startsWith('$')) {
-        // const of = defs.getV(type)
-        const of = getV(child, schema, defs);
         const memberDef = {
           type: "array",
           "of": {
             "type": "object",
-            schema: of,
+            schema: child,
             path,
           }
         } as MemberDef;
@@ -197,6 +196,17 @@ function parseArrayDef(a:ArrayNode, schema: Schema, path:string, defs?:Definitio
       return {
         type: 'array',
         of: parseObject(child, new Schema(path), path, defs),
+        path,
+      } as MemberDef;
+    }
+
+    // If the child is an array node, then it is an array type definition
+    // For example:
+    // friends: [ [string] ] or friends: [ [ { name: string, age: number } ] ]
+    if (child instanceof ArrayNode) {
+      return {
+        type: 'array',
+        of: parseArrayDef(child, schema, path, defs),
         path,
       } as MemberDef;
     }
@@ -351,14 +361,4 @@ function _(path:string, key:string) {
     return key;
   }
   return `${path}.${key}`;
-}
-
-function getV(node: TokenNode, schema: Schema, defs: Definitions | undefined) {
-  const k = node.value;
-  // If key is not
-  if (k == "$self") {
-    return schema
-  }
-
-  return defs?.getV(k);
 }
