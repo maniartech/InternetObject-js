@@ -7,18 +7,18 @@
 //         ██║ ╚████████╔╝
 //         ╚═╝  ╚═══════╝
 
+import Collection from './core/collection';
 import Definitions from './core/definitions';
 import Document from './core/document';
+import InternetObject from './core/internet-object';
+import Section from './core/section';
+import SectionCollection from './core/section-collection';
+import InternetObjectError from './errors/io-error';
+import InternetObjectSyntaxError from './errors/io-syntax-error';
+import InternetObjectValidationError from './errors/io-validation-error';
 import parse from './parser/index';
 import parseDefinitions from './parser/parse-defs';
-import InternetObject from './core/internet-object';
 import Schema from './schema/schema';
-import Collection from './core/collection';
-import InternetObjectError from './errors/io-error';
-import InternetObjectSyntaxError from '../dist/errors/syntax-error';
-import InternetObjectValidationError from './errors/io-validation-error';
-import SectionCollection from './core/section-collection';
-import Section from './core/section';
 
 export {
   Document,
