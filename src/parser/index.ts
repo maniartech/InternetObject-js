@@ -110,6 +110,7 @@ function parseDataWithSchema(docNode: DocumentNode, doc: Document) {
 
 function parseDefs(doc:Document, cols:CollectionNode) {
   const defs = (doc.header as any).definitions
+  const variableDefs: { key: string, schemaDef: Node }[] = []
   for (let i=0; i<cols.children.length; i++) {
     const child = cols.children[i] as ObjectNode;
 
@@ -150,9 +151,12 @@ function parseDefs(doc:Document, cols:CollectionNode) {
 
     let key:string = keyToken.value as string
 
-    // If key starts with $, then it is a schema. Compille it
+    // If key starts with $, then it is a schema. Dont compile it now,
+    // just keep it as it is. After all the definitions are parsed, compile
+    // the variable schemas.
     if (key.startsWith('$')) {
-      defs.push(key, compileObject(key, (child.children[0] as any).value, defs), true);
+      defs.push(key, memberNode.value, true);
+      variableDefs.push({ key, schemaDef: memberNode.value });
       continue;
     }
 
@@ -164,5 +168,12 @@ function parseDefs(doc:Document, cols:CollectionNode) {
 
     let value:Node = (child.children[0] as MemberNode).value;
     defs.push(key, value.toValue(doc.header.definitions || undefined));
+  }
+
+  // Compile the schema definitions
+  for (let i=0; i<variableDefs.length; i++) {
+    const { key, schemaDef } = variableDefs[i];
+    const def = compileObject(key, schemaDef, defs);
+    defs.set(key, def);
   }
 }
