@@ -7,8 +7,24 @@ import ObjectNode         from '../parser/nodes/objects';
 import MemberDef          from '../types/memberdef';
 import TypedefRegistry    from './typedef-registry';
 import Schema             from './schema';
+import TokenNode from '../parser/nodes/tokens';
+import assertNever from '../errors/asserts/asserts';
 
-export default function processObject(data: ObjectNode, schema: Schema, defs?: Definitions, collectionIndex?: number) {
+export default function processObject(data: ObjectNode, schema: Schema | TokenNode, defs?: Definitions, collectionIndex?: number) {
+  if (schema instanceof TokenNode) {
+    const schemaName = schema.value as string;
+    schema = defs?.getV(schemaName);
+  }
+
+  if (schema instanceof Schema === false) {
+    console.log("::", schema)
+    assertNever("Invalid schema type");
+  }
+
+  return _processObject(data, schema as Schema, defs, collectionIndex);
+}
+
+function _processObject(data: ObjectNode, schema: Schema, defs?: Definitions, collectionIndex?: number) {
   const o: InternetObject = new InternetObject();
   let positional = true;
 
@@ -62,6 +78,11 @@ export default function processObject(data: ObjectNode, schema: Schema, defs?: D
 
 function processMember(member: MemberNode, memberDef: MemberDef, defs?: Definitions): any {
   const typeDef = TypedefRegistry.get(memberDef.type);
+
+  // console.log(member, memberDef)
+  if (memberDef.path === 'of') {
+    debugger
+  }
 
   if (!typeDef) {
     throw new Error(`Type ${memberDef.type} is not registered.`);
