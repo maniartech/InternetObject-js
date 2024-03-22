@@ -1,24 +1,26 @@
 import parse from "../src/parser";
 import Tokenizer from "../src/tokenizer";
 import ASTParser from "../src/parser/ast-parser";
+import compileSchema from '../src/schema/index';
 
 // ⚠️ This is a trial test file to try out new features and test cases
 // ⚠️ It's not a part of the main test suite. It's just for testing
-// ⚠️ work in progress features and test cases.
+// ⚠️ work in progress features and test cases. You may find some
+// ⚠️ broken test cases or incomplete, left out and commented code
+// ⚠️ and imports. Please ignore this file.
 
 describe('Trial', () => {
   it('should try wip tasks', () => {
     const input = String.raw`
-    ~ pos: 10
+    $schema: {name, age, parent}
     ---
-    City Central Library
     `
 
-    const tokenizer = new Tokenizer(input);
-    const tokens = tokenizer.tokenize();
-    console.log(tokens);
+    // const tokenizer = new Tokenizer(input);
+    // const tokens = tokenizer.tokenize();
     // const ast = new ASTParser(tokens).parse();
-    // console.log(ast);
+    const schema = compileSchema("schema", input)
+    console.log(JSON.stringify(schema, null, 2))
 
     // const input = String.raw`~ recordCount: 22
     // ~ page: 3
