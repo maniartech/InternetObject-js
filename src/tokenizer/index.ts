@@ -299,6 +299,26 @@ class Tokenizer {
     let prefix = "";
     let subType: string | undefined;
 
+    // If the number starts with a + or - sign, it is an infinite number
+    // if the next three characters are 'Inf'
+    // console.log("Infinite number", this.input[this.pos], this.input.substring(this.pos, this.pos + 3))
+    if (this.input[this.pos] === "+" || this.input[this.pos] === "-") {
+      const sign = this.input[this.pos];
+      if (this.input.substring(this.pos+1, this.pos + 4) === "Inf") {
+        value = this.input[this.pos] + "Inf";
+        this.advance(4);
+        return Token.init(
+          start,
+          startRow,
+          startCol,
+          value,
+          sign === "+" ? Infinity : -Infinity,
+          TokenType.NUMBER
+        );
+      }
+    }
+
+
     // Allow for a leading - sign.
     if (this.input[this.pos] === "-") {
       // Check if the next character is a digit.
@@ -493,6 +513,16 @@ class Tokenizer {
           value,
           null,
           TokenType.NULL
+        );
+      case Literals.Inf:
+      case Literals.NaN:
+        return Token.init(
+          start,
+          startRow,
+          startCol,
+          value,
+          value === Literals.Inf ? Infinity : NaN,
+          TokenType.NUMBER
         );
 
       default:
