@@ -44,4 +44,44 @@ describe('Tokenizer', () => {
     expect(tokens[7].value).toEqual(b2);
     expect(tokens[11].value).toEqual(b3);
   });
+
+  it ('should tokenize the decimal numbers including the negative numbers and scientific notation', () => {
+    const input = `{
+      a: -10,
+      b: 2,
+      c: 3.14,
+      d: 1.2e3,
+      e: -1.2e-3,
+      f: 1.2e+3,
+    }`;
+
+    const tokenizer = new Tokenizer(input);
+    const tokens = tokenizer.tokenize();
+
+    expect(tokens[3].value).toEqual(-10);
+    expect(tokens[7].value).toEqual(2);
+    expect(tokens[11].value).toEqual(3.14);
+    expect(tokens[15].value).toEqual(1.2e3);
+    expect(tokens[19].value).toEqual(-1.2e-3);
+    expect(tokens[23].value).toEqual(1.2e3);
+  });
+
+  it ('should tokenize the special numbers like NaN, Inf, +Inf, -Inf', () => {
+    const input = `{
+      a: NaN,
+      b: Inf,
+      c: +Inf,
+      d: -Inf,
+    }`;
+
+    const tokenizer = new Tokenizer(input);
+    const tokens = tokenizer.tokenize();
+
+    expect(tokens[3].value).toEqual(NaN);
+    expect(tokens[7].value).toEqual(Infinity);
+    expect(tokens[11].value).toEqual(Infinity);
+    expect(tokens[15].value).toEqual(-Infinity);
+  });
+
+
 });
