@@ -8,6 +8,12 @@ enum Literals {
 
   FALSE = 'false',
   F = 'F',
+
+  Inf = 'Inf',
+  PositiveInf = '+Inf',
+  NegativeInf = '-Inf',
+
+  NaN = 'NaN',
 }
 
 export default Literals;
