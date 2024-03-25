@@ -28,7 +28,7 @@ class Definitions {
   }
 
   public get defaultSchema(): Schema | null {
-    return this._defaultSchema;
+    return this._defaultSchema || this._definitions["$schema"]?.value || null;
   }
 
   /**
@@ -81,6 +81,7 @@ class Definitions {
       value: v
     }
     this._definitions[k] = dv;
+    this._defaultSchema = null;
   }
 
   /**
