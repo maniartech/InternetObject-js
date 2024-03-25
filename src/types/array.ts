@@ -60,6 +60,9 @@ function _processNode(
     arrayMemberDef.schema = memberDef.of
   } else if (memberDef.of?.type) {
     typeDef = TypedefRegistry.get(memberDef.of.type)
+    if (!typeDef) {
+      throw new ValidationError(ErrorCodes.invalidType, `Invalid type definition '${memberDef.of.type}'`, node)
+    }
     arrayMemberDef = memberDef.of
   } else if (typeof memberDef.of === 'string') {
     assertNever(memberDef.of)
