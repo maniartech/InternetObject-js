@@ -1,18 +1,18 @@
-import Definitions                    from '../core/definitions';
-import assertNever                    from '../errors/asserts/asserts';
-import SyntaxError                    from '../errors/io-syntax-error';
-import ErrorCodes                     from '../errors/io-error-codes';
-import ArrayNode                      from '../parser/nodes/array';
-import MemberNode                     from '../parser/nodes/members';
-import Node                           from '../parser/nodes/nodes';
-import ObjectNode                     from '../parser/nodes/objects';
-import TokenNode                      from '../parser/nodes/tokens';
-import TokenType                      from '../tokenizer/token-types';
-import registerTypes                  from '../types';
-import MemberDef                      from '../types/memberdef';
-import TypedefRegistry                from './typedef-registry';
-import processSchema                  from './processor';
-import Schema                         from './schema';
+import Definitions            from '../core/definitions';
+import assertNever            from '../errors/asserts/asserts';
+import SyntaxError            from '../errors/io-syntax-error';
+import ErrorCodes             from '../errors/io-error-codes';
+import ArrayNode              from '../parser/nodes/array';
+import MemberNode             from '../parser/nodes/members';
+import Node                   from '../parser/nodes/nodes';
+import ObjectNode             from '../parser/nodes/objects';
+import TokenNode              from '../parser/nodes/tokens';
+import TokenType              from '../tokenizer/token-types';
+import registerTypes          from '../types';
+import MemberDef              from '../types/memberdef';
+import TypedefRegistry        from './typedef-registry';
+import processSchema          from './processor';
+import Schema                 from './schema';
 
 registerTypes();
 
