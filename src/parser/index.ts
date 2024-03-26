@@ -110,7 +110,7 @@ function parseDataWithSchema(docNode: DocumentNode, doc: Document) {
 
 function parseDefs(doc:Document, cols:CollectionNode) {
   const defs = (doc.header as any).definitions
-  const variableDefs: { key: string, schemaDef: Node }[] = []
+  const schemaDefs: { key: string, schemaDef: Node }[] = []
   for (let i=0; i<cols.children.length; i++) {
     const child = cols.children[i] as ObjectNode;
 
@@ -156,7 +156,7 @@ function parseDefs(doc:Document, cols:CollectionNode) {
     // the variable schemas.
     if (key.startsWith('$')) {
       defs.push(key, memberNode.value, true);
-      variableDefs.push({ key, schemaDef: memberNode.value });
+      schemaDefs.push({ key, schemaDef: memberNode.value });
       continue;
     }
 
@@ -171,9 +171,10 @@ function parseDefs(doc:Document, cols:CollectionNode) {
   }
 
   // Compile the schema definitions
-  for (let i=0; i<variableDefs.length; i++) {
-    const { key, schemaDef } = variableDefs[i];
+  for (let i=0; i<schemaDefs.length; i++) {
+    const { key, schemaDef } = schemaDefs[i];
     const def = compileObject(key, schemaDef, defs);
+
     defs.set(key, def);
   }
 }
