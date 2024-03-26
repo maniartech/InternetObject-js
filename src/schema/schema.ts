@@ -43,4 +43,12 @@ export default class Schema {
       this.defs[key] = value;
     });
   }
+
+  /**
+   * Returns the member definition of the given member name.
+   * @param name The name of the member
+   */
+  get(name: string, ): MemberDef {
+    return this.defs[name];
+  }
 }
