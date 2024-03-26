@@ -20,13 +20,13 @@ export default function compileObject(
   name:string, node: Node, defs?:Definitions): Schema | TokenNode {
 
   // Check if the node is a string token and starts with $. If yes, then
-  // it is a schema variable. In this case, fetch the schema from the
-  // definitions and return it.
+  // it is a schema variable. In this case, just return the node as it is
+  // to be processed later.
   if (
     node instanceof TokenNode &&
     node.type === TokenType.STRING &&
     node.value.startsWith('$')) {
-    return node
+    return node;
   }
 
   if (node instanceof ObjectNode === false) {
@@ -71,12 +71,10 @@ function parseObject(o: ObjectNode, schema:Schema, path:string, defs?:Definition
 
         // If the type string starts with $, then it is a schema variable
         if (type.startsWith('$')) {
-          // const of = getV(type)
-          const of = defs?.getV(memberNode.value);
           const memberDef = {
             ...fieldInfo,
             type: "object",
-            schema: of,
+            schema: memberNode.value,
           } as MemberDef;
           addMemberDef(memberDef, schema, path);
           continue;
