@@ -28,6 +28,8 @@ enum ErrorCodes {
   invalidSchema = 'invalid-schema',
   schemaNotFound = 'schema-not-found',
   schemaMissing = 'schema-missing',
+  unknownMember = 'unknown-member',
+  duplicateMember = 'duplicate-member',
 
   emptyMemberDef = 'empty-memberdef',
   invalidDefinition = 'invalid-definition',
