@@ -98,8 +98,8 @@ function parseObject(o: ObjectNode, schema:Schema, path:string, defs?:Definition
       else if(memberNode.value instanceof ObjectNode) {
         const objectDef = parseObjectDef(memberNode.value, _(path, fieldInfo.name));
         const memberDef = {
-          ...fieldInfo,
           ...objectDef,
+          ...fieldInfo,
         } as MemberDef;
         addMemberDef(memberDef, schema, path);
       }
