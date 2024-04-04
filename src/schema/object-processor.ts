@@ -57,6 +57,9 @@ function _processObject(data: ObjectNode, schema: Schema, defs?: Definitions, co
   if (positional) {
     for (; i<data.children.length; i++) {
       const member = data.children[i] as MemberNode;
+      if (!schema.open) {
+        throw new SyntaxError(ErrorCodes.invalidValue, "Unexpected value found.", member);
+      }
       if (member.key) {
         positional = false;
         break;
