@@ -4,10 +4,11 @@ import SyntaxError      from '../errors/io-syntax-error';
 import * as dtParser    from '../utils/datetime';
 import * as is          from './is';
 import Literals         from './literals';
-import Position         from './position';
+import Position         from '../core/position';
 import Symbols          from './symbols';
 import TokenType        from './token-types';
 import Token            from './tokens';
+import PositionRange from '../core/position-range';
 
 const regexHex4 = /^[0-9a-fA-F]{4}$/;
 const regexHex2 = /^[0-9a-fA-F]{2}$/;
@@ -185,8 +186,19 @@ class Tokenizer {
     return { value, needToNormalize };
   }
 
-  private get currentPosition(): Position | undefined {
-    return { pos: this.pos, row: this.row, col: this.col };
+  private get currentPosition(): PositionRange {
+    const getPos = () => {
+      return {
+        pos: this.pos,
+        row: this.row,
+        col: this.col
+      }
+    }
+
+    return {
+      getStartPos: getPos,
+      getEndPos: getPos
+    };
   }
 
 

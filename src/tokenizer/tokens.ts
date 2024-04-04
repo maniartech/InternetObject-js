@@ -1,9 +1,10 @@
-import Position from "./position";
+import Position from "../core/position";
+import PositionRange from "../core/position-range";
 
 /**
 * Represents a parsed token.
 */
-class Token implements Position {
+class Token implements PositionRange {
   pos: number;
   row: number;
   col: number;
@@ -59,11 +60,15 @@ class Token implements Position {
     return t;
   }
 
+  getStartPos(): Position {
+    return { row: this.row, col: this.col, pos: this.pos };
+  }
+
   /**
    * Returns the ending position (row, col, pos) of the token.
    * Useful for debugging and generating error messages.
    */
-  getEndPosition(): { row: number, col: number, pos: number } {
+  getEndPos(): Position {
     const text      = this.token.trimEnd();
     const lines     = text.split('\n');
     const lastLine  = lines[lines.length - 1];
