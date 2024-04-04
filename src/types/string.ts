@@ -37,11 +37,11 @@ const schema = new Schema(
  *
  * It performs the following validation
  * - Value is string
- * - Value is optional
- * - Value is nullable
+* - Value is optional
+* - Value is nullable
+* - Value is in choices
  * - Value length <= maxLength
- * - Value length >= minLength
- * - Value is in choices
+ * - Value length >= minLen
  */
 export default class StringDef implements TypeDef {
   private _type: string
@@ -72,28 +72,39 @@ function _process(node: Node, memberDef: MemberDef, defs?: Definitions): string 
       node)
   }
 
-  // TODO: Validate Data for subtypes
   _validatePattern(memberDef, value, node)
 
-  const maxLength = memberDef.maxLength
 
-  // Max length check
-  if (maxLength !== undefined && typeof maxLength === 'number') {
-    if (value.length > maxLength) {
+  // Len check
+  const len = memberDef.len
+  if (len !== undefined && typeof len === 'number') {
+    if (value.length !== len) {
       throw new ValidationError(
-        ErrorCodes.invalidMaxLength,
-        `Invalid maxLength for ${memberDef.path}.`
+        ErrorCodes.invalidLength,
+        `Invalid length for ${memberDef.path}.`, valueNode
       )
     }
   }
 
-  const minLength = memberDef.minLength
   // Max length check
-  if (minLength !== undefined && typeof minLength === 'number') {
-    if (value.length > minLength) {
+  const maxLen = memberDef.maxLen
+  if (maxLen !== undefined && typeof maxLen === 'number') {
+    if (value.length > maxLen) {
+      throw new ValidationError(
+        ErrorCodes.invalidMaxLength,
+        `Invalid maxLength for ${memberDef.path}.`, valueNode
+        )
+      }
+    }
+
+    // Max length check
+    const minLen = memberDef.minLen
+    if (minLen !== undefined && typeof minLen === 'number') {
+    console.log('StringDef: ', value, memberDef.path, memberDef.minLen)
+    if (value.length < minLen) {
       throw new ValidationError(
         ErrorCodes.invalidMinLength,
-        `Invalid minLength for ${memberDef.path}.`
+        `Invalid minLen for ${memberDef.path}.`, valueNode
       )
     }
   }
@@ -109,10 +120,6 @@ function _validatePattern(memberDef: MemberDef, value: string, node?: Node) {
     if (!re) {
       let pattern = memberDef.pattern
       let flags = memberDef.flags
-      // Add ^ and $ at the beginning and end of the pattern respectively
-      // if these characters are not set in the pattern
-      // pattern = pattern.startsWith('^') ? pattern : `^${pattern}`
-      // pattern = pattern.endsWith('$') ? pattern : `${pattern}$`
 
       // Compile the expression and cache it into the memberDef
       try {
@@ -123,53 +130,24 @@ function _validatePattern(memberDef: MemberDef, value: string, node?: Node) {
         }
         memberDef.re = re // Cache the compiled expression
       } catch {
-        throw new ValidationError(ErrorCodes.invalidPattern, value, node as TokenNode)
+        throw new ValidationError(ErrorCodes.invalidPattern, value, node)
       }
     }
     if (!re.test(value)) {
-      throw new ValidationError(ErrorCodes.invalidPattern, value, node as TokenNode)
+      throw new ValidationError(ErrorCodes.invalidPattern,
+        `The value '${value}' does not match the pattern '${memberDef.pattern}'.`, node)
     }
   }
   // Validate email
   else if (type === 'email') {
     if (!emailExp.test(value)) {
-      throw new ValidationError(ErrorCodes.invalidEmail)
+      throw new ValidationError(ErrorCodes.invalidEmail, `Invalid email address: ${value}`, node)
     }
   }
   // Validate url
   else if (type === 'url') {
     if (!urlExp.test(value)) {
-      throw new ValidationError(ErrorCodes.invalidUrl)
+      throw new ValidationError(ErrorCodes.invalidUrl, `Invalid URL: ${value}`, node)
     }
   }
-}
-
-function _notAString(path: string, data: TokenNode): ErrorArgs {
-  return [ErrorCodes.notAString, `Expecting a string value for '${path}'`, data]
-}
-
-function _invlalidChoice(path: string, data: TokenNode, choices: number[]): ErrorArgs {
-  return [
-    ErrorCodes.invalidValue,
-    `The value of "${path}" must be one of the [${choices.join(',')}]. Currently it is ${
-      data.value
-    }.`,
-    data
-  ]
-}
-
-function _invlalidMinLength(path: string, data: TokenNode, minLength: number): ErrorArgs {
-  return [
-    ErrorCodes.invalidMinLength,
-    `The length of "${path}" must be ${minLength} or more. Currently it is ${data.value.length}.`,
-    data
-  ]
-}
-
-function _invlalidMaxLength(path: string, data: TokenNode, maxLength: number): ErrorArgs {
-  return [
-    ErrorCodes.invalidMaxLength,
-    `The length of "${path}" must be ${maxLength} or more. Currently it is ${data.value.length}.`,
-    data
-  ]
 }
