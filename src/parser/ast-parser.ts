@@ -236,6 +236,11 @@ class ASTParser {
   private parseObject(isOpenObject: boolean): ObjectNode {
     const members: Array<MemberNode> = [];
 
+    let openBracket: Token | null = this.peek();
+    if (isOpenObject) {
+      openBracket = null;
+    }
+
     if (!isOpenObject && !this.advanceIfMatch([TokenType.CURLY_OPEN])) {
       assertNever("The caller must ensure that this function is called " +
         "only when the next token is {");
@@ -292,13 +297,19 @@ class ASTParser {
 
     // consume closing bracket
     this.advance();
-    if (!isOpenObject && !this.match([TokenType.CURLY_CLOSE])) {
+    let closeBracket: Token | null = this.peek();
+    if (isOpenObject) {
+      closeBracket = null;
+      return new ObjectNode(members);
+    }
+
+    if (!this.match([TokenType.CURLY_CLOSE])) {
       const lastToken = this.peek()
       throw new SyntaxError(ErrorCodes.expectingBracket, Symbols.CURLY_CLOSE,
         lastToken === null ? void 0 : lastToken, lastToken === null);
     }
 
-    return new ObjectNode(members);
+    return new ObjectNode(members, openBracket!, closeBracket!);
   }
 
   private parseMember(): MemberNode {
@@ -339,6 +350,8 @@ class ASTParser {
   private parseArray(): ArrayNode  {
     const arr: Array<Node | null> = [];
 
+    const openBracket = this.peek();
+
     // Assume that the current token is the opening bracket
     // Consume the opening bracket
     this.advance();
@@ -371,6 +384,8 @@ class ASTParser {
       // arr.push(value);
       this.advance();
 
+
+
       if (this.peek() ?.type === TokenType.BRACKET_CLOSE) {
         this.backtrack();
         break;
@@ -380,17 +395,17 @@ class ASTParser {
     // consume closing bracket
     this.advance();
 
-    const endToken = this.peek();
-    if (!endToken || endToken.type !== TokenType.BRACKET_CLOSE) {
+    const closeBracket = this.peek();
+    if (!closeBracket || closeBracket.type !== TokenType.BRACKET_CLOSE) {
       throw new SyntaxError(
         ErrorCodes.expectingBracket,
         Symbols.BRACKET_CLOSE,
-        endToken === null ? void 0 : endToken,
-        endToken === null
+        closeBracket === null ? void 0 : closeBracket,
+        closeBracket === null
       );
     }
 
-    return new ArrayNode(arr);
+    return new ArrayNode(arr, openBracket!, closeBracket);
   }
 
   private parseValue(): Node {
