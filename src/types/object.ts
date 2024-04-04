@@ -62,7 +62,7 @@ class ObjectDef implements TypeDef {
       return processObject(valueNode as ObjectNode, schema, defs)
     } catch (err) {
       if (err instanceof ValidationError) {
-        err.position = node
+        err.positionRange = node
       }
       throw err
     }

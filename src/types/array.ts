@@ -80,7 +80,7 @@ function _processNode(
         // Before rethrowing the error, change the position of the error to
         // the original node.
         if (err instanceof ValidationError) {
-          err.position = node
+          err.positionRange = node
         }
         throw err
       }
