@@ -1,4 +1,5 @@
-import Position from "../tokenizer/position"
+import Position from "../core/position"
+import PositionRange from "../core/position-range"
 
 /**
  * Represents the base error class in InternetObject.
@@ -23,10 +24,10 @@ class InternetObjectError extends Error {
   /**
    * A position object, for tracking line and columns.
    */
-  #position?: Position
-  get position() { return this.#position }
-  set position(value: Position | undefined) {
-    this.#position = value
+  #positionRange?: PositionRange
+  get positionRange() { return this.#positionRange }
+  set positionRange(value: PositionRange | undefined) {
+    this.#positionRange = value
     this.updateMessage()
   }
 
@@ -44,14 +45,14 @@ class InternetObjectError extends Error {
    * @param isEof {boolean} Indicates whether the error is caused by EOF. Optional
    * @param ssf {Function} The start statck function, removes the irrelavant frames from the stack trace
    */
-  constructor(errorCode: string, fact?: string, position?: Position, isEof: boolean = false, ssf?: any) {
+  constructor(errorCode: string, fact?: string, positionRange?: PositionRange, isEof: boolean = false, ssf?: any) {
     super()
 
-    this.errorCode  = errorCode
-    this.fact       = fact
-    this.position   = position
-    this.isEof      = isEof
-    this.name       = 'InternetObjectError'
+    this.errorCode      = errorCode
+    this.fact           = fact
+    this.#positionRange = positionRange
+    this.isEof          = isEof
+    this.name           = 'InternetObjectError'
 
     // Format the error message
     this.updateMessage()
@@ -71,9 +72,10 @@ class InternetObjectError extends Error {
 
     if (this.isEof) {
       errorMsg += `at EOF`
-    } else if (this.position) {
+    } else if (this.#positionRange) {
       // Handle case where position is just Position
-      errorMsg += `at ${this.position.row}:${this.position.col}`
+      const startPos = this.#positionRange.getStartPos()
+      errorMsg += `at ${startPos.row}:${startPos.col}`
     }
 
     this.message = errorMsg

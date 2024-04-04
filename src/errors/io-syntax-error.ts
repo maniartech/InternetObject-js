@@ -1,5 +1,4 @@
-import Position from "../tokenizer/position"
-import Token from "../tokenizer/tokens"
+import PositionRange from "../core/position-range"
 import InternetObjectError from "./io-error"
 
 
@@ -17,8 +16,8 @@ class InternetObjectSyntaxError extends InternetObjectError {
    *
    * @internal
    */
-  constructor(errorCode: string, fact?: string, pos?: Position, isEof: boolean = false, ssf?: any) {
-    super(errorCode, fact, pos, isEof, ssf)
+  constructor(errorCode: string, fact?: string, posRange?: PositionRange, isEof: boolean = false, ssf?: any) {
+    super(errorCode, fact, posRange, isEof, ssf)
     this.name = 'InternetObject(SyntaxError)'
     this.updateMessage()
   }

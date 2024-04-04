@@ -23,6 +23,7 @@ enum ErrorCodes {
   // invalidBracket = 'invalid-bracket',
   // incompleteEscapeSequence = 'incomplete-escape-sequence',
   unexpectedPositionalMember = 'unexpected-positional-member',
+  additionalValuesNotAllowed = 'additional-values-not-allowed',
 
   // Parser Errors (Schema)
   invalidSchema = 'invalid-schema',
@@ -34,7 +35,6 @@ enum ErrorCodes {
   emptyMemberDef = 'empty-memberdef',
   invalidDefinition = 'invalid-definition',
   invalidKey = 'invalid-key',
-  // invalidMemberDefCondition = 'invalid-memberdef-condition',
   invalidMemberDef = 'invalid-memberdef',
 
   // Variables

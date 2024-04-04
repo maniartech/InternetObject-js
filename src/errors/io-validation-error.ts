@@ -1,4 +1,4 @@
-import Position             from "../tokenizer/position"
+import PositionRange from "../core/position-range"
 import InternetObjectError  from "./io-error"
 
 /**
@@ -16,8 +16,8 @@ class InternetObjectValidationError extends InternetObjectError {
    * @param ssf {Function} The start statck function, removes the irrelavant frames from the stack trace
    * @internal
    */
-  constructor(errorCode: string, fact?: string, pos?: Position, isEof: boolean = false, ssf?: any) {
-    super(errorCode, fact, pos, isEof, ssf)
+  constructor(errorCode: string, fact?: string, posRange?: PositionRange, isEof: boolean = false, ssf?: any) {
+    super(errorCode, fact, posRange, isEof, ssf)
     this.name = 'InternetObject(ValidationError)'
   }
 }
