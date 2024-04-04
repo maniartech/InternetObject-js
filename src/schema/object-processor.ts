@@ -48,7 +48,7 @@ function _processObject(data: ObjectNode, schema: Schema, defs?: Definitions, co
       if (val !== undefined) o[name] = val;
     } else {
       if (!memberDef.optional) {
-        throw new ValidationError(ErrorCodes.valueRequired, `Expecting a value for ${memberDef.path}.`);
+        throw new ValidationError(ErrorCodes.valueRequired, `Expecting a value for ${memberDef.path}.`, data);
       }
     }
   }
@@ -57,8 +57,9 @@ function _processObject(data: ObjectNode, schema: Schema, defs?: Definitions, co
   if (positional) {
     for (; i<data.children.length; i++) {
       const member = data.children[i] as MemberNode;
+      console.log("::", schema, i, member)
       if (!schema.open) {
-        throw new SyntaxError(ErrorCodes.invalidValue, "Unexpected value found.", member);
+        throw new SyntaxError(ErrorCodes.additionalValuesNotAllowed, `Additional values are not allowed in the ${schema.name}. The ${schema.name} schema is not open.`, member.value);
       }
       if (member.key) {
         positional = false;
