@@ -1,12 +1,24 @@
 import Definitions    from '../../core/definitions';
 import InternetObject from '../../core/internet-object';
+import Position from '../../core/position';
+import Token from '../../tokenizer/tokens';
 import ContainerNode  from './containers';
 import MemberNode     from './members';
 
 class ObjectNode extends ContainerNode {
+  openBracket: Token | null = null;
+  closeBracket: Token | null = null;
 
-  constructor(children: Array<MemberNode | null> = []) {
+  constructor(children: Array<MemberNode | null> = [], openBracket?: Token, closeBracket?: Token) {
     super('object', children);
+
+    if (openBracket) {
+      this.openBracket = openBracket;
+    }
+
+    if (closeBracket) {
+      this.closeBracket = closeBracket;
+    }
   }
 
   toObject(defs?: Definitions):any {
@@ -26,6 +38,22 @@ class ObjectNode extends ContainerNode {
       index++;
     }
     return value;
+  }
+
+  getStartPos(): Position {
+    if (this.openBracket) {
+      return this.openBracket.getStartPos();
+    }
+
+    return this.children[0]?.getStartPos() ?? { row: 0, col: 0, pos: 0 };
+  }
+
+  getEndPos(): Position {
+    if (this.closeBracket) {
+      return this.closeBracket.getEndPos();
+    }
+
+    return this.children[this.children.length - 1]?.getEndPos() ?? { row: 0, col: 0, pos: 0 };
   }
 
   toValue (defs?: Definitions): InternetObject {

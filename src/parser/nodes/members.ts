@@ -1,4 +1,5 @@
 import Definitions from "../../core/definitions";
+import Position from "../../core/position";
 import Node from "./nodes";
 import TokenNode from "./tokens";
 
@@ -16,21 +17,6 @@ class MemberNode implements Node {
     }
   }
 
-  get row(): number {
-    if (this.key) return this.key.row;
-    return this.value.row;
-  }
-
-  get col(): number {
-    if (this.key) return this.key.col;
-    return this.value.col;
-  }
-
-  get pos(): number {
-    if (this.key) return this.key.pos;
-    return this.value.pos;
-  }
-
   toValue(defs?: Definitions):any {
     if (this.key) {
       return {
@@ -40,7 +26,25 @@ class MemberNode implements Node {
       return this.value.toValue(defs);
     }
   }
+  getStartPos(): Position {
+    if (this.key) {
+      return this.key.getStartPos();
+    }
 
+    return this.value.getStartPos();
+  }
+
+  getEndPos(): Position {
+    if (this.value) {
+      return this.value.getEndPos();
+    }
+
+    if (this.key) {
+      return this.key.getEndPos();
+    }
+
+    return { row: 0, col: 0, pos: 0 };
+  }
 }
 
 export default MemberNode;

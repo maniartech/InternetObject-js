@@ -1,4 +1,5 @@
 import Definitions from "../../core/definitions";
+import Position from "../../core/position";
 import Section from "../../core/section";
 import SectionCollection from "../../core/section-collection";
 import CollectionNode from "./collections";
@@ -20,19 +21,12 @@ class SectionNode implements Node {
     this.schemaName = schemaName;
   }
 
-  get row(): number {
-    if (this.child) return this.child.row;
-    return 0;
+  getStartPos(): Position {
+    return this.child?.getStartPos() ?? { row: 0, col: 0, pos: 0 };
   }
 
-  get col(): number {
-    if (this.child) return this.child.col;
-    return 0;
-  }
-
-  get pos(): number {
-    if (this.child) return this.child.pos;
-    return 0;
+  getEndPos(): Position {
+    return this.child?.getEndPos() ?? { row: 0, col: 0, pos: 0 };
   }
 
   toValue (defs?:Definitions):any {

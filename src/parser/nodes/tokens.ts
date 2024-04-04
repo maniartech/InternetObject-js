@@ -1,4 +1,5 @@
 import Definitions  from '../../core/definitions';
+import Position from '../../core/position';
 import Token        from '../../tokenizer/tokens';
 import Node         from './nodes';
 
