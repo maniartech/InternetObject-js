@@ -2,6 +2,7 @@ import Definitions        from '../core/definitions';
 import InternetObject     from '../core/internet-object';
 import ErrorCodes         from '../errors/io-error-codes';
 import SyntaxError        from '../errors/io-syntax-error';
+import ValidationError    from '../errors/io-validation-error';
 import MemberNode         from '../parser/nodes/members';
 import ObjectNode         from '../parser/nodes/objects';
 import MemberDef          from '../types/memberdef';
@@ -32,6 +33,8 @@ function _processObject(data: ObjectNode, schema: Schema, defs?: Definitions, co
   let i=0;
   for (; i<schema.names.length; i++) {
     let member = data.children[i] as MemberNode;
+    let name = schema.names[i];
+    let memberDef = schema.defs[name];
 
     if (member) {
       if (member.key) {
@@ -39,13 +42,14 @@ function _processObject(data: ObjectNode, schema: Schema, defs?: Definitions, co
         break;
       }
 
-      let name = schema.names[i];
-      let memberDef = schema.defs[name];
-
       processedNames.add(name);
 
       const val = processMember(member, memberDef, defs);
       if (val !== undefined) o[name] = val;
+    } else {
+      if (!memberDef.optional) {
+        throw new ValidationError(ErrorCodes.valueRequired, `Expecting a value for ${memberDef.path}.`);
+      }
     }
   }
 
