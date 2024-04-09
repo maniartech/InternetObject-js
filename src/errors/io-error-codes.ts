@@ -63,6 +63,7 @@ enum ErrorCodes {
   invalidPattern = 'invalid-pattern',
 
   // Number
+  unsupportedNumberType = 'unsupported-number-type',
   notANumber = 'not-a-number',
   notAnInteger = 'not-an-integer',
   outOfRange = 'out-of-range',
