@@ -174,7 +174,7 @@ class Tokenizer {
           this.advance(2); // Move past the 2 hex digits
           needToNormalize = true;
         } else {
-          new SyntaxError(
+          throw new SyntaxError(
             ErrorCodes.invalidEscapeSequence,
             hexByte,this.currentPosition);
         }
@@ -386,7 +386,6 @@ class Tokenizer {
             this.advance();
           }
           break;
-
         default:
           assertNever(this.input[this.pos + 1]);
       }
@@ -424,15 +423,25 @@ class Tokenizer {
       }
     }
 
+    // if the next char is n, then it is a big integer
+    if (this.input[this.pos] === "n") {
+      base = 10;
+      subType = "BIGINT";
+      this.advance();
+    }
+
     let numberValue;
     if (base === 10 && (hasDecimal || hasExponent)) {
       numberValue = parseFloat(value);
+    } else if (base === 10 && subType === "BIGINT") {
+      numberValue = BigInt(prefix + value);
+      value += "n";
+      console.log("Big int", numberValue, value);
     } else {
       numberValue = parseInt(value, base);
-    }
-
-    if (isNaN(numberValue)) {
-      throw new SyntaxError(ErrorCodes.notANumber, prefix + value, this.currentPosition);
+      if (isNaN(numberValue)) {
+        throw new SyntaxError(ErrorCodes.notANumber, prefix + value, this.currentPosition);
+      }
     }
 
     return Token.init(
