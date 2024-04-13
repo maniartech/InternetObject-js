@@ -423,24 +423,24 @@ class Tokenizer {
       }
     }
 
+    let tokenType = TokenType.NUMBER;
+    let numberValue;
+
     // if the next char is n, then it is a big integer
     if (this.input[this.pos] === "n") {
-      base = 10;
-      subType = "BIGINT";
-      this.advance();
-    }
-
-    let numberValue;
-    if (base === 10 && (hasDecimal || hasExponent)) {
-      numberValue = parseFloat(value);
-    } else if (base === 10 && subType === "BIGINT") {
+      tokenType = TokenType.BIGINT;
       numberValue = BigInt(prefix + value);
       value += "n";
-      console.log("Big int", numberValue, value);
+
+      this.advance();
     } else {
-      numberValue = parseInt(value, base);
-      if (isNaN(numberValue)) {
-        throw new SyntaxError(ErrorCodes.notANumber, prefix + value, this.currentPosition);
+      if (base === 10 && (hasDecimal || hasExponent)) {
+        numberValue = parseFloat(value);
+      } else {
+        numberValue = parseInt(value, base);
+        if (isNaN(numberValue)) {
+          throw new SyntaxError(ErrorCodes.notANumber, prefix + value, this.currentPosition);
+        }
       }
     }
 
@@ -448,9 +448,9 @@ class Tokenizer {
       start,
       startRow,
       startCol,
-      value,
+      prefix + value,
       numberValue,
-      TokenType.NUMBER,
+      tokenType,
       subType
     );
   }
@@ -565,15 +565,15 @@ class Tokenizer {
    */
   private mergeTokens(
     first:Token, second:Token): Token {
-    const token = new Token();
-    token.pos = first.pos;
-    token.row = first.row;
-    token.col = first.col;
-    token.token = first.token + second.token;
-    token.value = first.value.toString() + second.value.toString();
-    token.type = second.type;
-    token.subType = second.subType;
-    return token;
+      const token = new Token();
+      token.pos = first.pos;
+      token.row = first.row;
+      token.col = first.col;
+      token.token = first.token + second.token;
+      token.value = first.token + second.value.toString();
+      token.type = second.type;
+      token.subType = second.subType;
+      return token;
     }
 
   /**
