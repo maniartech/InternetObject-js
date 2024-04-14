@@ -22,17 +22,13 @@ const schema = new Schema(
   { null:     { type: "bool",     optional: true,  null: false, default: false } }
 )
 
-/**
- * Represents the various datetime related data types
- *
- * @internal
- */
 class DateTimeDef implements TypeDef {
-  private _type: string
+  #type: string
 
-  constructor(type: string = 'datetime') { this._type = type }
-  get type() { return this._type }
-  get schema() { return schema }
+  public get type() { return this.#type }
+  public get schema() { return schema }
+
+  public constructor(type: string = 'datetime') { this.#type = type }
 
   parse(node: Node, memberDef: MemberDef, defs?: Definitions): Date {
     const valueNode = defs?.getV(node) || node
@@ -44,12 +40,12 @@ class DateTimeDef implements TypeDef {
     }
 
     // Validate the value
-    this._validate(value, memberDef)
+    this.#validate(value, memberDef)
 
     return value
   }
 
-  _validate(value:Date, memberDef: MemberDef) {
+  #validate(value:Date, memberDef: MemberDef) {
     if (memberDef.min) {
       const min = memberDef.min
       if (min && value < min) {
@@ -70,6 +66,8 @@ class DateTimeDef implements TypeDef {
       }
     }
   }
+
+  public static get types() { return DATETIME_TYPES }
 }
 
 export default DateTimeDef
