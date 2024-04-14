@@ -19,10 +19,11 @@ const schema = new Schema(
  * validating, loading and serializing any values.
  */
 export default class AnyDef implements TypeDef {
+
   /**
-   * Returns the type this instance is going to handle.
-   * Always returns "any"
-   */
+  * Returns the type this instance is going to handle.
+  * Always returns "any"
+  */
   get type(): string { return 'any' }
 
   get schema() { return schema }
@@ -37,4 +38,6 @@ export default class AnyDef implements TypeDef {
 
     return value
   }
+
+  static get types() { return ['any'] }
 }
