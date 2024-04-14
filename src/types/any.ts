@@ -14,23 +14,11 @@ const schema = new Schema(
   { null:     { type: "bool",   optional: true,  null: false, default: false } },
 )
 
-/**
- * Represents the AnyTypeDef which is reponsible for parsing,
- * validating, loading and serializing any values.
- */
 export default class AnyDef implements TypeDef {
 
-  /**
-  * Returns the type this instance is going to handle.
-  * Always returns "any"
-  */
-  get type(): string { return 'any' }
+  public  get type(): string  { return 'any' }
+  public get schema()         { return schema }
 
-  get schema() { return schema }
-
-  /**
-   * Parses any value in IO format into JavaScript.
-   */
   parse(node: Node, memberDef: MemberDef, defs?: Definitions, collectionIndex?: number): any {
     const valueNode = defs?.getV(node) || node
     const { value, changed } = doCommonTypeCheck(memberDef, valueNode, node, defs)
@@ -39,5 +27,5 @@ export default class AnyDef implements TypeDef {
     return value
   }
 
-  static get types() { return ['any'] }
+  public static get types() { return ['any'] }
 }
