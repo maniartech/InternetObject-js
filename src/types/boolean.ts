@@ -11,33 +11,21 @@ import MemberDef            from './memberdef'
 
 const schema = new Schema(
   "bool",
-  { type:     { type: "string", optional: false, null: false, choices: ["bool", "boolean"] } },
+  { type:     { type: "string", optional: false, null: false, choices: ["bool"] } },
   { default:  { type: "bool",   optional: true,  null: false  } },
   { optional: { type: "bool",   optional: true,  null: false, default: false } },
   { null:     { type: "bool",   optional: true,  null: false, default: false } },
 )
 
-/**
- * Represents the InternetObject Boolean definition.
- * Performs following validations.
- *
- * - Value is boolean
- * - Value is optional
- * - Value is nullable
- */
 export default class BooleanDef implements TypeDef {
-  private _type: string
+  public get type()   { return 'bool' }
+  public get schema() { return schema }
 
-  constructor(type: string = 'bool') { this._type = type }
-
-  get type() { return this._type }
-  get schema() { return schema }
-
-  parse(node: Node, memberDef: MemberDef, defs?: Definitions): any {
-    return this.validate(node, memberDef, defs)
+  public parse(node: Node, memberDef: MemberDef, defs?: Definitions): any {
+    return this.#validate(node, memberDef, defs)
   }
 
-  validate(node: Node, memberDef: MemberDef, defs?: Definitions): any {
+  #validate(node: Node, memberDef: MemberDef, defs?: Definitions): any {
     const valueNode = defs?.getV(node) || node
     const { value, changed } = doCommonTypeCheck(memberDef, valueNode, node, defs)
     if (changed) return value
@@ -48,4 +36,6 @@ export default class BooleanDef implements TypeDef {
 
     return valueNode.value
   }
+
+  public static get types() { return ['bool'] }
 }
