@@ -24,23 +24,18 @@ const schema = new Schema(
 )
 
 class ArrayDef implements TypeDef {
-  private _keys: any = null
 
-  public get type() { return 'array' }
-
-  get schema() { return schema }
+  public get type()   { return 'array' }
+  public get schema() { return schema }
 
   public parse = (valueNode: Node, memberDef: MemberDef, defs?: Definitions, collectionIndex?: number): any => {
     return _processNode(valueNode, memberDef, defs, collectionIndex)
   }
+
+  public static get types() { return ['array'] }
 }
 
-function _processNode(
-  node: Node,
-  memberDef: MemberDef,
-  defs?: Definitions,
-  collectionIndex?: number
-) {
+function _processNode(node: Node, memberDef: MemberDef, defs?: Definitions, collectionIndex?: number) {
   const valueNode = defs?.getV(node) || node
   const { value, changed } = doCommonTypeCheck(memberDef, valueNode, node, defs)
   if (changed) return value
