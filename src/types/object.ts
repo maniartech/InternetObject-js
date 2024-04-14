@@ -29,6 +29,9 @@ class ObjectDef implements TypeDef {
    * Always returns object
    */
   get type() { return 'object' }
+
+  static get types() { return ['object'] }
+
   get schema() { return schema }
 
   /**

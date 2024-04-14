@@ -10,6 +10,8 @@ import Schema               from '../schema/schema'
 import MemberDef            from './memberdef'
 import doCommonTypeCheck    from './common-type'
 
+const STRING_TYPES = ['string', 'url', 'email']
+
 // Reference: RFC 5322 Official Standard
 // http://emailregex.com
 const emailExp = /(?:[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*|"(?:[\x01-\x08\x0b\x0c\x0e-\x1f\x21\x23-\x5b\x5d-\x7f]|\\[\x01-\x09\x0b\x0c\x0e-\x7f])*")@(?:(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?|\[(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?|[a-z0-9-]*[a-z0-9]:(?:[\x01-\x08\x0b\x0c\x0e-\x1f\x21-\x5a\x53-\x7f]|\\[\x01-\x09\x0b\x0c\x0e-\x7f])+)\])/
@@ -19,7 +21,7 @@ const urlExp = /((([A-Za-z]{3,9}:(?:\/\/)?)(?:[\-;:&=\+\$,\w]+@)?[A-Za-z0-9\.\-]
 
 const schema = new Schema(
   "string",
-  { type:     { type: "string", optional: false, null: false, choices: ["string", "url", "email"] } },
+  { type:     { type: "string", optional: false, null: false, choices: STRING_TYPES } },
   { default:  { type: "string", optional: true,  null: false  } },
   { choices:  { type: "array",  optional: true,  null: false, of: { type: "string" } } },
   { pattern:  { type: "string", optional: true,  null: false  } },
@@ -51,6 +53,9 @@ export default class StringDef implements TypeDef {
   }
 
   get type() { return this._type }
+
+  static get types() { return STRING_TYPES }
+
   get schema() { return schema }
 
   /**
