@@ -57,7 +57,6 @@ function _processObject(data: ObjectNode, schema: Schema, defs?: Definitions, co
   if (positional) {
     for (; i<data.children.length; i++) {
       const member = data.children[i] as MemberNode;
-      console.log("::", schema, i, member)
       if (!schema.open) {
         throw new SyntaxError(ErrorCodes.additionalValuesNotAllowed, `Additional values are not allowed in the ${schema.name}. The ${schema.name} schema is not open.`, member.value);
       }
@@ -67,7 +66,8 @@ function _processObject(data: ObjectNode, schema: Schema, defs?: Definitions, co
       }
 
       const val = member.value.toValue(defs)
-      o.push(val);
+
+      o.pushValues(val);
     }
   }
 
