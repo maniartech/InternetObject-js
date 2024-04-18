@@ -1,3 +1,4 @@
+import Position from "../../core/position";
 
 /**
  * Place this function to check and ensure the code where invoked must never
@@ -5,11 +6,18 @@
  * the code path which must have never reached.
  * @param x The object which needs to be asserted as never
  */
-function assertNever(x: any): never {
-  if (x === undefined) {
-    throw new Error("Assert never");
+function assertNever(x: any, pos?:Position): never {
+  let message = "Assert never";
+
+  if (x !== undefined && x !== null) {
+    message = `Assert never: ${x.toString()}`;
   }
-  throw new Error("Assert never: " + x ?? x.toString());
+
+  if (pos) {
+    message += ` at ${pos.toString()}`;
+  }
+
+  throw new Error(message);
 }
 
 export default assertNever;
