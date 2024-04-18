@@ -439,7 +439,7 @@ class Tokenizer {
       } else {
         numberValue = parseInt(value, base);
         if (isNaN(numberValue)) {
-          throw new SyntaxError(ErrorCodes.notANumber, prefix + value, this.currentPosition);
+          assertNever("Expected a number but got NaN", this.currentPosition.getStartPos());
         }
       }
     }
