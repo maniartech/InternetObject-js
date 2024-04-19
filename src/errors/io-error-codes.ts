@@ -67,8 +67,7 @@ enum ErrorCodes {
   notANumber = 'not-a-number',
   notAnInteger = 'not-an-integer',
   outOfRange = 'out-of-range',
-  invalidMinValue = 'invalid-min-value',
-  invalidMaxValue = 'invalid-max-value',
+  invalidRange = 'invalid-range',
 
   // Boolean
   notABool = 'not-a-bool',
