@@ -25,7 +25,7 @@ const reBinary = /^[01]+$/;
 // https://regex101.com/r/jaWr0V/2
 const reSectionSchemaName = /^(?:(?:(?<name>[\p{L}\p{M}\p{N}\-_]+)(?<sep>[ \t]*:[ \t]*)?)(?<schema>\$[\p{L}\p{M}\p{N}\-_]+)?|(?<schema2>\$[\p{L}\p{M}\p{N}\-_]+))/u
 
-const nonDecimalPrefixes = ["x", "X", "c", "C", "b", "B"];
+const nonDecimalPrefixes = ["x", "X", "o", "O", "b", "B"];
 const reAnotatedStrStart = /^(?<name>[a-zA-Z]{1,4})(?<quote>['"])/;
 
 /**
@@ -363,8 +363,8 @@ class Tokenizer {
           }
           break;
 
-        case "C":
-        case "c":
+        case "O":
+        case "o":
           base = 8; // Octal
           subType = "OCTAL";
           prefix = this.input[this.pos] + this.input[this.pos + 1];
