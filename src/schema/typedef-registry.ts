@@ -6,7 +6,7 @@ const typeDefList: any[]  = []
 const typeDefs: any       = {}
 
 interface TypeDefConstructor {
-  new(): TypeDef;  // Constructor signature
+  new(type:string): TypeDef;  // Constructor signature
   types: string[];  // Static property
 }
 
@@ -21,7 +21,7 @@ export default class TypedefRegistry {
     for (let constructor of typeDefConstructors) {
       for (let type of constructor.types) {
         if (typeDefs[type] === undefined) {
-          typeDefs[type] = new constructor()
+          typeDefs[type] = new constructor(type)
           typeDefList.push(type)
         }
       }
