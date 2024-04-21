@@ -31,6 +31,10 @@ class Header {
     }
   }
 
+  toObject() {
+    return this._definitions.toObject();
+  }
+
 }
 
 
