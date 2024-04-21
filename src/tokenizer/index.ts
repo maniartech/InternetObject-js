@@ -767,6 +767,7 @@ class Tokenizer {
                 this.col,
                 schema2,
                 schema2,
+                TokenType.STRING,
                 TokenType.SECTION_SCHEMA
             )
         );
@@ -780,6 +781,7 @@ class Tokenizer {
                 this.col,
                 name,
                 name,
+                TokenType.STRING,
                 TokenType.SECTION_NAME
             )
         );
@@ -803,6 +805,7 @@ class Tokenizer {
               this.col,
               schema,
               schema,
+              TokenType.STRING,
               TokenType.SECTION_SCHEMA
             )
           );
