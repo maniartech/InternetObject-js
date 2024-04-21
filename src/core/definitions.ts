@@ -42,7 +42,7 @@ class Definitions {
   public getV(k: any): any {
     let key:string = ""
 
-    if (k instanceof TokenNode && k.type === TokenType.STRING) {
+    if ((k || {}).type === TokenType.STRING) {
       key = k.value;
     } else if (typeof k === 'string') {
       key = k;
@@ -50,11 +50,15 @@ class Definitions {
       return;
     }
 
+
     // If key is not
     if (key.startsWith("$") || key.startsWith("@")) {
       const def = this._definitions[key];
       if (!def) {
-        throw new ValidationError(ErrorCodes.variableNotDefined, `Variable ${key} is not defined.`, k instanceof TokenNode ? k : undefined);
+        if (key.startsWith("$")) {
+          throw new ValidationError(ErrorCodes.schemaNotDefined, `Schema ${key} is not defined.`, k);
+        }
+        throw new ValidationError(ErrorCodes.variableNotDefined, `Variable ${key} is not defined.`, k);
       }
       if (def.isVariable) {
         return def.value;
@@ -109,6 +113,28 @@ class Definitions {
         this.push(key, value.value, value.isSchema, value.isVariable);
       }
     }
+  }
+
+  public toObject() {
+    const obj:any = {}
+    let keysCount = 0
+    for (let i=0; i<this.length; i++) {
+      const def = this.at(i)
+
+      // Skip schema and variable definitions
+      if (def.value.isSchema || def.value.isVariable) {
+        continue
+      }
+
+      keysCount++
+      obj[def.key] = def.value.value?.toObject ? def.value.value.toObject() : def.value.value
+    }
+
+    if (keysCount) {
+      return obj
+    }
+
+    return null
   }
 }
 
