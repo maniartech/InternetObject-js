@@ -96,7 +96,7 @@ function parseDataWithSchema(docNode: DocumentNode, doc: Document) {
   for (let i = 0; i < docNode.children.length; i++) {
     const sectionNode = docNode.children[i];
     const schemaName = sectionNode.schemaName
-    const schema = schemaName === "$schema" ? doc.header.schema : doc.header.definitions?.getV(schemaName)
+    const schema = schemaName === "$schema" ? doc.header.schema : doc.header.definitions?.getV(sectionNode.schemaNode)
 
     if (!schema) {
       parseData(docNode, doc)

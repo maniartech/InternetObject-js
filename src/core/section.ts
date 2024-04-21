@@ -1,4 +1,4 @@
-import Collection from "./collection";
+import Collection     from "./collection";
 import InternetObject from "./internet-object";
 
 class Section<T  = any> {

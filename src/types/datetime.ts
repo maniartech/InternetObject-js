@@ -50,7 +50,7 @@ class DateTimeDef implements TypeDef {
       const min = memberDef.min
       if (min && value < min) {
         throw new ValidationError(
-          ErrorCodes.invalidMinValue,
+          ErrorCodes.outOfRange,
           `Expecting the value to be greater than or equal to '${memberDef.min}'`
         )
       }
@@ -60,7 +60,7 @@ class DateTimeDef implements TypeDef {
       const max = memberDef.max
       if (max && value > max) {
         throw new ValidationError(
-          ErrorCodes.invalidMaxValue,
+          ErrorCodes.outOfRange,
           `Expecting the value to be less than or equal to '${memberDef.max}'`
         )
       }

@@ -105,7 +105,6 @@ function _process(node: Node, memberDef: MemberDef, defs?: Definitions): string 
     // Max length check
     const minLen = memberDef.minLen
     if (minLen !== undefined && typeof minLen === 'number') {
-    console.log('StringDef: ', value, memberDef.path, memberDef.minLen)
     if (value.length < minLen) {
       throw new ValidationError(
         ErrorCodes.invalidMinLength,

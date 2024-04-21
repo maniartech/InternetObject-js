@@ -39,6 +39,7 @@ enum ErrorCodes {
 
   // Variables
   variableNotDefined = 'variable-not-defined',
+  schemaNotDefined = 'schema-not-defined',
 
   // Array
   notAnArray = 'not-an-array',

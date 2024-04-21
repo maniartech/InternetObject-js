@@ -89,7 +89,7 @@ function _processNode(node: Node, memberDef: MemberDef, defs?: Definitions, coll
 
 function _invlalidChoice(key: string, token: TokenNode, min: number) {
   return [
-    ErrorCodes.invalidMinValue,
+    ErrorCodes.outOfRange,
     `The "${key}" must be greater than or equal to ${min}, Currently it is "${token.value}".`,
     token
   ]
@@ -107,7 +107,7 @@ function _invlalidLength(key: string, token: ArrayNode, length: number, collecti
 
 function _invlalidMinLength(key: string, token: TokenNode, min: number, collectionIndex?: number) {
   return [
-    ErrorCodes.invalidMinValue,
+    ErrorCodes.outOfRange,
     `The "${key}" must be greater than or equal to ${min}, Currently it is "${token.value}".`,
     token
   ]
@@ -115,7 +115,7 @@ function _invlalidMinLength(key: string, token: TokenNode, min: number, collecti
 
 function _invlalidMaxLength(key: string, token: TokenNode, max: number, collectionIndex?: number) {
   return [
-    ErrorCodes.invalidMaxValue,
+    ErrorCodes.outOfRange,
     `The "${key}" must be less than or equal to ${max}, Currently it is "${token.value}".`,
     token
   ]
