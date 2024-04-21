@@ -24,7 +24,6 @@ class Document {
    */
   public toObject(): any {
     const sectionsLen = this._sections?.length || 0
-
     let data:any = null
 
     // Only one section
@@ -43,22 +42,10 @@ class Document {
     }
 
     if (this.header.definitions?.length) {
-      const header:any = {}
-      const defs = this.header.definitions
-      let keysCount = 0
-      for (let i=0; i<defs.length; i++) {
-        const def = defs.at(i)
-        if (def.value.isSchema || def.value.isVariable) {
-          continue
-        }
-
-        header[def.key] = def.value.value
-        keysCount++
-      }
-
-      if (keysCount) {
+      const headerObject = this.header.toObject()
+      if (headerObject) {
         return {
-          header,
+          header: headerObject,
           data
         }
       }
