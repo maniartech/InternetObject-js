@@ -92,11 +92,6 @@ class ASTParser {
   }
 
   private processSection(first: boolean): SectionNode {
-    // If the first token is a section separator, it means that
-    // the section has started without a section name. A header
-    // section does not have a name.
-    let schema:string;
-    let name: string;
     let token = this.peek();
 
     // Consume the section separator if present
@@ -104,10 +99,14 @@ class ASTParser {
       this.advance();
     }
 
-    [schema, name] = this.parseSectionAndSchemaNames();
+    // If the first token is a section separator, it means that
+    // the section has started without a section name. A header
+    // section does not have a name.
+    const [schemaNode, nameNode] = this.parseSectionAndSchemaNames();
+    let name: string = nameNode?.value || schemaNode?.value.toString().substring(1) || 'unnamed';
 
     // Check if the section name is already used
-    if (this.sectionNames[name]) {
+    if (name && this.sectionNames[name]) {
       throw new SyntaxError(
         ErrorCodes.unexpectedToken,
         `Duplicate section name ${name}`,
@@ -120,35 +119,35 @@ class ASTParser {
     }
 
     const section = this.parseSectionContent()
-    return new SectionNode(section, name, schema);
+    return new SectionNode(section, nameNode, schemaNode);
   }
 
-  private parseSectionAndSchemaNames(): [string, string] {
-    let schema:string = '$schema';
-    let name:string = 'unnamed';
+  private parseSectionAndSchemaNames(): [TokenNode | null, TokenNode | null] {
+    let schemaNode:TokenNode | null = null;
+    let nameNode:TokenNode | null = null;
+
     let token = this.peek();
-    if (token?.type === TokenType.SECTION_NAME) {
-      name = token!.value
+    if (token?.subType === TokenType.SECTION_NAME) {
+      nameNode = token as TokenNode;
 
       // Consume the section name
       this.advance();
 
       token = this.peek();
-      if (token?.type === TokenType.SECTION_SCHEMA) {
-        schema = token!.value
+      if (token?.subType === TokenType.SECTION_SCHEMA) {
+        schemaNode = token as TokenNode;
         // Consume the section name
         this.advance();
       }
-    } else if (token?.type === TokenType.SECTION_SCHEMA) {
-      schema = token!.value
+    } else if (token?.subType === TokenType.SECTION_SCHEMA) {
+      schemaNode = token as TokenNode;
       // Consume the section name
       this.advance();
 
       token = this.peek();
-      name = schema?.substring(1) ?? name
     }
 
-    return [schema, name]
+    return [schemaNode, nameNode]
   }
 
   public parseSectionContent():

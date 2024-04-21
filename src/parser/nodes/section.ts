@@ -5,20 +5,29 @@ import SectionCollection from "../../core/section-collection";
 import CollectionNode from "./collections";
 import Node           from "./nodes";
 import ObjectNode from "./objects";
+import TokenNode from "./tokens";
 
 type SectionChild = CollectionNode | ObjectNode | null;
 
 class SectionNode implements Node {
   type: string;
   child: SectionChild;
-  name?: string;
-  schemaName?: string;
+  nameNode: TokenNode | null;
+  schemaNode: TokenNode | null;
 
-  constructor(child: SectionChild, name?: string, schemaName?: string) {
+  constructor(child: SectionChild, nameNode: TokenNode | null, schemaNode: TokenNode | null) {
     this.type = 'section';
     this.child = child;
-    this.name = name;
-    this.schemaName = schemaName;
+    this.nameNode = nameNode;
+    this.schemaNode = schemaNode;
+  }
+
+  get name(): string | undefined {
+    return this.nameNode?.value || this.schemaNode?.value.toString().substring(1) || 'unnamed';
+  }
+
+  get schemaName(): string | undefined {
+    return this.schemaNode?.value || "$schema";
   }
 
   getStartPos(): Position {
