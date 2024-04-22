@@ -1,13 +1,14 @@
-import Definitions        from '../core/definitions';
-import ErrorCodes         from '../errors/io-error-codes';
-import ValidationError    from '../errors/io-validation-error';
-import Node               from '../parser/nodes/nodes';
-import TokenNode          from '../parser/nodes/tokens';
-import Schema             from '../schema/schema';
-import TypeDef            from '../schema/typedef';
-import TokenType          from '../tokenizer/token-types';
-import doCommonTypeCheck  from './common-type';
-import MemberDef          from './memberdef';
+import Definitions            from '../core/definitions';
+import ErrorCodes             from '../errors/io-error-codes';
+import ValidationError        from '../errors/io-validation-error';
+import Node                   from '../parser/nodes/nodes';
+import TokenNode              from '../parser/nodes/tokens';
+import Schema                 from '../schema/schema';
+import TypeDef                from '../schema/typedef';
+import TokenType              from '../tokenizer/token-types';
+import { dateToSmartString  } from '../utils/datetime';
+import doCommonTypeCheck      from './common-type';
+import MemberDef              from './memberdef';
 
 const DATETIME_TYPES = ['datetime', 'date', 'time']
 
@@ -40,18 +41,21 @@ class DateTimeDef implements TypeDef {
     }
 
     // Validate the value
-    this.#validate(value, memberDef)
+    this.#validate(value, memberDef, node)
 
     return value
   }
 
-  #validate(value:Date, memberDef: MemberDef) {
+  #validate(value:Date, memberDef: MemberDef, node: Node) {
+    const dateType:any = memberDef.type
+
     if (memberDef.min) {
       const min = memberDef.min
       if (min && value < min) {
         throw new ValidationError(
           ErrorCodes.outOfRange,
-          `Expecting the value to be greater than or equal to '${memberDef.min}'`
+          `Expecting the value ${memberDef.path ? `for '${memberDef.path}'` : ''} to be greater than or equal to '${dateToSmartString(memberDef.min, dateType)}'`,
+          node
         )
       }
     }
@@ -61,7 +65,8 @@ class DateTimeDef implements TypeDef {
       if (max && value > max) {
         throw new ValidationError(
           ErrorCodes.outOfRange,
-          `Expecting the value to be less than or equal to '${memberDef.max}'`
+          `Expecting the value ${memberDef.path ? `for '${memberDef.path}'` : ''} to be less than or equal to '${dateToSmartString(memberDef.max, dateType)}'`,
+          node
         )
       }
     }
