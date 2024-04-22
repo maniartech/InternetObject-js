@@ -50,7 +50,7 @@ export const parseDateTime = (value: string): Date | null => {
     hour, minute, second, milisecond, tz
   } = match.groups || {};
 
-  const utc = tz === 'Z' ? 'Z' : tz || '';
+  const utc = tz ? tz : 'Z';
   const dateStr = `${year}-${month || '01'}-${date || '01'}T${hour || '00'}:${minute || '00'}:${second || '00'}.${milisecond || '000'}${utc}`;
 
   return new Date(dateStr);
@@ -90,55 +90,43 @@ export const parseTime = (value: string): Date | null => {
 
   const { hour, minute, second, milisecond } = match.groups || {};
 
-  const dateStr = `1900-01-01T${hour || '00'}:${minute || '00'}:${second || '00'}.${milisecond || '000Z'}`;
-
+  const dateStr = `1900-01-01T${hour || '00'}:${minute || '00'}:${second || '00'}.${milisecond ? milisecond : '000'}Z`;
   return new Date(dateStr);
 }
 
 export const dateToDatetimeString = (date: Date | null, noSep = false, zuluTime = false) => {
   if (date === null) return null
-
-  if (zuluTime) {
-    if (noSep) return date.toJSON().replace(/[\:\-]/g, '')
-    return date.toJSON()
-  }
-
-  const Y = date.getFullYear()
-  const M = _(date.getMonth() + 1)
-  const D = _(date.getDate())
-  const h = _(date.getHours())
-  const m = _(date.getMinutes())
-  const s = _(date.getSeconds())
-  const ms = _(date.getMilliseconds(), 3)
-
-  if (noSep) return `${Y}${M}${D}T${h}${m}${s}.${ms}`
-
-  return `${Y}-${M}-${D}T${h}:${m}:${s}.${ms}`
+  return date.toISOString()
 }
 
 export const dateToDateString = (date: Date | null, noSep = false) => {
   if (date === null) return null
 
-  const Y = date.getFullYear()
-  const M = _(date.getMonth() + 1)
-  const D = _(date.getDate())
-
-  if (noSep) return `${Y}${M}${D}`
-  return `${Y}-${M}-${D}`
+  // Convert the date to iso string and return the date part
+  return date.toISOString().split('T')[0]
 }
 
 export const dateToTimeString = (date: Date | null, noSep = false) => {
   if (date === null) return null
 
-  const h = _(date.getHours())
-  const m = _(date.getMinutes())
-  const s = _(date.getSeconds())
-  const ms = _(date.getMilliseconds(), 3)
-
-  if (noSep) return `${h}${m}${s}.${ms}`
-  return `${h}:${m}:${s}.${ms}`
+  // Convert the date to iso string and return the time part
+  // without the timezone
+  return date.toISOString().split('T')[1].split('.')[0]
 }
 
 const _ = (n: number, pad: number = 2) => {
   return n.toLocaleString('en-US', { minimumIntegerDigits: pad, useGrouping: false })
+}
+
+export const dateToSmartString = (date: Date | null, type: "datetime" | "date" | "time", noSep = false) => {
+  if (date === null) return null
+
+  switch (type) {
+    case "datetime":
+      return dateToDatetimeString(date, noSep)
+    case "date":
+      return dateToDateString(date, noSep)
+    case "time":
+      return dateToTimeString(date, noSep)
+  }
 }
