@@ -188,6 +188,8 @@ function parseArrayOrTypeDef(a:ArrayNode, path:string, defs?:Definitions) :any {
       of: {
         type: 'any',
         path,
+        nullable: true,
+        optional: true,
       },
     } as MemberDef;
   }
