@@ -37,7 +37,7 @@ export default function compileObject(
   return parseObjectDef(o, new Schema(name), "", defs);
 }
 
-function parseObjectOrTypeDef(o: ObjectNode, path:string) {
+function parseObjectOrTypeDef(o: ObjectNode, path:string, defs?:Definitions) {
   // When the object node is empty object, then the type definition is
   // object without schema definition. Such objects can accept any object
   // as value.
@@ -67,9 +67,14 @@ function parseObjectOrTypeDef(o: ObjectNode, path:string) {
       }
     }
 
+    // If the first member is not a string, then it could be an array or object defs
+    if (firstNode.value instanceof ArrayNode) {
+      return parseArrayOrTypeDef(firstNode.value, path);
+    }
 
-    // If the first member is not a string, then it is an invalid schema
-    // throw new SyntaxError(ErrorCodes.invalidType, (o.children[0] as TokenNode).value);
+    if (firstNode.value instanceof ObjectNode) {
+      return parseObjectOrTypeDef(firstNode.value, path, defs);
+    }
   }
 
   // When the object node is a member type definition defined using the
@@ -105,76 +110,32 @@ function parseObjectOrTypeDef(o: ObjectNode, path:string) {
   // custom schema.
   return {
     type: 'object',
-    schema: parseObjectDef(o, new Schema(path), path),
+    schema: parseObjectDef(o, new Schema(path), path, defs),
     path,
   } as MemberDef;
 }
+// field: {array, of:string, minLen:2}         # Array of strings with minimum length of 2
+// field: {array, of:string}                   # Array of strings
+// field: {of:string, type:array, minLen:2}    # Array of strings with minimum length of 2
+// field: {array, of:{ name: string, age: number }} # Array of objects
+// field: {array, of:[string]}                 # Array of arrays of strings
+// field: {array, of:{array, of:{}, minLen: 2 }} # Array of arrays of any type of objects with minimum length of 2
+//
+// Array Objects
+// field: { [], choices:[[a, b, c], [d, e, f]] }
 
+// Array MemberDefs
+// field: []                                   # Array of any type
+// field: [string]                             # Array of strings
+// field: [ [string] ]                         # Array of arrays of strings
+// field: [ { name: string, age: number } ]    # Array of objects
+// field: [ [ { name: string, age: number } ] ]# Array of arrays of objects
+// field: [ {type:string, len:6, pattern:r'[a-z0-9]+'} ]   # Array of strings with length of 6 and alphanumeric values
 function parseArrayOrTypeDef(a:ArrayNode, path:string, defs?:Definitions) :any {
   // The length of the array child must be <= 1. If the length is > 1, then
   // it is an invalid schema.
   if (a.children.length > 1) {
-    console.log(a.children[1])
-     // TODO: Better error
     throw new SyntaxError(ErrorCodes.invalidSchema, "The array definition must have only one child.", a.children[1] as Node);
-  }
-
-  // When the array node has one child, then it is a type definition.
-  // For example:
-  // tags: [string], friends: [ { name: string, age: number } ]
-  if (a.children.length === 1) {
-    const child = a.children[0];
-    if (child instanceof TokenNode && child.type === TokenType.STRING) {
-      const type = child.value as string;
-      if (TypedefRegistry.isRegisteredType(type)) {
-        return {
-          type: "array",
-          "of": {
-            "type": child.value,
-            path,
-          },
-        } as MemberDef;
-      } else if (!!defs && type.startsWith('$')) {
-        const memberDef = {
-          type: "array",
-          "of": {
-            "type": "object",
-            schema: child,
-            path,
-          }
-        } as MemberDef;
-        return memberDef;
-      }
-
-      // If the type is not registered, then it is an invalid type
-      throw new SyntaxError(ErrorCodes.invalidType,"The specified value is not a valid type.", child);
-    }
-
-    // If the child is an object node, then it is a member type definition
-    // For example:
-    // friends: [ { name: string, age: number } ]
-    if (child instanceof ObjectNode) {
-      return {
-        type: 'array',
-        of: parseObjectDef(child, new Schema(path), path, defs),
-        path,
-      } as MemberDef;
-    }
-
-    // If the child is an array node, then it is an array type definition
-    // For example:
-    // friends: [ [string] ] or friends: [ [ { name: string, age: number } ] ]
-    if (child instanceof ArrayNode) {
-      return {
-        type: 'array',
-        of: parseArrayOrTypeDef(child, path, defs),
-        path,
-      } as MemberDef;
-    }
-
-    // Throw an error if the child is not a string or object node
-    throw new SyntaxError(ErrorCodes.invalidSchema,
-      "The array of type definition must be a string or object.", child!);
   }
 
   // When the array node is empty array, then the type definition is
@@ -193,7 +154,75 @@ function parseArrayOrTypeDef(a:ArrayNode, path:string, defs?:Definitions) :any {
       },
     } as MemberDef;
   }
+
+  // When the array node has one child, then it is a type definition.
+  // For example:
+  // tags: [string], friends: [ { name: string, age: number } ]
+  //
+  const child = a.children[0];
+  if (child instanceof TokenNode) {
+    if (child.type === TokenType.STRING) {
+      const type = child.value as string;
+    // [string], [number], [boolean], [object], [array] etc.
+    if (TypedefRegistry.isRegisteredType(type)) {
+      return {
+        type: "array",
+        "of": {
+          "type": child.value,
+          path,
+        },
+      } as MemberDef;
+    }
+
+    // If the type is a schema variable, then return the schema variable
+    // [$employee], [$address], [$person] etc.
+    else if (!!defs && type.startsWith('$')) {
+      const memberDef = {
+        type: "array",
+        "of": {
+          "type": "object",
+          schema: child,
+          path,
+        }
+      } as MemberDef;
+      return memberDef;
+    }
+  }
+
+    // If the type is not registered, then it is an invalid type
+    throw new SyntaxError(ErrorCodes.invalidType,`The specified value (${child.value}) is not a valid type`, child);
+  }
+
+  // If the child is an object node, then it is a member type definition
+  // For example:
+  // friends: [ { name: string, age: number } ]
+  if (child instanceof ObjectNode) {
+    return {
+      type: 'array',
+      of: parseObjectOrTypeDef(child, path, defs),
+      path,
+    } as MemberDef;
+  }
+
+  // If the child is an array node, then it is an array type definition
+  // For example:
+  // friends: [ [string] ] or friends: [ [ { name: string, age: number } ] ]
+  if (child instanceof ArrayNode) {
+    return {
+      type: 'array',
+      of: parseArrayOrTypeDef(child, path, defs),
+      path,
+    } as MemberDef;
+  }
+
+  // Throw an error if the child is not a string or object node
+  throw new SyntaxError(ErrorCodes.invalidSchema,
+    "The array of type definition must be a string or object.", child!);
 }
+
+// function parseArrayDef(o: ObjectNode, schema:Schema, path:string, defs?:Definitions): Schema {
+
+// }
 
 function parseObjectDef(o: ObjectNode, schema:Schema, path:string, defs?:Definitions): Schema {
   if (!o.children) {
@@ -354,7 +383,7 @@ export function getMemberDef(node:Node, fieldName:string, path:string, defs?:Def
     } as MemberDef;
   }
 
-  throw new SyntaxError(ErrorCodes.invalidSchema, `The specified value '${node.toValue()}' is not a valid type.`, node);
+  throw new SyntaxError(ErrorCodes.invalidType, `Found '${ node.toValue() }' but expecting a data type definition.`, node);
 }
 
 // concacts the path and key
