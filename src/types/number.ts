@@ -16,6 +16,11 @@ const NUMBER_TYPES = [
   'float32', 'float64'                    // Floating point number types
 ]
 
+const NUMBER_MAP = NUMBER_TYPES.reduce((acc, type) => {
+  acc[type] = true
+  return acc
+}, {} as { [key: string]: boolean })
+
 const numberSchema = new Schema(
   "number",
   { type:     { type: "string", optional: false, null: false, choices: NUMBER_TYPES } },
@@ -91,8 +96,16 @@ function throwError(code: string, memberPath: string, value: any, node?: Node) {
 }
 
 function _intValidator(min: number | null, max: number | null, memberDef: MemberDef, value: any, node?: Node) {
-  const valueType = typeof value === "bigint" ? "bigint" : "number"
-  const memberdefType = memberDef.type === "bigint" ? "bigint" : "number"
+  const valueType = typeof value === "bigint" ? "bigint" : NUMBER_MAP[typeof value] ? "number" : "";
+  const memberdefType = memberDef.type === "bigint" ? "bigint" : "number";
+
+  if (valueType === "") {
+    throw new ValidationError(
+      ErrorCodes.invalidType,
+      `Expecting a value of type '${memberDef.type}' for '${memberDef.path}'`,
+      node
+    );
+  }
 
   if (memberdefType !== valueType) {
     throw new ValidationError(
