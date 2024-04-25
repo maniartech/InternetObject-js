@@ -347,7 +347,7 @@ class ASTParser {
   }
 
   private parseArray(): ArrayNode  {
-    const arr: Array<Node | null> = [];
+    const arr: Array<Node | undefined> = [];
 
     const openBracket = this.peek();
 
@@ -365,7 +365,7 @@ class ASTParser {
         // undefined value. Consume the comma and continue. Add
         // an undefined value to the array
         if (this.matchNext([TokenType.COMMA, TokenType.BRACKET_CLOSE])) {
-          arr.push(null);
+          arr.push(undefined);
         }
 
         // consume the current comma
