@@ -8,11 +8,13 @@ import Schema               from '../schema/schema';
 import TypeDef              from '../schema/typedef';
 import doCommonTypeCheck    from './common-type';
 import MemberDef            from './memberdef';
+import compileObject from '../schema/compile-object';
 
 const schema = new Schema(
   "object",
   { type:     { type: "string", optional: false, null: false, choices: ["object"] } },
   { default:  { type: "object", optional: true,  null: false  } },
+  { schema:   { type: "object",    optional: true,  null: false, __schema: true } },
   { optional: { type: "bool",   optional: true,  null: false, default: false } },
   { null:     { type: "bool",   optional: true,  null: false, default: false } },
 )
@@ -41,7 +43,6 @@ class ObjectDef implements TypeDef {
     return this._process(node, memberDef, defs)
   }
 
-
   // Process the parse and load requests
   private _process = (
     node: Node, memberDef: MemberDef, defs?: Definitions
@@ -50,12 +51,20 @@ class ObjectDef implements TypeDef {
     const { value, changed } = doCommonTypeCheck(memberDef, valueNode, node, defs)
     if (changed) return value
 
-    const schema = memberDef.schema
+    let schema = memberDef.schema
     if (valueNode instanceof ObjectNode === false) {
       throw new ValidationError(ErrorCodes.invalidObject, `Expecting an object value for '${memberDef.path}'`, node)
     }
 
     if (valueNode === node) {
+      if (memberDef.__schema) {
+        return compileObject(memberDef.path || "", valueNode as ObjectNode, defs)
+      }
+
+      if (!schema) {
+        schema = new Schema(memberDef.path || "")
+        schema.open = true
+      }
       return processObject(valueNode as ObjectNode, schema, defs)
     }
 
