@@ -53,12 +53,14 @@ function _processNode(node: Node, memberDef: MemberDef, defs?: Definitions, coll
   if (memberDef.of instanceof Schema) {
     typeDef = TypedefRegistry.get('object')
     arrayMemberDef.schema = memberDef.of
+    arrayMemberDef.path = memberDef.path
   } else if (memberDef.of?.type) {
     typeDef = TypedefRegistry.get(memberDef.of.type)
     if (!typeDef) {
       throw new ValidationError(ErrorCodes.invalidType, `Invalid type definition '${memberDef.of.type}'`, node)
     }
     arrayMemberDef = memberDef.of
+    arrayMemberDef.path = memberDef.path
   } else if (typeof memberDef.of === 'string') {
     assertNever(memberDef.of)
   } else {
