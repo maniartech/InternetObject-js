@@ -1,11 +1,11 @@
-import Collection from "../../core/collection";
-import Definitions from "../../core/definitions";
-import Position from "../../core/position";
+import Collection     from "../../core/collection";
+import Definitions    from "../../core/definitions";
+import Position       from "../../core/position";
 import ContainerNode  from "./containers";
 import Node           from "./nodes";
 
 class CollectionNode extends ContainerNode {
-  constructor(children: Array<Node | null> = []) {
+  constructor(children: Array<Node | undefined> = []) {
     super('collection', children);
   }
 
