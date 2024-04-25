@@ -9,7 +9,7 @@ import TypedefRegistry        from '../schema/typedef-registry';
 import doCommonTypeCheck      from './common-type';
 import MemberDef              from './memberdef';
 
-const of = { type: "any", __forMemberDef: true }
+const of = { type: "any", __memberdef: true }
 
 const schema = new Schema(
   "any",
@@ -34,7 +34,7 @@ export default class AnyDef implements TypeDef {
 
     const anyOf = memberDef.anyOf;
     if (!anyOf) {
-      if (memberDef.__forMemberDef) { // Convert to memberDef
+      if (memberDef.__memberdef) { // Convert to memberDef
         const md = getMemberDef(node, "", "", defs)
         return md
       }
