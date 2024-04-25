@@ -6,10 +6,10 @@ import ContainerNode  from './containers';
 import MemberNode     from './members';
 
 class ObjectNode extends ContainerNode {
-  openBracket: Token | null = null;
-  closeBracket: Token | null = null;
+  openBracket?: Token;
+  closeBracket?: Token;
 
-  constructor(children: Array<MemberNode | null> = [], openBracket?: Token, closeBracket?: Token) {
+  constructor(children: Array<MemberNode | undefined> = [], openBracket?: Token, closeBracket?: Token) {
     super('object', children);
 
     if (openBracket) {
