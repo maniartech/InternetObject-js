@@ -9,8 +9,7 @@ class ArrayNode extends ContainerNode {
   openBracket: Token;
   closeBracket: Token;
 
-
-  constructor(children: Array<Node | null> = [], openBracket: Token, closeBracket: Token) {
+  constructor(children: Array<Node | undefined> = [], openBracket: Token, closeBracket: Token) {
     super('array', children);
 
     this.openBracket = openBracket;
@@ -19,11 +18,11 @@ class ArrayNode extends ContainerNode {
 
   toValue(defs?: Definitions):any {
     return this.children.map((child) => {
-      if (child) {
+      if (child?.toValue) { // This is a Node
         return child.toValue(defs);
       }
 
-      return undefined;
+      return child // other non-node values such null, undefined, etc.
     });
   }
 
