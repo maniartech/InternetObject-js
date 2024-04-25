@@ -18,7 +18,6 @@ export default function processObject(data: ObjectNode, schema: Schema | TokenNo
   }
 
   if (schema instanceof Schema === false) {
-    console.log("::", schema)
     assertNever("Invalid schema type");
   }
 
@@ -90,11 +89,16 @@ function _processObject(data: ObjectNode, schema: Schema, defs?: Definitions, co
     // additional properties. If not throw an error.
     if (!memberDef && !schema.open) {
       throw new SyntaxError(
-        ErrorCodes.unknownMember, `Member ${name} is not defined in the schema.`, member);
+        ErrorCodes.unknownMember, `The ${schema.name ? `${schema.name} ` : ''}schema does not define a member named '${name}'.`, member.key)
+    }
+
+    // In a open schema, the memberDef is not found. Hence, create a new
+    // memberDef with the type as 'any'.
+    if (!memberDef) {
+      memberDef = { type: 'any', path: name};
     }
 
     processedNames.add(name);
-
     const val = processMember(member, memberDef, defs);
     o[name] = val;
   }
