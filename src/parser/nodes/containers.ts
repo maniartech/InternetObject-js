@@ -4,9 +4,9 @@ import Node         from "./nodes";
 
 abstract class ContainerNode implements Node {
   type: string;
-  children: Array<Node | null>;
+  children: Array<Node | undefined>;
 
-  constructor(type:string, children: Array<Node | null> = []) {
+  constructor(type:string, children: Array<Node | undefined> = []) {
     this.type = type;
     this.children = children;
   }
