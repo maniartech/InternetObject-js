@@ -33,8 +33,9 @@ export default function compileObject(
     throw new SyntaxError(ErrorCodes.invalidSchema, "Schema must be an object.", node);
   }
 
-  const o = node as ObjectNode;
-  return parseObjectDef(o, new Schema(name), "", defs);
+  const schema = new Schema(name)
+  parseObjectDef(node as ObjectNode, schema, "", defs);
+  return schema;
 }
 
 function parseObjectOrTypeDef(o: ObjectNode, path:string, defs?:Definitions) {
@@ -50,7 +51,6 @@ function parseObjectOrTypeDef(o: ObjectNode, path:string, defs?:Definitions) {
       type: 'object',
       path,
       schema
-
     } as MemberDef;
   }
 
@@ -369,8 +369,8 @@ export function getMemberDef(node:Node, fieldName:string, path:string, defs?:Def
   if(node instanceof ObjectNode) {
     const objectDef = parseObjectOrTypeDef(node, _(path, fieldInfo.name));
     return {
-      ...objectDef,
       ...fieldInfo,
+      ...objectDef,
     } as MemberDef;
   }
 
