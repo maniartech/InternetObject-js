@@ -15,7 +15,7 @@ const schema = new Schema(
   "array",
   { type:     { type: "string", optional: false, null: false, choices: ["array"] } },
   { default:  { type: "array",  optional: true,  null: false } },
-  { of:       { type: "any",    optional: true,  null: false } },
+  { of:       { type: "any",    optional: true,  null: false, __memberdef: true } },
   { len:      { type: "number", optional: true,  null: false, min: 0, default: -1 } },
   { minLen:   { type: "number", optional: true,  null: false, min: 0, default: -1 } },
   { maxLen:   { type: "number", optional: true,  null: false, min: 0, default: -1 } },
