@@ -1,4 +1,4 @@
-# <img src="./logo/internet-object-logo.png" height="24px" alt="Internet Object" title="Internet Object"> Internet Object
+# <img src="https://unpkg.com/internet-object@1.0.1-alpha.1/logo/internet-object-logo.png" height="24px" alt="Internet Object" title="Internet Object"> Internet Object
 
 This is the official repository for Internet Object in JavaScript. Internet Object is a thin, robust, schema-first yet simple data interchange format for the Internet. It is the best well-planned alternative to JSON. This JavaScript/TypeScript library provides a simple and easy-to-use API to work with Internet Object documents.
 
@@ -151,6 +151,8 @@ const defs = io.parser.compileDefs(ast)
 - [ ] Testing (WIP)
 
 ### Development Process
+
+⚠️ Not currently accepting any pull requests. The development is in progress and the API is not yet finalized. Once the API is finalized, the repository will be open for contributions. Following instructions are just for reference.
 
 1. Fork repository from <https://github.com/maniartech/InternetObject-js>
 1. Install dependencies `yarn install`
