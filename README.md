@@ -1,14 +1,14 @@
-# <img src="https://unpkg.com/internet-object@1.0.1-alpha.1/logo/internet-object-logo.png" height="24px" alt="Internet Object" title="Internet Object"> Internet Object
+# <img src="https://unpkg.com/internet-object@latest/logo/internet-object-logo.png" height="24px" alt="Internet Object" title="Internet Object"> Internet Object
 
-This is the official repository for Internet Object in JavaScript. Internet Object is a thin, robust, schema-first yet simple data interchange format for the Internet. It is the best well-planned alternative to JSON. This JavaScript/TypeScript library provides a simple and easy-to-use API to work with Internet Object documents.
+Welcome to the official JavaScript repository for Internet Object, a lean, robust, and schema-first data interchange format designed for the Internet. As a well-structured alternative to JSON, Internet Object offers a user-friendly API for JavaScript and TypeScript, making it effortless to work with Internet Object documents.
 
 For specification and more information, visit [InternetObject.org Docs](https://docs.internetobject.org).
 
-## 🚧 Work In Progress - API MAY CHANGE ⚠️
+## 🚧 Work In Progress - API MAY CHANGE
 
 ### Example Usage
 
-The following example demonstrates how to use Internet Object to parse a simple internet object document. Please note that the API is not yet ready and published. This is just a demonstration.
+The example below illustrates the usage of Internet Object for parsing a basic internet object document. Please be aware that the API is still in development and has not been officially released. This is purely for demonstration purposes.
 
 #### Parsing strings into documents
 
@@ -60,8 +60,7 @@ doc.data.pushToFirst(collection);
 
 #### Building Objects
 
-Objects are the core and the building blocks in Internet Object. Objects can
-be created in many ways. The following are some examples.
+In Internet Object, objects serve as the fundamental building blocks. There are numerous ways to create these objects. Below are a few examples.
 
 ```ts
 // Using the Object constructor
@@ -91,7 +90,7 @@ const o4 = InternetObject.import({
 
 #### Validate Document with external schema
 
-Many times before sending a document to a remote, it is necessary to validate the document against a schema/defs. While validating, if an invalid value is encountered, a ValidationError is thrown.
+Often, before transmitting a document to a remote location, it's crucial to validate the document against a predefined schema or definition. If the validation process detects an invalid value, it will throw a `ValidationError`.
 
 ```ts
 try {
@@ -104,9 +103,7 @@ try {
 
 #### Core Tokenization and Parsing Interfaces
 
-While performing tokenization and parsing, if an error is encountered, an
-exception is thrown. The exception contains the line and column number of
-the error. The exception may contain the token that caused the error.
+During the tokenization and parsing process, if an error is encountered, an exception is promptly thrown. This exception pinpoints the exact location of the error. Furthermore, the exception may also detail the specific token that instigated the error.
 
 ```ts
 const tokens = io.parser.tokenize(code)
@@ -152,7 +149,7 @@ const defs = io.parser.compileDefs(ast)
 
 ### Development Process
 
-⚠️ Not currently accepting any pull requests. The development is in progress and the API is not yet finalized. Once the API is finalized, the repository will be open for contributions. Following instructions are just for reference.
+🚧 **Pull requests are currently not accepted.** Development is ongoing, and the API is still under finalization. Once the API is stable, we will welcome contributions. Please note that the following instructions are for reference only.
 
 1. Fork repository from <https://github.com/maniartech/InternetObject-js>
 1. Install dependencies `yarn install`
@@ -161,8 +158,8 @@ const defs = io.parser.compileDefs(ast)
 1. Run tests, `yarn test`
 1. Send pull request(s)
 
-For more information about Internet Object, read specification at [docs.InternetObject.org](https://docs.internetobject.org).
+For a comprehensive understanding of Internet Object, refer to the official specification available at [docs.InternetObject.org](https://docs.internetobject.org).
 
 **ISC License:**
 
-© ManiarTech®️ 2018-2024. All rights reserved.
+© 2018-2024 ManiarTech®️. All rights reserved.
