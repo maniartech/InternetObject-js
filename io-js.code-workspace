@@ -2,12 +2,6 @@
 	"folders": [
     {
       "path": "."
-    },
-    {
-      "path": "../io-playground"
-    },
-    {
-      "path": "../io-vs-json"
     }
   ],
   "launch": {
