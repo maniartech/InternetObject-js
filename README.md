@@ -1,10 +1,10 @@
 # <img src="./logo/internet-object-logo.png" height="24px" alt="Internet Object" title="Internet Object"> Internet Object
 
-Thin, robust, schema-first yet simple data interchange format for Internet. Best well-planned alternative to JSON!
+This is the official repository for Internet Object in JavaScript. Internet Object is a thin, robust, schema-first yet simple data interchange format for the Internet. It is the best well-planned alternative to JSON. This JavaScript/TypeScript library provides a simple and easy-to-use API to work with Internet Object documents.
 
 For specification and more information, visit [InternetObject.org Docs](https://docs.internetobject.org).
 
-## 🚧 Work In Progress - API WILL CHANGE ⚠️
+## 🚧 Work In Progress - API MAY CHANGE ⚠️
 
 ### Example Usage
 
@@ -91,9 +91,7 @@ const o4 = InternetObject.import({
 
 #### Validate Document with external schema
 
-Many times before sending a document to a remote, it is necessary to validate
-the document against a schema/defs. While validating, if an invalid value is
-encountered, a ValidationError is thrown.
+Many times before sending a document to a remote, it is necessary to validate the document against a schema/defs. While validating, if an invalid value is encountered, a ValidationError is thrown.
 
 ```ts
 try {
