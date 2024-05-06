@@ -130,3 +130,16 @@ export const dateToSmartString = (date: Date | null, type: "datetime" | "date" |
       return dateToTimeString(date, noSep)
   }
 }
+
+export const dateToIOString = (date: Date | null, type: "datetime" | "date" | "time", noSep = false) => {
+  if (date === null) return "N"
+
+  switch (type) {
+    case "datetime":
+      return `dt"${dateToDatetimeString(date, noSep)}"`
+    case "date":
+      return `d"${dateToDateString(date, noSep)}"`
+    case "time":
+      return `t"${dateToTimeString(date, noSep)}"`
+  }
+}
