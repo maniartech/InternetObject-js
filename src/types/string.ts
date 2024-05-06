@@ -9,6 +9,7 @@ import TokenType            from '../tokenizer/token-types'
 import Schema               from '../schema/schema'
 import MemberDef            from './memberdef'
 import doCommonTypeCheck    from './common-type'
+import * as strings         from '../utils/strings'
 
 const STRING_TYPES = ['string', 'url', 'email']
 
@@ -21,16 +22,19 @@ const urlExp = /((([A-Za-z]{3,9}:(?:\/\/)?)(?:[\-;:&=\+\$,\w]+@)?[A-Za-z0-9\.\-]
 
 const schema = new Schema(
   "string",
-  { type:     { type: "string", optional: false, null: false, choices: STRING_TYPES } },
-  { default:  { type: "string", optional: true,  null: false  } },
-  { choices:  { type: "array",  optional: true,  null: false, of: { type: "string" } } },
-  { pattern:  { type: "string", optional: true,  null: false  } },
-  { flags:    { type: "string", optional: true,  null: false } },
-  { len:      { type: "number", optional: true,  null: false, min: 0, default: -1 } },
-  { minLen:   { type: "number", optional: true,  null: false, min: 0, default: -1 } },
-  { maxLen:   { type: "number", optional: true,  null: false, min: 0, default: -1 } },
-  { optional: { type: "bool",   optional: true,  null: false, default: false } },
-  { null:     { type: "bool",   optional: true,  null: false, default: false } },
+  { type:             { type: "string", optional: false, null: false, choices: STRING_TYPES } },
+  { default:          { type: "string", optional: true,  null: false  } },
+  { choices:          { type: "array",  optional: true,  null: false, of: { type: "string" } } },
+  { pattern:          { type: "string", optional: true,  null: false  } },
+  { flags:            { type: "string", optional: true,  null: false } },
+  { len:              { type: "number", optional: true,  null: false, min: 0, default: -1 } },
+  { minLen:           { type: "number", optional: true,  null: false, min: 0, default: -1 } },
+  { maxLen:           { type: "number", optional: true,  null: false, min: 0, default: -1 } },
+  { format:           { type: "string", optional: true, null: false, choices: ["auto", "open", "regular", "raw"], default:"auto" } },
+  { escapeLines:      { type: "bool",   optional: true, null: false, default: false } },
+  { encloser :        { type: "string", optional: true, null: false, choices: ['"', "'"], default: '"' } },
+  { optional:         { type: "bool",   optional: true,  null: false, default: false } },
+  { null:             { type: "bool",   optional: true,  null: false, default: false } },
 )
 
 /**
@@ -63,6 +67,23 @@ export default class StringDef implements TypeDef {
    */
   parse(valueNode: Node, memberDef: MemberDef, defs?: Definitions): string {
     return _process(valueNode, memberDef, defs)
+  }
+
+  stringify(value: string, memberDef: MemberDef): string {
+    const format = memberDef.format || 'auto'
+    switch (format) {
+      case 'auto':
+        return strings.toAutoString(value, memberDef.escapeLines, memberDef.encloser)
+
+      case 'open':
+        return strings.toOpenString(value, memberDef.escapeLines)
+
+      case 'regular':
+        return strings.toRegularString(value, memberDef.escapeLines, memberDef.encloser)
+
+      default:
+        return strings.toRawString(value, memberDef.encloser)
+    }
   }
 }
 
