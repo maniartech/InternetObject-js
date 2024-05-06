@@ -3,7 +3,6 @@ import Position from "../../core/position";
 import Node from "./nodes";
 import TokenNode from "./tokens";
 
-
 class MemberNode implements Node {
   type: string;
   key?: TokenNode;

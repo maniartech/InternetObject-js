@@ -13,6 +13,7 @@ import MemberDef        from '../types/memberdef';
 import TypedefRegistry  from './typedef-registry';
 import processSchema    from './processor';
 import Schema           from './schema';
+import Token            from '../tokenizer/tokens';
 
 registerTypes();
 
@@ -250,7 +251,7 @@ function parseObjectDef(o: ObjectNode, schema:Schema, path:string, defs?:Definit
     // no type definition, the key will not be present. In this case
     // the membername will be read from the value node.
     if (memberNode.key) {
-      const memberDef = getMemberDef(memberNode.value, memberNode.key.value, path, defs);
+      const memberDef = getMemberDef(memberNode, path, defs);
       addMemberDef(memberDef, schema, path);
     } else {
       // If the last index and the value is *, then this is an open schema, a
@@ -265,7 +266,7 @@ function parseObjectDef(o: ObjectNode, schema:Schema, path:string, defs?:Definit
         continue;
       }
 
-      const fieldInfo = parseName(memberNode.value.toValue());
+      const fieldInfo = parseName(memberNode.value);
       const memberDef = {
         ...fieldInfo,
         type: 'any'
@@ -294,17 +295,26 @@ function addMemberDef(memberDef: MemberDef, schema: Schema, path:string) {
   schema.defs[memberDef.name] = memberDef;
 }
 
-const parseName = (key: string): {
+const parseName = (keyNode: Node): {
   name: string,
   optional: boolean,
   nullable: boolean
 } => {
+  if (!keyNode) {
+    assertNever("Key node must not be null in schema definition.")
+  }
+
+  if (!(keyNode instanceof Token)) {
+    throw new SyntaxError(ErrorCodes.invalidKey, "The key must be a string.", keyNode);
+  }
+
+  const key = keyNode.value;
   const optionalExp = /\?$/
   const nullExp = /\*$/
   const optNullExp = /(\?\*)|(\*\?)$/
 
-  if (typeof key !== 'string') {
-    throw new SyntaxError(ErrorCodes.invalidKey)
+  if (keyNode.type !== TokenType.STRING) {
+    throw new SyntaxError(ErrorCodes.invalidKey, "The key must be a string.", keyNode);
   }
 
   // Optional and nullable
@@ -336,8 +346,14 @@ const parseName = (key: string): {
   return { name: key, optional: false, nullable: false }
 }
 
-export function getMemberDef(node:Node, fieldName:string, path:string, defs?:Definitions): MemberDef {
-  const fieldInfo = parseName(fieldName);
+export function getMemberDef(memberDef:MemberNode, path:string, defs?:Definitions): MemberDef {
+  const fieldName = memberDef.key?.value;
+  const node = memberDef.value;
+
+  let fieldInfo = { name: "" }
+  if (memberDef.key) {
+    fieldInfo = parseName(memberDef.key);
+  }
 
   // If the value token is a string, then ensure that it is a valid type
   // For example:

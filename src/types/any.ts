@@ -1,6 +1,7 @@
 import Definitions            from '../core/definitions';
 import ErrorCodes             from '../errors/io-error-codes';
 import ValidationError        from '../errors/io-validation-error';
+import MemberNode             from '../parser/nodes/members';
 import Node                   from '../parser/nodes/nodes';
 import { getMemberDef       } from '../schema/compile-object';
 import Schema                 from '../schema/schema';
@@ -35,7 +36,7 @@ export default class AnyDef implements TypeDef {
     const anyOf = memberDef.anyOf;
     if (!anyOf) {
       if (memberDef.__memberdef) { // Convert to memberDef
-        const md = getMemberDef(node, "", "", defs)
+        const md = getMemberDef(new MemberNode(node), "", defs)
         return md
       }
 
