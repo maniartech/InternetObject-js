@@ -28,17 +28,19 @@ const numberSchema = new Schema(
   { choices:  { type: "array",  optional: true,  null: false, of: { type: "number" } } },
   { min:      { type: "number", optional: true,  null: false, min: 0 } },
   { max:      { type: "number", optional: true,  null: false, min: 0 } },
+  { format:   { type: "string", optional: true, null: false, choices: ["decimal", "hex", "octal", "binary", "scientific"] } },
   { optional: { type: "bool",   optional: true,  null: false, default: false } },
   { null:     { type: "bool",   optional: true,  null: false, default: false } },
 )
 
 const bigintSchema = new Schema(
-  "number",
+  "bigint",
   { type:     { type: "string", optional: false, null: false, choices: NUMBER_TYPES } },
   { default:  { type: "bigint", optional: true,  null: false  } },
   { choices:  { type: "array",  optional: true,  null: false, of: { type: "bigint" } } },
   { min:      { type: "bigint", optional: true,  null: false, min: 0 } },
   { max:      { type: "bigint", optional: true,  null: false, min: 0 } },
+  { format:   { type: "string", optional: true,  null: false, choices: ["decimal", "hex", "octal", "binary"], default:"decimal" } },
   { optional: { type: "bool",   optional: true,  null: false, default: false } },
   { null:     { type: "bool",   optional: true,  null: false, default: false } },
 )
@@ -79,6 +81,16 @@ class NumberDef implements TypeDef {
     }
 
     return value;
+  }
+
+  stringify(value: any, memberDef: MemberDef): string {
+    if (memberDef.format === 'decimal') { return value.toString(); }
+    if (memberDef.format === 'scientific') { return value.toExponential(); }
+    if (memberDef.format === 'hex') { return value.toString(16); }
+    if (memberDef.format === 'octal') { return value.toString(8); }
+    if (memberDef.format === 'binary') { return value.toString(2); }
+
+    return value.toString();
   }
 
   static get types() {
