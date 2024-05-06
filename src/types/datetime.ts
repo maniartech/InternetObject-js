@@ -6,8 +6,7 @@ import TokenNode              from '../parser/nodes/tokens';
 import Schema                 from '../schema/schema';
 import TypeDef                from '../schema/typedef';
 import TokenType              from '../tokenizer/token-types';
-import { dateToIOString,
-         dateToSmartString  } from '../utils/datetime';
+import * as dt                from '../utils/datetime';
 import doCommonTypeCheck      from './common-type';
 import MemberDef              from './memberdef';
 
@@ -48,7 +47,7 @@ class DateTimeDef implements TypeDef {
   }
 
   public strinfigy(value: Date): string {
-    return dateToIOString(value, this.#type as any)
+    return dt.dateToIOString(value, this.#type as any)
   }
 
   #validate(value:Date, memberDef: MemberDef, node: Node) {
@@ -59,7 +58,7 @@ class DateTimeDef implements TypeDef {
       if (min && value < min) {
         throw new ValidationError(
           ErrorCodes.outOfRange,
-          `Expecting the value ${memberDef.path ? `for '${memberDef.path}'` : ''} to be greater than or equal to '${dateToSmartString(memberDef.min, dateType)}'`,
+          `Expecting the value ${memberDef.path ? `for '${memberDef.path}'` : ''} to be greater than or equal to '${dt.dateToSmartString(memberDef.min, dateType)}'`,
           node
         )
       }
@@ -70,7 +69,7 @@ class DateTimeDef implements TypeDef {
       if (max && value > max) {
         throw new ValidationError(
           ErrorCodes.outOfRange,
-          `Expecting the value ${memberDef.path ? `for '${memberDef.path}'` : ''} to be less than or equal to '${dateToSmartString(memberDef.max, dateType)}'`,
+          `Expecting the value ${memberDef.path ? `for '${memberDef.path}'` : ''} to be less than or equal to '${dt.dateToSmartString(memberDef.max, dateType)}'`,
           node
         )
       }
