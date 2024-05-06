@@ -25,6 +25,10 @@ export default class BooleanDef implements TypeDef {
     return this.#validate(node, memberDef, defs)
   }
 
+  public strinfigy(value: any): string {
+    return value.toString()
+  }
+
   #validate(node: Node, memberDef: MemberDef, defs?: Definitions): any {
     const valueNode = defs?.getV(node) || node
     const { value, changed } = doCommonTypeCheck(memberDef, valueNode, node, defs)
