@@ -6,7 +6,8 @@ import TokenNode              from '../parser/nodes/tokens';
 import Schema                 from '../schema/schema';
 import TypeDef                from '../schema/typedef';
 import TokenType              from '../tokenizer/token-types';
-import { dateToSmartString  } from '../utils/datetime';
+import { dateToIOString,
+         dateToSmartString  } from '../utils/datetime';
 import doCommonTypeCheck      from './common-type';
 import MemberDef              from './memberdef';
 
@@ -44,6 +45,10 @@ class DateTimeDef implements TypeDef {
     this.#validate(value, memberDef, node)
 
     return value
+  }
+
+  public strinfigy(value: Date): string {
+    return dateToIOString(value, this.#type as any)
   }
 
   #validate(value:Date, memberDef: MemberDef, node: Node) {
