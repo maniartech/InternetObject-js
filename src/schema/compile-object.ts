@@ -69,13 +69,13 @@ function parseObjectOrTypeDef(o: ObjectNode, path:string, defs?:Definitions) {
     }
 
     // If the first member is not a string, then it could be an array or object defs
-    if (firstNode.value instanceof ArrayNode) {
-      return parseArrayOrTypeDef(firstNode.value, path);
-    }
+    // if (firstNode.value instanceof ArrayNode) {
+    //   return parseArrayOrTypeDef(firstNode.value, path);
+    // }
 
-    if (firstNode.value instanceof ObjectNode) {
-      return parseObjectOrTypeDef(firstNode.value, path, defs);
-    }
+    // if (firstNode.value instanceof ObjectNode) {
+    //   return parseObjectOrTypeDef(firstNode.value, path, defs);
+    // }
   }
 
   // When the object node is a member type definition defined using the
