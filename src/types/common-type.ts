@@ -71,13 +71,20 @@ function _nullNotAllowed(memberDef: MemberDef, node?: Node): ErrorArgs {
 // Return an invalid choice error parameters
 function _invlalidChoice(memberDef: MemberDef, value: any, node?: Node): ErrorArgs {
   if (!memberDef.choices) throw Error('Choices not checked during NumberDef implementation.')
-  return [
-    ErrorCodes.invalidChoice,
-    `The value of "${memberDef.path}" must be one of the [${memberDef.choices.join(
-      ', '
-    )}]. Currently it is ${value}.`,
-    node
-  ]
+  value = value.toValue
+            ? value.toValue()
+            : value.toObject
+              ? value.toObject()
+              : value
+  value = JSON.stringify(value)
+  let msg = `The value of "${memberDef.path}" must be one of the [${memberDef.choices.join(
+    ', '
+  )}]. Currently it is ${value}.`
+  if (memberDef.choices.length === 1) {
+    msg = `The value of "${memberDef.path}" must be '${memberDef.choices[0]}'. Currently it is ${value}.`
+  }
+
+  return [ErrorCodes.invalidChoice, msg, node]
 }
 
 export default doCommonTypeCheck
