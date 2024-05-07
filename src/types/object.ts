@@ -3,18 +3,18 @@ import ValidationError      from '../errors/io-validation-error';
 import ErrorCodes           from '../errors/io-error-codes';
 import ObjectNode           from '../parser/nodes/objects'
 import Node                 from '../parser/nodes/nodes';
+import compileObject        from '../schema/compile-object';
 import processObject        from '../schema/object-processor';
 import Schema               from '../schema/schema';
 import TypeDef              from '../schema/typedef';
 import doCommonTypeCheck    from './common-type';
 import MemberDef            from './memberdef';
-import compileObject from '../schema/compile-object';
 
 const schema = new Schema(
   "object",
   { type:     { type: "string", optional: false, null: false, choices: ["object"] } },
-  { default:  { type: "object", optional: true,  null: false  } },
-  { schema:   { type: "object",    optional: true,  null: false, __schema: true } },
+  { default:  { type: "object", optional: true,  null: false } },
+  { schema:   { type: "object", optional: true,  null: false, __schema: true } },
   { optional: { type: "bool",   optional: true,  null: false, default: false } },
   { null:     { type: "bool",   optional: true,  null: false, default: false } },
 )
@@ -49,7 +49,10 @@ class ObjectDef implements TypeDef {
   ) => {
     const valueNode = defs?.getV(node) || node
     const { value, changed } = doCommonTypeCheck(memberDef, valueNode, node, defs)
-    if (changed) return value
+
+    if (changed) {
+      return value
+    }
 
     let schema = memberDef.schema
     if (valueNode instanceof ObjectNode === false) {
