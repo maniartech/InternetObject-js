@@ -1,6 +1,6 @@
 import Parser from "./ast-parser";
 import Document from '../core/document';
-import Tokenizer from "../tokenizer";
+import Tokenizer from "./tokenizer";
 import Header from "../core/header";
 
 

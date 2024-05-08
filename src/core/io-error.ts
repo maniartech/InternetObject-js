@@ -1,4 +1,4 @@
-import Token from "../tokenizer/tokens";
+import Token from "../parser/tokenizer/tokens";
 
 // export default class InternetObjectErrorTrial extends Error {
 //   public errorCode?: string;

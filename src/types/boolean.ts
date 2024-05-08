@@ -5,7 +5,7 @@ import Node                 from '../parser/nodes/nodes'
 import TokenNode            from '../parser/nodes/tokens'
 import Schema               from '../schema/schema'
 import TypeDef              from '../schema/typedef'
-import TokenType            from '../tokenizer/token-types'
+import TokenType            from '../parser/tokenizer/token-types'
 import doCommonTypeCheck    from './common-type'
 import MemberDef            from './memberdef'
 

@@ -1,7 +1,7 @@
 import assertNever                    from '../errors/asserts/asserts';
 import ASTParser                      from '../parser/ast-parser';
 import Node                           from '../parser/nodes/nodes';
-import Tokenizer                      from '../tokenizer';
+import Tokenizer                      from '../parser/tokenizer';
 import Schema                         from './schema';
 import compileObject                  from './compile-object';
 

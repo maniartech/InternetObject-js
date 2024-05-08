@@ -1,7 +1,7 @@
 import Definitions    from '../../core/definitions';
 import InternetObject from '../../core/internet-object';
 import Position from '../../core/position';
-import Token from '../../tokenizer/tokens';
+import Token from '../tokenizer/tokens';
 import ContainerNode  from './containers';
 import MemberNode     from './members';
 

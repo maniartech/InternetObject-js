@@ -1,14 +1,14 @@
-import assertNever      from '../errors/asserts/asserts';
-import ErrorCodes       from '../errors/io-error-codes';
-import SyntaxError      from '../errors/io-syntax-error';
-import * as dtParser    from '../utils/datetime';
+import assertNever      from '../../errors/asserts/asserts';
+import ErrorCodes       from '../../errors/io-error-codes';
+import SyntaxError      from '../../errors/io-syntax-error';
+import * as dtParser    from '../../utils/datetime';
 import * as is          from './is';
 import Literals         from './literals';
-import Position         from '../core/position';
+import Position         from '../../core/position';
 import Symbols          from './symbols';
 import TokenType        from './token-types';
 import Token            from './tokens';
-import PositionRange from '../core/position-range';
+import PositionRange from '../../core/position-range';
 
 const regexHex4 = /^[0-9a-fA-F]{4}$/;
 const regexHex2 = /^[0-9a-fA-F]{2}$/;

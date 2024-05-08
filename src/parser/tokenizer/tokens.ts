@@ -1,5 +1,5 @@
-import Position from "../core/position";
-import PositionRange from "../core/position-range";
+import Position from "../../core/position";
+import PositionRange from "../../core/position-range";
 
 /**
 * Represents a parsed token.

@@ -1,7 +1,7 @@
 import ValidationError  from "../errors/io-validation-error";
 import ErrorCodes       from "../errors/io-error-codes";
 import TokenNode        from "../parser/nodes/tokens";
-import TokenType        from "../tokenizer/token-types";
+import TokenType        from "../parser/tokenizer/token-types";
 import Schema           from "../schema/schema";
 
 type DefinitionValue = {

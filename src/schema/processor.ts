@@ -6,7 +6,7 @@ import ErrorCodes from '../errors/io-error-codes';
 import CollectionNode   from '../parser/nodes/collections';
 import ObjectNode       from '../parser/nodes/objects';
 import TokenNode from '../parser/nodes/tokens';
-import TokenType from '../tokenizer/token-types';
+import TokenType from '../parser/tokenizer/token-types';
 import compileObject from './compile-object';
 import processObject    from './object-processor';
 import Schema           from './schema';
