@@ -287,3 +287,196 @@ describe("Internet Object Number Tokens", () => {
     }
   });
 });
+
+// Booleans
+describe("Internet Object Boolean Tokens", () => {
+  it("should tokenize the boolean tokens", () => {
+    const input = `T, F, true, false`;
+    const tokenizer = new Tokenizer(input);
+    const tokens = tokenizer.tokenize();
+
+    expect(tokens.length).toEqual(7);
+
+    for (let i = 0; i < tokens.length; i++) {
+      if (i % 2 === 0) {
+        expect(tokens[i].type).toEqual(TokenType.BOOLEAN);
+      } else {
+        expect(tokens[i].type).toEqual(TokenType.COMMA);
+      }
+    }
+  });
+});
+
+// DateTime
+describe("Internet Object DateTime Tokens", () => {
+  it("should tokenize the datetime tokens", () => {
+    const input = `dt'2023-09-27', dt'2023-09', dt'2023'`;
+    const tokenizer = new Tokenizer(input);
+    const tokens = tokenizer.tokenize();
+
+    expect(tokens.length).toEqual(5);
+    for (let i = 0; i < tokens.length; i++) {
+      if (i % 2 === 0) {
+        expect(tokens[i].type).toEqual(TokenType.DATETIME); // TODO: Confirm weather this is date or datetime?
+      } else {
+        expect(tokens[i].type).toEqual(TokenType.COMMA);
+      }
+    }
+  });
+
+  it("should tokenize the time tokens", () => {
+    const input = `t'12:30:00', t'12:30', t'12'`;
+    const tokenizer = new Tokenizer(input);
+    const tokens = tokenizer.tokenize();
+
+    expect(tokens.length).toEqual(5);
+    for (let i = 0; i < tokens.length; i++) {
+      if (i % 2 === 0) {
+        expect(tokens[i].type).toEqual(TokenType.DATETIME); // TODO: Confirm weather this is date or datetime?
+      } else {
+        expect(tokens[i].type).toEqual(TokenType.COMMA);
+      }
+    }
+  });
+
+  it("should tokenize the datetime tokens", () => {
+    const input = `dt'2023-09-27T12:30:00+05:30', dt'2023-09-27T12:30:00Z', dt'2023-09-27T12:30:00-05:30', dt'2023-09-27T12:30:00', dt'2023-09-27T12:30', dt'2023-09-27T12', dt'2023-09-27', dt'2023-09', dt'2023'`;
+    const tokenizer = new Tokenizer(input);
+    const tokens = tokenizer.tokenize();
+
+    expect(tokens.length).toEqual(17);
+    for (let i = 0; i < tokens.length; i++) {
+      if (i % 2 === 0) {
+        expect(tokens[i].type).toEqual(TokenType.DATETIME); // TODO: Confirm weather this is date or datetime?
+      } else {
+        expect(tokens[i].type).toEqual(TokenType.COMMA);
+      }
+    }
+  });
+});
+
+// Arrays
+describe("Internet Object Array Tokens", () => {
+  it("should tokenize the array tokens", () => {
+    const input = `[10, 20, 30]`;
+    const tokenizer = new Tokenizer(input);
+    const tokens = tokenizer.tokenize();
+
+    const expected = [
+      TokenType.BRACKET_OPEN,
+      TokenType.NUMBER,
+      TokenType.COMMA,
+      TokenType.NUMBER,
+      TokenType.COMMA,
+      TokenType.NUMBER,
+      TokenType.BRACKET_CLOSE,
+    ];
+
+    for (let i = 0; i < tokens.length; i++) {
+      expect(tokens[i].type).toEqual(expected[i]);
+    }
+  });
+
+  it("should tokenize the array tokens with nested arrays", () => {
+    const input = `[10, [20, 30], 40]`;
+    const tokenizer = new Tokenizer(input);
+    const tokens = tokenizer.tokenize();
+
+    const expected = [
+      TokenType.BRACKET_OPEN,
+      TokenType.NUMBER,
+      TokenType.COMMA,
+      TokenType.BRACKET_OPEN,
+      TokenType.NUMBER,
+      TokenType.COMMA,
+      TokenType.NUMBER,
+      TokenType.BRACKET_CLOSE,
+      TokenType.COMMA,
+      TokenType.NUMBER,
+      TokenType.BRACKET_CLOSE,
+    ];
+
+    for (let i = 0; i < tokens.length; i++) {
+      expect(tokens[i].type).toEqual(expected[i]);
+    }
+  });
+});
+
+// Objects
+describe("Internet Object Object Tokens", () => {
+  it("should tokenize the object tokens", () => {
+    const input = `{a: 10, b:"Hello", c:true}`;
+    const tokenizer = new Tokenizer(input);
+    const tokens = tokenizer.tokenize();
+
+    const expected = [
+      TokenType.CURLY_OPEN,
+      TokenType.STRING,
+      TokenType.COLON,
+      TokenType.NUMBER,
+      TokenType.COMMA,
+      TokenType.STRING,
+      TokenType.COLON,
+      TokenType.STRING,
+      TokenType.COMMA,
+      TokenType.STRING,
+      TokenType.COLON,
+      TokenType.BOOLEAN,
+      TokenType.CURLY_CLOSE,
+    ];
+
+    for (let i = 0; i < tokens.length; i++) {
+      expect(tokens[i].type).toEqual(expected[i]);
+    }
+  });
+
+  it("should tokenize the object tokens with nested objects", () => {
+    const input = `{a: {b: 10, c: "Hello"}, d: true}`;
+    const tokenizer = new Tokenizer(input);
+    const tokens = tokenizer.tokenize();
+
+    const expected = [
+      TokenType.CURLY_OPEN,
+      TokenType.STRING,
+      TokenType.COLON,
+      TokenType.CURLY_OPEN,
+      TokenType.STRING,
+      TokenType.COLON,
+      TokenType.NUMBER,
+      TokenType.COMMA,
+      TokenType.STRING,
+      TokenType.COLON,
+      TokenType.STRING,
+      TokenType.CURLY_CLOSE,
+      TokenType.COMMA,
+      TokenType.STRING,
+      TokenType.COLON,
+      TokenType.BOOLEAN,
+      TokenType.CURLY_CLOSE,
+    ];
+
+    for (let i = 0; i < tokens.length; i++) {
+      expect(tokens[i].type).toEqual(expected[i]);
+    }
+  });
+
+  it("should tokenize the objects with only just values", () => {
+    const input = `{10, "Hello", true}`;
+    const tokenizer = new Tokenizer(input);
+    const tokens = tokenizer.tokenize();
+
+    const expected = [
+      TokenType.CURLY_OPEN,
+      TokenType.NUMBER,
+      TokenType.COMMA,
+      TokenType.STRING,
+      TokenType.COMMA,
+      TokenType.BOOLEAN,
+      TokenType.CURLY_CLOSE,
+    ];
+
+    for (let i = 0; i < tokens.length; i++) {
+      expect(tokens[i].type).toEqual(expected[i]);
+    }
+  });
+});
