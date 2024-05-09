@@ -1,4 +1,5 @@
-import Tokenizer from "../src/tokenizer";
+import Tokenizer from "../src/parser/tokenizer";
+import TokenType from '../dist/tokenizer/token-types';
 
 describe('WIP', () => {
   it('should tokenize various value types', () => {
@@ -83,5 +84,21 @@ describe('Tokenizer', () => {
     expect(tokens[15].value).toEqual(-Infinity);
   });
 
+
+});
+
+
+describe("Internet Object String Tokens", () => {
+
+  it("should tokenize the open string tokens", () => {
+    const input = `a, 12312bc, de✨, fgh`
+    const tokenizer = new Tokenizer(input);
+    const tokens = tokenizer.tokenize();
+
+    expect(tokens.length).toEqual(7);
+    expect(tokens[0].type).toEqual(TokenType.STRING);
+    // expect(tokens[0].subType).toEqual(TokenType.OPEN_STRING); // Fails
+
+  });
 
 });
