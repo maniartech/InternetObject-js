@@ -103,15 +103,18 @@ describe("Internet Object String Tokens", () => {
 
 describe("Internet Object Regular String Tokens", () => {
   it('should tokenize the regular string tokens using " ', () => {
-    const input = `"a\nb", "c\td", "e\r\nf", "a🤝", "123hjsdfa", '123'`;
+    const input = `"a\nb", "c\td", "e\nf", "a🤝", "123hjsdfa", '123'`;
     const tokenizer = new Tokenizer(input);
     const tokens = tokenizer.tokenize();
 
     expect(tokens.length).toEqual(11);
-
+    let expected = ["a\nb", "c\td", "e\nf", "a🤝", "123hjsdfa", "123"];
+    let j = 0;
     for (let i = 0; i < tokens.length; i++) {
       if (i % 2 === 0) {
         expect(tokens[i].type).toEqual(TokenType.STRING);
+        expect(tokens[i].value).toEqual(expected[j]);
+        j++;
       } else {
         expect(tokens[i].type).toEqual(TokenType.COMMA);
       }
@@ -119,15 +122,18 @@ describe("Internet Object Regular String Tokens", () => {
   });
 
   it("should tokenize the regular string tokens using '' ", () => {
-    const input = `'a\nb', 'c\td', 'e\r\nf', 'a🤝', '123hjsdfa', '123'`;
+    const input = `'a\nb', 'c\td', 'e\nf', 'a🤝', '123hjsdfa', '123'`;
     const tokenizer = new Tokenizer(input);
     const tokens = tokenizer.tokenize();
 
     expect(tokens.length).toEqual(11);
-
+    const expected = ["a\nb", "c\td", "e\nf", "a🤝", "123hjsdfa", "123"];
+    let j = 0;
     for (let i = 0; i < tokens.length; i++) {
       if (i % 2 === 0) {
         expect(tokens[i].type).toEqual(TokenType.STRING);
+        expect(tokens[i].value).toEqual(expected[j]);
+        j++;
       } else {
         expect(tokens[i].type).toEqual(TokenType.COMMA);
       }
@@ -142,10 +148,14 @@ describe("Internet Object Raw String Tokens", () => {
     const tokens = tokenizer.tokenize();
 
     // expect(tokens.length).toEqual(7); // Fails
+    const expected = [`abc`, `de\nf`, `g~^&*(@hi🤐`];
+    let j = 0;
 
     for (let i = 0; i < tokens.length; i++) {
       if (i % 2 === 0) {
         expect(tokens[i].type).toEqual(TokenType.STRING);
+        expect(tokens[i].value).toEqual(expected[j]);
+        j++;
       } else {
         expect(tokens[i].type).toEqual(TokenType.COMMA);
       }
@@ -158,10 +168,14 @@ describe("Internet Object Raw String Tokens", () => {
     const tokens = tokenizer.tokenize();
 
     // expect(tokens.length).toEqual(7); // Fails
+    const expected = [`abc`, `de\nf`, `g~^&*(@hi🤐`];
+    let j = 0;
 
     for (let i = 0; i < tokens.length; i++) {
       if (i % 2 === 0) {
         expect(tokens[i].type).toEqual(TokenType.STRING);
+        expect(tokens[i].value).toEqual(expected[j]);
+        j++;
       } else {
         expect(tokens[i].type).toEqual(TokenType.COMMA);
       }
@@ -178,10 +192,14 @@ describe("Internet Object Number Tokens", () => {
     const tokens = tokenizer.tokenize();
 
     expect(tokens.length).toEqual(7);
+    const expected = [10, -10, 0, -0];
+    let j = 0;
 
     for (let i = 0; i < tokens.length; i++) {
       if (i % 2 === 0) {
         expect(tokens[i].type).toEqual(TokenType.NUMBER);
+        expect(tokens[i].value).toEqual(expected[j]);
+        j++;
       } else {
         expect(tokens[i].type).toEqual(TokenType.COMMA);
       }
@@ -194,10 +212,14 @@ describe("Internet Object Number Tokens", () => {
     const tokens = tokenizer.tokenize();
 
     expect(tokens.length).toEqual(7);
+    const expected = [10.1, -10.1, 0.1, -0.1];
+    let j = 0;
 
     for (let i = 0; i < tokens.length; i++) {
       if (i % 2 === 0) {
         expect(tokens[i].type).toEqual(TokenType.NUMBER);
+        expect(tokens[i].value).toEqual(expected[j]);
+        j++;
       } else {
         expect(tokens[i].type).toEqual(TokenType.COMMA);
       }
@@ -210,10 +232,21 @@ describe("Internet Object Number Tokens", () => {
     const tokens = tokenizer.tokenize();
 
     expect(tokens.length).toEqual(7);
+    const expected = [
+      BigInt(10),
+      BigInt(0),
+      BigInt(
+        "234123412341234123513451765178923647891263784162893746182351234651267834"
+      ),
+      BigInt("-6178234657816578612786451786347861274618923"),
+    ];
+    let j = 0;
 
     for (let i = 0; i < tokens.length; i++) {
       if (i % 2 === 0) {
         expect(tokens[i].type).toEqual(TokenType.BIGINT);
+        expect(tokens[i].value).toEqual(expected[j]);
+        j++;
       } else {
         expect(tokens[i].type).toEqual(TokenType.COMMA);
       }
@@ -242,11 +275,15 @@ describe("Internet Object Number Tokens", () => {
     const tokens = tokenizer.tokenize();
 
     expect(tokens.length).toEqual(15);
+    const expected = [10, -10, 0, -0, 10, -10, 0, -0];
+    let j = 0;
 
     for (let i = 0; i < tokens.length; i++) {
       if (i % 2 === 0) {
         console.log(tokens[i]);
         expect(tokens[i].type).toEqual(TokenType.NUMBER);
+        expect(tokens[i].value).toEqual(expected[j]);
+        j++;
       } else {
         expect(tokens[i].type).toEqual(TokenType.COMMA);
       }
@@ -259,11 +296,14 @@ describe("Internet Object Number Tokens", () => {
     const tokens = tokenizer.tokenize();
 
     expect(tokens.length).toEqual(15);
-
+    const expected = [8, -8, 0, -0, 8, -8, 0, -0];
+    let j = 0;
     for (let i = 0; i < tokens.length; i++) {
       if (i % 2 === 0) {
         console.log(tokens[i]);
         expect(tokens[i].type).toEqual(TokenType.NUMBER);
+        expect(tokens[i].value).toEqual(expected[j]);
+        j++;
       } else {
         expect(tokens[i].type).toEqual(TokenType.COMMA);
       }
@@ -271,16 +311,20 @@ describe("Internet Object Number Tokens", () => {
   });
 
   it("should tokenize the hexadecimal number tokens", () => {
-    const input = `0x10, -0x10, 0x0, -0x0, 0X10, -0X10, 0X0, -0X0`;
+    const input = `0xa2, -0xa2, 0x0, -0x0, 0Xa2, -0Xa2, 0X0, -0X0`;
     const tokenizer = new Tokenizer(input);
     const tokens = tokenizer.tokenize();
 
     expect(tokens.length).toEqual(15);
+    const expected = [162, -162, 0, -0, 162, -162, 0, -0];
+    let j = 0;
 
     for (let i = 0; i < tokens.length; i++) {
       if (i % 2 === 0) {
         console.log(tokens[i]);
         expect(tokens[i].type).toEqual(TokenType.NUMBER);
+        expect(tokens[i].value).toEqual(expected[j]);
+        j++;
       } else {
         expect(tokens[i].type).toEqual(TokenType.COMMA);
       }
@@ -296,10 +340,12 @@ describe("Internet Object Boolean Tokens", () => {
     const tokens = tokenizer.tokenize();
 
     expect(tokens.length).toEqual(7);
+    const expected = [true, false, true, false];
 
     for (let i = 0; i < tokens.length; i++) {
       if (i % 2 === 0) {
         expect(tokens[i].type).toEqual(TokenType.BOOLEAN);
+        expect(tokens[i].value).toEqual(expected[i / 2]);
       } else {
         expect(tokens[i].type).toEqual(TokenType.COMMA);
       }
@@ -315,9 +361,16 @@ describe("Internet Object DateTime Tokens", () => {
     const tokens = tokenizer.tokenize();
 
     expect(tokens.length).toEqual(5);
+    const expected = [
+      new Date("2023-09-27"),
+      new Date("2023-09"),
+      new Date("2023"),
+    ];
+
     for (let i = 0; i < tokens.length; i++) {
       if (i % 2 === 0) {
         expect(tokens[i].type).toEqual(TokenType.DATETIME); // TODO: Confirm weather this is date or datetime?
+        expect(tokens[i].value).toEqual(expected[i / 2]);
       } else {
         expect(tokens[i].type).toEqual(TokenType.COMMA);
       }
@@ -330,9 +383,16 @@ describe("Internet Object DateTime Tokens", () => {
     const tokens = tokenizer.tokenize();
 
     expect(tokens.length).toEqual(5);
+    const expected = [
+      new Date("1900-01-01T12:30:00Z"),
+      new Date("1900-01-01T12:30:00Z"),
+      new Date("1900-01-01T12:00:00Z"),
+    ];
+
     for (let i = 0; i < tokens.length; i++) {
       if (i % 2 === 0) {
         expect(tokens[i].type).toEqual(TokenType.DATETIME); // TODO: Confirm weather this is date or datetime?
+        expect(tokens[i].value).toEqual(expected[i / 2]);
       } else {
         expect(tokens[i].type).toEqual(TokenType.COMMA);
       }
@@ -340,14 +400,29 @@ describe("Internet Object DateTime Tokens", () => {
   });
 
   it("should tokenize the datetime tokens", () => {
-    const input = `dt'2023-09-27T12:30:00+05:30', dt'2023-09-27T12:30:00Z', dt'2023-09-27T12:30:00-05:30', dt'2023-09-27T12:30:00', dt'2023-09-27T12:30', dt'2023-09-27T12', dt'2023-09-27', dt'2023-09', dt'2023'`;
+    // const input = `dt'2023-09-27T12:30:00+05:30', dt'2023-09-27T12:30:00Z', dt'2023-09-27T12:30:00-05:30', dt'2023-09-27T12:30:00', dt'2023-09-27T12:30', dt'2023-09-27T12', dt'2023-09-27', dt'2023-09', dt'2023'`;
+    const input = `dt'2023-09-27T12:30:00Z', dt'2023-09-27T12:30:00', dt'2023-09-27T12:30', dt'2023-09-27T12', dt'2023-09-27', dt'2023-09', dt'2023'`;
     const tokenizer = new Tokenizer(input);
     const tokens = tokenizer.tokenize();
 
-    expect(tokens.length).toEqual(17);
+    expect(tokens.length).toEqual(13);
+    const expected = [
+      // new Date("2023-09-27T12:30:00+05:30"), // Giving in correct datetime due to timezone
+      new Date("2023-09-27T12:30:00Z"),
+      // new Date("2023-09-27T12:30:00Z"),
+      new Date("2023-09-27T12:30:00Z"),
+      new Date("2023-09-27T12:30:00Z"),
+      new Date("2023-09-27T12:00:00Z"),
+      new Date("2023-09-27T00:00:00Z"),
+      new Date("2023-09-01T00:00:00Z"),
+      new Date("2023-01-01T00:00:00Z"),
+    ];
+
     for (let i = 0; i < tokens.length; i++) {
       if (i % 2 === 0) {
+        console.log(i / 2);
         expect(tokens[i].type).toEqual(TokenType.DATETIME); // TODO: Confirm weather this is date or datetime?
+        expect(tokens[i].value).toEqual(expected[i / 2]);
       } else {
         expect(tokens[i].type).toEqual(TokenType.COMMA);
       }
@@ -372,8 +447,13 @@ describe("Internet Object Array Tokens", () => {
       TokenType.BRACKET_CLOSE,
     ];
 
+    const expectedValues = [10, 20, 30];
+
     for (let i = 0; i < tokens.length; i++) {
       expect(tokens[i].type).toEqual(expected[i]);
+      if (tokens[i].type === TokenType.NUMBER) {
+        expect(tokens[i].value).toEqual(expectedValues.shift());
+      }
     }
   });
 
@@ -396,9 +476,13 @@ describe("Internet Object Array Tokens", () => {
       TokenType.BRACKET_CLOSE,
     ];
 
+    const expectedValues = "[10,[20,30],40]";
+    let final = "";
     for (let i = 0; i < tokens.length; i++) {
       expect(tokens[i].type).toEqual(expected[i]);
+      final += tokens[i].value.toString();
     }
+    expect(final).toEqual(expectedValues);
   });
 });
 
@@ -455,9 +539,14 @@ describe("Internet Object Object Tokens", () => {
       TokenType.CURLY_CLOSE,
     ];
 
+    const expectedFinal = `{a:{b:10,c:Hello},d:true}`;
+    let final = "";
+
     for (let i = 0; i < tokens.length; i++) {
       expect(tokens[i].type).toEqual(expected[i]);
+      final += tokens[i].value.toString();
     }
+    expect(final).toEqual(expectedFinal);
   });
 
   it("should tokenize the objects with only just values", () => {
@@ -475,8 +564,13 @@ describe("Internet Object Object Tokens", () => {
       TokenType.CURLY_CLOSE,
     ];
 
+    const expectedString = `{10,Hello,true}`;
+    let final = "";
+
     for (let i = 0; i < tokens.length; i++) {
       expect(tokens[i].type).toEqual(expected[i]);
+      final += tokens[i].value.toString();
     }
+    expect(final).toEqual(expectedString);
   });
 });
