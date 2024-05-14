@@ -8,19 +8,22 @@ import compileSchema from '../src/schema/index';
 // ⚠️ work in progress features and test cases. You may find some
 // ⚠️ broken test cases or incomplete, left out and commented code
 // ⚠️ and imports. Please ignore this file.
-
 describe('Trial', () => {
   it('should try wip tasks', () => {
     const input = String.raw`
-    $schema: {name, age, parent}
-    ---
+    $categories: {name, description}
+    --- $categories
+    ~ Electronics, Electronics items
     `
 
-    // const tokenizer = new Tokenizer(input);
-    // const tokens = tokenizer.tokenize();
-    // const ast = new ASTParser(tokens).parse();
-    const schema = compileSchema("schema", input)
-    console.log(JSON.stringify(schema, null, 2))
+    const tokenizer = new Tokenizer(input);
+    const tokens = tokenizer.tokenize();
+    console.log(tokens)
+
+    const ast = new ASTParser(tokens).parse();
+    console.log(JSON.stringify(ast, null, 2))
+    // const result = parse(input, null)
+    // console.log(result)
 
     // const input = String.raw`~ recordCount: 22
     // ~ page: 3
