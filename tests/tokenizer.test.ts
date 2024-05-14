@@ -6,7 +6,6 @@ describe("WIP", () => {
     const input = String.raw`2023-09-27`;
     const tokenizer = new Tokenizer(input);
     const tokens = tokenizer.tokenize();
-    console.log(tokens);
   });
 });
 
@@ -91,9 +90,11 @@ describe("Internet Object String Tokens", () => {
     const tokenizer = new Tokenizer(input);
     const tokens = tokenizer.tokenize();
 
+    const expected = ["a", "12312bc", "de✨", "fgh"];
     for (let i = 0; i < tokens.length; i++) {
       if (i % 2 === 0) {
         expect(tokens[i].type).toEqual(TokenType.STRING);
+        expect(tokens[i].value).toEqual(expected[i / 2]);
       } else {
         expect(tokens[i].type).toEqual(TokenType.COMMA);
       }
@@ -280,7 +281,6 @@ describe("Internet Object Number Tokens", () => {
 
     for (let i = 0; i < tokens.length; i++) {
       if (i % 2 === 0) {
-        console.log(tokens[i]);
         expect(tokens[i].type).toEqual(TokenType.NUMBER);
         expect(tokens[i].value).toEqual(expected[j]);
         j++;
@@ -300,7 +300,6 @@ describe("Internet Object Number Tokens", () => {
     let j = 0;
     for (let i = 0; i < tokens.length; i++) {
       if (i % 2 === 0) {
-        console.log(tokens[i]);
         expect(tokens[i].type).toEqual(TokenType.NUMBER);
         expect(tokens[i].value).toEqual(expected[j]);
         j++;
@@ -321,7 +320,6 @@ describe("Internet Object Number Tokens", () => {
 
     for (let i = 0; i < tokens.length; i++) {
       if (i % 2 === 0) {
-        console.log(tokens[i]);
         expect(tokens[i].type).toEqual(TokenType.NUMBER);
         expect(tokens[i].value).toEqual(expected[j]);
         j++;
@@ -420,7 +418,6 @@ describe("Internet Object DateTime Tokens", () => {
 
     for (let i = 0; i < tokens.length; i++) {
       if (i % 2 === 0) {
-        console.log(i / 2);
         expect(tokens[i].type).toEqual(TokenType.DATETIME); // TODO: Confirm weather this is date or datetime?
         expect(tokens[i].value).toEqual(expected[i / 2]);
       } else {
@@ -572,5 +569,46 @@ describe("Internet Object Object Tokens", () => {
       final += tokens[i].value.toString();
     }
     expect(final).toEqual(expectedString);
+  });
+});
+
+describe("Internet Object Column, Row and Positioning", () => {
+  it("should tokenize the position tokens", () => {
+    const input = `c1, rasd2,p2343`;
+    const tokenizer = new Tokenizer(input);
+    const tokens = tokenizer.tokenize();
+
+    const expectedPositions = [0, 2, 4, 9, 10];
+
+    for (let i = 0; i < tokens.length; i++) {
+      expect(tokens[i].pos).toEqual(expectedPositions[i]);
+    }
+  });
+
+  it("should tokenize the row tokens", () => {
+    const input = `r1, 
+    rasd2,
+    p2343`;
+    const tokenizer = new Tokenizer(input);
+    const tokens = tokenizer.tokenize();
+
+    const expectedRows = [1, 1, 2, 2, 3];
+
+    for (let i = 0; i < tokens.length; i++) {
+      expect(tokens[i].row).toEqual(expectedRows[i]);
+    }
+  });
+
+  it("should tokenize the column tokens", () => {
+    const input = `c1, 
+rasd2,  p2343`;
+    const tokenizer = new Tokenizer(input);
+    const tokens = tokenizer.tokenize();
+
+    const expectedColumns = [1, 3, 1, 6, 9];
+
+    for (let i = 0; i < tokens.length; i++) {
+      expect(tokens[i].col).toEqual(expectedColumns[i]);
+    }
   });
 });
