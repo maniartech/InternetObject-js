@@ -106,24 +106,85 @@ describe("AST Parser", () => {
     // First Section
     expect(docNode.children[0] instanceof SectionNode).toEqual(true);
     expect(docNode.children[0].child?.children.length).toEqual(2);
-    expect(docNode.children[0].child?.children[0] instanceof ObjectNode).toEqual(true);
+    expect(
+      docNode.children[0].child?.children[0] instanceof ObjectNode
+    ).toEqual(true);
 
     // Second Section
     expect(docNode.children[1] instanceof SectionNode).toEqual(true);
     expect(docNode.children[1].child?.children.length).toEqual(1);
-    expect(docNode.children[1].child?.children[0] instanceof ObjectNode).toEqual(true);
+    expect(
+      docNode.children[1].child?.children[0] instanceof ObjectNode
+    ).toEqual(true);
   });
 
-  it("should parse schema and throw error because of incorrect syntax", () => {
+  it("should parse multiple schema with multiple sections and documents", () => {
     const input = `
-    a,b
-
-    1,2
+    ~ $schema1: {a: int, b: int}
+    ~ $schema2: {name: str, age: int}
+    --- $schema1
+    ~ 1,2
+    ~ 3,4
+    --- people: $schema2
+    ~ "Alice", 25
+    ~ "Bob", 30
+    ~ "Charlie", 35
     `;
+
     const tokenizer = new Tokenizer(input);
     const tokens = tokenizer.tokenize();
     const astParser = new ASTParser(tokens);
+    const docNode = astParser.parse();
 
-    expect(astParser.parse).toThrow();
+    // DocumentNode
+    expect(docNode instanceof DocumentNode).toEqual(true);
+    expect(docNode.children.length).toEqual(2);
+
+    // Header with 2 schemas
+    expect(docNode.header?.child?.children.length).toEqual(2);
+    expect(docNode.header?.child?.children[0] instanceof ObjectNode).toEqual(
+      true
+    );
+    expect(docNode.header?.child?.children[1] instanceof ObjectNode).toEqual(
+      true
+    );
+
+    // First Section
+    expect(docNode.children[0] instanceof SectionNode).toEqual(true);
+    expect(docNode.children[0].child?.children.length).toEqual(2);
+
+    // Second Section
+    expect(docNode.children[1] instanceof SectionNode).toEqual(true);
+    expect(docNode.children[1].child?.children.length).toEqual(3);
+  });
+
+  // it("should parse variables in the header section", () => {
+  //   const input = `
+  //   `
+  // });
+
+  it("should parse schema and throw error because of incorrect syntax", () => {
+    const input = [
+      `~ $schema1: {a: int, b: int`,
+      `a,b,c 
+      
+      1,2,3`,
+      `
+      a,b
+      ---
+      1,2,3
+      `,
+      `
+      ~ $schema1: {a: int, b: int}
+      --- $schema2
+      ~ 1,2
+      `,
+    ];
+    for (const i of input) {
+      const tokenizer = new Tokenizer(i);
+      const tokens = tokenizer.tokenize();
+      const astParser = new ASTParser(tokens);
+      expect(astParser.parse).toThrow();
+    }
   });
 });
