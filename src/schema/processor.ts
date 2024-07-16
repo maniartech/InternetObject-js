@@ -1,13 +1,9 @@
 import Collection       from '../core/collection';
 import Definitions      from '../core/definitions';
 import InternetObject   from '../core/internet-object';
-import InternetObjectError from '../errors/io-error';
-import ErrorCodes from '../errors/io-error-codes';
 import CollectionNode   from '../parser/nodes/collections';
 import ObjectNode       from '../parser/nodes/objects';
-import TokenNode from '../parser/nodes/tokens';
-import TokenType from '../parser/tokenizer/token-types';
-import compileObject from './compile-object';
+import TokenNode        from '../parser/nodes/tokens';
 import processObject    from './object-processor';
 import Schema           from './schema';
 
@@ -15,28 +11,6 @@ export default function processSchema(data:ObjectNode | CollectionNode | null, s
   if (!data) {
     return null;
   }
-
-  // If schema is TokenNode of string, then it is a reference to a schema
-  // Fetch the schema from definitions
-  // if (schema instanceof TokenNode && schema.type === TokenType.STRING) {
-  //   const schemaRef = schema.value;
-  //   if (!schemaRef.startsWith("$")) {
-  //     throw new InternetObjectError(ErrorCodes.invalidSchema, `Invalid schema reference '${schemaRef}'`);
-  //   }
-
-  //   const foundSchema = defs?.getV(schemaRef) as Schema;
-  //   if (!foundSchema) {
-  //     throw new InternetObjectError(ErrorCodes.schemaNotFound, `Schema '${schemaRef}' not found`, schemaRef);
-  //   }
-
-  //   if (foundSchema instanceof ObjectNode) {
-  //     schema = compileObject(schemaRef, foundSchema, defs);
-  //     defs!.set(schemaRef, schema);
-  //   } else {
-  //     console.log(">>>", defs)
-  //     throw new InternetObjectError(ErrorCodes.invalidSchema, `Invalid schema reference '${schemaRef}'`);
-  //   }
-  // }
 
   if (data instanceof ObjectNode) {
     return processObject(data, schema, defs);
