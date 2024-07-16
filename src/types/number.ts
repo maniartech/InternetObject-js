@@ -69,7 +69,9 @@ class NumberDef implements TypeDef {
 
   parse(node: Node, memberDef: MemberDef, defs?: Definitions): number {
     const valueNode = defs?.getV(node) || node;
-    const { value } = doCommonTypeCheck(memberDef, valueNode, node, defs);
+    const { value, changed } = doCommonTypeCheck(memberDef, valueNode, node, defs);
+    if (changed) return value;
+
     this._validator(memberDef, value, node);
 
     if (memberDef.min !== null && value < memberDef.min) {
