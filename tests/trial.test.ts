@@ -1,5 +1,5 @@
 import parse from "../src/parser";
-import Tokenizer from "../src/tokenizer";
+import Tokenizer from "../src/parser/tokenizer";
 import ASTParser from "../src/parser/ast-parser";
 import compileSchema from '../src/schema/index';
 
