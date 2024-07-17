@@ -19,7 +19,6 @@ registerTypes();
 
 export default function compileObject(
   name:string, node: Node, defs?:Definitions): Schema | TokenNode {
-
   // Check if the node is a string token and starts with $. If yes, then
   // it is a schema variable. In this case, just return the node as it is
   // to be processed later.
@@ -67,15 +66,6 @@ function parseObjectOrTypeDef(o: ObjectNode, path:string, defs?:Definitions) {
         return parseMemberDef(token.value, o);
       }
     }
-
-    // If the first member is not a string, then it could be an array or object defs
-    // if (firstNode.value instanceof ArrayNode) {
-    //   return parseArrayOrTypeDef(firstNode.value, path);
-    // }
-
-    // if (firstNode.value instanceof ObjectNode) {
-    //   return parseObjectOrTypeDef(firstNode.value, path, defs);
-    // }
   }
 
   // When the object node is a member type definition defined using the
