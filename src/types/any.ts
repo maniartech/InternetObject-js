@@ -19,8 +19,8 @@ const schema = new Schema(
   { choices:  { type: "array",  optional: true,  null: false } },
   { anyOf:    { type: "array",  optional: true,  null: false, of } },
   { isSchema: { type: "bool",   optional: true,  null: false, default: false } },
-  { optional: { type: "bool",   optional: true,  null: false, default: false } },
-  { null:     { type: "bool",   optional: true,  null: false, default: false } },
+  { optional: { type: "bool",   optional: true } },
+  { null:     { type: "bool",   optional: true } },
 )
 
 export default class AnyDef implements TypeDef {

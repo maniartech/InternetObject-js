@@ -15,8 +15,8 @@ const schema = new Schema(
   { type:     { type: "string", optional: false, null: false, choices: ["object"] } },
   { default:  { type: "object", optional: true,  null: false } },
   { schema:   { type: "object", optional: true,  null: false, __schema: true } },
-  { optional: { type: "bool",   optional: true,  null: false, default: false } },
-  { null:     { type: "bool",   optional: true,  null: false, default: false } },
+  { optional: { type: "bool",   optional: true } },
+  { null:     { type: "bool",   optional: true } },
 )
 
 /**

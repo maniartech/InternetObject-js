@@ -33,8 +33,8 @@ const schema = new Schema(
   { format:           { type: "string", optional: true, null: false, choices: ["auto", "open", "regular", "raw"], default:"auto" } },
   { escapeLines:      { type: "bool",   optional: true, null: false, default: false } },
   { encloser :        { type: "string", optional: true, null: false, choices: ['"', "'"], default: '"' } },
-  { optional:         { type: "bool",   optional: true,  null: false, default: false } },
-  { null:             { type: "bool",   optional: true,  null: false, default: false } },
+  { optional:         { type: "bool",   optional: true } },
+  { null:             { type: "bool",   optional: true } },
 )
 
 /**

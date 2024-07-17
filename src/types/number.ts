@@ -29,8 +29,8 @@ const numberSchema = new Schema(
   { min:      { type: "number", optional: true,  null: false, min: 0 } },
   { max:      { type: "number", optional: true,  null: false, min: 0 } },
   { format:   { type: "string", optional: true, null: false, choices: ["decimal", "hex", "octal", "binary", "scientific"] } },
-  { optional: { type: "bool",   optional: true,  null: false, default: false } },
-  { null:     { type: "bool",   optional: true,  null: false, default: false } },
+  { optional: { type: "bool",   optional: true } },
+  { null:     { type: "bool",   optional: true } },
 )
 
 const bigintSchema = new Schema(
@@ -41,8 +41,8 @@ const bigintSchema = new Schema(
   { min:      { type: "bigint", optional: true,  null: false, min: 0 } },
   { max:      { type: "bigint", optional: true,  null: false, min: 0 } },
   { format:   { type: "string", optional: true,  null: false, choices: ["decimal", "hex", "octal", "binary"], default:"decimal" } },
-  { optional: { type: "bool",   optional: true,  null: false, default: false } },
-  { null:     { type: "bool",   optional: true,  null: false, default: false } },
+  { optional: { type: "bool",   optional: true } },
+  { null:     { type: "bool",   optional: true } },
 )
 
 /**
