@@ -113,9 +113,12 @@ function _processObject(data: ObjectNode, schema: Schema, defs?: Definitions, co
 
       try {
         const val = processMember(member as any, memberDef, defs);
-        o[name] = val;
+        if (val !== undefined) {
+          o[name] = val;
+        }
       } catch (err) {
         if (err instanceof ValidationError) {
+          // in case of missing member, set the position to the parent object.
           err.positionRange = data;
         }
         throw err
@@ -137,13 +140,6 @@ function processMember(member: MemberNode, memberDef: MemberDef, defs?: Definiti
   // Check if the values is present and it is a variable that starts
   // with @. If so, then unwrap the variable and return the value.
   let valueNode = member?.value
-
-  // if (valueNode instanceof TokenNode && valueNode.type === TokenType.STRING) {
-  //   const variable = valueNode.value as string;
-  //   if (variable.startsWith('@')) {
-  //     valueNode = defs?.getV(variable);
-  //   }
-  // }
 
   return typeDef.parse(valueNode, memberDef, defs);
 }
