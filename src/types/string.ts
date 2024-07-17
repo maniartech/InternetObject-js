@@ -44,7 +44,7 @@ const schema = new Schema(
  * It performs the following validation
  * - Value is string
 * - Value is optional
-* - Value is nullable
+* - Value is null
 * - Value is in choices
  * - Value length <= maxLength
  * - Value length >= minLen
