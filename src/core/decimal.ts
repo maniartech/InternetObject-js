@@ -112,23 +112,23 @@ export class Decimal {
       throw new Error("Division by zero is not allowed.");
     }
 
-    let thisCoefficient = this.coefficient;
-    let thisExponent = this.exponent;
+    // Calculate the necessary scale factor to ensure the precision is maintained
+    const scaleFactor = this.precision + other.scale;
+    let thisCoefficient = this.coefficient * BigInt(10 ** scaleFactor);
+    let thisExponent = this.exponent - scaleFactor;
 
-    // Adjust this decimal to have a larger coefficient
-    const scaleFactor = precision + Math.max(0, other.exponent - this.exponent) + 1;
-    thisCoefficient *= BigInt(10 ** scaleFactor);
-    thisExponent -= scaleFactor;
+    const quotient = thisCoefficient / other.coefficient;
+    const remainder = thisCoefficient % other.coefficient;
 
-    let quotient = thisCoefficient / other.coefficient;
-    let remainder = thisCoefficient % other.coefficient;
-
-    // Round the result
+    // Adjust for rounding
     if (remainder * BigInt(2) >= other.coefficient) {
-      quotient += quotient < BigInt(0) ? BigInt(-1) : BigInt(1);
+      thisCoefficient += thisCoefficient < BigInt(0) ? BigInt(-1) : BigInt(1);
     }
 
-    return new Decimal(quotient, thisExponent - other.exponent, this.precision, this.scale);
+    const result = new Decimal(quotient, thisExponent, this.precision, this.scale);
+    result.normalize();
+    result.checkPrecision();
+    return result;
   }
 
   private ensureSamePrecisionAndScale(other: Decimal): void {
