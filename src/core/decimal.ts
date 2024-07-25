@@ -103,7 +103,12 @@ export class Decimal {
     this.ensureSamePrecisionAndScale(other);
     const newCoefficient = this.coefficient * other.coefficient;
     const newExponent = this.exponent + other.exponent;
-    return new Decimal(newCoefficient, newExponent, this.precision, this.scale);
+
+    // Create a result decimal and normalize it to check precision
+    const result = new Decimal(newCoefficient, newExponent, this.precision, this.scale);
+    result.normalize();
+    result.checkPrecision();
+    return result;
   }
 
   public divide(other: Decimal, precision: number = 30): Decimal {
@@ -112,8 +117,8 @@ export class Decimal {
       throw new Error("Division by zero is not allowed.");
     }
 
-    // Calculate the necessary scale factor to ensure the precision is maintained
-    const scaleFactor = this.precision + other.scale;
+    // Scale the dividend to maintain precision
+    const scaleFactor = precision + other.scale;
     let thisCoefficient = this.coefficient * BigInt(10 ** scaleFactor);
     let thisExponent = this.exponent - scaleFactor;
 
@@ -130,6 +135,7 @@ export class Decimal {
     result.checkPrecision();
     return result;
   }
+
 
   private ensureSamePrecisionAndScale(other: Decimal): void {
     if (this.precision !== other.precision || this.scale !== other.scale) {
