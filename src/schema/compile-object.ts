@@ -19,7 +19,6 @@ registerTypes();
 
 export default function compileObject(
   name:string, node: Node, defs?:Definitions): Schema | TokenNode {
-
   // Check if the node is a string token and starts with $. If yes, then
   // it is a schema variable. In this case, just return the node as it is
   // to be processed later.
@@ -67,15 +66,6 @@ function parseObjectOrTypeDef(o: ObjectNode, path:string, defs?:Definitions) {
         return parseMemberDef(token.value, o);
       }
     }
-
-    // If the first member is not a string, then it could be an array or object defs
-    // if (firstNode.value instanceof ArrayNode) {
-    //   return parseArrayOrTypeDef(firstNode.value, path);
-    // }
-
-    // if (firstNode.value instanceof ObjectNode) {
-    //   return parseObjectOrTypeDef(firstNode.value, path, defs);
-    // }
   }
 
   // When the object node is a member type definition defined using the
@@ -150,7 +140,7 @@ function parseArrayOrTypeDef(a:ArrayNode, path:string, defs?:Definitions) :any {
       of: {
         type: 'any',
         path,
-        nullable: true,
+        null: true,
         optional: true,
       },
     } as MemberDef;
@@ -298,7 +288,7 @@ function addMemberDef(memberDef: MemberDef, schema: Schema, path:string) {
 const parseName = (keyNode: Node): {
   name: string,
   optional: boolean,
-  nullable: boolean
+  null: boolean
 } => {
   if (!keyNode) {
     assertNever("Key node must not be null in schema definition.")
@@ -317,21 +307,21 @@ const parseName = (keyNode: Node): {
     throw new SyntaxError(ErrorCodes.invalidKey, "The key must be a string.", keyNode);
   }
 
-  // Optional and nullable
+  // Optional and null
   if (key.match(optNullExp)) {
     return {
       name: key.substring(0, key.length - 2),
       optional: true,
-      nullable: true
+      null: true
     }
   }
 
-  // Nullable
+  // null
   if (key.match(nullExp)) {
     return {
       name: key.substring(0, key.length - 1),
       optional: false,
-      nullable: true
+      null: true
     }
   }
 
@@ -340,10 +330,10 @@ const parseName = (keyNode: Node): {
     return {
       name: key.substring(0, key.length - 1),
       optional: true,
-      nullable: false
+      null: false
     }
   }
-  return { name: key, optional: false, nullable: false }
+  return { name: key, optional: false, null: false }
 }
 
 export function getMemberDef(memberDef:MemberNode, path:string, defs?:Definitions): MemberDef {

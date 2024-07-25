@@ -13,8 +13,8 @@ const schema = new Schema(
   "bool",
   { type:     { type: "string", optional: false, null: false, choices: ["bool"] } },
   { default:  { type: "bool",   optional: true,  null: false  } },
-  { optional: { type: "bool",   optional: true,  null: false, default: false } },
-  { null:     { type: "bool",   optional: true,  null: false, default: false } },
+  { optional: { type: "bool",   optional: true } },
+  { null:     { type: "bool",   optional: true } },
 )
 
 export default class BooleanDef implements TypeDef {

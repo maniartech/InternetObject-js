@@ -103,6 +103,30 @@ function _processObject(data: ObjectNode, schema: Schema, defs?: Definitions, co
     o[name] = val;
   }
 
+  // Check for missing required members and if the missing member has a
+  // default value, then set the default value. Otherwise, throw an error.
+  // But before throwing an error reset the position to the data node.
+  for (const name in schema.defs) {
+    const memberDef = schema.defs[name];
+    if (!processedNames.has(name)) {
+      const member = data.children.find((m) => (m as any).key?.value === name)
+
+      try {
+        const val = processMember(member as any, memberDef, defs);
+        if (val !== undefined) {
+          o[name] = val;
+        }
+      } catch (err) {
+        if (err instanceof ValidationError) {
+          // in case of missing member, set the position to the parent object.
+          err.positionRange = data;
+        }
+        throw err
+      }
+    }
+  }
+
+
   return o;
 }
 
@@ -116,13 +140,6 @@ function processMember(member: MemberNode, memberDef: MemberDef, defs?: Definiti
   // Check if the values is present and it is a variable that starts
   // with @. If so, then unwrap the variable and return the value.
   let valueNode = member?.value
-
-  // if (valueNode instanceof TokenNode && valueNode.type === TokenType.STRING) {
-  //   const variable = valueNode.value as string;
-  //   if (variable.startsWith('@')) {
-  //     valueNode = defs?.getV(variable);
-  //   }
-  // }
 
   return typeDef.parse(valueNode, memberDef, defs);
 }

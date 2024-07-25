@@ -27,14 +27,14 @@ const schema = new Schema(
   { choices:          { type: "array",  optional: true,  null: false, of: { type: "string" } } },
   { pattern:          { type: "string", optional: true,  null: false  } },
   { flags:            { type: "string", optional: true,  null: false } },
-  { len:              { type: "number", optional: true,  null: false, min: 0, default: -1 } },
-  { minLen:           { type: "number", optional: true,  null: false, min: 0, default: -1 } },
-  { maxLen:           { type: "number", optional: true,  null: false, min: 0, default: -1 } },
+  { len:              { type: "number", optional: true,  null: false, min: 0 } },
+  { minLen:           { type: "number", optional: true,  null: false, min: 0 } },
+  { maxLen:           { type: "number", optional: true,  null: false, min: 0 } },
   { format:           { type: "string", optional: true, null: false, choices: ["auto", "open", "regular", "raw"], default:"auto" } },
   { escapeLines:      { type: "bool",   optional: true, null: false, default: false } },
   { encloser :        { type: "string", optional: true, null: false, choices: ['"', "'"], default: '"' } },
-  { optional:         { type: "bool",   optional: true,  null: false, default: false } },
-  { null:             { type: "bool",   optional: true,  null: false, default: false } },
+  { optional:         { type: "bool",   optional: true } },
+  { null:             { type: "bool",   optional: true } },
 )
 
 /**
@@ -44,7 +44,7 @@ const schema = new Schema(
  * It performs the following validation
  * - Value is string
 * - Value is optional
-* - Value is nullable
+* - Value is null
 * - Value is in choices
  * - Value length <= maxLength
  * - Value length >= minLen

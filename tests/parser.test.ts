@@ -1,5 +1,5 @@
 import ASTParser from "../src/parser/ast-parser";
-import Tokenizer  from "../src/tokenizer";
+import Tokenizer  from "../src/parser/tokenizer";
 
 
 describe('Parser', () => {
@@ -52,6 +52,7 @@ describe('Parser', () => {
 
     console.log(tokens);
     const parser = new ASTParser(tokens);
+
     const result = parser.parse().toValue().sections[0];
 
     console.log(JSON.stringify(result, null, 2));

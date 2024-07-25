@@ -19,8 +19,8 @@ const schema = new Schema(
   { choices:  { type: "array",    optional: true,  null: false, of: { type: "datetime" } } },
   { min:      { type: "datetime", optional: true,  null: false } },
   { max:      { type: "datetime", optional: true,  null: false } },
-  { optional: { type: "bool",     optional: true,  null: false, default: false } },
-  { null:     { type: "bool",     optional: true,  null: false, default: false } }
+  { optional: { type: "bool",     optional: true } },
+  { null:     { type: "bool",     optional: true } }
 )
 
 class DateTimeDef implements TypeDef {
