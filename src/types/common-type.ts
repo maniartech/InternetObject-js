@@ -41,8 +41,24 @@ function doCommonTypeCheck(memberDef: MemberDef, value: any, node?: Node, defs?:
   value = (typeof value === 'object' && value.toValue) ? value.toValue(defs) : value
 
   // Validate choices
-  if (memberDef.choices !== undefined && memberDef.choices.indexOf(value) === -1) {
-    throw new InternetObjectValidationError(..._invlalidChoice(memberDef, value, node))
+  if (memberDef.choices !== undefined) {
+    let val = value instanceof TokenNode ? value.value : value
+    let found = false
+    for (let choice of memberDef.choices) {
+      if (typeof choice === 'string' && choice[0] === '@') {
+        choice = defs?.getV(choice)
+        choice = (choice as any) instanceof TokenNode ? choice.value : choice
+      }
+
+      if (val === choice) {
+        found = true
+        break
+      }
+    }
+
+    if (!found) {
+      throw new InternetObjectValidationError(..._invlalidChoice(memberDef, value, node))
+    }
   }
 
   // If everything is okay, return same data
