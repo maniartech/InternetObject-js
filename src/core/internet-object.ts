@@ -112,14 +112,17 @@ class InternetObject<T = any> implements Iterable<[string | undefined, T]> {
   }
 
   /**
-   * Deletes a value at a specific index.
-   * @param index The index to delete.
-   * @returns True if the index was valid and value deleted, otherwise false.
-   */
+ * Deletes a value at a specific index.
+ * Throws an error if the index is out of range.
+ * @param index The index to delete.
+ * @returns True if the value was deleted, otherwise false.
+ * @throws Error if the index is invalid.
+ */
   deleteAt(index: number): boolean {
     if (index < 0 || index >= this.items.length) {
-      return false;
+      throw new Error('Index out of range');
     }
+
     const entry = this.items[index];
     if (entry) {
       const key = entry[0];
@@ -165,15 +168,18 @@ class InternetObject<T = any> implements Iterable<[string | undefined, T]> {
    * @returns The index if found, otherwise -1.
    */
   indexOf(value: T): number {
-    return this.items.findIndex((entry) => entry && entry[1] === value);
+    return this.items.findIndex(
+      (entry) => entry !== undefined && Object.is(entry[1], value)
+    );
   }
+
 
   /**
    * Checks if the InternetObject is empty.
    * @returns True if empty, otherwise false.
    */
   isEmpty(): boolean {
-    return this.items.every((entry) => entry === undefined);
+    return this.size === 0;
   }
 
   /**
@@ -200,6 +206,16 @@ class InternetObject<T = any> implements Iterable<[string | undefined, T]> {
     return this.items.length;
   }
 
+  get size(): number {
+    let count = 0;
+    for (const entry of this.items) {
+      if (entry !== undefined) {
+        count++;
+      }
+    }
+    return count;
+  }
+
   /**
    * Clears all key-value pairs from the InternetObject.
    */
@@ -209,8 +225,10 @@ class InternetObject<T = any> implements Iterable<[string | undefined, T]> {
   }
 
   /**
-   * Compacts the items array by removing undefined entries and updating the keyMap.
-   */
+ * Compacts the items array by removing undefined entries and updating the keyMap.
+ * Note: This operation is O(n) and may affect performance on large datasets.
+ * Use this method when you need to reduce memory usage or after multiple deletions.
+ */
   compact(): void {
     const newItems: ([string | undefined, T])[] = [];
     const newKeyMap = new Map<string, number>();
@@ -253,31 +271,38 @@ class InternetObject<T = any> implements Iterable<[string | undefined, T]> {
     return this._createIterator((entry) => entry);
   }
 
-  /**
-   * Returns an iterable of keys in the InternetObject.
-   */
-  forEachKeys(): IterableIterator<string | undefined> {
-    return this._createIterator((entry) => entry[0]);
+
+  keysArray(): string[] {
+    return this.items
+      .filter((entry): entry is [string, T] => entry !== undefined && entry[0] !== undefined)
+      .map((entry) => entry[0]);
   }
 
-  keys(): string[] {
-    return this.items
-    .filter((x) => !(x === undefined || x[0] === undefined))
-    .map((x:any) => x[0]);
+  keys(): IterableIterator<string> {
+    const keys = Array.from(this._createIterator((entry) => entry[0])).filter(
+      (key): key is string => key !== undefined
+    );
+    return (function* () {
+      for (const key of keys) {
+        yield key;
+      }
+    })();
   }
+
 
   /**
    * Returns an iterable of values in the InternetObject.
    */
-  forEachValues(): IterableIterator<T> {
+  values(): IterableIterator<T> {
     return this._createIterator((entry) => entry[1]);
   }
 
-  values(): T[] {
+  valuesArray(): T[] {
     return this.items
-    .filter((x) => x !== undefined)
-    .map((x:any) => x[1]);
+      .filter((entry): entry is [string | undefined, T] => entry !== undefined)
+      .map((entry) => entry[1]);
   }
+
 
   /**
    * Creates an iterator based on a selector function.
@@ -349,17 +374,23 @@ class InternetObject<T = any> implements Iterable<[string | undefined, T]> {
    * @returns A new array with each element being the result of the callback function.
    */
   map<U>(
-    callbackfn: (value: T, key: string | undefined, index: number) => U
+    callbackfn: (value: T, key: string | undefined, index: number) => U,
+    thisArg?: any
   ): U[] {
     const result: U[] = [];
     let index = 0;
     for (const entry of this.items) {
       if (entry !== undefined) {
-        result.push(callbackfn(entry[1], entry[0], index));
+        result.push(callbackfn.call(thisArg, entry[1], entry[0], index));
       }
       index++;
     }
     return result;
+  }
+
+
+  toJSObject(): Array<[string | undefined, T]> {
+    return this.items.filter((entry): entry is [string | undefined, T] => entry !== undefined);
   }
 }
 
