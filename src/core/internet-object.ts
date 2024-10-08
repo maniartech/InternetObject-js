@@ -1,327 +1,366 @@
-/**
- * Represents a hybrid kind of object that allows member access by both key
- * and index. The key is optional and can be any string. Any value can be
- * accessed using its index as well. Provides proxy-based intuitive access
- * and direct methods for performance-critical operations.
- */
-class InternetObject<T = any> {
-  private _keys: string[] = [];
-  private _values: [string | undefined, T][] = [];
-  private _keyIndexMap: { [key: string]: number } = {};
-  [key: string | number]: any;
+class InternetObject<T = any> implements Iterable<[string | undefined, T]> {
+  private items: ([string | undefined, T] | undefined)[];
+  private keyMap: Map<string, number>;
 
-  constructor(o?: { [key: string]: T }) {
-    // If an object is passed, populate the InternetObject
-    if (o) {
-      for (const key in o) {
-        this.push([key, o[key]]);
-      }
-    }
-
-    return new Proxy(this, ioProxyHandler);
+  constructor() {
+    this.items = [];
+    this.keyMap = new Map();
   }
 
   /**
-   * Directly sets a key-value pair in the InternetObject. If the key already
-   * exists, the value is overwritten. Otherwise, a new key-value pair is
-   * created and appended to the end of the InternetObject.
-   * @param key - The key associated with the value.
-   * @param value - The value to set.
+   * Adds or updates a key-value pair in the InternetObject.
+   * If the key exists, updates the value at its index.
+   * @param key The key to add or update.
+   * @param value The value associated with the key.
+   * @returns The InternetObject instance.
    */
-  public set(key: string, value: T): InternetObject<T> {
-    const index = this._keyIndexMap[key];
-
-    // If the key already exists, overwrite the value
-    if (index !== undefined) {
-      this._values[index][1] = value;
-      return this;
+  set(key: string, value: T): this {
+    if (this.keyMap.has(key)) {
+      const index = this.keyMap.get(key)!;
+      this.items[index] = [key, value];
+    } else {
+      const index = this.items.length;
+      this.items.push([key, value]);
+      this.keyMap.set(key, index);
     }
-
-    this._keys.push(key);
-    this._values.push([key, value]);
-    this._keyIndexMap[key] = this._values.length - 1;
-    return this;
-  }
-
-  public setAt(index: number, value: T): InternetObject<T> {
-    if (index < 0 || index >= this._values.length) {
-      throw new Error("Index out of range");
-    }
-
-    this._values[index][1] = value;
     return this;
   }
 
   /**
-   * Pushes values to the end of the InternetObject. It allows pushing
-   * items with or without keys. If the item has a key, it must not be
-   * present in the InternetObject. Only new keys are allowed.
-   * @param items - Array of key-value pairs or values to push.
+   * Appends values to the InternetObject.
+   * Values can be with or without keys.
+   * @param items Variadic arguments of values or [key, value] pairs.
    */
-  public push(...items: (T | [string | undefined, T])[]) {
+  push(...items: ([string, T] | T)[]): void {
     for (const item of items) {
       if (Array.isArray(item)) {
         const [key, value] = item;
-        if (key !== undefined) {
-          if (this._keyIndexMap[key] !== undefined) {
-            throw new Error(`Key "${key}" already exists`);
-          }
-          this._keys.push(key);
+        if (this.has(key)) {
+          throw new Error(`Key '${key}' already exists`);
         }
-        this._values.push([key, value]);
-        if (key !== undefined) {
-          this._keyIndexMap[key] = this._values.length - 1;
-        }
+        const index = this.items.length;
+        this.items.push([key, value]);
+        this.keyMap.set(key, index);
       } else {
-        this._values.push([undefined, item]);
+        this.items.push([undefined, item]);
       }
     }
   }
 
   /**
-   * Pushes values to the end of the InternetObject without keys.
-   * @param value - The value to push.
-   */
-  pushValues(...values: T[]) {
-    for (const value of values) {
-      this._values.push([undefined, value]);
-    }
-  }
-
-  /**
-   * Returns the keys set in the InternetObject.
-   * @returns Array of keys.
-   */
-  get keys(): string[] {
-    return this._keys.slice();
-  }
-
-  /**
-   * Returns true if the key exists in the InternetObject, false otherwise.
-   * @param key The key to check for.
-   * @returns true if the key exists, false otherwise.
-   */
-  has = (key: string): boolean => {
-    return this._keyIndexMap[key] !== undefined;
-  }
-
-  /**
-   * Directly retrieves a value based on its key or index.
-   * Bypasses the proxy for performance.
-   * @param key - The key or index of the value to retrieve.
-   * @returns The associated value, or undefined if not found.
+   * Retrieves the value associated with the given key.
+   * @param key The key to look up.
+   * @returns The value if found, otherwise undefined.
    */
   get(key: string): T | undefined {
-    const index = this._keyIndexMap[key];
-    if (index === undefined) {
-      return undefined;
+    const index = this.keyMap.get(key);
+    if (index !== undefined) {
+      const entry = this.items[index];
+      return entry ? entry[1] : undefined;
     }
-
-    return this._values[index][1];
-  }
-
-  getAt(index: number): T | undefined {
-    if (index < 0 || index >= this._values.length) {
-      return undefined;
-    }
-    return this._values[index][1];
+    return undefined;
   }
 
   /**
-    * Returns the index of the given value.
-    * @param value - The value to search for.
-    * @returns The index of the value, or -1 if not found.
-    */
-  indexOf(value: T): number {
-    for (let i = 0; i < this._values.length; i++) {
-      if (this._values[i][1] === value) {
-        return i;
+   * Retrieves the value at the specified index.
+   * @param index The index to access.
+   * @returns The value if index is valid and entry exists, otherwise undefined.
+   */
+  getAt(index: number): T | undefined {
+    if (index < 0 || index >= this.items.length) {
+      return undefined;
+    }
+    const entry = this.items[index];
+    return entry ? entry[1] : undefined;
+  }
+
+  /**
+   * Retrieves the key at the specified index.
+   * @param index The index to access.
+   * @returns The key if index is valid and exists, otherwise undefined.
+   */
+  keyAt(index: number): string | undefined {
+    if (index < 0 || index >= this.items.length) {
+      return undefined;
+    }
+    const entry = this.items[index];
+    return entry ? entry[0] : undefined;
+  }
+
+  /**
+   * Checks if the InternetObject contains a given key.
+   * @param key The key to check.
+   * @returns True if the key exists, otherwise false.
+   */
+  has(key: string): boolean {
+    return this.keyMap.has(key);
+  }
+
+  /**
+   * Deletes a key-value pair from the InternetObject by key.
+   * @param key The key to delete.
+   * @returns True if the key was found and deleted, otherwise false.
+   */
+  delete(key: string): boolean {
+    const index = this.keyMap.get(key);
+    if (index !== undefined && this.items[index]) {
+      this.items[index] = undefined;
+      this.keyMap.delete(key);
+      return true;
+    }
+    return false;
+  }
+
+  /**
+   * Deletes a value at a specific index.
+   * @param index The index to delete.
+   * @returns True if the index was valid and value deleted, otherwise false.
+   */
+  deleteAt(index: number): boolean {
+    if (index < 0 || index >= this.items.length) {
+      return false;
+    }
+    const entry = this.items[index];
+    if (entry) {
+      const key = entry[0];
+      if (key !== undefined) {
+        this.keyMap.delete(key);
       }
+      this.items[index] = undefined;
+      return true;
+    }
+    return false;
+  }
+
+  /**
+   * Updates the value at the specified index.
+   * @param index The index to set.
+   * @param value The value to set.
+   * @returns True if the index was valid and value updated, otherwise false.
+   */
+  setAt(index: number, value: T): boolean {
+    if (index < 0 || index >= this.items.length) {
+      throw new Error('Index out of range');
+    }
+    const entry = this.items[index];
+    if (entry) {
+      this.items[index] = [entry[0], value];
+      return true;
+    }
+    return false;
+  }
+
+  /**
+   * Returns the index of the given key.
+   * @param key The key to find.
+   * @returns The index if found, otherwise -1.
+   */
+  indexOfKey(key: string): number {
+    return this.keyMap.get(key) ?? -1;
+  }
+
+  /**
+   * Returns the index of the given value.
+   * @param value The value to find.
+   * @returns The index if found, otherwise -1.
+   */
+  indexOf(value: T): number {
+    return this.items.findIndex((entry) => entry && entry[1] === value);
+  }
+
+  /**
+   * Checks if the InternetObject is empty.
+   * @returns True if empty, otherwise false.
+   */
+  isEmpty(): boolean {
+    return this.items.every((entry) => entry === undefined);
+  }
+
+  /**
+   * Creates an InternetObject from an array of values or [key, value] pairs.
+   * @param array The array to create from.
+   * @returns A new InternetObject instance.
+   */
+  static fromArray<T>(array: (T | [string, T])[]): InternetObject<T> {
+    const io = new InternetObject<T>();
+    for (const item of array) {
+      if (Array.isArray(item)) {
+        io.set(item[0], item[1]);
+      } else {
+        io.push(item);
+      }
+    }
+    return io;
+  }
+
+  /**
+   * Returns the number of entries in the InternetObject, including undefined entries.
+   */
+  get length(): number {
+    return this.items.length;
+  }
+
+  /**
+   * Clears all key-value pairs from the InternetObject.
+   */
+  clear(): void {
+    this.items = [];
+    this.keyMap.clear();
+  }
+
+  /**
+   * Compacts the items array by removing undefined entries and updating the keyMap.
+   */
+  compact(): void {
+    const newItems: ([string | undefined, T])[] = [];
+    const newKeyMap = new Map<string, number>();
+
+    for (const entry of this.items) {
+      if (entry !== undefined) {
+        newItems.push(entry);
+        const key = entry[0];
+        if (key !== undefined) {
+          newKeyMap.set(key, newItems.length - 1);
+        }
+      }
+    }
+
+    this.items = newItems;
+    this.keyMap = newKeyMap;
+  }
+
+  /**
+   * Executes a provided function once for each key-value pair.
+   * @param callbackfn Function to execute for each element.
+   * @param thisArg Value to use as `this` when executing callback.
+   */
+  forEach(
+    callbackfn: (value: T, key: string | undefined, index: number) => void,
+    thisArg?: any
+  ): void {
+    for (let index = 0; index < this.items.length; index++) {
+      const entry = this.items[index];
+      if (entry !== undefined) {
+        callbackfn.call(thisArg, entry[1], entry[0], index);
+      }
+    }
+  }
+
+  /**
+   * Returns an iterable of key, value pairs for every entry in the InternetObject.
+   */
+  entries(): IterableIterator<[string | undefined, T]> {
+    return this._createIterator((entry) => entry);
+  }
+
+  /**
+   * Returns an iterable of keys in the InternetObject.
+   */
+  forEachKeys(): IterableIterator<string | undefined> {
+    return this._createIterator((entry) => entry[0]);
+  }
+
+  keys(): string[] {
+    return this.items
+    .filter((x) => !(x === undefined || x[0] === undefined))
+    .map((x:any) => x[0]);
+  }
+
+  /**
+   * Returns an iterable of values in the InternetObject.
+   */
+  forEachValues(): IterableIterator<T> {
+    return this._createIterator((entry) => entry[1]);
+  }
+
+  values(): T[] {
+    return this.items
+    .filter((x) => x !== undefined)
+    .map((x:any) => x[1]);
+  }
+
+  /**
+   * Creates an iterator based on a selector function.
+   * @param selector Function to select the output of the iterator.
+   */
+  private *_createIterator<U>(
+    selector: (entry: [string | undefined, T]) => U
+  ): IterableIterator<U> {
+    for (const entry of this.items) {
+      if (entry !== undefined) {
+        yield selector(entry);
+      }
+    }
+  }
+
+  /**
+   * Returns an iterator over the entries in insertion order.
+   */
+  [Symbol.iterator](): IterableIterator<[string | undefined, T]> {
+    return this.entries();
+  }
+
+  /**
+   * Returns the default string representation of the object.
+   */
+  get [Symbol.toStringTag](): string {
+    return 'InternetObject';
+  }
+
+  /**
+   * Finds a value based on a predicate function.
+   * @param predicate Function to test each element.
+   * @returns The value if found, otherwise undefined.
+   */
+  find(
+    predicate: (value: T, key: string | undefined, index: number) => boolean
+  ): T | undefined {
+    let index = 0;
+    for (const entry of this.items) {
+      if (entry !== undefined && predicate(entry[1], entry[0], index)) {
+        return entry[1];
+      }
+      index++;
+    }
+    return undefined;
+  }
+
+  /**
+   * Finds the index of a value based on a predicate function.
+   * @param predicate Function to test each element.
+   * @returns The index if found, otherwise -1.
+   */
+  findIndex(
+    predicate: (value: T, key: string | undefined, index: number) => boolean
+  ): number {
+    let index = 0;
+    for (const entry of this.items) {
+      if (entry !== undefined && predicate(entry[1], entry[0], index)) {
+        return index;
+      }
+      index++;
     }
     return -1;
   }
 
   /**
-   * Returns the index of the given key.
-   * @param key - The key to search for.
-   * @returns The index of the key, or -1 if not found.
+   * Creates a new array populated with the results of calling a provided function on every element.
+   * @param callbackfn Function that produces an element of the new Array.
+   * @returns A new array with each element being the result of the callback function.
    */
-  indexOfKey(key: string): number {
-    return this._keyIndexMap[key] === undefined ? -1 : this._keyIndexMap[key];
-  }
-
-  /**
-    * Returns the values in the InternetObject.
-    * @returns Array of values.
-    */
-  values(): T[] {
-    return this._values.map(v => v[1]);
-  }
-
-  /**
-    * Returns the key-value pairs in the InternetObject.
-    * @returns Array of key-value pairs.
-    */
-  entries(): [string | undefined, T][] {
-    return this._values.slice();
-  }
-
-  /**
-   * Directly deletes a key-value pair based on its key. Also deletes the associated
-   * value from the values array.
-   * Bypasses the proxy for performance.
-   * @param key - The key of the value to delete.
-   */
-  delete(key: string): InternetObject<T> {
-    const index = this._keyIndexMap[key];
-    if (index === undefined) {
-      return this;
-    }
-    this.deleteAt(index);
-    return this;
-  }
-
-  /**
-   * Deletes the key-value pair at the given index.
-   * @param index - The index to delete at.
-   */
-  deleteAt(index: number): InternetObject<T> {
-    if (index < 0 || index >= this._values.length) {
-      throw new Error("Index out of range");
-    }
-    const [key] = this._values.splice(index, 1)[0];
-    if (key) {
-      delete this._keyIndexMap[key];
-    }
-
-    // Adjust the indices in the map
-    for (let i = index; i < this._values.length; i++) {
-      const [currentKey] = this._values[i];
-      if (currentKey !== undefined) {
-        this._keyIndexMap[currentKey] = i;
+  map<U>(
+    callbackfn: (value: T, key: string | undefined, index: number) => U
+  ): U[] {
+    const result: U[] = [];
+    let index = 0;
+    for (const entry of this.items) {
+      if (entry !== undefined) {
+        result.push(callbackfn(entry[1], entry[0], index));
       }
+      index++;
     }
-
-    return this;
-  }
-
-  /**
-   * Clears the InternetObject of all key-value pairs.
-   */
-  clear(): InternetObject<T> {
-    this._keys = [];
-    this._values = [];
-    this._keyIndexMap = {};
-    return this;
-  }
-
-  /**
-   * Returns true if the InternetObject is empty, false otherwise.
-   * @returns true if the InternetObject is empty, false otherwise.
-   */
-  isEmpty(): boolean {
-    return this._values.length === 0;
-  }
-
-  /**
-   * Gets the number of key-value pairs in the InternetObject.
-   * @returns The number of key-value pairs.
-   */
-  get length(): number {
-    return this._values.length;
-  }
-
-  toObject(): any {
-    return this._values.reduce((o, [k, v], i) => {
-      o[k || i] = _(v);
-      return o;
-    }, {} as any);
-  }
-
-  /**
-   * Makes the InternetObject iterable, yielding key-value pairs.
-   */
-  *[Symbol.iterator]() {
-    for (const value of this._values) {
-      yield value;
-    }
-  }
-
-  /////////// Static ///////////
-
-  // InternetObject.fromArray returns an InternetObject from an array of [key, value] pairs
-  static fromArray<T>(array: [string, T][]): InternetObject<T> {
-    const io = new InternetObject<T>();
-    for (const [key, value] of array) {
-      io.push([key, value]);
-    }
-    return io;
+    return result;
   }
 }
-
-const ioProxyHandler = {
-  get: (target: InternetObject<any>, property: string | symbol) => {
-
-    // If the property is a member of the InternetObject, return it
-    if (property in target) {
-      return Reflect.get(target, property);
-    }
-
-    if (typeof property === 'string') {
-      // If the property is a number, get the value at that index
-      if (/^[0-9]+$/.test(property)) {
-        return target.getAt(Number(property));
-      }
-
-      // Return the string-keyed value
-      return target.get(property);
-    }
-  },
-
-  set: (target: InternetObject<any>, property: string | number | symbol, value: any) => {
-    // If the property is a number, get the value at that index
-    if (typeof property === 'string') {
-      // setting of number is not supported through proxy
-      if (/^[0-9]+$/.test(property)) {
-        throw new Error('Direct assignment with numeric index is not supported. Use push, or setAt instead.');
-      }
-
-      // For strings, set the value associated with the key
-      target.set(property, value);
-    }
-
-    // for symbols and other properties, defer to the standard set operation
-    return Reflect.set(target, property, value);
-  },
-
-  delete: (target: InternetObject<any>, property: string | symbol) => {
-    if (typeof property === 'string') {
-      if (/^[0-9]+$/.test(property)) {
-        target.deleteAt(Number(property));
-      } else if (!Reflect.has(target, property)) {
-        target.delete(property);
-      }
-      return true;
-    }
-
-    // For symbols and other properties, defer to the standard delete operation
-    return Reflect.deleteProperty(target, property);
-  }
-};
-
-/**
- * Normalize the value by checking whether the given value is an
- * InternetObject or has toObject method. If so, returns the
- * result of calling toObject on the value. Otherwise, returns
- * the value itself.
- * @param v the value to normalize
- * @returns The normalized value
- */
-function _(v:any):any {
-  if (v instanceof InternetObject)  return v.toObject();
-  if (Array.isArray(v)) return v.map(_);
-  return v;
-}
-
 
 export default InternetObject;
