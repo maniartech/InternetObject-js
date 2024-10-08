@@ -1,10 +1,12 @@
 class InternetObject<T = any> implements Iterable<[string | undefined, T]> {
   private items: ([string | undefined, T] | undefined)[];
   private keyMap: Map<string, number>;
+  private _size: number;
 
   constructor() {
     this.items = [];
     this.keyMap = new Map();
+    this._size = 0;
   }
 
   /**
@@ -22,6 +24,7 @@ class InternetObject<T = any> implements Iterable<[string | undefined, T]> {
       const index = this.items.length;
       this.items.push([key, value]);
       this.keyMap.set(key, index);
+      this._size++;
     }
     return this;
   }
@@ -41,8 +44,10 @@ class InternetObject<T = any> implements Iterable<[string | undefined, T]> {
         const index = this.items.length;
         this.items.push([key, value]);
         this.keyMap.set(key, index);
+        this._size++;
       } else {
         this.items.push([undefined, item]);
+        this._size++;
       }
     }
   }
@@ -106,18 +111,19 @@ class InternetObject<T = any> implements Iterable<[string | undefined, T]> {
     if (index !== undefined && this.items[index]) {
       this.items[index] = undefined;
       this.keyMap.delete(key);
+      this._size--;
       return true;
     }
     return false;
   }
 
   /**
- * Deletes a value at a specific index.
- * Throws an error if the index is out of range.
- * @param index The index to delete.
- * @returns True if the value was deleted, otherwise false.
- * @throws Error if the index is invalid.
- */
+   * Deletes a value at a specific index.
+   * Throws an error if the index is out of range.
+   * @param index The index to delete.
+   * @returns True if the value was deleted, otherwise false.
+   * @throws Error if the index is invalid.
+   */
   deleteAt(index: number): boolean {
     if (index < 0 || index >= this.items.length) {
       throw new Error('Index out of range');
@@ -130,6 +136,7 @@ class InternetObject<T = any> implements Iterable<[string | undefined, T]> {
         this.keyMap.delete(key);
       }
       this.items[index] = undefined;
+      this._size--;
       return true;
     }
     return false;
@@ -137,9 +144,11 @@ class InternetObject<T = any> implements Iterable<[string | undefined, T]> {
 
   /**
    * Updates the value at the specified index.
+   * Throws an error if the index is out of range.
    * @param index The index to set.
    * @param value The value to set.
-   * @returns True if the index was valid and value updated, otherwise false.
+   * @returns True if the value was updated, otherwise false.
+   * @throws Error if the index is invalid.
    */
   setAt(index: number, value: T): boolean {
     if (index < 0 || index >= this.items.length) {
@@ -173,13 +182,12 @@ class InternetObject<T = any> implements Iterable<[string | undefined, T]> {
     );
   }
 
-
   /**
    * Checks if the InternetObject is empty.
    * @returns True if empty, otherwise false.
    */
   isEmpty(): boolean {
-    return this.size === 0;
+    return this._size === 0;
   }
 
   /**
@@ -206,14 +214,11 @@ class InternetObject<T = any> implements Iterable<[string | undefined, T]> {
     return this.items.length;
   }
 
+  /**
+   * Returns the number of active entries in the InternetObject.
+   */
   get size(): number {
-    let count = 0;
-    for (const entry of this.items) {
-      if (entry !== undefined) {
-        count++;
-      }
-    }
-    return count;
+    return this._size;
   }
 
   /**
@@ -222,13 +227,14 @@ class InternetObject<T = any> implements Iterable<[string | undefined, T]> {
   clear(): void {
     this.items = [];
     this.keyMap.clear();
+    this._size = 0;
   }
 
   /**
- * Compacts the items array by removing undefined entries and updating the keyMap.
- * Note: This operation is O(n) and may affect performance on large datasets.
- * Use this method when you need to reduce memory usage or after multiple deletions.
- */
+   * Compacts the items array by removing undefined entries and updating the keyMap.
+   * Note: This operation is O(n) and may affect performance on large datasets.
+   * Use this method when you need to reduce memory usage or after multiple deletions.
+   */
   compact(): void {
     const newItems: ([string | undefined, T])[] = [];
     const newKeyMap = new Map<string, number>();
@@ -245,6 +251,7 @@ class InternetObject<T = any> implements Iterable<[string | undefined, T]> {
 
     this.items = newItems;
     this.keyMap = newKeyMap;
+    this._size = this.items.length;
   }
 
   /**
@@ -271,38 +278,54 @@ class InternetObject<T = any> implements Iterable<[string | undefined, T]> {
     return this._createIterator((entry) => entry);
   }
 
-
+  /**
+   * Returns an array of keys in the InternetObject.
+   * Excludes entries without keys (i.e., where key is undefined).
+   * @returns An array of keys.
+   */
   keysArray(): string[] {
     return this.items
       .filter((entry): entry is [string, T] => entry !== undefined && entry[0] !== undefined)
       .map((entry) => entry[0]);
   }
 
+  /**
+   * Returns an iterable of keys in the InternetObject.
+   * Excludes entries without keys (i.e., where key is undefined).
+   */
   keys(): IterableIterator<string> {
-    const keys = Array.from(this._createIterator((entry) => entry[0])).filter(
-      (key): key is string => key !== undefined
-    );
-    return (function* () {
-      for (const key of keys) {
-        yield key;
+    return (function* (items) {
+      for (const entry of items) {
+        if (entry !== undefined && entry[0] !== undefined) {
+          yield entry[0];
+        }
       }
-    })();
+    })(this.items);
   }
-
 
   /**
    * Returns an iterable of values in the InternetObject.
    */
   values(): IterableIterator<T> {
-    return this._createIterator((entry) => entry[1]);
+    return (function* (items) {
+      for (const entry of items) {
+        if (entry !== undefined) {
+          yield entry[1];
+        }
+      }
+    })(this.items);
   }
 
+  /**
+   * Returns an array of values in the InternetObject.
+   * Includes all entries, even those without keys.
+   * @returns An array of values.
+   */
   valuesArray(): T[] {
     return this.items
       .filter((entry): entry is [string | undefined, T] => entry !== undefined)
       .map((entry) => entry[1]);
   }
-
 
   /**
    * Creates an iterator based on a selector function.
@@ -371,6 +394,7 @@ class InternetObject<T = any> implements Iterable<[string | undefined, T]> {
   /**
    * Creates a new array populated with the results of calling a provided function on every element.
    * @param callbackfn Function that produces an element of the new Array.
+   * @param thisArg Value to use as `this` when executing callback.
    * @returns A new array with each element being the result of the callback function.
    */
   map<U>(
@@ -388,8 +412,12 @@ class InternetObject<T = any> implements Iterable<[string | undefined, T]> {
     return result;
   }
 
-
-  toJSObject(): Array<[string | undefined, T]> {
+  /**
+   * Converts the InternetObject to a JSON-serializable array.
+   * Used when calling JSON.stringify.
+   * @returns An array of entries.
+   */
+  toJSON(): Array<[string | undefined, T]> {
     return this.items.filter((entry): entry is [string | undefined, T] => entry !== undefined);
   }
 }
