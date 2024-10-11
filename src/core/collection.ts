@@ -2,44 +2,43 @@ import assertNever from '../errors/asserts/asserts';
 import InternetObject from './internet-object';
 
 class Collection<T = InternetObject> {
-  _items: T[];
-  _proxy: Collection<T> | null = null;
+  private _items: T[];
+  private _proxy: Collection<T> | null = null;
+
+  /**
+   * Adds an item to the collection without modifying the original instance.
+   * @param item - The item to add.
+   * @returns A new collection with the item added.
+   */
+  public add(item: T): Collection<T> {
+    return new Collection([...this._items, item]);
+  }
 
   constructor(items: T[] = []) {
     this._items = items;
   }
 
   public get(index: number): T {
-    if (!this._items) {
-      throw new Error('Collection is empty');
-    }
-
     if (index < 0 || index >= this._items.length) {
       throw new Error('Index out of range');
     }
-
     return this._items[index];
   }
 
   public set(index: number, item: T): Collection<T> {
-    if (!this._items) {
-      throw new Error('Collection is empty');
-    }
-
     if (index < 0) {
-      throw new Error('Index out of range, index cannot be negative');
+      throw new Error('Index cannot be negative.');
     }
-
     if (index >= this._items.length) {
-      throw new Error('Index out of range, push the item instead');
+      this._items.push(item);
+    } else {
+      this._items[index] = item;
     }
-
-    this._items[index] = item;
     return this;
   }
 
   public get length(): number {
-    return this._items?.length || 0;
+    return this._items.length;
   }
 
   public get isEmpty(): boolean {
@@ -47,105 +46,118 @@ class Collection<T = InternetObject> {
   }
 
   // Map
-  map<U>(callback: (item: T, index: number, array: T[]) => U): Collection<U> {
+  public map<U>(callback: (item: T, index: number, array: T[]) => U): Collection<U> {
     const mappedItems = this._items.map(callback);
     return new Collection<U>(mappedItems);
   }
 
   // Filter
-  filter(callback: (item: T, index: number, array: T[]) => boolean): Collection<T> {
-      const filteredItems = this._items.filter(callback);
-      return new Collection<T>(filteredItems);
+  public filter(callback: (item: T, index: number, array: T[]) => boolean): Collection<T> {
+    const filteredItems = this._items.filter(callback);
+    return new Collection<T>(filteredItems);
   }
 
   // Reduce
-  reduce<U>(callback: (accumulator: U, item: T, index: number, array: T[]) => U, initialValue: U): U {
-      return this._items.reduce(callback, initialValue);
+  public reduce<U>(callback: (accumulator: U, item: T, index: number, array: T[]) => U, initialValue: U): U {
+    return this._items.reduce(callback, initialValue);
   }
 
   // forEach
-  forEach(callback: (item: T, index: number, array: T[]) => void): void {
-      this._items.forEach(callback);
+  public forEach(callback: (item: T, index: number, array: T[]) => void): void {
+    this._items.forEach(callback);
   }
 
   // Some
-  some(callback: (item: T, index: number, array: T[]) => boolean): boolean {
-      return this._items.some(callback);
+  public some(callback: (item: T, index: number, array: T[]) => boolean): boolean {
+    return this._items.some(callback);
   }
 
   // Every
-  every(callback: (item: T, index: number, array: T[]) => boolean): boolean {
-      return this._items.every(callback);
+  public every(callback: (item: T, index: number, array: T[]) => boolean): boolean {
+    return this._items.every(callback);
   }
 
   // Find
-  find(callback: (item: T, index: number, array: T[]) => boolean): T | undefined {
-      return this._items.find(callback);
+  public find(callback: (item: T, index: number, array: T[]) => boolean): T | undefined {
+    return this._items.find(callback);
   }
 
   // FindIndex
-  findIndex(callback: (item: T, index: number, array: T[]) => boolean): number {
-      return this._items.findIndex(callback);
+  public findIndex(callback: (item: T, index: number, array: T[]) => boolean): number {
+    return this._items.findIndex(callback);
   }
 
   // Push
-  push(...items: T[]): number {
-      return this._items.push(...items);
+  /**
+   * Adds items to the collection in-place.
+   * @param items - The items to add.
+   * @returns The new length of the collection.
+   */
+  public push(...items: T[]): number {
+    return this._items.push(...items);
   }
 
   // Pop
-  pop(): T | undefined {
-      return this._items.pop();
+  /**
+   * Removes the last item from the collection.
+   * @returns The removed item, or undefined if the collection is empty.
+   */
+  public pop(): T | undefined {
+    return this._items.pop();
   }
 
   public withIndex(): Collection<T> {
     if (!this._proxy) {
       this._proxy = new Proxy(this, proxy);
     }
-
     return this._proxy;
   }
 
-  public toObject(): any {
-    return this._items?.map((item) => {
+  public toJSON(): any {
+    return this._items.map((item) => {
       if (item instanceof InternetObject) {
-        return item.toObject();
+        return item.toJSON();
+      } else if (typeof item === 'object' && item !== null) {
+        return JSON.stringify(item);
       }
-
-      // Unsupported type
-      throw new Error('Invalid item type.');
+      return item;
     });
   }
 
   // Iterable protocol
-  *[Symbol.iterator]() {
-    for (let item of this._items) {
-        yield item;
-    }
+  /**
+   * Allows iteration over the collection using for..of syntax.
+   * @returns An iterator for the collection.
+   */
+  *[Symbol.iterator](): IterableIterator<T> {
+    yield* this._items;
   }
 }
 
 const proxy = {
   get: (target: Collection<any>, property: string | symbol) => {
-    // If the property is a member of the InternetObject, return it
     if (property in target) {
       return Reflect.get(target, property);
     }
 
-    if (typeof property === 'string') {
-      // If the property is a number, get the value at that index
-      if (/^[0-9]+$/.test(property)) {
-        return target.get(Number(property));
-      }
+    if (typeof property === 'string' && /^[0-9]+$/.test(property)) {
+      return target.get(Number(property));
+    }
 
-      assertNever(property as never);
+    assertNever(property as never);
+  },
+
+  set: (target: Collection<any>, property: string | number | symbol, value: any) => {
+    if (typeof property === 'string' && /^[0-9]+$/.test(property)) {
+      target.set(Number(property), value);
+    } else {
+      throw new Error('Cannot set a value on a Collection');
     }
   },
 
   set: (target: Collection<any>, property: string | number | symbol, value: any) => {
     throw new Error('Cannot set a value on a Collection');
   }
-}
-
+};
 
 export default Collection;
