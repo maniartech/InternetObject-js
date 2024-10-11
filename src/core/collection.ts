@@ -132,6 +132,37 @@ class Collection<T = InternetObject> {
   *[Symbol.iterator](): IterableIterator<T> {
     yield* this._items;
   }
+
+  // Entries Iterator
+  /**
+   * Returns an iterator of [index, item] pairs.
+   * @returns An iterator of index-item pairs.
+   */
+  *entries(): IterableIterator<[number, T]> {
+    for (let index = 0; index < this._items.length; index++) {
+      yield [index, this._items[index]];
+    }
+  }
+
+  // Keys Iterator
+  /**
+   * Returns an iterator of item indices.
+   * @returns An iterator of item indices.
+   */
+  *keys(): IterableIterator<number> {
+    for (let index = 0; index < this._items.length; index++) {
+      yield index;
+    }
+  }
+
+  // Values Iterator
+  /**
+   * Returns an iterator of collection items.
+   * @returns An iterator of collection items.
+   */
+  *values(): IterableIterator<T> {
+    yield* this._items;
+  }
 }
 
 const proxy = {
@@ -145,14 +176,6 @@ const proxy = {
     }
 
     assertNever(property as never);
-  },
-
-  set: (target: Collection<any>, property: string | number | symbol, value: any) => {
-    if (typeof property === 'string' && /^[0-9]+$/.test(property)) {
-      target.set(Number(property), value);
-    } else {
-      throw new Error('Cannot set a value on a Collection');
-    }
   },
 
   set: (target: Collection<any>, property: string | number | symbol, value: any) => {
