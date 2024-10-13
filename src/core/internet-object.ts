@@ -3,10 +3,16 @@ class InternetObject<T = any> implements Iterable<[string | undefined, T]> {
   private keyMap: Map<string, number>;
   private _size: number;
 
-  constructor() {
+  constructor(o?: Record<string, T>) {
     this.items = [];
     this.keyMap = new Map();
     this._size = 0;
+
+    if (o) {
+      for (const [key, value] of Object.entries(o)) {
+        this.set(key, value);
+      }
+    }
   }
 
   /**
@@ -420,6 +426,8 @@ class InternetObject<T = any> implements Iterable<[string | undefined, T]> {
   toJSON(): Array<[string | undefined, T]> {
     return this.items.filter((entry): entry is [string | undefined, T] => entry !== undefined);
   }
+
+
 }
 
 export default InternetObject;
