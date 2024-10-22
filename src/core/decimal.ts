@@ -186,9 +186,10 @@ export class Decimal {
      * @returns True if valid, else false.
      */
     static isValidDecimal(str: string): boolean {
-        const regex = /^-?\d+(\.\d+)?$/;
-        return regex.test(str.trim());
-    }
+      const regex = /^[+\-]?\d+(\.\d+)?([eE][+-]?\d+)?$/;
+      return regex.test(str.trim());
+  }
+
 
     /**
      * Parses the string into sign, integer part, and fractional part.
@@ -196,19 +197,50 @@ export class Decimal {
      * @returns An object containing sign, integerPart, and fractionalPart.
      */
     static parseString(str: string): { sign: string; integerPart: string; fractionalPart: string } {
-        let trimmed = str.trim();
-        let sign = '';
-        if (trimmed.startsWith('-')) {
-            sign = '-';
-            trimmed = trimmed.slice(1);
-        }
+      let trimmed = str.trim();
+      let sign = '';
 
-        const parts = trimmed.split('.');
-        const integerPart = parts[0] || '0';
-        const fractionalPart = parts[1] || '';
+      // Handle sign
+      if (trimmed.startsWith('-')) {
+          sign = '-';
+          trimmed = trimmed.slice(1);
+      } else if (trimmed.startsWith('+')) {
+          trimmed = trimmed.slice(1);
+      }
 
-        return { sign, integerPart, fractionalPart };
-    }
+      // Split into mantissa and exponent parts
+      const [mantissa, exponentPart] = trimmed.split(/[eE]/);
+      const exponent = exponentPart ? parseInt(exponentPart, 10) : 0;
+
+      // Split mantissa into integer and fractional parts
+      const [integerPartRaw, fractionalPartRaw = ''] = mantissa.split('.');
+      let integerPart = integerPartRaw || '0';
+      let fractionalPart = fractionalPartRaw;
+
+      // Adjust for exponent
+      if (exponent > 0) {
+          if (fractionalPart.length > exponent) {
+              integerPart += fractionalPart.slice(0, exponent);
+              fractionalPart = fractionalPart.slice(exponent);
+          } else {
+              integerPart += fractionalPart.padEnd(exponent, '0');
+              fractionalPart = '';
+          }
+      } else if (exponent < 0) {
+          const absExp = Math.abs(exponent);
+          if (integerPart.length > absExp) {
+              fractionalPart = integerPart.slice(-absExp) + fractionalPart;
+              integerPart = integerPart.slice(0, -absExp);
+          } else {
+              fractionalPart = integerPart.padStart(absExp, '0') + fractionalPart;
+              integerPart = '0';
+          }
+      }
+
+      return { sign, integerPart, fractionalPart };
+  }
+
+
 
     /**
      * Converts the Decimal instance to a JavaScript Number.
@@ -355,5 +387,12 @@ export class Decimal {
     getCoefficient(): bigint {
         return this.coefficient;
     }
+
+    getFormatPattern(): string {
+      const precision = 'x'.repeat(this.precision - this.scale);
+      const scale = 'x'.repeat(this.scale);
+      return `${precision}.${scale}`;
+  }
+
 }
 
