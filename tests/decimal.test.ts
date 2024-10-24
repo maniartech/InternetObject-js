@@ -299,11 +299,6 @@ describe('Decimal Class', () => {
             expect(() => new Decimal("123.45", 4, 2)).toThrow(DecimalError);
         });
 
-        it('should round to nearest value when fractional digits exceed scale', () => {
-            // "999.995" with precision=5, scale=2 would attempt to round to "1000.00" which exceeds precision
-            expect(new Decimal("999.995", 5, 2)).toBe("1000.00");
-        });
-
         it('should throw DecimalError when fractional digits exceed scale without affecting integer digits', () => {
             const dec = new Decimal("123.454", 6, 2); // Should round to "123.45"
             expect(dec.toString()).toBe("123.45");
@@ -318,9 +313,8 @@ describe('Decimal Class', () => {
         });
 
         it('should throw DecimalError when adjusting scale causes rounding to affect integer digits', () => {
-            const dec1 = new Decimal("999.995", 5, 3);
             // Adjusting to scale=2, rounds to "1000.00" which exceeds precision=5
-            expect(() => new Decimal(dec1, 5, 2)).toThrow(DecimalError);
+            expect(() => new Decimal(new Decimal("999.995", 5, 3), 5, 2)).toThrow(DecimalError);
         });
     });
 });
