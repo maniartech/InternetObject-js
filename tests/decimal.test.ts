@@ -52,7 +52,7 @@ describe('Decimal Class', () => {
         });
 
         it('should round to nearest value when fractional digits exceed scale', () => {
-            expect(new Decimal("999.995", 6, 2)).toBe("1000.00");
+            expect(new Decimal("999.995", 6, 2).toString()).toBe("1000.00");
         });
     });
 
