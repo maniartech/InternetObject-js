@@ -27,6 +27,11 @@ export class Decimal {
         let integerPart = '0';
         let fractionalPart = '';
 
+        // The sclae must be less than or equal to the precision (D <= M)
+        if (scale > precision) {
+            throw new DecimalError("Scale must be less than or equal to precision.");
+        }
+
         if (typeof value === 'string' || typeof value === 'number') {
             const valueStr = typeof value === 'number' ? value.toString() : value;
 
