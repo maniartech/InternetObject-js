@@ -146,7 +146,7 @@ export class Decimal {
             normalizedFractional = roundedFractional;
 
             // Recompute combined and normalize
-            const combined = normalizedInteger + normalizedFractional;
+            const combined = integerPart + normalizedFractional;
             const combinedNormalized = combined.replace(/^0+/, '') || '0';
             const totalDigits = combinedNormalized.length;
             if (totalDigits > precision) {
