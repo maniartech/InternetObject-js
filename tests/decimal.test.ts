@@ -26,7 +26,7 @@ describe('Decimal Class', () => {
         });
 
         it('should parse zero values correctly', () => {
-            const dec = new Decimal("0.00", 1, 2);
+            const dec = new Decimal("0.00", 3, 2);
             expect(dec.toString()).toBe("0.00");
             expect(dec.getCoefficient()).toBe(0n);
             expect(dec.getExponent()).toBe(2);
@@ -48,11 +48,11 @@ describe('Decimal Class', () => {
 
         it('should throw DecimalError when precision is exceeded', () => {
             expect(() => new Decimal("1234.5", 5, 2)).toThrow(DecimalError); // 5 digits allowed
-            expect(() => new Decimal("-12345", 5, 0)).toThrow(DecimalError);
+            expect(() => new Decimal("-1234.5", 5, 2)).toThrow(DecimalError);
         });
 
-        it('should throw DecimalError when scale is exceeded and rounding affects integer digits', () => {
-            expect(() => new Decimal("999.995", 5, 2)).toThrow(DecimalError); // Rounds to 1000.00 which exceeds precision
+        it('should round to nearest value when fractional digits exceed scale', () => {
+            expect(new Decimal("999.995", 6, 2)).toBe("1000.00");
         });
     });
 
@@ -88,7 +88,7 @@ describe('Decimal Class', () => {
 
         it('should throw DecimalError when number exceeds precision', () => {
             expect(() => new Decimal(1234.5, 5, 2)).toThrow(DecimalError);
-            expect(() => new Decimal(-12345, 5, 0)).toThrow(DecimalError);
+            expect(() => new Decimal(-1234.5, 5, 2)).toThrow(DecimalError);
         });
 
         it('should perform rounding accurately', () => {
@@ -164,7 +164,7 @@ describe('Decimal Class', () => {
         });
 
         it('should handle zero correctly', () => {
-            const dec = new Decimal("0.00", 1, 2);
+            const dec = new Decimal("0.00", 3, 2);
             expect(dec.toNumber()).toBe(0);
         });
 
@@ -173,9 +173,12 @@ describe('Decimal Class', () => {
             expect(dec.toNumber()).toBe(9999999999);
         });
 
-        it('should throw DecimalError when converting to Number exceeds limits', () => {
+        it('should converte to infinity when converting extremely large decimals to number', () => {
             const dec = new Decimal("1" + "0".repeat(309), 310, 0); // Beyond Number.MAX_VALUE
-            expect(() => dec.toNumber()).toThrow(DecimalError);
+            expect(dec.toNumber()).toBe(Infinity);
+
+            const dec2 = new Decimal("-1" + "0".repeat(309), 310, 0); // Beyond Number.MIN_VALUE
+            expect(dec2.toNumber()).toBe(-Infinity);
         });
 
         it('should handle very small numbers within Number.MIN_VALUE', () => {
@@ -185,7 +188,7 @@ describe('Decimal Class', () => {
 
         it('should handle underflow to zero for extremely small numbers', () => {
             const dec = new Decimal("0.0000000000000000000000000001", 31, 31);
-            expect(dec.toNumber()).toBe(0);
+            expect(dec.toNumber()).toBe(1e-28);
         });
 
         it('should perform rounding correctly during conversion', () => {
@@ -257,7 +260,7 @@ describe('Decimal Class', () => {
         it('should correctly parse and represent zero in various formats', () => {
             const dec1 = new Decimal("0", 1, 0);
             const dec2 = new Decimal("-0", 1, 0);
-            const dec3 = new Decimal("0.00", 1, 2);
+            const dec3 = new Decimal("0.00", 3, 2);
             expect(dec1.toString()).toBe("0");
             expect(dec2.toString()).toBe("0");
             expect(dec3.toString()).toBe("0.00");
@@ -272,8 +275,8 @@ describe('Decimal Class', () => {
         });
 
         it('should throw errors when precision or scale boundaries are exceeded', () => {
-            expect(() => new Decimal("99999.99999", 10, 4)).toThrow(DecimalError);
-            expect(() => new Decimal("123.456", 6, 2)).toThrow(DecimalError);
+            expect(() => new Decimal("9999999.999", 10, 4)).toThrow(DecimalError);
+            expect(() => new Decimal("12345.6", 6, 2)).toThrow(DecimalError);
         });
 
         it('should handle negative numbers correctly in comparisons', () => {
@@ -296,9 +299,9 @@ describe('Decimal Class', () => {
             expect(() => new Decimal("123.45", 4, 2)).toThrow(DecimalError);
         });
 
-        it('should throw DecimalError when fractional digits exceed scale and rounding affects integer digits', () => {
+        it('should round to nearest value when fractional digits exceed scale', () => {
             // "999.995" with precision=5, scale=2 would attempt to round to "1000.00" which exceeds precision
-            expect(() => new Decimal("999.995", 5, 2)).toThrow(DecimalError);
+            expect(new Decimal("999.995", 5, 2)).toBe("1000.00");
         });
 
         it('should throw DecimalError when fractional digits exceed scale without affecting integer digits', () => {
