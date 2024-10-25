@@ -253,6 +253,16 @@ describe('Decimal Class', () => {
             expect(dec1.lessThan(dec2)).toBe(true);
             expect(dec2.greaterThan(dec1)).toBe(true);
         });
+
+        it('should compare the structure of the Decimal instances', () => {
+            const dec1 = new Decimal("123.45", 5, 2);
+            const dec2 = new Decimal("34.45", 5, 2);
+            expect(dec1.compareStructure(dec2)).toBe(true);
+
+            const dec3 = new Decimal("123.456", 5, 2);
+            const dec4 = new Decimal("123.456", 6, 3);
+            expect(dec3.compareStructure(dec4)).toBe(false);
+        });
     });
 
     // Edge Cases
@@ -316,5 +326,66 @@ describe('Decimal Class', () => {
             // Adjusting to scale=2, rounds to "1000.00" which exceeds precision=5
             expect(() => new Decimal(new Decimal("999.995", 5, 3), 5, 2)).toThrow(DecimalError);
         });
+    });
+
+    describe('Decimal.convert', () => {
+
+      it('should convert and round fractional part to match target scale', () => {
+          const dec = new Decimal("123.456789", 10, 6);
+          const converted = dec.convert(8, 4);
+          expect(converted.toString()).toBe("123.4568");
+      });
+
+      it('should allow conversion with truncation of fractional part', () => {
+          const dec = new Decimal("123.456789", 10, 6);
+          const converted = dec.convert(10, 3);
+          expect(converted.toString()).toBe("123.457");
+      });
+
+      it('should pad with zeros when increasing the scale', () => {
+          const dec = new Decimal("123.45", 10, 2);
+          const converted = dec.convert(10, 4);
+          expect(converted.toString()).toBe("123.4500");
+      });
+
+      it('should throw DecimalError when integer part exceeds target precision', () => {
+          const dec = new Decimal("123.45", 5, 2);
+          expect(() => dec.convert(4, 2)).toThrow(DecimalError);
+      });
+
+      it('should convert without issues when precision and scale allow it', () => {
+          const dec = new Decimal("123.45", 10, 2);
+          const converted = dec.convert(5, 2);
+          expect(converted.toString()).toBe("123.45");
+      });
+
+      it('should throw DecimalError when target scale exceeds target precision', () => {
+          const dec = new Decimal("123.45", 10, 2);
+          expect(() => dec.convert(3, 4)).toThrow(DecimalError);
+      });
+
+      it('should round up when fractional part needs rounding', () => {
+          const dec = new Decimal("999.995", 10, 3);
+          const converted = dec.convert(6, 2);
+          expect(converted.toString()).toBe("1000.00");
+      });
+
+      it('should convert large numbers while preserving precision', () => {
+          const dec = new Decimal("123456.789123", 15, 6);
+          const converted = dec.convert(10, 4);
+          expect(converted.toString()).toBe("123456.7891");
+      });
+
+      it('should handle negative numbers correctly', () => {
+          const dec = new Decimal("-987.654321", 10, 6);
+          const converted = dec.convert(8, 4);
+          expect(converted.toString()).toBe("-987.6543");
+      });
+
+      it('should throw DecimalError when converting exceeds precision after rounding', () => {
+          const dec = new Decimal("9999.999", 8, 3);
+          expect(() => dec.convert(5, 2)).toThrow(DecimalError);
+      });
+
     });
 });

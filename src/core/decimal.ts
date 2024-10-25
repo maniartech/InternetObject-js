@@ -296,6 +296,16 @@ export class Decimal {
     }
 
     /**
+     * Compares the structure of this Decimal with another. The structure is
+     * defined by precision and scale.
+     * @param other The other Decimal to compare.
+     * @returns True if the structure is the same, else false.
+     */
+    compareStructure(other: Decimal): boolean {
+      return this.precision === other.precision && this.scale === other.scale;
+    }
+
+    /**
      * Checks if this Decimal is equal to another.
      * @param other The other Decimal to compare with.
      * @returns True if equal, else false.
@@ -397,7 +407,16 @@ export class Decimal {
       const precision = 'x'.repeat(this.precision - this.scale);
       const scale = 'x'.repeat(this.scale);
       return `${precision}.${scale}`;
-  }
+    }
+
+    convert(targetPrecision: number, targetScale: number): Decimal {
+      // Use the existing constructor logic to handle precision and scale conversion
+      return new Decimal(this.toString(), targetPrecision, targetScale);
+    }
+
+
+
+
 
 }
 
