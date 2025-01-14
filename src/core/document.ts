@@ -22,14 +22,14 @@ class Document {
   /**
    * Conerts the data sections into a JavaScript object.
    */
-  public toObject(): any {
+  public toJSON(): any {
     const sectionsLen = this._sections?.length || 0
     let data:any = null
 
     // Only one section
     if (sectionsLen === 1) {
       const section = this._sections?.get(0) as Section
-      data = section.toObject()
+      data = section.toJSON()
     }
 
     // More than one section
@@ -37,12 +37,12 @@ class Document {
       data = {}
       for (let i=0; i<sectionsLen; i++) {
         const section = this._sections?.get(i) as Section
-        data[section.name as string] = section.toObject()
+        data[section.name as string] = section.toJSON()
       }
     }
 
     if (this.header.definitions?.length) {
-      const headerObject = this.header.toObject()
+      const headerObject = this.header.toJSON()
       if (headerObject) {
         return {
           header: headerObject,
