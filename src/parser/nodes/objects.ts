@@ -62,9 +62,10 @@ class ObjectNode extends ContainerNode {
       const member = this.children[i] as MemberNode;
       if (member) {
         if (member.key) {
-          o[member.key.value] = member.value.toValue(defs);
+          // o[member.key.value] = member.value.toValue(defs);
+          o.set(member.key.value, member.value.toValue(defs));
         } else {
-          o.pushValues(member.value.toValue(defs))
+          o.push(member.value.toValue(defs))
         }
       }
     }

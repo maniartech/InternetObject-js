@@ -28,5 +28,6 @@ function processCollection(data: CollectionNode, schema: Schema | TokenNode, def
     coll.push(processObject(member, schema, defs, i));
   }
 
+
   return coll;
 }

@@ -44,7 +44,7 @@ function _processObject(data: ObjectNode, schema: Schema, defs?: Definitions, co
       processedNames.add(name);
 
       const val = processMember(member, memberDef, defs);
-      if (val !== undefined) o[name] = val;
+      if (val !== undefined) o.set(name, val);
     } else {
       if (!memberDef.optional) {
         throw new ValidationError(ErrorCodes.valueRequired, `Expecting a value for ${memberDef.path}.`, data);
@@ -66,7 +66,7 @@ function _processObject(data: ObjectNode, schema: Schema, defs?: Definitions, co
 
       const val = member.value.toValue(defs)
 
-      o.pushValues(val);
+      o.push(val);
     }
   }
 
@@ -100,7 +100,7 @@ function _processObject(data: ObjectNode, schema: Schema, defs?: Definitions, co
 
     processedNames.add(name);
     const val = processMember(member, memberDef, defs);
-    o[name] = val;
+    o.set(name, val);
   }
 
   // Check for missing required members and if the missing member has a
@@ -114,7 +114,7 @@ function _processObject(data: ObjectNode, schema: Schema, defs?: Definitions, co
       try {
         const val = processMember(member as any, memberDef, defs);
         if (val !== undefined) {
-          o[name] = val;
+          o.set(name, val);
         }
       } catch (err) {
         if (err instanceof ValidationError) {
