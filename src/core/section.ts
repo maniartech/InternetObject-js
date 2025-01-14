@@ -24,16 +24,16 @@ class Section<T  = any> {
     return this._data;
   }
 
-  public toObject(): any {
+  public toJSON(): any {
 
     // Internet Object
     if (this._data instanceof InternetObject) {
-      return this._data.toObject();
+      return this._data.toJSON();
     }
 
     // Collection
     else if (this._data instanceof Collection) {
-      return this._data.toObject();
+      return this._data.toJSON();
     }
 
     return null;

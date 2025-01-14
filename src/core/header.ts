@@ -31,8 +31,8 @@ class Header {
     }
   }
 
-  toObject() {
-    return this._definitions.toObject();
+  toJSON() {
+    return this._definitions.toJSON();
   }
 
 }
