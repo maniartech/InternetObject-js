@@ -419,15 +419,21 @@ class InternetObject<T = any> implements Iterable<[string | undefined, T]> {
   }
 
   /**
-   * Converts the InternetObject to a JSON-serializable array.
+   * Converts the InternetObject to a JSON object. If the items do not have keys,
+   * use the index as the key. If the value has toJSON method, it will be called.
    * Used when calling JSON.stringify.
    * @returns An array of entries.
    */
-  toJSON(): Array<[string | undefined, T]> {
-    return this.items.filter((entry): entry is [string | undefined, T] => entry !== undefined);
+  toJSON(): any {
+    const obj:any = {}
+    this.forEach((value:any, key:string | undefined, index:number) => {
+      obj[key || index] =
+        value !== null && typeof value.toJSON === 'function'
+          ? value.toJSON()
+          : value
+    })
+    return obj;
   }
-
-
 }
 
 export default InternetObject;
