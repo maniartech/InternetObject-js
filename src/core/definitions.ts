@@ -115,7 +115,7 @@ class Definitions {
     }
   }
 
-  public toObject() {
+  public toJSON() {
     const obj:any = {}
     let keysCount = 0
     for (let i=0; i<this.length; i++) {
