@@ -13,12 +13,13 @@ class Collection<T = InternetObject> {
   }
 
   /**
-   * Pushes one or more items to the collection without modifying the original instance.
+   * Pushes one or more items to the collection
    * @param items - The items to push.
-   * @returns A new collection with the item added.
+   * @returns The updated collection.
    */
   public push(...items: T[]): Collection<T> {
-    return new Collection([...this._items, ...items]);
+    this._items.push(...items);
+    return this;
   }
 
   /**
