@@ -19,6 +19,7 @@ import InternetObjectValidationError from './errors/io-validation-error';
 import parse from './parser/index';
 import parseDefinitions from './parser/parse-defs';
 import Schema from './schema/schema';
+import { Decimal } from './core/decimal';
 
 export {
   Document,
@@ -30,7 +31,8 @@ export {
   Schema,
   InternetObjectError,
   InternetObjectSyntaxError,
-  InternetObjectValidationError
+  InternetObjectValidationError,
+  Decimal,
 };
 
 export function ioDocument(strings: TemplateStringsArray, ...args: any[]): Document {
@@ -56,7 +58,7 @@ export function ioObject(strings: TemplateStringsArray, ...args: any[]): any {
     return acc + str + (args[i] === undefined ? '' : args[i]);
   }, '');
 
-  return parse(input, null).toObject();
+  return parse(input, null).toJSON();
 }
 
 export function ioDefinitions(strings: TemplateStringsArray, ...args: any[]): Definitions | null {
