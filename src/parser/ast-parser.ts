@@ -418,6 +418,7 @@ class ASTParser {
       case TokenType.STRING:
       case TokenType.NUMBER:
       case TokenType.BIGINT:
+      case TokenType.DECIMAL:
       case TokenType.BOOLEAN:
       case TokenType.NULL:
       case TokenType.DATETIME:
