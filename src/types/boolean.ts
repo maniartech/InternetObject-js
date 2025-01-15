@@ -15,7 +15,7 @@ const schema = new Schema(
   { default:  { type: "bool",   optional: true,  null: false  } },
   { optional: { type: "bool",   optional: true } },
   { null:     { type: "bool",   optional: true } },
-)
+) 
 
 export default class BooleanDef implements TypeDef {
   public get type()   { return 'bool' }
