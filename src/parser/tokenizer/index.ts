@@ -8,7 +8,8 @@ import Position         from '../../core/position';
 import Symbols          from './symbols';
 import TokenType        from './token-types';
 import Token            from './tokens';
-import PositionRange from '../../core/position-range';
+import PositionRange    from '../../core/position-range';
+import { Decimal      } from '../../core/decimal';
 
 const regexHex4 = /^[0-9a-fA-F]{4}$/;
 const regexHex2 = /^[0-9a-fA-F]{2}$/;
@@ -432,6 +433,12 @@ class Tokenizer {
       numberValue = BigInt(prefix + value);
       value += "n";
 
+      this.advance();
+    } else if (this.input[this.pos] === "m") {
+      tokenType = TokenType.DECIMAL;
+      numberValue = new Decimal(value);
+      value += "f";
+      console.log("Float detected", value)
       this.advance();
     } else {
       if (base === 10 && (hasDecimal || hasExponent)) {
