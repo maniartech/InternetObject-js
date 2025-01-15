@@ -19,7 +19,26 @@ export class Decimal {
      * @param precision The total number of significant digits (M).
      * @param scale The number of digits after the decimal point (D).
      */
-    constructor(value: string | number | Decimal, precision: number, scale: number) {
+    constructor(value: string | number | Decimal, precision?: number, scale?: number) {
+        if (typeof value !== 'string') {
+            if (precision === undefined || scale === undefined) {
+                throw new DecimalError("Precision and scale must be provided for number and Decimal types.");
+            }
+        } else {
+            if (precision === undefined || scale === undefined) {
+                // Infer precision and scale from the string
+                const regex = /^(-)?(\d+)(\.(\d+))?$/;
+                const match = value.toString().match(regex);
+                if (!match) {
+                    throw new DecimalError("Invalid decimal string format.");
+                }
+                const integerPart = match[2];
+                const fractionalPart = match[4] || '';
+                precision = integerPart.length + fractionalPart.length;
+                scale = fractionalPart.length;
+            }
+        }
+
         this.precision = precision;
         this.scale = scale;
 
@@ -413,10 +432,6 @@ export class Decimal {
       // Use the existing constructor logic to handle precision and scale conversion
       return new Decimal(this.toString(), targetPrecision, targetScale);
     }
-
-
-
-
 
 }
 

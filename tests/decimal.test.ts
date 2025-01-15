@@ -56,6 +56,16 @@ describe('Decimal Class', () => {
         });
     });
 
+    // Constructor Inference
+    describe('Constructor Inference', () => {
+      it('should infer precision and scale when initialized with a string without precision and scale', () => {
+          const dec = new Decimal("123.45");
+          expect(dec.toString()).toBe("123.45");
+          expect(dec.getPrecision()).toBe(5);
+          expect(dec.getScale()).toBe(2);
+      });
+  });
+
     // Parsing from Numbers
     describe('Parsing from Numbers', () => {
         it('should parse positive numbers correctly', () => {
