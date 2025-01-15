@@ -13,6 +13,7 @@ enum TokenType {
   BINARY            = 'BINARY',
   NUMBER            = 'NUMBER',
   BIGINT            = 'BIGINT',
+  DECIMAL           = 'DECIMAL',
   BOOLEAN           = 'BOOLEAN',
   NULL              = 'NULL',
   UNDEFINED         = 'UNDEFINED',
