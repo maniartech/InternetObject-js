@@ -3,7 +3,16 @@
   "version": "1.0.4-alpha.1",
   "description": "Internet Object Typescript/JavaScript library",
 
-  "main": "./dist",
+  "main": "./dist/index.js",
+
+"exports": {
+    ".": {
+      "default": "./dist/index.js"
+    },
+    "./*": {
+      "default": "./dist/*.js"
+    }
+  },
 
   "directories": {
     "test": "test"
