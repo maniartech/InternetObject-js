@@ -1,3 +1,4 @@
+import { Decimal }          from '../core/decimal'
 import Definitions          from '../core/definitions'
 import InternetObjectError  from '../errors/io-error'
 import ErrorCodes           from '../errors/io-error-codes'
@@ -8,8 +9,9 @@ import TypeDef              from '../schema/typedef'
 import doCommonTypeCheck    from './common-type'
 import MemberDef            from './memberdef'
 
+
 const NUMBER_TYPES = [
-  'bigint',
+  'bigint', 'decimal',
   'int', 'uint', 'float', 'number',       // General number types
   'int8', 'int16', 'int32',               // Size specific number types
   'uint8', 'uint16', 'uint32', 'uint64',  // Unsigned number types
@@ -45,6 +47,17 @@ const bigintSchema = new Schema(
   { null:     { type: "bool",   optional: true } },
 )
 
+const decimalSchema = new Schema(
+  "bigint",
+  { type:     { type: "string", optional: false, null: false, choices: NUMBER_TYPES } },
+  { default:  { type: "decimal", optional: true,  null: false  } },
+  { choices:  { type: "array",  optional: true,  null: false, of: { type: "decimal" } } },
+  { min:      { type: "decimal", optional: true,  null: false, min: 0 } },
+  { max:      { type: "decimal", optional: true,  null: false, min: 0 } },
+  { optional: { type: "bool",   optional: true } },
+  { null:     { type: "bool",   optional: true } },
+)
+
 /**
  * Represents the various number related data types in Internet Object.
  *
@@ -58,7 +71,10 @@ class NumberDef implements TypeDef {
   get schema(): Schema {
     if (this._type === 'bigint') {
       return bigintSchema;
+    } else if (this._type === 'decimal') {
+      return decimalSchema;
     }
+
     return numberSchema;
   }
 
@@ -134,6 +150,19 @@ function _intValidator(min: number | null, max: number | null, memberDef: Member
   }
 }
 
+function _decimalValidator(min: number | Decimal | null, max: number | Decimal | null, memberDef: MemberDef, value: any, node?: Node) {
+
+  const minD: Decimal | null = min === null ? null : Decimal.ensureDecimal(min);
+  const maxD: Decimal | null = max === null ? null : Decimal.ensureDecimal(max);
+
+  const valD: Decimal = Decimal.ensureDecimal(value);
+
+  if ((minD !== null && valD.compareTo(minD) < 0) || (maxD !== null && valD.compareTo(maxD) > 0)) {
+    throwError(ErrorCodes.invalidRange, memberDef.path!, value, node);
+  }
+
+}
+
 function _getValidator(type: string) {
   switch (type) {
     case 'float':
@@ -171,6 +200,9 @@ function _getValidator(type: string) {
       return (memberDef: MemberDef, value: any, node?: Node) => {
         throw new InternetObjectError(ErrorCodes.unsupportedNumberType, `The number type '${type}' is not supported.`);
       }
+
+    case 'decimal':
+      return _decimalValidator.bind(null, null, null);
 
 
 
