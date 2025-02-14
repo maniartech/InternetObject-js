@@ -262,9 +262,28 @@ export class Decimal {
       }
 
       return { sign, integerPart, fractionalPart };
-  }
+    }
 
+    /**
+     * Converts the number to a Decimal instance.
+     * @param value The number to convert to a Decimal.
+     * @returns A decimal instance.
+     */
+    static ensureDecimal(value: any): Decimal {
+      if (value instanceof Decimal) {
+          return value;
+      }
 
+      if (typeof value === 'number') {
+          return new Decimal(value.toString());
+      }
+
+      if (typeof value === 'string') {
+          return new Decimal(value);
+      }
+
+      throw new DecimalError("Unsupported value type for Decimal import.");
+    }
 
     /**
      * Converts the Decimal instance to a JavaScript Number.
