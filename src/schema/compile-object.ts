@@ -39,8 +39,6 @@ export default function compileObject(
 }
 
 function parseObjectOrTypeDef(o: ObjectNode, path:string, defs?:Definitions) {
-  console.log(">>>", o)
-
   // When the object node is empty object, then the type definition is
   // object without schema definition. Such objects can accept any object
   // as value.
