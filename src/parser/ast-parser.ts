@@ -356,16 +356,21 @@ class ASTParser {
     this.advance();
 
     while (true) {
-      const nextToken = this.peek();
-      if (!nextToken || nextToken.type === TokenType.BRACKET_CLOSE) {
+      const currentToken = this.peek();
+      if (!currentToken || currentToken.type === TokenType.BRACKET_CLOSE) {
         this.backtrack();
         break;
-      } else if (nextToken.type === TokenType.COMMA) {
-        // If the next token is a comma, it means that the array
-        // undefined value. Consume the comma and continue. Add
-        // an undefined value to the array
+      } else if (currentToken.type === TokenType.COMMA) {
+        // If the next token is a comma or a closing bracket, it implies an undefined
+        // element in the array, which is not allowed. Throw an error.
         if (this.matchNext([TokenType.COMMA, TokenType.BRACKET_CLOSE])) {
-          arr.push(undefined);
+          const nextToken = this.tokens[this.current + 1];
+
+          throw new SyntaxError(
+            ErrorCodes.unexpectedToken,
+            "Unexpected token ,",
+            nextToken, false
+          );
         }
 
         // consume the current comma
@@ -379,6 +384,8 @@ class ASTParser {
       } else {
         arr.push(member.value);
       }
+
+
       // const value = this.parseValue();
       // arr.push(value);
       this.advance();
