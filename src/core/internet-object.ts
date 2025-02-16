@@ -428,9 +428,9 @@ class InternetObject<T = any> implements Iterable<[string | undefined, T]> {
     const obj:any = {}
     this.forEach((value:any, key:string | undefined, index:number) => {
       obj[key || index] =
-        value !== null && typeof value.toJSON === 'function'
+        typeof value === 'object' && typeof value?.toJSON === 'function'
           ? value.toJSON()
-          : value
+          : value;
     })
     return obj;
   }
