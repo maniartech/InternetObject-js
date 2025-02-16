@@ -427,11 +427,14 @@ class InternetObject<T = any> implements Iterable<[string | undefined, T]> {
   toJSON(): any {
     const obj:any = {}
     this.forEach((value:any, key:string | undefined, index:number) => {
+      if (typeof value === "undefined") return
+
       obj[key || index] =
         typeof value === 'object' && typeof value?.toJSON === 'function'
           ? value.toJSON()
           : value;
-    })
+    });
+
     return obj;
   }
 }
