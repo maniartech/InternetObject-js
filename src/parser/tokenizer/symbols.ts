@@ -17,6 +17,7 @@ enum Symbols {
   PLUS            = '+',
   MINUS           = '-',
   DOLLAR          = '$',
+  DOT             = '.',
 }
 
 export default Symbols;
