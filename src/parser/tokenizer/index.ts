@@ -302,179 +302,171 @@ class Tokenizer {
   }
 
   private parseNumber(): Token | null {
-    const start: number = this.pos;
-    const startRow: number = this.row;
-    const startCol: number = this.col;
-    let value = "";
-    let base = 10; // default is decimal
-    let hasDecimal = false;
-    let hasExponent = false;
-    let prefix = "";
-    let subType: string | undefined;
+      const start = this.pos;
+      const startRow = this.row;
+      const startCol = this.col;
+      let rawValue = "";
+      let base = 10; // default is decimal
+      let hasDecimal = false;
+      let hasExponent = false;
+      let prefix = "";
+      let subType: string | undefined;
 
-    // Check if current position points to a plus or minus sign.
-    if (this.input[this.pos] === "+" || this.input[this.pos] === "-") {
-      // Store the detected sign for later use.
-      const sign = this.input[this.pos];
+      // Check if current position points to a plus or minus sign.
+      if (this.input[this.pos] === "+" || this.input[this.pos] === "-") {
+          const sign = this.input[this.pos];
+          // If sign is followed by "Inf", handle infinite literal.
+          if (this.input.startsWith("Inf", this.pos + 1)) {
+              const infLiteral = sign + "Inf";
+              this.advance(4); // sign + "Inf"
+              return Token.init(
+                  start,
+                  startRow,
+                  startCol,
+                  infLiteral,
+                  sign === "+" ? Infinity : -Infinity,
+                  TokenType.NUMBER
+              );
+          }
+          // Otherwise, allow sign only if immediately followed by a digit or dot.
+          if (is.isDigit(this.input[this.pos + 1]) || this.input[this.pos + 1] === ".") {
+              rawValue += sign;
+              this.advance();
+          } else {
+              return null;
+          }
+      }
+      // Also support an Inf literal without a sign.
+      else if (this.input.startsWith("Inf", this.pos)) {
+          const infLiteral = "Inf";
+          this.advance(3);
+          return Token.init(
+              start,
+              startRow,
+              startCol,
+              infLiteral,
+              Infinity,
+              TokenType.NUMBER
+          );
+      }
 
-      // Check if the characters immediately following the sign form "Inf".
-      // If so, it indicates that the number is an infinite value.
-      // The check uses startsWith starting at position this.pos+1.
-      if (this.input.startsWith("Inf", this.pos + 1)) {
-        // Concatenate the sign with "Inf" to form the token text.
-        const value = sign + "Inf";
+      if (this.input[this.pos] === ".") {
+          // If there is a dot, ensure it is followed by a digit.
+          if (!reFloatDigit.test(this.input[this.pos + 1])) {
+              return null;
+          }
+      }
 
-        // Advance the current input position by 4 characters:
-        // one for the sign and three for "Inf".
-        this.advance(4);
+      // Determine the number format
+      if (this.input[this.pos] === "0" && nonDecimalPrefixes.includes(this.input[this.pos + 1])) {
+          switch (this.input[this.pos + 1]) {
+              case "X":
+              case "x":
+                  base = 16;
+                  subType = "HEX";
+                  prefix = this.input[this.pos] + this.input[this.pos + 1];
+                  this.advance(2);
+                  while (reHex.test(this.input[this.pos])) {
+                      rawValue += this.input[this.pos];
+                      this.advance();
+                  }
+                  break;
 
-        // Create and return a new token representing an infinite number.
-        // The stored start, row, and col reflect the token's starting position.
-        // Use Infinity or -Infinity based on the detected sign.
-        return Token.init(
+              case "O":
+              case "o":
+                  base = 8;
+                  subType = "OCTAL";
+                  prefix = this.input[this.pos] + this.input[this.pos + 1];
+                  this.advance(2);
+                  while (reOctal.test(this.input[this.pos])) {
+                      rawValue += this.input[this.pos];
+                      this.advance();
+                  }
+                  break;
+
+              case "B":
+              case "b":
+                  base = 2;
+                  subType = "BINARY";
+                  prefix = this.input[this.pos] + this.input[this.pos + 1];
+                  this.advance(2);
+                  while (reBinary.test(this.input[this.pos])) {
+                      rawValue += this.input[this.pos];
+                      this.advance();
+                  }
+                  break;
+              default:
+                  assertNever(this.input[this.pos + 1]);
+          }
+      } else {
+          // Parse whole part
+          while (reIntDigit.test(this.input[this.pos])) {
+              rawValue += this.input[this.pos];
+              this.advance();
+          }
+
+          // Parse decimal point and fractional part
+          if (this.input[this.pos] === ".") {
+              hasDecimal = true;
+              rawValue += ".";
+              this.advance();
+              while (reIntDigit.test(this.input[this.pos])) {
+                  rawValue += this.input[this.pos];
+                  this.advance();
+              }
+          }
+
+          // Parse scientific notation (e.g., e10 or E10)
+          if (this.input[this.pos] === "e" || this.input[this.pos] === "E") {
+              hasExponent = true;
+              rawValue += this.input[this.pos];
+              this.advance();
+              if (this.input[this.pos] === "+" || this.input[this.pos] === "-") {
+                  rawValue += this.input[this.pos];
+                  this.advance();
+              }
+              while (reIntDigit.test(this.input[this.pos])) {
+                  rawValue += this.input[this.pos];
+                  this.advance();
+              }
+          }
+      }
+
+      let tokenType = TokenType.NUMBER;
+      let numberValue: number | bigint | Decimal;
+
+      // if the next char is 'n', then it is a BigInt literal
+      if (this.input[this.pos] === "n") {
+          tokenType = TokenType.BIGINT;
+          numberValue = BigInt(prefix + rawValue);
+          rawValue += "n";
+          this.advance();
+      } else if (this.input[this.pos] === "m") {
+          // Decimal literal
+          tokenType = TokenType.DECIMAL;
+          numberValue = new Decimal(rawValue);
+          rawValue += "f";
+          this.advance();
+      } else {
+          if (base === 10 && (hasDecimal || hasExponent)) {
+              numberValue = parseFloat(rawValue);
+          } else {
+              numberValue = parseInt(rawValue, base);
+              if (isNaN(numberValue as number)) {
+                  assertNever("Expected a number but got NaN", this.currentPosition.getStartPos());
+              }
+          }
+      }
+
+      return Token.init(
           start,
           startRow,
           startCol,
-          value,
-          sign === "+" ? Infinity : -Infinity,
-          TokenType.NUMBER
-        );
-      }
-
-      // If not an infinite number, then check if the sign is part of a numeric literal.
-      // Allow the sign only if it's immediately followed by a digit or a dot.
-      if (is.isDigit(this.input[this.pos + 1]) || this.input[this.pos + 1] === ".") {
-        // Append the sign to the current value string, which is being built.
-        value += sign;
-        // Advance the tokenizer one step to move past the sign character.
-        this.advance();
-      } else {
-        // The sign is not followed by a valid numeric character,
-        // so return null to indicate no valid token was formed.
-        return null;
-      }
-    }
-
-
-    if (this.input[this.pos] === ".") {
-      // If the current character is a dot, then not followed by a digit,
-      // then it is not a number.
-      if (!reFloatDigit.test(this.input[this.pos + 1])) {
-        return null;
-      }
-    }
-
-    // Determine the number format
-    if (this.input[this.pos] === "0" && nonDecimalPrefixes.includes(this.input[this.pos + 1])) {
-      switch (this.input[this.pos + 1]) {
-        case "X":
-        case "x":
-          base = 16; // Hexadecimal
-          subType = "HEX";
-          prefix = this.input[this.pos] + this.input[this.pos + 1];
-          this.advance(2);
-          while (reHex.test(this.input[this.pos])) {
-            value += this.input[this.pos];
-            this.advance();
-          }
-          break;
-
-        case "O":
-        case "o":
-          base = 8; // Octal
-          subType = "OCTAL";
-          prefix = this.input[this.pos] + this.input[this.pos + 1];
-          this.advance(2);
-          while (reOctal.test(this.input[this.pos])) {
-            value += this.input[this.pos];
-            this.advance();
-          }
-          break;
-
-        case "B":
-        case "b":
-          base = 2; // Binary
-          subType = "BINARY";
-          prefix = this.input[this.pos] + this.input[this.pos + 1];
-          this.advance(2);
-          while (reBinary.test(this.input[this.pos])) {
-            value += this.input[this.pos];
-            this.advance();
-          }
-          break;
-        default:
-          assertNever(this.input[this.pos + 1]);
-      }
-    } else {
-      // Parse whole part
-      while (reIntDigit.test(this.input[this.pos])) {
-        value += this.input[this.pos];
-        this.advance();
-      }
-
-      // Parse decimal point and fractional part
-      if (this.input[this.pos] === ".") {
-        hasDecimal = true;
-        value += ".";
-        this.advance();
-        while (reIntDigit.test(this.input[this.pos])) {
-          value += this.input[this.pos];
-          this.advance();
-        }
-      }
-
-      // Parse scientific notation (e.g., e10 or E10)
-      if (this.input[this.pos] === "e" || this.input[this.pos] === "E") {
-        hasExponent = true;
-        value += this.input[this.pos];
-        this.advance();
-        if (this.input[this.pos] === "+" || this.input[this.pos] === "-") {
-          value += this.input[this.pos];
-          this.advance();
-        }
-        while (reIntDigit.test(this.input[this.pos])) {
-          value += this.input[this.pos];
-          this.advance();
-        }
-      }
-    }
-
-    let tokenType = TokenType.NUMBER;
-    let numberValue;
-
-    // if the next char is n, then it is a big integer
-    if (this.input[this.pos] === "n") {
-      tokenType = TokenType.BIGINT;
-      numberValue = BigInt(prefix + value);
-      value += "n";
-
-      this.advance();
-    } else if (this.input[this.pos] === "m") {
-      tokenType = TokenType.DECIMAL;
-      numberValue = new Decimal(value);
-      value += "f";
-      console.log("Float detected", value)
-      this.advance();
-    } else {
-      if (base === 10 && (hasDecimal || hasExponent)) {
-        numberValue = parseFloat(value);
-      } else {
-        numberValue = parseInt(value, base);
-        if (isNaN(numberValue)) {
-          assertNever("Expected a number but got NaN", this.currentPosition.getStartPos());
-        }
-      }
-    }
-
-    return Token.init(
-      start,
-      startRow,
-      startCol,
-      prefix + value,
-      numberValue,
-      tokenType,
-      subType
-    );
+          prefix + rawValue,
+          numberValue,
+          tokenType,
+          subType
+      );
   }
 
   private parseLiteralOrOpenString(): Token | null {
