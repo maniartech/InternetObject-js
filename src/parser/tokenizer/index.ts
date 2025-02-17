@@ -312,14 +312,25 @@ class Tokenizer {
     let prefix = "";
     let subType: string | undefined;
 
-    // If the number starts with a + or - sign, it is an infinite number
-    // if the next three characters are 'Inf'
-    // console.log("Infinite number", this.input[this.pos], this.input.substring(this.pos, this.pos + 3))
+    // Check if current position points to a plus or minus sign.
     if (this.input[this.pos] === "+" || this.input[this.pos] === "-") {
+      // Store the detected sign for later use.
       const sign = this.input[this.pos];
-      if (this.input.substring(this.pos+1, this.pos + 4) === "Inf") {
-        value = this.input[this.pos] + "Inf";
+
+      // Check if the characters immediately following the sign form "Inf".
+      // If so, it indicates that the number is an infinite value.
+      // The check uses startsWith starting at position this.pos+1.
+      if (this.input.startsWith("Inf", this.pos + 1)) {
+        // Concatenate the sign with "Inf" to form the token text.
+        const value = sign + "Inf";
+
+        // Advance the current input position by 4 characters:
+        // one for the sign and three for "Inf".
         this.advance(4);
+
+        // Create and return a new token representing an infinite number.
+        // The stored start, row, and col reflect the token's starting position.
+        // Use Infinity or -Infinity based on the detected sign.
         return Token.init(
           start,
           startRow,
@@ -329,24 +340,19 @@ class Tokenizer {
           TokenType.NUMBER
         );
       }
-    }
 
-
-    // Allow for a leading - sign.
-    if (this.input[this.pos] === "-") {
-      // Check if the next character is a digit.
-      if (is.isDigit(this.input[this.pos + 1])) {
-        value += this.input[this.pos];
+      // If not an infinite number, then check if the sign is part of a numeric literal.
+      // Allow the sign only if it's immediately followed by a digit or a dot.
+      if (is.isDigit(this.input[this.pos + 1]) || this.input[this.pos + 1] === ".") {
+        // Append the sign to the current value string, which is being built.
+        value += sign;
+        // Advance the tokenizer one step to move past the sign character.
         this.advance();
       } else {
+        // The sign is not followed by a valid numeric character,
+        // so return null to indicate no valid token was formed.
         return null;
       }
-    }
-
-    // Allow for a leading + sign.
-    if (this.input[this.pos] === "+") {
-      value += this.input[this.pos];
-      this.advance();
     }
 
     // Determine the number format
@@ -652,7 +658,7 @@ class Tokenizer {
       }
 
       // Numbers
-      else if (ch === Symbols.PLUS || ch === Symbols.MINUS ||is.isDigit(ch)) {
+      else if (ch === Symbols.PLUS || ch === Symbols.MINUS || ch === Symbols.DOT ||is.isDigit(ch)) {
         // Check if it is a SECTION_SEP ---
         if (ch === Symbols.MINUS) {
           // If the next two chars are -- that means it is a
