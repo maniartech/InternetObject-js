@@ -355,6 +355,15 @@ class Tokenizer {
       }
     }
 
+
+    if (this.input[this.pos] === ".") {
+      // If the current character is a dot, then not followed by a digit,
+      // then it is not a number.
+      if (!reFloatDigit.test(this.input[this.pos + 1])) {
+        return null;
+      }
+    }
+
     // Determine the number format
     if (this.input[this.pos] === "0" && nonDecimalPrefixes.includes(this.input[this.pos + 1])) {
       switch (this.input[this.pos + 1]) {
