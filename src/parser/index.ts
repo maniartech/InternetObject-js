@@ -77,7 +77,6 @@ export default function parse(source: string, externalDefs: Definitions | null, 
     //   parseData(docNode, doc);
     // }
   }
-
   return doc;
 }
 

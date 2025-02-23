@@ -65,7 +65,7 @@ class ObjectNode extends ContainerNode {
           // o[member.key.value] = member.value.toValue(defs);
           o.set(member.key.value, member.value.toValue(defs));
         } else {
-          o.push(member.value.toValue(defs))
+          o.set(i.toString(), member.value.toValue(defs))
         }
       }
     }
