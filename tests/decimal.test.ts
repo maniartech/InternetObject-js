@@ -392,6 +392,57 @@ describe('Decimal Class', () => {
           expect(converted.toString()).toBe("-987.6543");
       });
 
+      it('should convert decimals maintaining the same value when precision is expanded without changing scale', () => {
+        const dec = new Decimal("100.00", 5, 2);
+        const converted = dec.convert(7, 2);
+        expect(converted.toString()).toBe("100.00");
+        expect(converted.getCoefficient()).toBe(10000n);
+      });
+
+      it('should convert from higher scale to lower scale with rounding', () => {
+        // "3.14159" (scale 5) rounds to "3.142" (scale 3)
+        const dec = new Decimal("3.14159", 7, 5);
+        const converted = dec.convert(7, 3);
+        expect(converted.toString()).toBe("3.142");
+      });
+
+      it('should pad with zeros when increasing the scale', () => {
+        // Increase scale from 2 to 4 while expanding precision
+        const dec = new Decimal("3.14", 4, 2);
+        const converted = dec.convert(6, 4);
+        expect(converted.toString()).toBe("3.1400");
+      });
+
+      it('should maintain the same numeric value when precision is expanded without changing scale', () => {
+        // Precision increased while scale remains the same, value should remain unchanged
+        const dec = new Decimal("2.50", 3, 2);
+        const converted = dec.convert(5, 2);
+        expect(converted.toString()).toBe("2.50");
+        expect(converted.getCoefficient()).toBe(250n);
+      });
+
+      it('should convert an integer value to a decimal with fractional zeros', () => {
+        // Converting an integer with scale 0 to a target scale > 0 should pad with zeros.
+        const dec = new Decimal("123", 3, 0);
+        const converted = dec.convert(5, 2);
+        expect(converted.toString()).toBe("123.00");
+      });
+
+      it('should handle negative decimals when increasing both precision and scale', () => {
+        // Negative value should keep its sign and pad with zeros as needed.
+        const dec = new Decimal("-456.78", 5, 2);
+        const converted = dec.convert(7, 4);
+        expect(converted.toString()).toBe("-456.7800");
+      });
+
+      it('should correctly reduce scale without rounding when digits match exactly', () => {
+        // When reduction in scale does not require rounding, the value remains the same.
+        const dec = new Decimal("12.3400", 6, 4);
+        const converted = dec.convert(6, 2);
+        // Here the last two fractional digits are "00" so truncation is straightforward.
+        expect(converted.toString()).toBe("12.34");
+      });
+
       it('should throw DecimalError when converting exceeds precision after rounding', () => {
           const dec = new Decimal("9999.999", 8, 3);
           expect(() => dec.convert(5, 2)).toThrow(DecimalError);
