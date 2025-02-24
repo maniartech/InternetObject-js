@@ -49,13 +49,15 @@ const bigintSchema = new Schema(
 
 const decimalSchema = new Schema(
   "bigint",
-  { type:     { type: "string", optional: false, null: false, choices: NUMBER_TYPES } },
-  { default:  { type: "decimal", optional: true,  null: false  } },
-  { choices:  { type: "array",  optional: true,  null: false, of: { type: "decimal" } } },
-  { min:      { type: "decimal", optional: true,  null: false, min: 0 } },
-  { max:      { type: "decimal", optional: true,  null: false, min: 0 } },
-  { optional: { type: "bool",   optional: true } },
-  { null:     { type: "bool",   optional: true } },
+  { type:       { type: "string", optional: false, null: false, choices: NUMBER_TYPES } },
+  { default:    { type: "decimal", optional: true,  null: false  } },
+  { choices:    { type: "array",  optional: true,  null: false, of: { type: "decimal" } } },
+  { precision:  { type: "number", optional: true, null: false } },
+  { scale:      { type: "number", optional: true, null: false } },
+  { min:        { type: "decimal", optional: true,  null: false, min: 0 } },
+  { max:        { type: "decimal", optional: true,  null: false, min: 0 } },
+  { optional:   { type: "bool",   optional: true } },
+  { null:       { type: "bool",   optional: true } },
 )
 
 /**
@@ -85,18 +87,10 @@ class NumberDef implements TypeDef {
 
   parse(node: Node, memberDef: MemberDef, defs?: Definitions): number {
     const valueNode = defs?.getV(node) || node;
-    const { value, changed } = doCommonTypeCheck(memberDef, valueNode, node, defs);
+    let { value, changed } = doCommonTypeCheck(memberDef, valueNode, node, defs);
     if (changed) return value;
 
-    this._validator(memberDef, value, node);
-
-    if (memberDef.min !== null && value < memberDef.min) {
-      throwError(ErrorCodes.outOfRange, memberDef.path!, value, node);
-    }
-
-    if (memberDef.max !== null && value > memberDef.max) {
-      throwError(ErrorCodes.outOfRange, memberDef.path!, value, node);
-    }
+    value = this._validator(memberDef, value, node);
 
     return value;
   }
@@ -125,7 +119,7 @@ function throwError(code: string, memberPath: string, value: any, node?: Node) {
   );
 }
 
-function _intValidator(min: number | null, max: number | null, memberDef: MemberDef, value: any, node?: Node) {
+function _intValidator(min: number | null, max: number | null, memberDef: MemberDef, value: any, node?: Node): (number | bigint | Decimal) {
   const valueType = typeof value === "bigint" ? "bigint" : NUMBER_MAP[typeof value] ? "number" : "";
   const memberdefType = memberDef.type === "bigint" ? "bigint" : "number";
 
@@ -148,9 +142,13 @@ function _intValidator(min: number | null, max: number | null, memberDef: Member
   if ((min !== null && value < min) || (max !== null && value > max)) {
     throwError(ErrorCodes.invalidRange, memberDef.path!, value, node);
   }
+
+  return value;
 }
 
-function _decimalValidator(min: number | Decimal | null, max: number | Decimal | null, memberDef: MemberDef, value: any, node?: Node) {
+function _decimalValidator(memberDef: MemberDef, value: any, node?: Node): (number | bigint | Decimal) {
+
+  const { min, max } = memberDef;
 
   const minD: Decimal | null = min === null ? null : Decimal.ensureDecimal(min);
   const maxD: Decimal | null = max === null ? null : Decimal.ensureDecimal(max);
@@ -161,6 +159,10 @@ function _decimalValidator(min: number | Decimal | null, max: number | Decimal |
     throwError(ErrorCodes.invalidRange, memberDef.path!, value, node);
   }
 
+  const precision = memberDef.precision || valD.getPrecision();
+  const scale = memberDef.scale || valD.getScale();
+
+  return valD.convert(precision, scale);
 }
 
 function _getValidator(type: string) {
