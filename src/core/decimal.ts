@@ -15,18 +15,42 @@ export class Decimal {
 
     /**
      * Constructs a Decimal instance by parsing the input value.
-     * @param value The value to initialize the Decimal with (string, number, or Decimal).
-     * @param precision The total number of significant digits (M).
-     * @param scale The number of digits after the decimal point (D).
+     *
+     * Constructor behavior varies based on input type:
+     *
+     * 1. String input:
+     *    - If precision/scale not provided: Infers from string format
+     *    - If precision/scale provided: Validates and formats according to specs
+     *    Example: new Decimal("123.45") or new Decimal("123.45", 5, 2)
+     *
+     * 2. Decimal input (conversion):
+     *    - If precision/scale not provided: Inherits from source Decimal
+     *    - If precision/scale provided: Adjusts value to match new precision/scale
+     *    Example: new Decimal(existingDecimal) or new Decimal(existingDecimal, 5, 2)
+     *
+     * 3. Number input:
+     *    - Always requires precision and scale parameters
+     *    Example: new Decimal(123.45, 5, 2)
+     *
+     * @param value The value to initialize the Decimal with (string, number, or Decimal)
+     * @param precision The total number of significant digits (M)
+     * @param scale The number of digits after the decimal point (D)
+     * @throws {DecimalError} If value format is invalid or precision/scale constraints are violated
      */
     constructor(value: string | number | Decimal, precision?: number, scale?: number) {
-        if (typeof value !== 'string') {
+        if (typeof value === 'number') {
             if (precision === undefined || scale === undefined) {
-                throw new DecimalError("Precision and scale must be provided for number and Decimal types.");
+                throw new DecimalError("Precision and scale must be provided for number type.");
+            }
+        } else if (value instanceof Decimal) {
+            // Infer from source Decimal if precision/scale not provided
+            if (precision === undefined || scale === undefined) {
+                precision = value.getPrecision();
+                scale = value.getScale();
             }
         } else {
+            // String input - infer if needed
             if (precision === undefined || scale === undefined) {
-                // Infer precision and scale from the string
                 const regex = /^(-)?(\d+)(\.(\d+))?$/;
                 const match = value.toString().match(regex);
                 if (!match) {
@@ -449,7 +473,7 @@ export class Decimal {
 
     convert(targetPrecision: number, targetScale: number): Decimal {
       // Use the existing constructor logic to handle precision and scale conversion
-      return new Decimal(this.toString(), targetPrecision, targetScale);
+      return new Decimal(this, targetPrecision, targetScale);
     }
 
 }
