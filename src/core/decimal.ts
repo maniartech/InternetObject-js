@@ -70,7 +70,7 @@ export class Decimal {
         let integerPart = '0';
         let fractionalPart = '';
 
-        // The sclae must be less than or equal to the precision (D <= M)
+        // The scale must be less than or equal to the precision (D <= M)
         if (scale > precision) {
             throw new DecimalError("Scale must be less than or equal to precision.");
         }
@@ -83,6 +83,22 @@ export class Decimal {
             }
 
             ({ sign, integerPart, fractionalPart } = Decimal.parseString(valueStr));
+            
+            // Process rounding if needed
+            if (fractionalPart.length > scale) {
+                // Use the dedicated rounding function
+                const rounded = Decimal.roundForDecimal(
+                    integerPart + '.' + fractionalPart,
+                    precision,
+                    scale
+                );
+                integerPart = rounded.integerPart;
+                fractionalPart = rounded.fractionalPart;
+            } else {
+                // Pad with zeros if needed
+                fractionalPart = fractionalPart.padEnd(scale, '0');
+            }
+            
         } else if (value instanceof Decimal) {
             // Clone from another Decimal, adjusting precision and scale if necessary
             const fromPrecision = value.getPrecision();
@@ -92,7 +108,13 @@ export class Decimal {
             const fromIntegerDigits = fromPrecision - fromScale;
             const targetIntegerDigits = precision - scale;
 
-            if (targetIntegerDigits < fromIntegerDigits) {
+            // Only check if decreasing integer part capacity when the actual integer digits used would be affected
+            // Get the actual number of integer digits (not the max allowed by precision-scale)
+            const valueStr = value.toString();
+            const actualIntegerDigits = valueStr.split('.')[0].replace('-', '').length;
+            
+            // Check if actual integer digits won't fit in target precision-scale
+            if (actualIntegerDigits > targetIntegerDigits) {
                 throw new DecimalError("Adjusting precision affects integer digits, which is not allowed.");
             }
 
@@ -101,11 +123,13 @@ export class Decimal {
                 const scaleDifference = scale - fromScale;
                 const multiplier = BigInt(10 ** scaleDifference);
                 const newCoefficient = fromCoefficient * multiplier;
-                const combinedNormalized = newCoefficient.toString().replace(/^0+/, '') || '0';
-                const totalDigits = combinedNormalized.length;
-                if (totalDigits > precision) {
+                
+                // Check if the new coefficient would exceed the precision
+                const newCoeffStr = newCoefficient.toString().replace('-', '');
+                if (newCoeffStr.length > precision) {
                     throw new DecimalError("Value exceeds the specified precision (M) after scaling.");
                 }
+                
                 this.coefficient = newCoefficient;
                 this.exponent = scale;
                 return;
@@ -113,26 +137,19 @@ export class Decimal {
                 // Need to truncate and round the fractional digits
                 const scaleDifference = fromScale - scale;
                 const divisor = BigInt(10 ** scaleDifference);
-                const truncated = value.getCoefficient() / divisor;
-                const remainder = value.getCoefficient() % divisor;
+                const truncated = fromCoefficient / divisor;
+                const remainder = fromCoefficient % divisor;
 
                 // Rounding: If the first digit of the remainder >= 5, round up
                 const firstRemainderDigit = Number((remainder * 10n) / divisor);
                 let roundedCoefficient = truncated;
                 if (Math.abs(firstRemainderDigit) >= 5) {
-                    roundedCoefficient += (value.getCoefficient() < 0n ? -1n : 1n);
+                    roundedCoefficient += (fromCoefficient < 0n ? -1n : 1n);
                 }
 
-                // Check if rounding affects the integer digits
+                // Check if the new coefficient exceeds the precision
                 const roundedStr = roundedCoefficient.toString().replace('-', '');
-                const roundedIntegerDigits = roundedStr.length - scale;
-
-                if (roundedIntegerDigits > targetIntegerDigits) {
-                    throw new DecimalError("Rounding affects integer digits, which is not allowed.");
-                }
-
-                const totalDigits = roundedStr.length;
-                if (totalDigits > precision) {
+                if (roundedStr.length > precision) {
                     throw new DecimalError("Value exceeds the specified precision (M) after rounding.");
                 }
 
@@ -144,7 +161,7 @@ export class Decimal {
                 if (value.getTotalDigits() > precision) {
                     throw new DecimalError("Value exceeds the specified precision (M).");
                 }
-                this.coefficient = value.getCoefficient();
+                this.coefficient = fromCoefficient;
                 this.exponent = scale;
                 return;
             }
@@ -154,57 +171,12 @@ export class Decimal {
 
         // Normalize integer part by removing leading zeros
         const normalizedInteger = integerPart.replace(/^0+/, '') || '0';
+        const normalizedFractional = fractionalPart;
 
-        // Normalize fractional part:
-        // - Pad with zeros if fewer digits than scale
-        // - Truncate and round if more digits than scale
-        let normalizedFractional = fractionalPart || '';
-        if (normalizedFractional.length < scale) {
-            normalizedFractional = normalizedFractional.padEnd(scale, '0');
-        } else if (normalizedFractional.length > scale) {
-            // Perform rounding
-            const extraDigits = normalizedFractional.slice(scale);
-            const fractionalToKeep = normalizedFractional.slice(0, scale);
-            const firstExtraDigit = extraDigits[0];
-            let roundedFractional = fractionalToKeep;
-
-            if (parseInt(firstExtraDigit, 10) >= 5) {
-                // Round up
-                let fractionalNumber = BigInt(fractionalToKeep) + 1n;
-                const maxFractional = BigInt('9'.repeat(scale));
-                if (fractionalNumber > maxFractional) {
-                    // Fractional part overflow, increment integer part
-                    roundedFractional = '0'.repeat(scale);
-                    const increment = BigInt(1);
-                    const newInteger = (BigInt(normalizedInteger) + increment).toString();
-                    integerPart = newInteger;
-                } else {
-                    roundedFractional = fractionalNumber.toString().padStart(scale, '0');
-                }
-            } else {
-                // No rounding needed
-                roundedFractional = fractionalToKeep;
-            }
-
-            normalizedFractional = roundedFractional;
-
-            // Recompute combined and normalize
-            const combined = integerPart + normalizedFractional;
-            const combinedNormalized = combined.replace(/^0+/, '') || '0';
-            const totalDigits = combinedNormalized.length;
-            if (totalDigits > precision) {
-                throw new DecimalError("Value exceeds the specified precision (M) after rounding.");
-            }
-
-            // Convert to BigInt with sign
-            const coeff = BigInt(combinedNormalized);
-            this.coefficient = sign === '-' ? -coeff : coeff;
-            this.exponent = scale;
-            return;
-        }
-
-        // Combine integer and fractional parts
-        const combined = normalizedInteger + normalizedFractional;
+        // Combine integer and fractional parts for coefficient
+        const combined = (normalizedInteger === '0' && integerPart !== '0') 
+            ? integerPart + normalizedFractional 
+            : normalizedInteger + normalizedFractional;
 
         // Remove leading zeros from combined (except when value is zero)
         const combinedNormalized = combined.replace(/^0+/, '') || '0';
@@ -219,6 +191,58 @@ export class Decimal {
         const coeff = BigInt(combinedNormalized);
         this.coefficient = sign === '-' ? -coeff : coeff;
         this.exponent = scale;
+    }
+
+    /**
+     * Special rounding implementation specifically for the Decimal constructor.
+     * This ensures correct rounding behavior for all cases including edge cases.
+     */
+    private static roundForDecimal(value: string, precision: number, scale: number): { integerPart: string, fractionalPart: string } {
+        // Parse the number into integer and fractional parts
+        const parts = value.split('.');
+        let integerPart = parts[0] || '0';
+        const origFractional = parts[1] || '';
+        
+        // If fractional part length is less than or equal to scale, just pad with zeros
+        if (origFractional.length <= scale) {
+            return {
+                integerPart,
+                fractionalPart: origFractional.padEnd(scale, '0')
+            };
+        }
+        
+        // Need to truncate and potentially round
+        const truncatedFractional = origFractional.slice(0, scale);
+        const nextDigit = parseInt(origFractional.charAt(scale), 10);
+        
+        // No rounding needed
+        if (nextDigit < 5) {
+            return {
+                integerPart,
+                fractionalPart: truncatedFractional
+            };
+        }
+        
+        // Rounding needed
+        // Convert to numeric representation for proper arithmetic
+        const fractionalNum = BigInt(truncatedFractional) + 1n;
+        const scaleFactor = BigInt(10 ** scale);
+        
+        // Check if rounding caused overflow
+        if (fractionalNum === scaleFactor) {
+            // Carry to integer part
+            const integerNum = BigInt(integerPart) + 1n;
+            return {
+                integerPart: integerNum.toString(),
+                fractionalPart: '0'.repeat(scale)
+            };
+        }
+        
+        // No overflow, just use the rounded fractional part
+        return {
+            integerPart,
+            fractionalPart: fractionalNum.toString().padStart(scale, '0')
+        };
     }
 
     /**
@@ -471,9 +495,30 @@ export class Decimal {
       return `${precision}.${scale}`;
     }
 
+    /**
+     * Converts this Decimal to a new Decimal with the specified precision and scale.
+     * @param targetPrecision The total number of significant digits (M)
+     * @param targetScale The number of digits after the decimal point (D)
+     * @returns A new Decimal with the specified precision and scale
+     * @throws {DecimalError} If conversion is not possible due to precision constraints
+     */
     convert(targetPrecision: number, targetScale: number): Decimal {
-      // Use the existing constructor logic to handle precision and scale conversion
-      return new Decimal(this, targetPrecision, targetScale);
+      // Validate that the target scale doesn't exceed the target precision
+      if (targetScale > targetPrecision) {
+        throw new DecimalError("Scale must be less than or equal to precision.");
+      }
+
+      try {
+        // Use the existing constructor logic to handle precision and scale conversion
+        return new Decimal(this, targetPrecision, targetScale);
+      } catch (error) {
+        // Re-throw the error for clarity
+        if (error instanceof DecimalError) {
+          throw error;
+        }
+        // Wrap any other unexpected errors
+        throw new DecimalError(`Conversion failed: ${error instanceof Error ? error.message : String(error)}`);
+      }
     }
 
 }
