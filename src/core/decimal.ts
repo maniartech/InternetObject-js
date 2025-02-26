@@ -1,17 +1,18 @@
 // Decimal.ts
-// DecimalError.ts
+// A high-precision decimal number implementation with controlled rounding behaviors
 export class DecimalError extends Error {
   constructor(message: string) {
-      super(message);
-      this.name = "DecimalError";
+    super(message);
+    this.name = "DecimalError";
   }
 }
 
 export class Decimal {
-    private readonly coefficient: bigint; // Scaled integer
-    private readonly exponent: number;    // Number of fractional digits
-    private readonly precision: number;   // Total digits
-    private readonly scale: number;       // Fractional digits
+    // Initialize with default values to satisfy TypeScript
+    private readonly coefficient: bigint = 0n;
+    private readonly exponent: number = 0;
+    private readonly precision: number;
+    private readonly scale: number;
 
     /**
      * Constructs a Decimal instance by parsing the input value.
@@ -38,6 +39,7 @@ export class Decimal {
      * @throws {DecimalError} If value format is invalid or precision/scale constraints are violated
      */
     constructor(value: string | number | Decimal, precision?: number, scale?: number) {
+        // Parameter validation and inference based on input type
         if (typeof value === 'number') {
             if (precision === undefined || scale === undefined) {
                 throw new DecimalError("Precision and scale must be provided for number type.");
@@ -48,33 +50,35 @@ export class Decimal {
                 precision = value.getPrecision();
                 scale = value.getScale();
             }
-        } else {
+        } else if (typeof value === 'string') {
             // String input - infer if needed
             if (precision === undefined || scale === undefined) {
-                const regex = /^(-)?(\d+)(\.(\d+))?$/;
-                const match = value.toString().match(regex);
+                // More efficient regex that directly captures integer and fractional parts
+                const regex = /^-?(\d+)(?:\.(\d+))?$/;
+                const match = value.trim().match(regex);
                 if (!match) {
                     throw new DecimalError("Invalid decimal string format.");
                 }
-                const integerPart = match[2];
-                const fractionalPart = match[4] || '';
+                
+                const integerPart = match[1];
+                const fractionalPart = match[2] || '';
                 precision = integerPart.length + fractionalPart.length;
                 scale = fractionalPart.length;
             }
+        } else {
+            throw new DecimalError("Unsupported value type for Decimal constructor.");
         }
 
+        // Store the precision and scale
         this.precision = precision;
         this.scale = scale;
-
-        let sign = '';
-        let integerPart = '0';
-        let fractionalPart = '';
 
         // The scale must be less than or equal to the precision (D <= M)
         if (scale > precision) {
             throw new DecimalError("Scale must be less than or equal to precision.");
         }
 
+        // Handle different input types
         if (typeof value === 'string' || typeof value === 'number') {
             const valueStr = typeof value === 'number' ? value.toString() : value;
 
@@ -82,22 +86,45 @@ export class Decimal {
                 throw new DecimalError("Invalid decimal string format.");
             }
 
-            ({ sign, integerPart, fractionalPart } = Decimal.parseString(valueStr));
+            // Parse the string into components
+            const { sign, integerPart, fractionalPart } = Decimal.parseString(valueStr);
+            
+            // Process the fractional part with potential rounding
+            let adjustedInteger = integerPart;
+            let adjustedFractional = fractionalPart;
             
             // Process rounding if needed
             if (fractionalPart.length > scale) {
-                // Use the dedicated rounding function
                 const rounded = Decimal.roundForDecimal(
                     integerPart + '.' + fractionalPart,
                     precision,
                     scale
                 );
-                integerPart = rounded.integerPart;
-                fractionalPart = rounded.fractionalPart;
+                adjustedInteger = rounded.integerPart;
+                adjustedFractional = rounded.fractionalPart;
             } else {
                 // Pad with zeros if needed
-                fractionalPart = fractionalPart.padEnd(scale, '0');
+                adjustedFractional = fractionalPart.padEnd(scale, '0');
             }
+            
+            // Normalize integer part by removing leading zeros
+            const normalizedInteger = adjustedInteger.replace(/^0+/, '') || '0';
+            
+            // Combine integer and fractional parts for coefficient
+            const combined = normalizedInteger + adjustedFractional;
+            
+            // Remove leading zeros from combined (except when value is zero)
+            const combinedNormalized = combined.replace(/^0+/, '') || '0';
+            
+            // Calculate total digits and validate precision
+            if (combinedNormalized.length > precision) {
+                throw new DecimalError(`Value exceeds the specified precision (${precision}).`);
+            }
+            
+            // Convert to BigInt with sign
+            const coeff = BigInt(combinedNormalized);
+            this.coefficient = sign === '-' ? -coeff : coeff;
+            this.exponent = scale;
             
         } else if (value instanceof Decimal) {
             // Clone from another Decimal, adjusting precision and scale if necessary
@@ -105,36 +132,40 @@ export class Decimal {
             const fromScale = value.getScale();
             const fromCoefficient = value.getCoefficient();
 
+            // Calculate integer part capacity
             const fromIntegerDigits = fromPrecision - fromScale;
             const targetIntegerDigits = precision - scale;
 
-            // Only check if decreasing integer part capacity when the actual integer digits used would be affected
-            // Get the actual number of integer digits (not the max allowed by precision-scale)
+            // Determine actual integer digits used
             const valueStr = value.toString();
             const actualIntegerDigits = valueStr.split('.')[0].replace('-', '').length;
             
-            // Check if actual integer digits won't fit in target precision-scale
+            // Ensure integer part fits in target precision-scale
             if (actualIntegerDigits > targetIntegerDigits) {
-                throw new DecimalError("Adjusting precision affects integer digits, which is not allowed.");
+                throw new DecimalError(
+                    `Cannot adjust precision: integer part needs ${actualIntegerDigits} digits, ` +
+                    `but target precision-scale only allows ${targetIntegerDigits}.`
+                );
             }
 
+            // Handle scale adjustments
             if (scale > fromScale) {
-                // Need to pad fractional digits with zeros
+                // Scale increase: pad with zeros
                 const scaleDifference = scale - fromScale;
                 const multiplier = BigInt(10 ** scaleDifference);
                 const newCoefficient = fromCoefficient * multiplier;
                 
-                // Check if the new coefficient would exceed the precision
+                // Verify the new coefficient fits within precision
                 const newCoeffStr = newCoefficient.toString().replace('-', '');
                 if (newCoeffStr.length > precision) {
-                    throw new DecimalError("Value exceeds the specified precision (M) after scaling.");
+                    throw new DecimalError(`Value exceeds the specified precision (${precision}) after scaling.`);
                 }
                 
                 this.coefficient = newCoefficient;
                 this.exponent = scale;
-                return;
+                
             } else if (scale < fromScale) {
-                // Need to truncate and round the fractional digits
+                // Scale decrease: truncate and round
                 const scaleDifference = fromScale - scale;
                 const divisor = BigInt(10 ** scaleDifference);
                 const truncated = fromCoefficient / divisor;
@@ -147,60 +178,39 @@ export class Decimal {
                     roundedCoefficient += (fromCoefficient < 0n ? -1n : 1n);
                 }
 
-                // Check if the new coefficient exceeds the precision
+                // Verify rounded coefficient fits within precision
                 const roundedStr = roundedCoefficient.toString().replace('-', '');
                 if (roundedStr.length > precision) {
-                    throw new DecimalError("Value exceeds the specified precision (M) after rounding.");
+                    throw new DecimalError(`Value exceeds the specified precision (${precision}) after rounding.`);
                 }
 
                 this.coefficient = roundedCoefficient;
                 this.exponent = scale;
-                return;
+                
             } else {
-                // Same scale, just clone
+                // Same scale, just verify precision
                 if (value.getTotalDigits() > precision) {
-                    throw new DecimalError("Value exceeds the specified precision (M).");
+                    throw new DecimalError(`Value exceeds the specified precision (${precision}).`);
                 }
                 this.coefficient = fromCoefficient;
                 this.exponent = scale;
-                return;
             }
-        } else {
-            throw new DecimalError("Unsupported value type for Decimal constructor.");
         }
-
-        // Normalize integer part by removing leading zeros
-        const normalizedInteger = integerPart.replace(/^0+/, '') || '0';
-        const normalizedFractional = fractionalPart;
-
-        // Combine integer and fractional parts for coefficient
-        const combined = (normalizedInteger === '0' && integerPart !== '0') 
-            ? integerPart + normalizedFractional 
-            : normalizedInteger + normalizedFractional;
-
-        // Remove leading zeros from combined (except when value is zero)
-        const combinedNormalized = combined.replace(/^0+/, '') || '0';
-
-        // Calculate total digits and validate precision
-        const totalDigits = combinedNormalized.length;
-        if (totalDigits > precision) {
-            throw new DecimalError("Value exceeds the specified precision (M).");
-        }
-
-        // Convert to BigInt with sign
-        const coeff = BigInt(combinedNormalized);
-        this.coefficient = sign === '-' ? -coeff : coeff;
-        this.exponent = scale;
     }
 
     /**
      * Special rounding implementation specifically for the Decimal constructor.
-     * This ensures correct rounding behavior for all cases including edge cases.
+     * Ensures correct rounding behavior for all cases including edge cases.
+     * @private
      */
-    private static roundForDecimal(value: string, precision: number, scale: number): { integerPart: string, fractionalPart: string } {
+    private static roundForDecimal(
+        value: string, 
+        precision: number, 
+        scale: number
+    ): { integerPart: string, fractionalPart: string } {
         // Parse the number into integer and fractional parts
         const parts = value.split('.');
-        let integerPart = parts[0] || '0';
+        const integerPart = parts[0] || '0';
         const origFractional = parts[1] || '';
         
         // If fractional part length is less than or equal to scale, just pad with zeros
@@ -224,8 +234,7 @@ export class Decimal {
         }
         
         // Rounding needed
-        // Convert to numeric representation for proper arithmetic
-        const fractionalNum = BigInt(truncatedFractional) + 1n;
+        const fractionalNum = BigInt(truncatedFractional || '0') + 1n;
         const scaleFactor = BigInt(10 ** scale);
         
         // Check if rounding caused overflow
@@ -246,7 +255,8 @@ export class Decimal {
     }
 
     /**
-     * Helper method to get total digits (excluding sign and decimal point).
+     * Returns the number of significant digits (excluding sign).
+     * @private
      */
     private getTotalDigits(): number {
         return this.coefficient.toString().replace('-', '').length;
@@ -258,107 +268,111 @@ export class Decimal {
      * @returns True if valid, else false.
      */
     static isValidDecimal(str: string): boolean {
-      const regex = /^[+\-]?\d+(\.\d+)?([eE][+-]?\d+)?$/;
-      return regex.test(str.trim());
-  }
-
+        // Match standard decimal formats including scientific notation
+        const regex = /^[+\-]?\d+(\.\d+)?([eE][+-]?\d+)?$/;
+        return regex.test(str.trim());
+    }
 
     /**
      * Parses the string into sign, integer part, and fractional part.
+     * Handles scientific notation and normalization.
      * @param str The string to parse.
      * @returns An object containing sign, integerPart, and fractionalPart.
      */
     static parseString(str: string): { sign: string; integerPart: string; fractionalPart: string } {
-      let trimmed = str.trim();
-      let sign = '';
+        let trimmed = str.trim();
+        let sign = '';
 
-      // Handle sign
-      if (trimmed.startsWith('-')) {
-          sign = '-';
-          trimmed = trimmed.slice(1);
-      } else if (trimmed.startsWith('+')) {
-          trimmed = trimmed.slice(1);
-      }
+        // Handle sign
+        if (trimmed.startsWith('-')) {
+            sign = '-';
+            trimmed = trimmed.slice(1);
+        } else if (trimmed.startsWith('+')) {
+            trimmed = trimmed.slice(1);
+        }
 
-      // Split into mantissa and exponent parts
-      const [mantissa, exponentPart] = trimmed.split(/[eE]/);
-      const exponent = exponentPart ? parseInt(exponentPart, 10) : 0;
+        // Split into mantissa and exponent parts
+        const [mantissa, exponentPart] = trimmed.split(/[eE]/);
+        const exponent = exponentPart ? parseInt(exponentPart, 10) : 0;
 
-      // Split mantissa into integer and fractional parts
-      const [integerPartRaw, fractionalPartRaw = ''] = mantissa.split('.');
-      let integerPart = integerPartRaw || '0';
-      let fractionalPart = fractionalPartRaw;
+        // Split mantissa into integer and fractional parts
+        const [integerPartRaw, fractionalPartRaw = ''] = mantissa.split('.');
+        let integerPart = integerPartRaw || '0';
+        let fractionalPart = fractionalPartRaw;
 
-      // Adjust for exponent
-      if (exponent > 0) {
-          if (fractionalPart.length > exponent) {
-              integerPart += fractionalPart.slice(0, exponent);
-              fractionalPart = fractionalPart.slice(exponent);
-          } else {
-              integerPart += fractionalPart.padEnd(exponent, '0');
-              fractionalPart = '';
-          }
-      } else if (exponent < 0) {
-          const absExp = Math.abs(exponent);
-          if (integerPart.length > absExp) {
-              fractionalPart = integerPart.slice(-absExp) + fractionalPart;
-              integerPart = integerPart.slice(0, -absExp);
-          } else {
-              fractionalPart = integerPart.padStart(absExp, '0') + fractionalPart;
-              integerPart = '0';
-          }
-      }
+        // Adjust for exponent
+        if (exponent > 0) {
+            // Positive exponent moves decimal point right
+            if (fractionalPart.length > exponent) {
+                integerPart += fractionalPart.slice(0, exponent);
+                fractionalPart = fractionalPart.slice(exponent);
+            } else {
+                integerPart += fractionalPart.padEnd(exponent, '0');
+                fractionalPart = '';
+            }
+        } else if (exponent < 0) {
+            // Negative exponent moves decimal point left
+            const absExp = Math.abs(exponent);
+            if (integerPart.length > absExp) {
+                fractionalPart = integerPart.slice(-absExp) + fractionalPart;
+                integerPart = integerPart.slice(0, -absExp);
+            } else {
+                fractionalPart = integerPart.padStart(absExp, '0') + fractionalPart;
+                integerPart = '0';
+            }
+        }
 
-      return { sign, integerPart, fractionalPart };
+        return { sign, integerPart, fractionalPart };
     }
 
     /**
-     * Converts the number to a Decimal instance.
-     * @param value The number to convert to a Decimal.
-     * @returns A decimal instance.
+     * Converts the input value to a Decimal instance.
+     * @param value The value to convert to a Decimal.
+     * @returns A Decimal instance.
+     * @throws {DecimalError} If the value cannot be converted to a Decimal.
      */
-    static ensureDecimal(value: any): Decimal {
-      if (value instanceof Decimal) {
-          return value;
-      }
+    static ensureDecimal(value: unknown): Decimal {
+        if (value instanceof Decimal) {
+            return value;
+        }
 
-      if (typeof value === 'number') {
-          return new Decimal(value.toString());
-      }
+        if (typeof value === 'number') {
+            return new Decimal(value.toString());
+        }
 
-      if (typeof value === 'string') {
-          return new Decimal(value);
-      }
+        if (typeof value === 'string') {
+            return new Decimal(value);
+        }
 
-      throw new DecimalError("Unsupported value type for Decimal import.");
+        throw new DecimalError(`Unsupported value type for Decimal conversion: ${typeof value}`);
     }
 
     /**
      * Converts the Decimal instance to a JavaScript Number.
      * @returns The numeric representation.
+     * @throws {DecimalError} If the conversion results in infinity.
      */
     toNumber(): number {
         const sign = this.coefficient < 0n ? '-' : '';
         let absCoeffStr = (this.coefficient < 0n ? -this.coefficient : this.coefficient).toString();
 
-        // Insert decimal point based on exponent
+        // For integers, directly convert
         if (this.exponent === 0) {
-            // No fractional part
             return Number(`${sign}${absCoeffStr}`);
         }
 
-        // Ensure the string has enough digits to cover the exponent
+        // For decimals, format appropriately
         while (absCoeffStr.length <= this.exponent) {
             absCoeffStr = '0' + absCoeffStr;
         }
 
-        const integerPart = absCoeffStr.slice(0, -this.exponent);
+        const integerPart = absCoeffStr.slice(0, -this.exponent) || '0';
         const fractionalPart = absCoeffStr.slice(-this.exponent);
 
         const numberStr = `${sign}${integerPart}.${fractionalPart}`;
         const numberValue = Number(numberStr);
 
-        // Handle overflow
+        // Safe check for overflow
         if (!isFinite(numberValue)) {
             throw new DecimalError("Conversion to Number results in Infinity.");
         }
@@ -370,6 +384,7 @@ export class Decimal {
      * Compares this Decimal instance with another.
      * @param other The other Decimal to compare with.
      * @returns 1 if greater, -1 if less, 0 if equal.
+     * @throws {DecimalError} If decimals have different precision or scale.
      */
     compareTo(other: Decimal): number {
         // Ensure same precision and scale
@@ -382,13 +397,13 @@ export class Decimal {
     }
 
     /**
-     * Compares the structure of this Decimal with another. The structure is
-     * defined by precision and scale.
+     * Compares the structure of this Decimal with another.
+     * The structure is defined by precision and scale.
      * @param other The other Decimal to compare.
      * @returns True if the structure is the same, else false.
      */
     compareStructure(other: Decimal): boolean {
-      return this.precision === other.precision && this.scale === other.scale;
+        return this.precision === other.precision && this.scale === other.scale;
     }
 
     /**
@@ -424,8 +439,7 @@ export class Decimal {
      * @returns True if less than or equal, else false.
      */
     lessThanOrEqual(other: Decimal): boolean {
-        const cmp = this.compareTo(other);
-        return cmp === -1 || cmp === 0;
+        return this.compareTo(other) <= 0;
     }
 
     /**
@@ -434,65 +448,73 @@ export class Decimal {
      * @returns True if greater than or equal, else false.
      */
     greaterThanOrEqual(other: Decimal): boolean {
-        const cmp = this.compareTo(other);
-        return cmp === 1 || cmp === 0;
+        return this.compareTo(other) >= 0;
     }
 
     /**
      * Returns the string representation of the Decimal.
-     * @returns The normalized string.
+     * @returns The normalized string representation.
      */
     toString(): string {
         const sign = this.coefficient < 0n ? '-' : '';
         let absCoeffStr = (this.coefficient < 0n ? -this.coefficient : this.coefficient).toString();
 
+        // For integers, no decimal point needed
         if (this.exponent === 0) {
             return `${sign}${absCoeffStr}`;
         }
 
-        // Ensure the string has enough digits to cover the exponent
+        // For decimals, format with the correct decimal point position
         while (absCoeffStr.length <= this.exponent) {
             absCoeffStr = '0' + absCoeffStr;
         }
 
-        const integerPart = absCoeffStr.slice(0, -this.exponent);
+        const integerPart = absCoeffStr.slice(0, -this.exponent) || '0';
         const fractionalPart = absCoeffStr.slice(-this.exponent);
 
         return `${sign}${integerPart}.${fractionalPart}`;
     }
 
     /**
-     * Getter for precision.
+     * Gets the total number of significant digits.
+     * @returns The precision value.
      */
     getPrecision(): number {
         return this.precision;
     }
 
     /**
-     * Getter for scale.
+     * Gets the number of fractional digits.
+     * @returns The scale value.
      */
     getScale(): number {
         return this.scale;
     }
 
     /**
-     * Getter for exponent.
+     * Gets the exponent (same as scale for this implementation).
+     * @returns The exponent value.
      */
     getExponent(): number {
         return this.exponent;
     }
 
     /**
-     * Getter for coefficient.
+     * Gets the internal coefficient (scaled integer representation).
+     * @returns The coefficient as a BigInt.
      */
     getCoefficient(): bigint {
         return this.coefficient;
     }
 
+    /**
+     * Gets the format pattern representing the precision and scale.
+     * @returns A string representing the format pattern (e.g., "xxx.xx").
+     */
     getFormatPattern(): string {
-      const precision = 'x'.repeat(this.precision - this.scale);
-      const scale = 'x'.repeat(this.scale);
-      return `${precision}.${scale}`;
+        const precision = 'x'.repeat(this.precision - this.scale);
+        const scale = 'x'.repeat(this.scale);
+        return `${precision}.${scale}`;
     }
 
     /**
@@ -503,23 +525,22 @@ export class Decimal {
      * @throws {DecimalError} If conversion is not possible due to precision constraints
      */
     convert(targetPrecision: number, targetScale: number): Decimal {
-      // Validate that the target scale doesn't exceed the target precision
-      if (targetScale > targetPrecision) {
-        throw new DecimalError("Scale must be less than or equal to precision.");
-      }
-
-      try {
-        // Use the existing constructor logic to handle precision and scale conversion
-        return new Decimal(this, targetPrecision, targetScale);
-      } catch (error) {
-        // Re-throw the error for clarity
-        if (error instanceof DecimalError) {
-          throw error;
+        // Validate that the target scale doesn't exceed the target precision
+        if (targetScale > targetPrecision) {
+            throw new DecimalError("Scale must be less than or equal to precision.");
         }
-        // Wrap any other unexpected errors
-        throw new DecimalError(`Conversion failed: ${error instanceof Error ? error.message : String(error)}`);
-      }
-    }
 
+        try {
+            // Use the existing constructor logic to handle precision and scale conversion
+            return new Decimal(this, targetPrecision, targetScale);
+        } catch (error) {
+            // Re-throw the error for clarity
+            if (error instanceof DecimalError) {
+                throw error;
+            }
+            // Wrap any other unexpected errors
+            throw new DecimalError(`Conversion failed: ${error instanceof Error ? error.message : String(error)}`);
+        }
+    }
 }
 
