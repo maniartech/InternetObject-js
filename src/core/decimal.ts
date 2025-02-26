@@ -384,9 +384,17 @@ export class Decimal {
      * @returns True if valid, else false.
      */
     static isValidDecimal(str: string): boolean {
+        // Trim leading/trailing whitespace
+        let trimmed = str.trim();
+        
+        // Remove trailing 'm' if present (like "123.45m")
+        if (trimmed.endsWith('m')) {
+            trimmed = trimmed.slice(0, -1);
+        }
+        
         // Match standard decimal formats including scientific notation
         const regex = /^[+\-]?\d+(\.\d+)?([eE][+-]?\d+)?$/;
-        return regex.test(str.trim());
+        return regex.test(trimmed);
     }
 
     /**
@@ -397,6 +405,12 @@ export class Decimal {
      */
     static parseString(str: string): { sign: string; integerPart: string; fractionalPart: string } {
         let trimmed = str.trim();
+        
+        // Remove trailing 'm' if present (like "123.45m")
+        if (trimmed.endsWith('m')) {
+            trimmed = trimmed.slice(0, -1);
+        }
+        
         let sign = '';
 
         // Handle sign

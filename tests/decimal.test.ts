@@ -39,6 +39,13 @@ describe('Decimal Class', () => {
             expect(dec.getExponent()).toBe(2);
         });
 
+        it('should parse decimal ending with letter "m"', () => {
+            const dec = new Decimal("123.45m", 5, 2);
+            expect(dec.toString()).toBe("123.45");
+            expect(dec.getCoefficient()).toBe(12345n);
+            expect(dec.getExponent()).toBe(2);
+        });
+
         it('should throw DecimalError for invalid formats', () => {
             expect(() => new Decimal("12.3.4", 5, 2)).toThrow(DecimalError);
             expect(() => new Decimal("12a.34", 5, 2)).toThrow(DecimalError);
