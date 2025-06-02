@@ -204,16 +204,26 @@ function _getValidator(type: string) {
       }
 
     case 'decimal':
-      return _decimalValidator.bind(null, null, null);
+      return (memberDef: MemberDef, value: any, node?: Node) => {
+        if (value instanceof Decimal) return value;
+        const { min, max } = memberDef;
+        const minD: Decimal | null = min === null ? null : Decimal.ensureDecimal(min);
+        const maxD: Decimal | null = max === null ? null : Decimal.ensureDecimal(max);
+        const valD: Decimal = Decimal.ensureDecimal(value);
 
+        if ((minD !== null && valD.compareTo(minD) < 0) || (maxD !== null && valD.compareTo(maxD) > 0)) {
+          throwError(ErrorCodes.invalidRange, memberDef.path!, value, node);
+        }
 
+        const precision = memberDef.precision || valD.getPrecision();
+        const scale = memberDef.scale || valD.getScale();
+
+        return valD.convert(precision, scale);
+      }
 
     default:
       throw new InternetObjectError(ErrorCodes.invalidType, `The number type '${type}' is not a valid number type.`);
   }
 }
-
-
-
 
 export default NumberDef
