@@ -1,0 +1,433 @@
+# Literal Token Test Cases
+# Tests for boolean, null, and other literal values
+
+boolean_literals:
+  name: boolean_literals
+  description: Tests for boolean literals
+  cases:
+    - name: true_literal
+      input: "true"
+      expected:
+        type: BOOLEAN
+        value: true
+        token: "true"
+
+    - name: false_literal
+      input: "false"
+      expected:
+        type: BOOLEAN
+        value: false
+        token: "false"
+
+    - name: true_short
+      input: "T"
+      expected:
+        type: BOOLEAN
+        value: true
+        token: "T"
+
+    - name: false_short
+      input: "F"
+      expected:
+        type: BOOLEAN
+        value: false
+        token: "F"
+
+null_literals:
+  name: null_literals
+  description: Tests for null literals
+  cases:
+    - name: null_literal
+      input: "null"
+      expected:
+        type: NULL
+        value: null
+        token: "null"
+
+    - name: null_short
+      input: "N"
+      expected:
+        type: NULL
+        value: null
+        token: "N"
+
+comments:
+  name: comments
+  description: Tests for comment handling
+  cases:
+    - name: single_line_comment
+      input: |
+        # This is a comment
+        "value" # Inline comment
+      expected:
+        - type: STRING
+          subType: REGULAR_STRING
+          value: "value"
+          token: '"value"'
+
+    - name: multiple_comments
+      input: |
+        # First comment
+        "value1" # Comment 1
+        # Second comment
+        "value2" # Comment 2
+      expected:
+        - type: STRING
+          subType: REGULAR_STRING
+          value: "value1"
+          token: '"value1"'
+        - type: STRING
+          subType: REGULAR_STRING
+          value: "value2"
+          token: '"value2"'
+
+    - name: comment_only
+      input: "# Just a comment"
+      expected: []
+
+whitespace:
+  name: whitespace
+  description: Tests for whitespace handling
+  cases:
+    - name: spaces
+      input: "   value   "
+      expected:
+        type: STRING
+        subType: OPEN_STRING
+        value: "value"
+        token: "value"
+
+    - name: tabs
+      input: "\tvalue\t"
+      expected:
+        type: STRING
+        subType: OPEN_STRING
+        value: "value"
+
+    - name: mixed_whitespace
+      input: " \t \n value \t \n "
+      expected:
+        type: STRING
+        subType: OPEN_STRING
+        value: "value"
+        token: "value"
+
+    - name: newlines
+      input: |
+        value1
+        value2
+      expected:
+        - type: STRING
+          subType: OPEN_STRING
+          value: "value1"
+          token: "value1"
+        - type: STRING
+          subType: OPEN_STRING
+          value: "value2"
+          token: "value2"
+
+complex_combinations:
+  name: complex_combinations
+  description: Tests for complex token combinations
+  cases:
+    - name: object_literal
+      input: |
+        {
+          "string": "value",
+          "number": 123,
+          "boolean": true,
+          "null": null,
+          "array": [1, 2, 3]
+        }
+      expected:
+        - type: LBRACE
+          value: "{"
+          token: "{"
+        - type: STRING
+          subType: REGULAR_STRING
+          value: "string"
+          token: '"string"'
+        - type: COLON
+          value: ":"
+          token: ":"
+        - type: STRING
+          subType: REGULAR_STRING
+          value: "value"
+          token: '"value"'
+        - type: COMMA
+          value: ","
+          token: ","
+        - type: STRING
+          subType: REGULAR_STRING
+          value: "number"
+          token: '"number"'
+        - type: COLON
+          value: ":"
+          token: ":"
+        - type: NUMBER
+          value: 123
+          token: "123"
+        - type: COMMA
+          value: ","
+          token: ","
+        - type: STRING
+          subType: REGULAR_STRING
+          value: "boolean"
+          token: '"boolean"'
+        - type: COLON
+          value: ":"
+          token: ":"
+        - type: BOOLEAN
+          value: true
+          token: "true"
+        - type: COMMA
+          value: ","
+          token: ","
+        - type: STRING
+          subType: REGULAR_STRING
+          value: "null"
+          token: '"null"'
+        - type: COLON
+          value: ":"
+          token: ":"
+        - type: NULL
+          value: null
+          token: "null"
+        - type: COMMA
+          value: ","
+          token: ","
+        - type: STRING
+          subType: REGULAR_STRING
+          value: "array"
+          token: '"array"'
+        - type: COLON
+          value: ":"
+          token: ":"
+        - type: LBRACKET
+          value: "["
+          token: "["
+        - type: NUMBER
+          value: 1
+          token: "1"
+        - type: COMMA
+          value: ","
+          token: ","
+        - type: NUMBER
+          value: 2
+          token: "2"
+        - type: COMMA
+          value: ","
+          token: ","
+        - type: NUMBER
+          value: 3
+          token: "3"
+        - type: RBRACKET
+          value: "]"
+          token: "]"
+        - type: RBRACE
+          value: "}"
+          token: "}"
+
+    - name: section_with_data
+      input: |
+        --- $schema
+        {
+          "key": "value"
+        }
+        --- other: $schema2
+        {
+          "other": "value"
+        }
+      expected:
+        - type: SECTION_SEP
+          value: "---"
+          token: "---"
+        - type: STRING
+          subType: SECTION_SCHEMA
+          value: "$schema"
+          token: "$schema"
+        - type: LBRACE
+          value: "{"
+          token: "{"
+        - type: STRING
+          subType: REGULAR_STRING
+          value: "key"
+          token: '"key"'
+        - type: COLON
+          value: ":"
+          token: ":"
+        - type: STRING
+          subType: REGULAR_STRING
+          value: "value"
+          token: '"value"'
+        - type: RBRACE
+          value: "}"
+          token: "}"
+        - type: SECTION_SEP
+          value: "---"
+          token: "---"
+        - type: STRING
+          subType: SECTION_NAME
+          value: "other"
+          token: "other"
+        - type: STRING
+          subType: SECTION_SCHEMA
+          value: "$schema2"
+          token: "$schema2"
+        - type: LBRACE
+          value: "{"
+          token: "{"
+        - type: STRING
+          subType: REGULAR_STRING
+          value: "other"
+          token: '"other"'
+        - type: COLON
+          value: ":"
+          token: ":"
+        - type: STRING
+          subType: REGULAR_STRING
+          value: "value"
+          token: '"value"'
+        - type: RBRACE
+          value: "}"
+          token: "}"
+
+error_cases:
+  name: literal_error_cases
+  description: Tests that should produce specific errors
+  cases:
+    - name: invalid_boolean_prefix
+      input: "tr"
+      expected_error:
+        code: invalidLiteral
+        message: Invalid boolean literal
+
+    - name: invalid_boolean_short
+      input: "x"
+      expected_error:
+        code: invalidLiteral
+        message: Invalid boolean literal
+
+    - name: invalid_boolean_case
+      input: "True"
+      expected_error:
+        code: invalidLiteral
+        message: Invalid boolean literal
+
+    - name: invalid_null_prefix
+      input: "nu"
+      expected_error:
+        code: invalidLiteral
+        message: Invalid null literal
+
+    - name: invalid_null_short
+      input: "x"
+      expected_error:
+        code: invalidLiteral
+        message: Invalid null literal
+
+    - name: invalid_null_case
+      input: "Null"
+      expected_error:
+        code: invalidLiteral
+        message: Invalid null literal
+
+    - name: unterminated_comment
+      input: "# This is an unterminated comment"
+      expected_error:
+        code: unterminatedComment
+        message: Unterminated comment
+
+    - name: invalid_comment_after_token
+      input: "value # Unterminated comment"
+      expected_error:
+        code: unterminatedComment
+        message: Unterminated comment
+
+    - name: invalid_whitespace_sequence
+      input: "value\u0000"
+      expected_error:
+        code: invalidCharacter
+        message: Invalid character in input
+
+    - name: invalid_control_char
+      input: "value\u0007"
+      expected_error:
+        code: invalidCharacter
+        message: Invalid control character in input
+
+    - name: invalid_unicode
+      input: "value\uD800"
+      expected_error:
+        code: invalidUnicode
+        message: Invalid Unicode character
+
+    - name: invalid_section_separator
+      input: "---invalid"
+      expected_error:
+        code: invalidSectionName
+        message: Invalid section name
+
+    - name: missing_schema_after_separator
+      input: "--- name:"
+      expected_error:
+        code: schemaMissing
+        message: Schema is required after section name
+
+    - name: invalid_schema_format
+      input: "--- $invalid-schema"
+      expected_error:
+        code: invalidSchemaName
+        message: Invalid schema name format
+
+    - name: invalid_section_format
+      input: "--- name:invalid-schema"
+      expected_error:
+        code: invalidSectionFormat
+        message: Invalid section format
+
+    - name: duplicate_section_name
+      input: |
+        --- $schema1
+        {}
+        --- $schema1
+        {}
+      expected_error:
+        code: duplicateSectionName
+        message: Duplicate section name
+
+    - name: invalid_object_format
+      input: "{key: value}"
+      expected_error:
+        code: invalidObjectFormat
+        message: Invalid object format
+
+    - name: invalid_array_format
+      input: "[1, 2, 3, ]"
+      expected_error:
+        code: invalidArrayFormat
+        message: Invalid array format
+
+    - name: unexpected_token_in_object
+      input: "{key value}"
+      expected_error:
+        code: unexpectedToken
+        message: Unexpected token in object
+
+    - name: unexpected_token_in_array
+      input: "[1 2]"
+      expected_error:
+        code: unexpectedToken
+        message: Unexpected token in array
+
+    - name: missing_closing_brace
+      input: "{key: value"
+      expected_error:
+        code: unclosedObject
+        message: Unclosed object
+
+    - name: missing_closing_bracket
+      input: "[1, 2, 3"
+      expected_error:
+        code: unclosedArray
+        message: Unclosed array

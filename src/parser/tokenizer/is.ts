@@ -51,9 +51,14 @@ const WHITESPACE_LOOKUP = new Set([
 /**
   * Check if the given character represents a whitespace.
   * @param {string} char - Character to check.
+  * @param {boolean} hspacesOnly - If true, only check for horizontal spaces (space and tab).
   * @returns {boolean} True if the character is a whitespace, else false.
   */
-export const isWhitespace = (char: string): boolean => {
+export const isWhitespace = (char: string, hspacesOnly: boolean = false): boolean => {
+  if (hspacesOnly) {
+    return char === ' ' || char === '\t';
+  }
+
   // Use codePointAt for proper Unicode handling
   const code = char.codePointAt(0) || 0;
 

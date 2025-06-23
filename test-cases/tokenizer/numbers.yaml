@@ -1,0 +1,361 @@
+# Number Token Test Cases
+# Tests for various number formats including integers, floats, and special numbers
+
+decimal_numbers:
+  name: decimal_numbers
+  description: Tests for decimal number literals
+  cases:
+    - name: positive_integer
+      input: "123"
+      expected:
+        type: NUMBER
+        value: 123
+        token: "123"
+
+    - name: negative_integer
+      input: "-123"
+      expected:
+        type: NUMBER
+        value: -123
+        token: "-123"
+
+    - name: positive_float
+      input: "123.456"
+      expected:
+        type: NUMBER
+        value: 123.456
+        token: "123.456"
+
+    - name: negative_float
+      input: "-123.456"
+      expected:
+        type: NUMBER
+        value: -123.456
+        token: "-123.456"
+
+    - name: scientific_notation
+      input: "1.23e10"
+      expected:
+        type: NUMBER
+        value: 1.23e10
+        token: "1.23e10"
+
+    - name: negative_exponent
+      input: "1.23E-10"
+      expected:
+        type: NUMBER
+        value: 1.23e-10
+        token: "1.23E-10"
+
+special_numbers:
+  name: special_numbers
+  description: Tests for special number literals
+  cases:
+    - name: infinity
+      input: "Inf"
+      expected:
+        type: NUMBER
+        value: Infinity
+        token: "Inf"
+
+    - name: negative_infinity
+      input: "-Inf"
+      expected:
+        type: NUMBER
+        value: -Infinity
+        token: "-Inf"
+
+    - name: not_a_number
+      input: "NaN"
+      expected:
+        type: NUMBER
+        value: NaN
+        token: "NaN"
+
+hex_numbers:
+  name: hex_numbers
+  description: Tests for hexadecimal number literals
+  cases:
+    - name: uppercase_prefix
+      input: "0xFF"
+      expected:
+        type: NUMBER
+        subType: HEX
+        value: 255
+        token: "0xFF"
+
+    - name: lowercase_prefix
+      input: "0xff"
+      expected:
+        type: NUMBER
+        subType: HEX
+        value: 255
+        token: "0xff"
+
+    - name: mixed_case
+      input: "0xFf"
+      expected:
+        type: NUMBER
+        subType: HEX
+        value: 255
+        token: "0xFf"
+
+octal_numbers:
+  name: octal_numbers
+  description: Tests for octal number literals
+  cases:
+    - name: uppercase_prefix
+      input: "0O77"
+      expected:
+        type: NUMBER
+        subType: OCTAL
+        value: 63
+        token: "0O77"
+
+    - name: lowercase_prefix
+      input: "0o77"
+      expected:
+        type: NUMBER
+        subType: OCTAL
+        value: 63
+        token: "0o77"
+
+binary_numbers:
+  name: binary_numbers
+  description: Tests for binary number literals
+  cases:
+    - name: uppercase_prefix
+      input: "0B1010"
+      expected:
+        type: NUMBER
+        subType: BINARY
+        value: 10
+        token: "0B1010"
+
+    - name: lowercase_prefix
+      input: "0b1010"
+      expected:
+        type: NUMBER
+        subType: BINARY
+        value: 10
+        token: "0b1010"
+
+bigint_numbers:
+  name: bigint_numbers
+  description: Tests for bigint literals
+  cases:
+    - name: positive_bigint
+      input: "123n"
+      expected:
+        type: BIGINT
+        value: "123"
+        token: "123n"
+
+    - name: negative_bigint
+      input: "-123n"
+      expected:
+        type: BIGINT
+        value: "-123"
+        token: "-123n"
+
+decimal_type:
+  name: decimal_type
+  description: Tests for decimal type literals
+  cases:
+    - name: positive_decimal
+      input: "123.456m"
+      expected:
+        type: DECIMAL
+        value: "123.456"
+        token: "123.456m"
+
+    - name: negative_decimal
+      input: "-123.456m"
+      expected:
+        type: DECIMAL
+        value: "-123.456"
+        token: "-123.456m"
+
+error_cases:
+  name: number_error_cases
+  description: Tests that should produce specific errors for number tokens
+  cases:
+    - name: invalid_decimal_prefix
+      input: "0d123"
+      expected_error:
+        code: invalidNumberFormat
+        message: Invalid decimal number format
+
+    - name: invalid_hex_prefix
+      input: "0h123"
+      expected_error:
+        code: invalidNumberFormat
+        message: Invalid hex number format
+
+    - name: invalid_octal_prefix
+      input: "0p123"
+      expected_error:
+        code: invalidNumberFormat
+        message: Invalid octal number format
+
+    - name: invalid_binary_prefix
+      input: "0v101"
+      expected_error:
+        code: invalidNumberFormat
+        message: Invalid binary number format
+
+    - name: invalid_hex_digits
+      input: "0x12G3"
+      expected_error:
+        code: invalidHexDigits
+        message: Invalid hex digits
+
+    - name: invalid_octal_digits
+      input: "0o89"
+      expected_error:
+        code: invalidOctalDigits
+        message: Invalid octal digits
+
+    - name: invalid_binary_digits
+      input: "0b102"
+      expected_error:
+        code: invalidBinaryDigits
+        message: Invalid binary digits
+
+    - name: invalid_float_format
+      input: "123."
+      expected_error:
+        code: invalidFloatFormat
+        message: Invalid float format
+
+    - name: invalid_exponent_format
+      input: "123e"
+      expected_error:
+        code: invalidExponentFormat
+        message: Invalid exponent format
+
+    - name: invalid_exponent_sign
+      input: "123e+"
+      expected_error:
+        code: invalidExponentSign
+        message: Invalid exponent sign
+
+    - name: invalid_exponent_digits
+      input: "123e1.2"
+      expected_error:
+        code: invalidExponentDigits
+        message: Invalid exponent digits
+
+    - name: invalid_bigint_format
+      input: "123.4n"
+      expected_error:
+        code: invalidBigIntFormat
+        message: Invalid BigInt format
+
+    - name: invalid_decimal_format
+      input: "123.4.5m"
+      expected_error:
+        code: invalidDecimalFormat
+        message: Invalid decimal format
+
+    - name: number_too_large
+      input: "1e1000"
+      expected_error:
+        code: numberTooLarge
+        message: Number too large
+
+    - name: number_too_small
+      input: "1e-1000"
+      expected_error:
+        code: numberTooSmall
+        message: Number too small
+
+    - name: invalid_leading_zeros
+      input: "00123"
+      expected_error:
+        code: invalidLeadingZeros
+        message: Invalid leading zeros
+
+    - name: invalid_trailing_zeros
+      input: "123.450"
+      expected_error:
+        code: invalidTrailingZeros
+        message: Invalid trailing zeros
+
+    - name: invalid_underscore_position
+      input: "1_23_"
+      expected_error:
+        code: invalidUnderscorePosition
+        message: Invalid underscore position
+
+    - name: invalid_underscore_sequence
+      input: "1__23"
+      expected_error:
+        code: invalidUnderscoreSequence
+        message: Invalid underscore sequence
+
+    - name: invalid_hex_underscore
+      input: "0x1_2_3_"
+      expected_error:
+        code: invalidHexUnderscore
+        message: Invalid hex underscore position
+
+    - name: invalid_octal_underscore
+      input: "0o1_2_3_"
+      expected_error:
+        code: invalidOctalUnderscore
+        message: Invalid octal underscore position
+
+    - name: invalid_binary_underscore
+      input: "0b1_0_1_"
+      expected_error:
+        code: invalidBinaryUnderscore
+        message: Invalid binary underscore position
+
+    - name: invalid_float_underscore
+      input: "1_2.3_4"
+      expected_error:
+        code: invalidFloatUnderscore
+        message: Invalid float underscore position
+
+    - name: invalid_exponent_underscore
+      input: "1.2e1_0"
+      expected_error:
+        code: invalidExponentUnderscore
+        message: Invalid exponent underscore position
+
+    - name: invalid_bigint_underscore
+      input: "1_2_3_n"
+      expected_error:
+        code: invalidBigIntUnderscore
+        message: Invalid BigInt underscore position
+
+    - name: invalid_decimal_underscore
+      input: "1_2.3_4m"
+      expected_error:
+        code: invalidDecimalUnderscore
+        message: Invalid decimal underscore position
+
+    - name: invalid_infinity_format
+      input: "Infinity"
+      expected_error:
+        code: invalidInfinityFormat
+        message: Invalid infinity format
+
+    - name: invalid_nan_format
+      input: "NaN"
+      expected_error:
+        code: invalidNaNFormat
+        message: Invalid NaN format
+
+    - name: invalid_negative_zero
+      input: "-0"
+      expected_error:
+        code: invalidNegativeZero
+        message: Invalid negative zero
+
+    - name: invalid_positive_zero
+      input: "+0"
+      expected_error:
+        code: invalidPositiveZero
+        message: Invalid positive zero

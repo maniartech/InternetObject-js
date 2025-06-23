@@ -1,0 +1,379 @@
+# Symbol Token Test Cases
+# Tests for special symbols, operators, and section separators
+
+special_symbols:
+  name: special_symbols
+  description: Tests for special symbols and operators
+  cases:
+    - name: braces
+      input: "{}"
+      expected:
+        - type: LBRACE
+          value: "{"
+          token: "{"
+        - type: RBRACE
+          value: "}"
+          token: "}"
+
+    - name: brackets
+      input: "[]"
+      expected:
+        - type: LBRACKET
+          value: "["
+          token: "["
+        - type: RBRACKET
+          value: "]"
+          token: "]"
+
+    - name: parentheses
+      input: "()"
+      expected:
+        - type: LPAREN
+          value: "("
+          token: "("
+        - type: RPAREN
+          value: ")"
+          token: ")"
+
+    - name: punctuation
+      input: ",:"
+      expected:
+        - type: COMMA
+          value: ","
+          token: ","
+        - type: COLON
+          value: ":"
+          token: ":"
+
+    - name: operators
+      input: "=+-*/%"
+      expected:
+        - type: EQUALS
+          value: "="
+          token: "="
+        - type: PLUS
+          value: "+"
+          token: "+"
+        - type: MINUS
+          value: "-"
+          token: "-"
+        - type: MULTIPLY
+          value: "*"
+          token: "*"
+        - type: DIVIDE
+          value: "/"
+          token: "/"
+        - type: MODULO
+          value: "%"
+          token: "%"
+
+    - name: comparison
+      input: "<>"
+      expected:
+        - type: LT
+          value: "<"
+          token: "<"
+        - type: GT
+          value: ">"
+          token: ">"
+
+    - name: logical
+      input: "!&|^~"
+      expected:
+        - type: NOT
+          value: "!"
+          token: "!"
+        - type: AND
+          value: "&"
+          token: "&"
+        - type: OR
+          value: "|"
+          token: "|"
+        - type: XOR
+          value: "^"
+          token: "^"
+        - type: BITNOT
+          value: "~"
+          token: "~"
+
+section_symbols:
+  name: section_symbols
+  description: Tests for section separators and schemas
+  cases:
+    - name: simple_separator
+      input: "---"
+      expected:
+        type: SECTION_SEP
+        value: "---"
+        token: "---"
+
+    - name: with_name
+      input: "--- name: $schema"
+      expected:
+        - type: SECTION_SEP
+          value: "---"
+          token: "---"
+        - type: STRING
+          subType: SECTION_NAME
+          value: "name"
+          token: "name"
+        - type: STRING
+          subType: SECTION_SCHEMA
+          value: "$schema"
+          token: "$schema"
+
+    - name: with_schema_only
+      input: "--- $schema"
+      expected:
+        - type: SECTION_SEP
+          value: "---"
+          token: "---"
+        - type: STRING
+          subType: SECTION_SCHEMA
+          value: "$schema"
+          token: "$schema"
+
+    - name: with_whitespace
+      input: "---  name  :  $schema  "
+      expected:
+        - type: SECTION_SEP
+          value: "---"
+          token: "---"
+        - type: STRING
+          subType: SECTION_NAME
+          value: "name"
+          token: "name"
+        - type: STRING
+          subType: SECTION_SCHEMA
+          value: "$schema"
+          token: "$schema"
+
+error_cases:
+  name: symbol_error_cases
+  description: Tests that should produce specific errors for symbol tokens
+  cases:
+    - name: unclosed_object
+      input: "{"
+      expected_error:
+        code: unclosedObject
+        message: Unclosed object
+
+    - name: unclosed_array
+      input: "["
+      expected_error:
+        code: unclosedArray
+        message: Unclosed array
+
+    - name: unclosed_string_in_object
+      input: '{"key": "value'
+      expected_error:
+        code: unclosedStringInObject
+        message: Unclosed string in object
+
+    - name: unclosed_string_in_array
+      input: '["value'
+      expected_error:
+        code: unclosedStringInArray
+        message: Unclosed string in array
+
+    - name: invalid_object_key
+      input: '{123: "value"}'
+      expected_error:
+        code: invalidObjectKey
+        message: Invalid object key
+
+    - name: missing_colon_in_object
+      input: '{"key" "value"}'
+      expected_error:
+        code: missingColonInObject
+        message: Missing colon in object
+
+    - name: missing_comma_in_object
+      input: '{"key1": "value1" "key2": "value2"}'
+      expected_error:
+        code: missingCommaInObject
+        message: Missing comma in object
+
+    - name: missing_comma_in_array
+      input: '["value1" "value2"]'
+      expected_error:
+        code: missingCommaInArray
+        message: Missing comma in array
+
+    - name: trailing_comma_in_object
+      input: '{"key": "value",}'
+      expected_error:
+        code: trailingCommaInObject
+        message: Trailing comma in object
+
+    - name: trailing_comma_in_array
+      input: '["value",]'
+      expected_error:
+        code: trailingCommaInArray
+        message: Trailing comma in array
+
+    - name: invalid_object_value
+      input: '{"key": }'
+      expected_error:
+        code: invalidObjectValue
+        message: Invalid object value
+
+    - name: invalid_array_value
+      input: '[,]'
+      expected_error:
+        code: invalidArrayValue
+        message: Invalid array value
+
+    - name: unexpected_token_in_object
+      input: '{"key": "value" : "value2"}'
+      expected_error:
+        code: unexpectedTokenInObject
+        message: Unexpected token in object
+
+    - name: unexpected_token_in_array
+      input: '["value" : "value2"]'
+      expected_error:
+        code: unexpectedTokenInArray
+        message: Unexpected token in array
+
+    - name: invalid_object_structure
+      input: '{"key": {"nested": }}}'
+      expected_error:
+        code: invalidObjectStructure
+        message: Invalid object structure
+
+    - name: invalid_array_structure
+      input: '[[[]]]]'
+      expected_error:
+        code: invalidArrayStructure
+        message: Invalid array structure
+
+    - name: invalid_section_separator
+      input: "----"
+      expected_error:
+        code: invalidSectionSeparator
+        message: Invalid section separator
+
+    - name: invalid_section_name
+      input: "--- invalid-name"
+      expected_error:
+        code: invalidSectionName
+        message: Invalid section name
+
+    - name: invalid_section_schema
+      input: "--- $invalid-schema"
+      expected_error:
+        code: invalidSectionSchema
+        message: Invalid section schema
+
+    - name: missing_section_schema
+      input: "--- name:"
+      expected_error:
+        code: missingSectionSchema
+        message: Missing section schema
+
+    - name: invalid_section_format
+      input: "--- name: $schema: value"
+      expected_error:
+        code: invalidSectionFormat
+        message: Invalid section format
+
+    - name: duplicate_section_name
+      input: |
+        --- $schema1
+        {}
+        --- $schema1
+        {}
+      expected_error:
+        code: duplicateSectionName
+        message: Duplicate section name
+
+    - name: invalid_operator
+      input: "1 ** 2"
+      expected_error:
+        code: invalidOperator
+        message: Invalid operator
+
+    - name: invalid_operator_combination
+      input: "1 +- 2"
+      expected_error:
+        code: invalidOperatorCombination
+        message: Invalid operator combination
+
+    - name: invalid_operator_precedence
+      input: "1 + 2 * 3 + 4"
+      expected_error:
+        code: invalidOperatorPrecedence
+        message: Invalid operator precedence
+
+    - name: invalid_operator_associativity
+      input: "1 + 2 + 3 +"
+      expected_error:
+        code: invalidOperatorAssociativity
+        message: Invalid operator associativity
+
+    - name: invalid_operator_arity
+      input: "+"
+      expected_error:
+        code: invalidOperatorArity
+        message: Invalid operator arity
+
+    - name: invalid_operator_context
+      input: "{+}"
+      expected_error:
+        code: invalidOperatorContext
+        message: Invalid operator context
+
+    - name: invalid_punctuation
+      input: "1;2"
+      expected_error:
+        code: invalidPunctuation
+        message: Invalid punctuation
+
+    - name: invalid_punctuation_combination
+      input: "1,,2"
+      expected_error:
+        code: invalidPunctuationCombination
+        message: Invalid punctuation combination
+
+    - name: invalid_punctuation_context
+      input: "{,}"
+      expected_error:
+        code: invalidPunctuationContext
+        message: Invalid punctuation context
+
+    - name: invalid_bracket_sequence
+      input: "{[}]"
+      expected_error:
+        code: invalidBracketSequence
+        message: Invalid bracket sequence
+
+    - name: invalid_brace_sequence
+      input: "{(})"
+      expected_error:
+        code: invalidBraceSequence
+        message: Invalid brace sequence
+
+    - name: invalid_parenthesis_sequence
+      input: "([)]"
+      expected_error:
+        code: invalidParenthesisSequence
+        message: Invalid parenthesis sequence
+
+    - name: invalid_bracket_mismatch
+      input: "[}"
+      expected_error:
+        code: invalidBracketMismatch
+        message: Invalid bracket mismatch
+
+    - name: invalid_brace_mismatch
+      input: "{)"
+      expected_error:
+        code: invalidBraceMismatch
+        message: Invalid brace mismatch
+
+    - name: invalid_parenthesis_mismatch
+      input: "(]"
+      expected_error:
+        code: invalidParenthesisMismatch
+        message: Invalid parenthesis mismatch
