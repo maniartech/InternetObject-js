@@ -14,6 +14,10 @@ class DocumentNode implements Node {
     this.children = children;
   }
 
+  get firstChild(): SectionNode | null {
+    return this.children.length > 0 ? this.children[0] : null;
+  }
+
 
   toValue(defs?: Definitions):any {
     const header = this.header?.toValue(defs) ?? null

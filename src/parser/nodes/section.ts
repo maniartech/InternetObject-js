@@ -30,6 +30,20 @@ class SectionNode implements Node {
     return this.schemaNode?.value || "$schema";
   }
 
+  get firstChild(): SectionChild {
+    return this.child;
+  }
+
+  get firstChildObject(): ObjectNode | null {
+    if (this.child instanceof ObjectNode) {
+      return this.child;
+    }
+    if (this.child instanceof CollectionNode && this.child.children.length > 0) {
+      return this.child.children[0] as ObjectNode;
+    }
+    return null;
+  }
+
   getStartPos(): Position {
     return this.child?.getStartPos() ?? { row: 0, col: 0, pos: 0 };
   }
