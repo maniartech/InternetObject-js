@@ -9,7 +9,7 @@ import Symbols          from './symbols';
 import TokenType        from './token-types';
 import Token            from './tokens';
 import PositionRange    from '../../core/position-range';
-import { Decimal      } from '../../core/decimal';
+import Decimal          from '../../core/decimal';
 
 const regexHex4 = /^[0-9a-fA-F]{4}$/;
 const regexHex2 = /^[0-9a-fA-F]{2}$/;
