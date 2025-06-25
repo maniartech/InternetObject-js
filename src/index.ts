@@ -6,66 +6,25 @@
 //         ██║ ██║     ██║
 //         ██║ ╚████████╔╝
 //         ╚═╝  ╚═══════╝
+//         Internet Object
 
-import Collection from './core/collection';
-import Definitions from './core/definitions';
-import Document from './core/document';
-import InternetObject from './core/internet-object';
-import Section from './core/section';
-import SectionCollection from './core/section-collection';
-import InternetObjectError from './errors/io-error';
-import InternetObjectSyntaxError from './errors/io-syntax-error';
-import InternetObjectValidationError from './errors/io-validation-error';
-import parse from './parser/index';
-import parseDefinitions from './parser/parse-defs';
-import Schema from './schema/schema';
-import { Decimal } from './core/decimal';
+export { default as Document } from './core/document';
+export { default as Definitions } from './core/definitions';
+export { default as SectionCollection } from './core/section-collection';
+export { default as Section } from './core/section';
+export { default as Collection } from './core/collection';
+export { default as InternetObject } from './core/internet-object';
+export { default as Schema } from './schema/schema';
+export { default as Decimal } from './core/decimal';
+export { default as InternetObjectError } from './errors/io-error';
+export { default as InternetObjectSyntaxError } from './errors/io-syntax-error';
+export { default as InternetObjectValidationError } from './errors/io-validation-error';
 
-export {
-  Document,
-  Definitions,
-  SectionCollection,
-  Section,
-  Collection,
-  InternetObject,
-  Schema,
-  InternetObjectError,
-  InternetObjectSyntaxError,
-  InternetObjectValidationError,
-  Decimal,
-};
+// Main tag functions (also tree-shakable)
+export { ioDocument } from './facade';
+export { ioObject } from './facade';
+export { ioDefinitions } from './facade';
 
-export function ioDocument(strings: TemplateStringsArray, ...args: any[]): Document {
-  const input = strings.reduce((acc, str, i) => {
-    return acc + str + (args[i] === undefined ? '' : args[i]);
-  }, '');
-
-  return parse(input, null);
-}
-
-ioDocument.with = (defs: Definitions): (strings: TemplateStringsArray, ...args: any[]) => Document => {
-  return (strings: TemplateStringsArray, ...args: any[]) => {
-    const input = strings.reduce((acc, str, i) => {
-      return acc + str + (args[i] === undefined ? '' : args[i]);
-    }, '');
-
-    return parse(input, defs);
-  }
-}
-
-export function ioObject(strings: TemplateStringsArray, ...args: any[]): any {
-  const input = strings.reduce((acc, str, i) => {
-    return acc + str + (args[i] === undefined ? '' : args[i]);
-  }, '');
-
-  return parse(input, null).toJSON();
-}
-
-export function ioDefinitions(strings: TemplateStringsArray, ...args: any[]): Definitions | null {
-  const input = strings.reduce((acc, str, i) => {
-    return acc + str + (args[i] === undefined ? '' : args[i]);
-  }, '');
-
-  return parseDefinitions(input, null);
-}
-
+// Default facade (only imported if user does default import!)
+import io from './facade';
+export default io;
