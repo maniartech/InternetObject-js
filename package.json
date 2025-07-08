@@ -27,11 +27,22 @@
 
   "scripts": {
     "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
     "clean": "rm -rf dist/*",
-    "clean-build": "npm run clean && tsc",
+    "clean-build": "yarn clean && yarn build",
     "build": "tsc",
-    "watch": "tsc -w",
-    "minify": "terser dist/index.js -o dist/index.min.js --compress --mangle --source-map"
+    "build:watch": "tsc -w",
+    "minify": "terser dist/index.js -o dist/index.min.js --compress --mangle --source-map",
+    "lint": "echo 'Linting placeholder - add ESLint/Prettier later'",
+    "type-check": "tsc --noEmit",
+    "security:audit": "yarn audit",
+    "security:audit-fix": "yarn audit fix",
+    "security:check": "yarn audit --level moderate",
+    "deps:check": "yarn outdated",
+    "deps:update": "yarn upgrade",
+    "precommit": "yarn lint && yarn type-check && yarn test",
+    "prepare": "yarn build"
   },
 
   "devDependencies": {
