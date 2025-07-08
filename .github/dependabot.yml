@@ -1,0 +1,81 @@
+version: 2
+updates:
+  # Enable version updates for Yarn
+  - package-ecosystem: "npm"  # Use "npm" ecosystem for Yarn projects
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "02:00"
+      timezone: "UTC"
+
+    # Limit the number of open pull requests
+    open-pull-requests-limit: 5
+
+    # Reviewers and assignees
+    reviewers:
+      - "maniartech"
+    assignees:
+      - "maniartech"
+
+    # Commit message preferences
+    commit-message:
+      prefix: "chore"
+      prefix-development: "chore"
+      include: "scope"
+
+    # Group updates by dependency type
+    groups:
+      # Group production dependencies
+      production-dependencies:
+        dependency-type: "production"
+        update-types:
+          - "minor"
+          - "patch"
+
+      # Group development dependencies
+      development-dependencies:
+        dependency-type: "development"
+        update-types:
+          - "minor"
+          - "patch"
+
+      # Group security updates (these get priority)
+      security-updates:
+        patterns:
+          - "*"
+        update-types:
+          - "security"
+
+    # Ignore specific packages that may cause breaking changes
+    ignore:
+      # Ignore major version updates for core dependencies
+      - dependency-name: "typescript"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "jest"
+        update-types: ["version-update:semver-major"]
+
+    # Allow Dependabot to resolve conflicts
+    rebase-strategy: "auto"
+
+    # Labels to add to pull requests
+    labels:
+      - "dependencies"
+      - "automated"
+
+  # Enable version updates for GitHub Actions
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "03:00"
+      timezone: "UTC"
+
+    commit-message:
+      prefix: "ci"
+      include: "scope"
+
+    labels:
+      - "github-actions"
+      - "automated"
