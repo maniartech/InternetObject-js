@@ -19,6 +19,8 @@ export { default as InternetObjectError           } from './errors/io-error';
 export { default as InternetObjectSyntaxError     } from './errors/io-syntax-error';
 export { default as InternetObjectValidationError } from './errors/io-validation-error';
 export { default as Schema                        } from './schema/schema';
+export { default as parse                         } from './parser/index';
+export { default as parseDefinitions              } from './parser/parse-defs';
 
 // Main tag functions (also tree-shakable)
 export { ioDefinitions, ioDocument, ioObject } from './facade';

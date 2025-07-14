@@ -288,7 +288,7 @@ class Tokenizer {
         token.subType = TokenType.TIME
         break;
       default:
-      assertNever(annotation);
+        assertNever(annotation);
     }
 
     const dt = fn(token.value);
