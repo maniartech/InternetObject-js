@@ -161,14 +161,11 @@ class ASTParser {
 
     // Parse the collection ~
     if (token.type === TokenType.COLLECTION_START) {
-      this.isCollection = true;
-      const collection = this.processCollection();
-      this.isCollection = false;
-      return collection;
+      return this.processCollection();
     }
 
     // Parse the single object {}
-    return this.processObject()
+    return this.processObject(false);
   }
 
   private processCollection(): CollectionNode {
@@ -179,8 +176,7 @@ class ASTParser {
       this.advance();
 
       // Parse the object and add to the collection
-      objects.push(this.processObject());
-
+      objects.push(this.processObject(true));
       // No explicit delimiter check is required since the `~`
       // itself acts as both a delimiter and an indicator for
       // the next object.
@@ -189,13 +185,13 @@ class ASTParser {
     return new CollectionNode(objects);
   }
 
-  private processObject(): ObjectNode {
+  private processObject(isCollectionContext: boolean): ObjectNode {
     const obj = this.parseObject(true);
 
     // Even after parsing the object, if there is still a token
     // left, it means that the object is not closed properly.
-    const token = this.peek()
-    this.checkForPendingTokens(token);
+    const token = this.peek();
+    this.checkForPendingTokens(token, isCollectionContext);
 
     // If there is only one member in the object, and it has no key,
     // then the object is not an open object. In this case, we need
@@ -219,13 +215,12 @@ class ASTParser {
     return obj;
   }
 
-  private checkForPendingTokens(token: Token | null) {
+  private checkForPendingTokens(token: Token | null, isCollectionContext: boolean) {
     if (!token) return;
 
-    if (token.type === TokenType.SECTION_SEP) return
+    if (token.type === TokenType.SECTION_SEP) return;
 
-    if (this.isCollection &&
-      token.type === TokenType.COLLECTION_START) return;
+    if (isCollectionContext && token.type === TokenType.COLLECTION_START) return;
 
     throw new SyntaxError(
       ErrorCodes.unexpectedToken,
