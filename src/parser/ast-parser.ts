@@ -162,7 +162,9 @@ class ASTParser {
     // Parse the collection ~
     if (token.type === TokenType.COLLECTION_START) {
       this.isCollection = true;
-      return this.processCollection()
+      const collection = this.processCollection();
+      this.isCollection = false;
+      return collection;
     }
 
     // Parse the single object {}
@@ -234,7 +236,6 @@ class ASTParser {
 
   private parseObject(isOpenObject: boolean): ObjectNode {
     const members: Array<MemberNode> = [];
-
     let openBracket: Token | null = this.peek();
     if (isOpenObject) {
       openBracket = null;
@@ -246,11 +247,12 @@ class ASTParser {
     }
 
     let index = 0;
-    while (true) {
+    let done = false;
+    while (!done) {
       const nextToken = this.peek();
 
       if (!nextToken || this.match([TokenType.CURLY_CLOSE, TokenType.COLLECTION_START, TokenType.SECTION_SEP])) {
-        this.backtrack();
+        done = true;
         break;
       } else if (nextToken.type === TokenType.COMMA) {
         // If the next token is a comma(, or new object)
@@ -258,13 +260,9 @@ class ASTParser {
         // Consume the comma and continue.
         if (this.matchNext([TokenType.COMMA, TokenType.CURLY_CLOSE, TokenType.COLLECTION_START, TokenType.SECTION_SEP])) {
           this.pushUndefinedMember(members, nextToken);
-        }
-
-        // If the next one is the end of file add undfined
-        else if (this.current + 1 === this.tokens.length) {
+        } else if (this.current + 1 === this.tokens.length) {
           this.pushUndefinedMember(members, nextToken);
         }
-
         this.advance();
         continue;
       } else {
@@ -280,35 +278,25 @@ class ASTParser {
             );
           }
         }
-
         const member = this.parseMember();
         members.push(member);
-        this.advance();
-
-        if (this.peek() ?.type === TokenType.CURLY_CLOSE) {
-          this.backtrack();
-          break;
-        }
-
         index++;
       }
     }
 
-    // consume closing bracket
-    this.advance();
-    let closeBracket: Token | null = this.peek();
-    if (isOpenObject) {
-      closeBracket = null;
+    // Now, expect a closing bracket if not open object
+    if (!isOpenObject) {
+      if (!this.match([TokenType.CURLY_CLOSE])) {
+        const lastToken = this.peek();
+        throw new SyntaxError(ErrorCodes.expectingBracket, Symbols.CURLY_CLOSE,
+          lastToken === null ? void 0 : lastToken, lastToken === null);
+      }
+      let closeBracket: Token | null = this.peek();
+      this.advance();
+      return new ObjectNode(members, openBracket!, closeBracket!);
+    } else {
       return new ObjectNode(members);
     }
-
-    if (!this.match([TokenType.CURLY_CLOSE])) {
-      const lastToken = this.peek()
-      throw new SyntaxError(ErrorCodes.expectingBracket, Symbols.CURLY_CLOSE,
-        lastToken === null ? void 0 : lastToken, lastToken === null);
-    }
-
-    return new ObjectNode(members, openBracket!, closeBracket!);
   }
 
   private parseMember(): MemberNode {
@@ -348,31 +336,42 @@ class ASTParser {
 
   private parseArray(): ArrayNode  {
     const arr: Array<Node | undefined> = [];
-
     const openBracket = this.peek();
-
-    // Assume that the current token is the opening bracket
+    if (!openBracket || openBracket.type !== TokenType.BRACKET_OPEN) {
+      throw new SyntaxError(
+        ErrorCodes.expectingBracket,
+        Symbols.BRACKET_OPEN,
+        openBracket === null ? void 0 : openBracket,
+        openBracket === null
+      );
+    }
     // Consume the opening bracket
     this.advance();
 
     while (true) {
       const currentToken = this.peek();
-      if (!currentToken || currentToken.type === TokenType.BRACKET_CLOSE) {
-        this.backtrack();
+      if (!currentToken) {
+        // Unexpected end of input
+        throw new SyntaxError(
+          ErrorCodes.expectingBracket,
+          Symbols.BRACKET_CLOSE,
+          void 0,
+          true
+        );
+      }
+      if (currentToken.type === TokenType.BRACKET_CLOSE) {
         break;
       } else if (currentToken.type === TokenType.COMMA) {
         // If the next token is a comma or a closing bracket, it implies an undefined
         // element in the array, which is not allowed. Throw an error.
         if (this.matchNext([TokenType.COMMA, TokenType.BRACKET_CLOSE])) {
           const nextToken = this.tokens[this.current + 1];
-
           throw new SyntaxError(
             ErrorCodes.unexpectedToken,
             "Unexpected token ,",
             nextToken, false
           );
         }
-
         // consume the current comma
         this.advance();
         continue;
@@ -384,25 +383,11 @@ class ASTParser {
       } else {
         arr.push(member.value);
       }
-
-
-      // const value = this.parseValue();
-      // arr.push(value);
-      this.advance();
-
-
-
-      if (this.peek() ?.type === TokenType.BRACKET_CLOSE) {
-        this.backtrack();
-        break;
-      }
     }
 
-    // consume closing bracket
-    this.advance();
-
-    const closeBracket = this.peek();
-    if (!closeBracket || closeBracket.type !== TokenType.BRACKET_CLOSE) {
+    // Now, expect a closing bracket
+    if (!this.match([TokenType.BRACKET_CLOSE])) {
+      const closeBracket = this.peek();
       throw new SyntaxError(
         ErrorCodes.expectingBracket,
         Symbols.BRACKET_CLOSE,
@@ -410,8 +395,10 @@ class ASTParser {
         closeBracket === null
       );
     }
-
-    return new ArrayNode(arr, openBracket!, closeBracket);
+    const closeBracket = this.peek();
+    this.advance();
+    // Both openBracket and closeBracket are guaranteed to be Token (not null) here
+    return new ArrayNode(arr, openBracket, closeBracket!);
   }
 
   private parseValue(): Node {
@@ -428,8 +415,11 @@ class ASTParser {
       case TokenType.DECIMAL:
       case TokenType.BOOLEAN:
       case TokenType.NULL:
-      case TokenType.DATETIME:
-        return new TokenNode(token);
+      case TokenType.DATETIME: {
+        const node = new TokenNode(token);
+        this.advance();
+        return node;
+      }
       case TokenType.BRACKET_OPEN:
         return this.parseArray();
       case TokenType.CURLY_OPEN:
