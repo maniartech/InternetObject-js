@@ -8,13 +8,45 @@ import { ioObject } from "../src/template-funcs";
 // ⚠️ broken test cases or incomplete, left out and commented code
 // ⚠️ and imports. Please ignore this file.
 describe('Trial', () => {
-  it('should try wip tasks', () => {
+  it('should debug escape sequence handling', () => {
+    const tokenizer = new Tokenizer('"valid\\z invalid"');
+    const tokens = tokenizer.tokenize();
+    
+    console.log('Escape sequence test:');
+    console.log('Input: "valid\\z invalid"');
+    console.log('Token value:', JSON.stringify(tokens[0].value));
+    console.log('Expected: "validz invalid"');
+    console.log('Actual behavior:', tokens[0].value === "validz invalid" ? "CORRECT" : "INCORRECT");
+  });
 
-    const o = ioObject`
-      name: aamir, age: 50
-    `
+  it('should debug hex escape sequence handling', () => {
+    const tokenizer = new Tokenizer('"valid\\xZZ invalid"');
+    const tokens = tokenizer.tokenize();
+    
+    console.log('\nHex escape sequence test:');
+    console.log('Input: "valid\\xZZ invalid"');
+    console.log('Token value:', JSON.stringify(tokens[0].value));
+    console.log('Expected: "validxZZ invalid"');
+    console.log('Actual behavior:', tokens[0].value === "validxZZ invalid" ? "CORRECT" : "INCORRECT");
+  });
 
-    console.log(o?.toJSON());
+  it('should debug unicode escape sequence handling', () => {
+    const tokenizer = new Tokenizer('"valid\\uZZZZ invalid"');
+    const tokens = tokenizer.tokenize();
+    
+    console.log('\nUnicode escape sequence test:');
+    console.log('Input: "valid\\uZZZZ invalid"');
+    console.log('Token value:', JSON.stringify(tokens[0].value));
+    console.log('Expected: "validuZZZZ invalid"');
+    console.log('Actual behavior:', tokens[0].value === "validuZZZZ invalid" ? "CORRECT" : "INCORRECT");
+  });
 
+  it('should debug byte string handling', () => {
+    const tokenizer = new Tokenizer('b"unclosed base64, "valid string"');
+    const tokens = tokenizer.tokenize();
+    
+    console.log('\nByte string test:');
+    console.log('Input: b"unclosed base64, "valid string"');
+    console.log('Tokens:', tokens.map(t => ({type: t.type, value: t.value, token: t.token})));
   });
 });

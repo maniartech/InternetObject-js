@@ -26,6 +26,7 @@ enum TokenType {
   SECTION_NAME      = 'SECTION_NAME',
   COLLECTION_START  = 'COLLECTION_START',
   UNKNOWN           = 'UNKNOWN',
+  ERROR             = 'ERROR',
 }
 
 export default TokenType;
