@@ -1,5 +1,5 @@
 // Decimal.test.ts
-import { Decimal, DecimalError } from '../src/core/decimal';
+import Decimal, { DecimalError } from '../src/core/decimal';
 
 describe('Decimal Class', () => {
     // Parsing from Strings
