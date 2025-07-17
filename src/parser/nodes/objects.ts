@@ -72,6 +72,73 @@ class ObjectNode extends ContainerNode {
 
     return o;
   }
+
+  // Utility Methods
+  isEmpty(): boolean {
+    return this.children.length === 0 || this.children.every(child => child === undefined);
+  }
+
+  toDebugString(): string {
+    const memberStrings = this.children.map((child, index) => {
+      if (!child) return `[${index}]: undefined`;
+      
+      const member = child as MemberNode;
+      const keyStr = member.key ? member.key.value : `[${index}]`;
+      const valueStr = member.value ? 
+        (typeof member.value.toValue === 'function' ? 
+          JSON.stringify(member.value.toValue()) : 
+          String(member.value)) : 
+        'undefined';
+      
+      return `${keyStr}: ${valueStr}`;
+    });
+
+    return `ObjectNode { ${memberStrings.join(', ')} }`;
+  }
+
+  hasKey(key: string): boolean {
+    return this.children.some(child => {
+      if (!child) return false;
+      const member = child as MemberNode;
+      return member.key && member.key.value === key;
+    });
+  }
+
+  getKeys(): string[] {
+    const keys: string[] = [];
+    this.children.forEach((child, index) => {
+      if (child) {
+        const member = child as MemberNode;
+        if (member.key) {
+          keys.push(member.key.value);
+        } else {
+          keys.push(index.toString());
+        }
+      }
+    });
+    return keys;
+  }
+
+  isValid(): boolean {
+    // An object is valid if none of its members contain ErrorNodes
+    return this.children.every(child => {
+      if (!child) return true; // undefined members are considered valid
+      
+      const member = child as MemberNode;
+      
+      // Check if the member value is an ErrorNode
+      if (member.value && (member.value as any).error !== undefined) {
+        return false;
+      }
+      
+      // Check if the member key is an ErrorNode (though this is less common)
+      if (member.key && (member.key as any).error !== undefined) {
+        return false;
+      }
+      
+      return true;
+    });
+  }
 }
 
 export default ObjectNode;
