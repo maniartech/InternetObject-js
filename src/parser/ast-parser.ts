@@ -205,7 +205,7 @@ class ASTParser {
     // {{}} should be unwrapped to [{}]
     if (obj.children.length === 1) {
       const firstMember = obj.children[0] as MemberNode;
-      if (!firstMember.key) {
+      if (firstMember && !firstMember.key && firstMember.value) {
         if (firstMember.value instanceof ObjectNode) {
           return firstMember.value as ObjectNode;
         }
