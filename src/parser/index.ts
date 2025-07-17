@@ -20,7 +20,7 @@ import ParserOptions          from './parser-options';
 import Node                   from './nodes/nodes';
 
 
-export default function parse(source: string, externalDefs: Definitions | null,  o: ParserOptions = {}): Document {
+export default function parse(source: string, externalDefs: Definitions | null, o: ParserOptions = {}): Document {
   // Tokenize the source
   const tokenizer = new Tokenizer(source);
   const tokens    = tokenizer.tokenize();
@@ -63,19 +63,11 @@ export default function parse(source: string, externalDefs: Definitions | null, 
     }
 
     parseDataWithSchema(docNode, doc);
-    // if (doc.header) {
-    // } else {
-    //   parseData(docNode, doc);
-    // }
   } else {
     if (externalDefs) {
       doc.header.definitions.merge(externalDefs, false);
     }
     parseDataWithSchema(docNode, doc);
-    // if (doc.header) {
-    // } else {
-    //   parseData(docNode, doc);
-    // }
   }
   return doc;
 }
@@ -88,10 +80,6 @@ function parseData(docNode: DocumentNode, doc: Document) {
 }
 
 function parseDataWithSchema(docNode: DocumentNode, doc: Document) {
-  // if (!doc.header.schema) {
-  //   assertNever("Schema is required");
-  // }
-
   for (let i = 0; i < docNode.children.length; i++) {
     const sectionNode = docNode.children[i];
     const schemaName = sectionNode.schemaName
@@ -107,10 +95,11 @@ function parseDataWithSchema(docNode: DocumentNode, doc: Document) {
   }
 }
 
-function parseDefs(doc:Document, cols:CollectionNode) {
+function parseDefs(doc: Document, cols: CollectionNode) {
   const defs = (doc.header as any).definitions
   const schemaDefs: { key: string, schemaDef: Node }[] = []
-  for (let i=0; i<cols.children.length; i++) {
+  
+  for (let i = 0; i < cols.children.length; i++) {
     const child = cols.children[i] as ObjectNode;
 
     // If child is null then skip
@@ -125,7 +114,6 @@ function parseDefs(doc:Document, cols:CollectionNode) {
 
     // Must not be null
     if (child.children[0] === null) {
-      // throw new InternetObjectError(ErrorCodes.invalidDefinition)
       assertNever("Invalid definition");
     }
 
@@ -134,7 +122,7 @@ function parseDefs(doc:Document, cols:CollectionNode) {
       // throw new InternetObjectError(ErrorCodes.invalidDefinition, child.children?.[1], child.children?[1])
     }
 
-    const memberNode  = (child.children[0] as MemberNode)
+    const memberNode = (child.children[0] as MemberNode)
 
     // Must have a key
     if (!memberNode.key) {
@@ -148,7 +136,7 @@ function parseDefs(doc:Document, cols:CollectionNode) {
       throw new Error("Invalid typedef definition");
     }
 
-    let key:string = keyToken.value as string
+    let key: string = keyToken.value as string
 
     // If key starts with $, then it is a schema. Dont compile it now,
     // just keep it as it is. After all the definitions are parsed, compile
@@ -165,12 +153,12 @@ function parseDefs(doc:Document, cols:CollectionNode) {
       continue;
     }
 
-    let value:Node = (child.children[0] as MemberNode).value;
+    let value: Node = (child.children[0] as MemberNode).value;
     defs.push(key, value.toValue(doc.header.definitions || undefined));
   }
 
   // Compile the schema definitions
-  for (let i=0; i<schemaDefs.length; i++) {
+  for (let i = 0; i < schemaDefs.length; i++) {
     const { key, schemaDef } = schemaDefs[i];
     const def = compileObject(key, schemaDef, defs);
 
