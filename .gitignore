@@ -148,3 +148,5 @@ vulnerability-report.json
 .Trashes
 ehthumbs.db
 Thumbs.db
+
+*/specs/**
