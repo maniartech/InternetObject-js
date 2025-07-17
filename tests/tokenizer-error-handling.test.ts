@@ -8,17 +8,17 @@ describe("Tokenizer Error Handling", () => {
       const tokenizer = new Tokenizer(input);
       const tokens = tokenizer.tokenize();
 
-      expect(tokens).toHaveLength(3); 
+      expect(tokens).toHaveLength(3);
       // First token: closed string "unclosed string, "
       expect(tokens[0].type).toBe(TokenType.STRING);
       expect(tokens[0].subType).toBe("REGULAR_STRING");
       expect(tokens[0].value).toBe('unclosed string, ');
-      
+
       // Second token: open string "valid string"
       expect(tokens[1].type).toBe(TokenType.STRING);
       expect(tokens[1].subType).toBe("OPEN_STRING");
       expect(tokens[1].value).toBe('valid string');
-      
+
       // Third token: error token for the unclosed quote
       expect(tokens[2].type).toBe(TokenType.ERROR);
       expect(tokens[2].value.__error).toBe(true);
@@ -74,12 +74,12 @@ describe("Tokenizer Error Handling", () => {
       expect(tokens[0].type).toBe(TokenType.STRING);
       expect(tokens[0].subType).toBe("RAW_STRING");
       expect(tokens[0].value).toBe("unclosed raw, ");
-      
+
       // Second token: open string
       expect(tokens[1].type).toBe(TokenType.STRING);
       expect(tokens[1].subType).toBe("OPEN_STRING");
       expect(tokens[1].value).toBe("valid string");
-      
+
       // Third token: error for unclosed quote
       expect(tokens[2].type).toBe(TokenType.ERROR);
       expect(tokens[2].value.__error).toBe(true);
@@ -150,6 +150,8 @@ describe("Tokenizer Error Handling", () => {
       const tokenizer = new Tokenizer(input);
       const tokens = tokenizer.tokenize();
 
+      console.log(tokens);
+
       // Should have: section separator, section name, error token, then continue with content
       expect(tokens.length).toBeGreaterThan(3);
       expect(tokens[0].type).toBe(TokenType.SECTION_SEP);
@@ -168,14 +170,14 @@ describe("Tokenizer Error Handling", () => {
         number: 42,
         validArray: [1, 2, 3]
       }`;
-      
+
       const tokenizer = new Tokenizer(input);
       const tokens = tokenizer.tokenize();
 
       // Should parse valid parts correctly
       const numberTokens = tokens.filter(t => t.type === TokenType.NUMBER);
       expect(numberTokens.length).toBeGreaterThanOrEqual(4); // 42, 1, 2, 3
-      
+
       const stringTokens = tokens.filter(t => t.type === TokenType.STRING);
       expect(stringTokens.length).toBeGreaterThan(0);
     });
@@ -187,10 +189,10 @@ describe("Tokenizer Error Handling", () => {
 
       const errorTokens = tokens.filter(t => t.type === TokenType.ERROR);
       const validTokens = tokens.filter(t => t.type === TokenType.STRING && !t.value.__error);
-      
+
       expect(errorTokens.length).toBeGreaterThan(0);
       expect(validTokens.length).toBeGreaterThan(0);
-      
+
       // Should still find the valid string at the end
       const lastValidToken = validTokens.find(t => t.value === "valid");
       expect(lastValidToken).toBeDefined();
@@ -205,14 +207,14 @@ describe("Tokenizer Error Handling", () => {
 
       const errorToken = tokens.find(t => t.type === TokenType.ERROR);
       expect(errorToken).toBeDefined();
-      
+
       expect(errorToken!.type).toBe(TokenType.ERROR);
       expect(errorToken!.value).toHaveProperty("__error", true);
       expect(errorToken!.value).toHaveProperty("message");
       expect(errorToken!.value).toHaveProperty("originalError");
       expect(typeof errorToken!.value.message).toBe("string");
       expect(errorToken!.value.originalError).toBeInstanceOf(Error);
-      
+
       // Should have valid position information
       expect(errorToken!.pos).toBeGreaterThanOrEqual(0);
       expect(errorToken!.row).toBeGreaterThanOrEqual(1);

@@ -1,97 +1,132 @@
+
 import Tokenizer from "../src/parser/tokenizer";
 import ASTParser from "../src/parser/ast-parser";
-import { ioObject } from "../src/template-funcs";
 
-// ⚠️ This is a trial test file to try out new features and test cases
-// ⚠️ It's not a part of the main test suite. It's just for testing
-// ⚠️ work in progress features and test cases. You may find some
-// ⚠️ broken test cases or incomplete, left out and commented code
-// ⚠️ and imports. Please ignore this file.
-describe('Trial', () => {
-  it('should debug escape sequence handling', () => {
-    const tokenizer = new Tokenizer('"valid\\z invalid"');
-    const tokens = tokenizer.tokenize();
-    
-    console.log('Escape sequence test:');
-    console.log('Input: "valid\\z invalid"');
-    console.log('Token value:', JSON.stringify(tokens[0].value));
-    console.log('Expected: "validz invalid"');
-    console.log('Actual behavior:', tokens[0].value === "validz invalid" ? "CORRECT" : "INCORRECT");
-  });
-
-  it('should debug hex escape sequence handling', () => {
-    const tokenizer = new Tokenizer('"valid\\xZZ invalid"');
-    const tokens = tokenizer.tokenize();
-    
-    console.log('\nHex escape sequence test:');
-    console.log('Input: "valid\\xZZ invalid"');
-    console.log('Token value:', JSON.stringify(tokens[0].value));
-    console.log('Expected: "validxZZ invalid"');
-    console.log('Actual behavior:', tokens[0].value === "validxZZ invalid" ? "CORRECT" : "INCORRECT");
-  });
-
-  it('should debug unicode escape sequence handling', () => {
-    const tokenizer = new Tokenizer('"valid\\uZZZZ invalid"');
-    const tokens = tokenizer.tokenize();
-    
-    console.log('\nUnicode escape sequence test:');
-    console.log('Input: "valid\\uZZZZ invalid"');
-    console.log('Token value:', JSON.stringify(tokens[0].value));
-    console.log('Expected: "validuZZZZ invalid"');
-    console.log('Actual behavior:', tokens[0].value === "validuZZZZ invalid" ? "CORRECT" : "INCORRECT");
-  });
-
-  it('should debug byte string handling', () => {
-    const tokenizer = new Tokenizer('b"unclosed base64, "valid string"');
-    const tokens = tokenizer.tokenize();
-    
-    console.log('\nByte string test:');
-    console.log('Input: b"unclosed base64, "valid string"');
-    console.log('Tokens:', tokens.map(t => ({type: t.type, value: t.value, token: t.token})));
-  });
-
-  it('should debug collection error recovery', () => {
-    const input = `
-    ~ valid, object, here
-    ~ invalid { unclosed object
-    ~ another, valid, object
-    `;
-    
+// Only failing tests for isolation
+describe('Trial - Failing Tests Only', () => {
+  it('FAILING TEST 1: Section Separator Error Recovery', () => {
+    // ...existing code...
+    const input = `--- sectionName :
+    some content here`;
     const tokenizer = new Tokenizer(input);
     const tokens = tokenizer.tokenize();
-    
-    console.log('\nTokens:');
-    tokens.forEach((token, index) => {
-      console.log(`${index}: ${token.type} - "${token.token}"`);
-    });
-    
-    const astParser = new ASTParser(tokens);
-    const docNode = astParser.parse();
+    // ...existing code...
+    // Expected: SECTION_SEP, STRING with SECTION_NAME subtype, ERROR token
+    // ...existing code...
+  });
 
-    console.log('\nCollection error recovery test:');
-    console.log('Document children:', docNode.children.length);
-    
-    const section = docNode.children[0];
-    console.log('Section child type:', section.child?.constructor.name);
-    
-    if (section.child) {
-      const collection = section.child;
-      console.log('Collection children count:', collection.children.length);
-      
-      if (collection.constructor.name === 'CollectionNode') {
-        const collectionNode = collection as any;
-        console.log('Collection size():', collectionNode.size());
-        console.log('Collection hasValidItems():', collectionNode.hasValidItems());
-        console.log('Collection isValid():', collectionNode.isValid());
-        console.log('Collection getValidItems() count:', collectionNode.getValidItems().length);
-      }
-      
-      collection.children.forEach((child, index) => {
-        console.log(`Child ${index}:`, child?.constructor.name);
-        if (child?.constructor.name === 'ErrorNode') {
-          console.log(`  Error message:`, (child as any).error?.message);
-        }
-      });
+  it('FAILING TEST 2: Collection Error Recovery Across Multiple Sections', () => {
+    // ...existing code...
+    const input = `
+    --- section1
+    ~ valid, object, here
+    ~ invalid { unclosed
+    ~ another, valid, object
+    --- section2
+    ~ more, valid, data
+    `;
+    const tokenizer = new Tokenizer(input);
+    const tokens = tokenizer.tokenize();
+    // ...existing code...
+    try {
+      const astParser = new ASTParser(tokens);
+      const docNode = astParser.parse();
+      // ...existing code...
+    } catch (error) {
+      // ...existing code...
     }
+  });
+
+  it('FAILING TEST 3: AST Parser - Documents in Multiple Sections', () => {
+    // ...existing code...
+    const input = `
+    --- hello
+    ~ a,b,c
+    ~ 1,2,3
+    --- world
+    ~ "asdf",True,"c"
+    `;
+    const tokenizer = new Tokenizer(input);
+    const tokens = tokenizer.tokenize();
+    // ...existing code...
+    try {
+      const astParser = new ASTParser(tokens);
+      const docNode = astParser.parse();
+      // ...existing code...
+    } catch (error) {
+      // ...existing code...
+    }
+  });
+
+  it('FAILING TEST 4: AST Parser - Multiple Schema with Sections', () => {
+    // ...existing code...
+    const input = `
+    ~ $schema1: {a: int, b: int}
+    ~ $schema2: {name: str, age: int}
+    --- $schema1
+    ~ 1,2
+    ~ 3,4
+    --- people: $schema2
+    ~ "Alice", 25
+    ~ "Bob", 30
+    ~ "Charlie", 35
+    `;
+    const tokenizer = new Tokenizer(input);
+    const tokens = tokenizer.tokenize();
+    // ...existing code...
+    try {
+      const astParser = new ASTParser(tokens);
+      const docNode = astParser.parse();
+      // ...existing code...
+    } catch (error) {
+      // ...existing code...
+    }
+  });
+
+  it('FAILING TEST 5: AST Parser - Variables in Header Section', () => {
+    // ...existing code...
+    const input = `
+    ~ mum: "Mumbai"
+    ~ del: "Delhi"
+    ~ $details: {name: str, age: int, city: str}
+    --- people:$details
+    ~ "Alice", 25, @mum
+    ~ "Bob", 30, @del
+    `;
+    const tokenizer = new Tokenizer(input);
+    const tokens = tokenizer.tokenize();
+    // ...existing code...
+    try {
+      const astParser = new ASTParser(tokens);
+      const docNode = astParser.parse();
+      // ...existing code...
+    } catch (error) {
+      // ...existing code...
+    }
+  });
+
+  it('FAILING TEST 6: Performance Test Timing Issues', () => {
+    // ...existing code...
+    const input = 'name: "John", age: 30, active: true';
+    const iterations = 1000; // Reduced for trial
+    const startTime = performance.now();
+    for (let i = 0; i < iterations; i++) {
+      const tokenizer = new Tokenizer(input);
+      const tokens = tokenizer.tokenize();
+      const parser = new ASTParser(tokens);
+      parser.parse();
+    }
+    const endTime = performance.now();
+    const totalTime = endTime - startTime;
+    const avgTime = totalTime / iterations;
+    // ...existing code...
+  });
+
+  it('FAILING TEST 7: Tokenizer Section Name Subtype Issue', () => {
+    // ...existing code...
+    const input = '--- sectionName';
+    const tokenizer = new Tokenizer(input);
+    const tokens = tokenizer.tokenize();
+    // ...existing code...
   });
 });
