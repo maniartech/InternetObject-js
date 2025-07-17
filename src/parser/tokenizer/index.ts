@@ -20,8 +20,8 @@ const REGEX_CACHE = {
   hex: /^[0-9a-fA-F]+$/,
   octal: /^[0-7]+$/,
   binary: /^[01]+$/,
-  sectionSchemaName: /^(?:(?:(?<n>[\p{L}\p{M}\p{N}\-_]+)(?<sep>[ \t]*:[ \t]*)?)(?<schema>\$[\p{L}\p{M}\p{N}\-_]+)?|(?<schema2>\$[\p{L}\p{M}\p{N}\-_]+))/u,
-  annotatedStrStart: /^(?<n>[a-zA-Z]{1,4})(?<quote>['"])/,
+  sectionSchemaName: /^(?:(?:(?<name>[\p{L}\p{M}\p{N}\-_]+)(?<sep>[ \t]*:[ \t]*)?)(?<schema>\$[\p{L}\p{M}\p{N}\-_]+)?|(?<schema2>\$[\p{L}\p{M}\p{N}\-_]+))/u,
+  annotatedStrStart: /^(?<name>[a-zA-Z]{1,4})(?<quote>['"])/,
   base64: /^[A-Za-z0-9+/]*={0,2}$/
 } as const;
 
@@ -316,7 +316,9 @@ class Tokenizer {
     // create an error token for the unclosed string
     if (this.reachedEnd) {
       const tokenText = this.input.substring(start, this.pos);
-      const error = new SyntaxError(ErrorCodes.stringNotClosed, void 0, this.currentPosition);
+      const error = new SyntaxError(ErrorCodes.stringNotClosed, 
+        `Unterminated string literal. Expected closing quote '"' before end of input.`, 
+        this.currentPosition);
       return this.createErrorToken(error, start, startRow, startCol, tokenText);
     }
 
@@ -345,7 +347,8 @@ class Tokenizer {
     if (this.reachedEnd) {
       throw new SyntaxError(
         ErrorCodes.invalidEscapeSequence,
-        void 0, this.currentPosition, true
+        `Invalid escape sequence at end of input. Expected escape character after backslash.`, 
+        this.currentPosition, true
       )
     }
 
@@ -375,7 +378,8 @@ class Tokenizer {
         } else {
           throw new SyntaxError(
             ErrorCodes.invalidEscapeSequence,
-            hex, this.currentPosition);
+            `Invalid Unicode escape sequence '\\u${hex}'. Expected 4 hexadecimal digits (0-9, A-F).`, 
+            this.currentPosition);
         }
         break;
       case "x":
@@ -388,7 +392,8 @@ class Tokenizer {
         } else {
           throw new SyntaxError(
             ErrorCodes.invalidEscapeSequence,
-            hexByte, this.currentPosition);
+            `Invalid hexadecimal escape sequence '\\x${hexByte}'. Expected 2 hexadecimal digits (0-9, A-F).`, 
+            this.currentPosition);
         }
         break;
       default:
@@ -438,7 +443,9 @@ class Tokenizer {
 
     if (this.reachedEnd) {
       const tokenText = this.input.substring(start, this.pos);
-      const error = new SyntaxError(ErrorCodes.stringNotClosed, void 0, this.currentPosition);
+      const error = new SyntaxError(ErrorCodes.stringNotClosed, 
+        `Unterminated annotated string literal. Expected closing quote '${annotation.quote}' before end of input.`, 
+        this.currentPosition);
       return this.createErrorToken(error, start, startRow, startCol, tokenText);
     }
 
@@ -540,7 +547,9 @@ class Tokenizer {
 
       const dt = fn(token.value);
       if (!dt) {
-        const error = new SyntaxError(ErrorCodes.invalidDateTime, token.value, token);
+        const error = new SyntaxError(ErrorCodes.invalidDateTime, 
+          `Invalid ${annotation.name === 'dt' ? 'datetime' : annotation.name === 'd' ? 'date' : 'time'} format '${token.value}'. Expected valid ISO 8601 format.`, 
+          token);
         return this.createErrorToken(error, token.pos, token.row, token.col, token.token);
       }
 
@@ -961,7 +970,7 @@ class Tokenizer {
           // If the next two chars are -- that means it is a
           // data seperator.
           if (this.input.substring(this.pos, this.pos + 3) === "---") {
-            this.parseSectionSeparator(tokens);
+            tokenIndex = this.parseSectionSeparator(tokens, tokenIndex);
             continue;
           }
         }
@@ -1025,7 +1034,9 @@ class Tokenizer {
               break;
 
             default:
-              const error = new SyntaxError(ErrorCodes.unsupportedAnnotation, `The annotation '${annotation.name}' is not supported`, this.currentPosition);
+              const error = new SyntaxError(ErrorCodes.unsupportedAnnotation, 
+                `Unsupported annotation '${annotation.name}'. Supported annotations are: 'r' (raw string), 'b' (binary), 'dt' (datetime), 'd' (date), 't' (time).`, 
+                this.currentPosition);
               const tokenText = this.input.substring(this.pos, this.pos + annotation.name.length + 1);
               tokens[tokenIndex++] = this.createErrorToken(error, this.pos, this.row, this.col, tokenText);
               this.skipToNextTokenBoundary();
@@ -1044,16 +1055,14 @@ class Tokenizer {
     return tokens;
   }
 
-  private parseSectionSeparator(tokens: Token[]) {
-    tokens.push(
-      Token.init(
-        this.pos,
-        this.row,
-        this.col,
-        "---",
-        "---",
-        TokenType.SECTION_SEP
-      )
+  private parseSectionSeparator(tokens: Token[], tokenIndex: number): number {
+    tokens[tokenIndex++] = Token.init(
+      this.pos,
+      this.row,
+      this.col,
+      "---",
+      "---",
+      TokenType.SECTION_SEP
     );
     this.advance(3); // Advance past the "---"
     this.skipWhitespaces(true);
@@ -1075,30 +1084,26 @@ class Tokenizer {
 
       // When only a schema is provided, the schema is the name
       if (schema2) {
-        tokens.push(
-          Token.init(
-            this.pos,
-            this.row,
-            this.col,
-            schema2,
-            schema2,
-            TokenType.STRING,
-            TokenType.SECTION_SCHEMA
-          )
+        tokens[tokenIndex++] = Token.init(
+          this.pos,
+          this.row,
+          this.col,
+          schema2,
+          schema2,
+          TokenType.STRING,
+          TokenType.SECTION_SCHEMA
         );
         this.advance(schema2.length);
         this.skipWhitespaces(true);
       } else if (name) {
-        tokens.push(
-          Token.init(
-            this.pos,
-            this.row,
-            this.col,
-            name,
-            name,
-            TokenType.STRING,
-            TokenType.SECTION_NAME
-          )
+        tokens[tokenIndex++] = Token.init(
+          this.pos,
+          this.row,
+          this.col,
+          name,
+          name,
+          TokenType.STRING,
+          TokenType.SECTION_NAME
         );
         this.advance(name.length);
         this.skipWhitespaces(true);
@@ -1110,27 +1115,29 @@ class Tokenizer {
 
           // Once the sep is detected, the schema must be present
           if (!schema) {
-            const error = new SyntaxError(ErrorCodes.schemaMissing, void 0, this.currentPosition);
-            tokens.push(this.createErrorToken(error, this.pos, this.row, this.col, ""));
-            return;
+            const error = new SyntaxError(ErrorCodes.schemaMissing, 
+              `Missing schema definition after section separator. Expected schema name starting with '$' (e.g., '$mySchema').`, 
+              this.currentPosition);
+            tokens[tokenIndex++] = this.createErrorToken(error, this.pos, this.row, this.col, "");
+            return tokenIndex;
           }
 
-          tokens.push(
-            Token.init(
-              this.pos,
-              this.row,
-              this.col,
-              schema,
-              schema,
-              TokenType.STRING,
-              TokenType.SECTION_SCHEMA
-            )
+          tokens[tokenIndex++] = Token.init(
+            this.pos,
+            this.row,
+            this.col,
+            schema,
+            schema,
+            TokenType.STRING,
+            TokenType.SECTION_SCHEMA
           );
           this.advance(schema.length);
           this.skipWhitespaces(true);
         }
       }
     }
+    
+    return tokenIndex;
   }
 }
 

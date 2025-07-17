@@ -1,5 +1,6 @@
 import Definitions            from '../core/definitions';
 import ErrorCodes             from '../errors/io-error-codes';
+import InternetObjectError    from '../errors/io-error';
 import ValidationError        from '../errors/io-validation-error';
 import MemberNode             from '../parser/nodes/members';
 import Node                   from '../parser/nodes/nodes';
@@ -51,7 +52,7 @@ export default class AnyDef implements TypeDef {
 
       const typeDef = TypedefRegistry.get(def.type)
       if (!typeDef) {
-        throw new Error(`Invalid type definition '${def.type}'`)
+        throw new InternetObjectError(ErrorCodes.invalidType, `Invalid type definition '${def.type}'`)
       }
 
       try {

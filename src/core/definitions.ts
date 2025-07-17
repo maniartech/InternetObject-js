@@ -55,10 +55,11 @@ class Definitions {
     if (key.startsWith("$") || key.startsWith("@")) {
       const def = this._definitions[key];
       if (!def) {
+        const positionParam = (typeof k === 'string') ? undefined : k;
         if (key.startsWith("$")) {
-          throw new ValidationError(ErrorCodes.schemaNotDefined, `Schema ${key} is not defined.`, k);
+          throw new ValidationError(ErrorCodes.schemaNotDefined, `Schema ${key} is not defined.`, positionParam);
         }
-        throw new ValidationError(ErrorCodes.variableNotDefined, `Variable ${key} is not defined.`, k);
+        throw new ValidationError(ErrorCodes.variableNotDefined, `Variable ${key} is not defined.`, positionParam);
       }
       if (def.isVariable) {
         return def.value;
