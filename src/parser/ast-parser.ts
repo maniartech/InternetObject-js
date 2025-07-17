@@ -7,6 +7,7 @@ import Token            from './tokenizer/tokens';
 import ArrayNode        from './nodes/array';
 import CollectionNode   from './nodes/collections';
 import DocumentNode     from './nodes/document';
+import ErrorNode        from './nodes/error';
 import MemberNode       from './nodes/members';
 import Node             from './nodes/nodes';
 import ObjectNode       from './nodes/objects';
@@ -175,14 +176,34 @@ class ASTParser {
       // Consume the COLLECTION_START token
       this.advance();
 
-      // Parse the object and add to the collection
-      objects.push(this.processObject(true));
+      try {
+        // Parse the object and add to the collection
+        objects.push(this.processObject(true));
+      } catch (error) {
+        // Create error node and skip to next collection item
+        const currentToken = this.peek();
+        const position = currentToken ? currentToken.getStartPos() : { pos: -1, row: -1, col: -1 };
+        objects.push(new ErrorNode(error as Error, position));
+        this.skipToNextCollectionItem();
+      }
       // No explicit delimiter check is required since the `~`
       // itself acts as both a delimiter and an indicator for
       // the next object.
     }
 
     return new CollectionNode(objects);
+  }
+
+  /**
+   * Skips tokens until the next collection item (COLLECTION_START token) or section end.
+   * This is used for error recovery in collection parsing.
+   */
+  private skipToNextCollectionItem(): void {
+    // Skip tokens until we find next `~` (COLLECTION_START) or section end
+    while (this.peek() && 
+           !this.match([TokenType.COLLECTION_START, TokenType.SECTION_SEP])) {
+      this.advance();
+    }
   }
 
   private processObject(isCollectionContext: boolean): ObjectNode {
