@@ -49,4 +49,49 @@ describe('Trial', () => {
     console.log('Input: b"unclosed base64, "valid string"');
     console.log('Tokens:', tokens.map(t => ({type: t.type, value: t.value, token: t.token})));
   });
+
+  it('should debug collection error recovery', () => {
+    const input = `
+    ~ valid, object, here
+    ~ invalid { unclosed object
+    ~ another, valid, object
+    `;
+    
+    const tokenizer = new Tokenizer(input);
+    const tokens = tokenizer.tokenize();
+    
+    console.log('\nTokens:');
+    tokens.forEach((token, index) => {
+      console.log(`${index}: ${token.type} - "${token.token}"`);
+    });
+    
+    const astParser = new ASTParser(tokens);
+    const docNode = astParser.parse();
+
+    console.log('\nCollection error recovery test:');
+    console.log('Document children:', docNode.children.length);
+    
+    const section = docNode.children[0];
+    console.log('Section child type:', section.child?.constructor.name);
+    
+    if (section.child) {
+      const collection = section.child;
+      console.log('Collection children count:', collection.children.length);
+      
+      if (collection.constructor.name === 'CollectionNode') {
+        const collectionNode = collection as any;
+        console.log('Collection size():', collectionNode.size());
+        console.log('Collection hasValidItems():', collectionNode.hasValidItems());
+        console.log('Collection isValid():', collectionNode.isValid());
+        console.log('Collection getValidItems() count:', collectionNode.getValidItems().length);
+      }
+      
+      collection.children.forEach((child, index) => {
+        console.log(`Child ${index}:`, child?.constructor.name);
+        if (child?.constructor.name === 'ErrorNode') {
+          console.log(`  Error message:`, (child as any).error?.message);
+        }
+      });
+    }
+  });
 });

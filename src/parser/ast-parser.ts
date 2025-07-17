@@ -23,6 +23,23 @@ class ASTParser {
   // current token index
   private current: number;
 
+  // Cached arrays for performance optimization
+  private static readonly CURLY_OPEN_ARRAY = [TokenType.CURLY_OPEN] as const;
+  private static readonly CURLY_CLOSE_ARRAY = [TokenType.CURLY_CLOSE] as const;
+  private static readonly BRACKET_OPEN_ARRAY = [TokenType.BRACKET_OPEN] as const;
+  private static readonly BRACKET_CLOSE_ARRAY = [TokenType.BRACKET_CLOSE] as const;
+  private static readonly COLLECTION_START_ARRAY = [TokenType.COLLECTION_START] as const;
+  private static readonly SECTION_SEP_ARRAY = [TokenType.SECTION_SEP] as const;
+  private static readonly COMMA_ARRAY = [TokenType.COMMA] as const;
+  private static readonly COLON_ARRAY = [TokenType.COLON] as const;
+  private static readonly COLLECTION_OR_SECTION_ARRAY = [TokenType.COLLECTION_START, TokenType.SECTION_SEP] as const;
+  private static readonly VALID_KEY_TYPES = [
+    TokenType.STRING,
+    TokenType.NUMBER,
+    TokenType.BOOLEAN,
+    TokenType.NULL,
+  ] as const;
+
   constructor(tokens: readonly Token[]) {
     this.tokens = tokens;
     this.current = 0;
@@ -170,7 +187,7 @@ class ASTParser {
   private processCollection(): CollectionNode {
     const objects: Node[] = [];
 
-    while (this.match([TokenType.COLLECTION_START])) {
+    while (this.match(ASTParser.COLLECTION_START_ARRAY)) {
       // Consume the COLLECTION_START token
       this.advance();
 
@@ -199,7 +216,7 @@ class ASTParser {
   private skipToNextCollectionItem(): void {
     // Skip tokens until we find next `~` (COLLECTION_START) or section end
     while (this.peek() &&
-           !this.match([TokenType.COLLECTION_START, TokenType.SECTION_SEP])) {
+           !this.match(ASTParser.COLLECTION_OR_SECTION_ARRAY)) {
       this.advance();
     }
   }
@@ -255,7 +272,7 @@ class ASTParser {
       openBracket = null;
     }
 
-    if (!isOpenObject && !this.advanceIfMatch([TokenType.CURLY_OPEN])) {
+    if (!isOpenObject && !this.advanceIfMatch(ASTParser.CURLY_OPEN_ARRAY)) {
       assertNever("The caller must ensure that this function is called " +
         "only when the next token is {");
     }
@@ -300,7 +317,7 @@ class ASTParser {
 
     // Now, expect a closing bracket if not open object
     if (!isOpenObject) {
-      if (!this.match([TokenType.CURLY_CLOSE])) {
+      if (!this.match(ASTParser.CURLY_CLOSE_ARRAY)) {
         const lastToken = this.peek();
         throw new SyntaxError(ErrorCodes.expectingBracket, Symbols.CURLY_CLOSE,
           lastToken === null ? void 0 : lastToken, lastToken === null);
@@ -321,13 +338,8 @@ class ASTParser {
         "only when the member has at least one token");
     }
 
-    if (this.matchNext([TokenType.COLON])) {
-      const isValidKey = [
-        TokenType.STRING,
-        TokenType.NUMBER,
-        TokenType.BOOLEAN,
-        TokenType.NULL,
-      ].includes(leftToken.type as TokenType);
+    if (this.matchNext(ASTParser.COLON_ARRAY)) {
+      const isValidKey = (ASTParser.VALID_KEY_TYPES as readonly TokenType[]).includes(leftToken.type as TokenType);
 
       if (isValidKey) {
         // Consume the key and colon
@@ -400,7 +412,7 @@ class ASTParser {
     }
 
     // Now, expect a closing bracket
-    if (!this.match([TokenType.BRACKET_CLOSE])) {
+    if (!this.match(ASTParser.BRACKET_CLOSE_ARRAY)) {
       const closeBracket = this.peek();
       throw new SyntaxError(
         ErrorCodes.expectingBracket,

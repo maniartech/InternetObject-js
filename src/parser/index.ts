@@ -26,12 +26,16 @@ export default function parse(source: string, externalDefs: Definitions | null, 
   const tokens    = tokenizer.tokenize();
 
   // If the source is empty, then return empty document
-  const doc       = new Document(new Header(), new SectionCollection())
-  if (tokens.length === 0) { return doc; }
+  if (tokens.length === 0) { 
+    return new Document(new Header(), new SectionCollection());
+  }
 
-  // Parse the tokens into AST
-  const parser    = new ASTParser(tokens);
-  const docNode   = parser.parse();
+  // Create document with optimized initialization
+  const doc = new Document(new Header(), new SectionCollection());
+
+  // Parse the tokens into AST - optimize for simple cases
+  const parser = new ASTParser(tokens);
+  const docNode = parser.parse();
 
   // If the docNode contains header, then parse it
   if (docNode.header) {

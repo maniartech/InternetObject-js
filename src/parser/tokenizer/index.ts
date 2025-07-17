@@ -11,23 +11,117 @@ import Token from './tokens';
 import PositionRange from '../../core/position-range';
 import Decimal from '../../core/decimal';
 
-const regexHex4 = /^[0-9a-fA-F]{4}$/;
-const regexHex2 = /^[0-9a-fA-F]{2}$/;
-const reFloatDigit = /^[0-9.]+$/;
+// Cached regex patterns for performance optimization
+const REGEX_CACHE = {
+  hex4: /^[0-9a-fA-F]{4}$/,
+  hex2: /^[0-9a-fA-F]{2}$/,
+  floatDigit: /^[0-9.]+$/,
+  intDigit: /^[0-9]+$/,
+  hex: /^[0-9a-fA-F]+$/,
+  octal: /^[0-7]+$/,
+  binary: /^[01]+$/,
+  sectionSchemaName: /^(?:(?:(?<n>[\p{L}\p{M}\p{N}\-_]+)(?<sep>[ \t]*:[ \t]*)?)(?<schema>\$[\p{L}\p{M}\p{N}\-_]+)?|(?<schema2>\$[\p{L}\p{M}\p{N}\-_]+))/u,
+  annotatedStrStart: /^(?<n>[a-zA-Z]{1,4})(?<quote>['"])/,
+  base64: /^[A-Za-z0-9+/]*={0,2}$/
+} as const;
 
-const reIntDigit = /^[0-9]+$/;
-const reHex = /^[0-9a-fA-F]+$/;
-const reOctal = /^[0-7]+$/;
-const reBinary = /^[01]+$/;
+// Character code constants for ultra-fast character checking
+const CHAR_CODES = {
+  SPACE: 32,        // ' '
+  TAB: 9,           // '\t'
+  NEWLINE: 10,      // '\n'
+  CARRIAGE_RETURN: 13, // '\r'
+  DOUBLE_QUOTE: 34, // '"'
+  SINGLE_QUOTE: 39, // "'"
+  HASH: 35,         // '#'
+  PLUS: 43,         // '+'
+  MINUS: 45,        // '-'
+  DOT: 46,          // '.'
+  ZERO: 48,         // '0'
+  NINE: 57,         // '9'
+  COLON: 58,        // ':'
+  COMMA: 44,        // ','
+  CURLY_OPEN: 123,  // '{'
+  CURLY_CLOSE: 125, // '}'
+  BRACKET_OPEN: 91, // '['
+  BRACKET_CLOSE: 93, // ']'
+  BACKSLASH: 92,    // '\'
+  TILDE: 126,       // '~'
+  A_UPPER: 65,      // 'A'
+  F_UPPER: 70,      // 'F'
+  A_LOWER: 97,      // 'a'
+  F_LOWER: 102,     // 'f'
+  X_UPPER: 88,      // 'X'
+  X_LOWER: 120,     // 'x'
+  O_UPPER: 79,      // 'O'
+  O_LOWER: 111,     // 'o'
+  B_UPPER: 66,      // 'B'
+  B_LOWER: 98       // 'b'
+} as const;
+
+// Fast character checking functions using character codes
+const isDigitFast = (charCode: number): boolean => charCode >= CHAR_CODES.ZERO && charCode <= CHAR_CODES.NINE;
+const isHexDigitFast = (charCode: number): boolean =>
+  isDigitFast(charCode) ||
+  (charCode >= CHAR_CODES.A_UPPER && charCode <= CHAR_CODES.F_UPPER) ||
+  (charCode >= CHAR_CODES.A_LOWER && charCode <= CHAR_CODES.F_LOWER);
+// Pre-computed lookup for specific Unicode whitespace characters (matching is.ts)
+const WHITESPACE_LOOKUP_FAST = new Set([
+  0x1680, // Ogham space mark
+  0x2028, // Line separator
+  0x2029, // Paragraph separator
+  0x202F, // Narrow no-break space
+  0x205F, // Medium mathematical space
+  0x3000, // Ideographic space
+  0xFEFF  // BOM/Zero width no-break space
+]);
+
+/**
+ * Fast whitespace checking that matches the specification in is.ts
+ */
+const isWhitespaceFast = (charCode: number): boolean => {
+  // Fast path: ASCII whitespace and control characters (U+0000 to U+0020)
+  if (charCode <= 0x20) {
+    return true;
+  }
+
+  // Fast path: Extended ASCII range (U+0021 to U+00FF) - only U+00A0 is whitespace
+  if (charCode <= 0xFF) {
+    return charCode === 0x00A0;
+  }
+
+  // Fast path: Anything above U+FEFF is never whitespace
+  if (charCode > 0xFEFF) {
+    return false;
+  }
+
+  // Fast path: Unicode range U+2000-U+200A (various em/en spaces)
+  if (charCode >= 0x2000 && charCode <= 0x200A) {
+    return true;
+  }
+
+  // Lookup table for remaining Unicode whitespace characters
+  return WHITESPACE_LOOKUP_FAST.has(charCode);
+};
+
+const regexHex4 = REGEX_CACHE.hex4;
+const regexHex2 = REGEX_CACHE.hex2;
+const reFloatDigit = REGEX_CACHE.floatDigit;
+const reIntDigit = REGEX_CACHE.intDigit;
+const reHex = REGEX_CACHE.hex;
+const reOctal = REGEX_CACHE.octal;
+const reBinary = REGEX_CACHE.binary;
 
 // https://regex101.com/r/HOVtCj/1
 // const reSectionSchemaName = /^(?<schema>\$[\p{L}\p{M}\p{N}\-_]+)(?:[ \t]*:[ \t]*(?<name>[\p{L}\p{M}\p{N}\-_]+))?/u;
 
 // https://regex101.com/r/jaWr0V/2
-const reSectionSchemaName = /^(?:(?:(?<name>[\p{L}\p{M}\p{N}\-_]+)(?<sep>[ \t]*:[ \t]*)?)(?<schema>\$[\p{L}\p{M}\p{N}\-_]+)?|(?<schema2>\$[\p{L}\p{M}\p{N}\-_]+))/u
+// Cached constants for performance
+const NON_DECIMAL_PREFIXES = ["x", "X", "o", "O", "b", "B"] as const;
 
-const nonDecimalPrefixes = ["x", "X", "o", "O", "b", "B"];
-const reAnotatedStrStart = /^(?<name>[a-zA-Z]{1,4})(?<quote>['"])/;
+const reSectionSchemaName = REGEX_CACHE.sectionSchemaName;
+const nonDecimalPrefixes = NON_DECIMAL_PREFIXES;
+const reAnotatedStrStart = REGEX_CACHE.annotatedStrStart;
 
 /**
  * Tokenizer for IO format.
@@ -38,6 +132,7 @@ class Tokenizer {
   private row: number = 1; // Current row within the input string
   private col: number = 1; // Current column within the input string
   private reachedEnd: boolean = false; // True if the end of the input string has been reached, else false
+  private inputLength: number = 0; // Cache input length for performance
 
   /**
    * Initialize the tokenizer with an input string.
@@ -45,6 +140,33 @@ class Tokenizer {
    */
   constructor(input: string) {
     this.input = input;
+    this.inputLength = input.length; // Cache length for performance
+  }
+
+  /**
+   * Fast character checking for special symbols using character codes
+   */
+  private isSpecialSymbolFast(charCode: number): boolean {
+    return charCode === CHAR_CODES.CURLY_OPEN || charCode === CHAR_CODES.CURLY_CLOSE ||
+      charCode === CHAR_CODES.BRACKET_OPEN || charCode === CHAR_CODES.BRACKET_CLOSE ||
+      charCode === CHAR_CODES.COMMA || charCode === CHAR_CODES.COLON ||
+      charCode === CHAR_CODES.TILDE;
+  }
+
+  /**
+   * Fast token type lookup for special symbols using character codes
+   */
+  private getSymbolTokenTypeFast(charCode: number): string {
+    switch (charCode) {
+      case CHAR_CODES.CURLY_OPEN: return TokenType.CURLY_OPEN;
+      case CHAR_CODES.CURLY_CLOSE: return TokenType.CURLY_CLOSE;
+      case CHAR_CODES.BRACKET_OPEN: return TokenType.BRACKET_OPEN;
+      case CHAR_CODES.BRACKET_CLOSE: return TokenType.BRACKET_CLOSE;
+      case CHAR_CODES.COMMA: return TokenType.COMMA;
+      case CHAR_CODES.COLON: return TokenType.COLON;
+      case CHAR_CODES.TILDE: return TokenType.COLLECTION_START;
+      default: return TokenType.UNKNOWN;
+    }
   }
 
   /**
@@ -93,16 +215,32 @@ class Tokenizer {
       return;
     }
 
-    for (let i = 0; i < step; i++) {
-      if (this.input[this.pos] === "\n") {
+    // Optimize for single step (most common case)
+    if (step === 1) {
+      if (this.input.charCodeAt(this.pos) === CHAR_CODES.NEWLINE) {
         this.row++;
-        this.col = 1; // Reset column to start of the line.
+        this.col = 1;
+      } else {
+        this.col++;
+      }
+      this.pos++;
+      if (this.pos >= this.inputLength) {
+        this.reachedEnd = true;
+      }
+      return;
+    }
+
+    // Handle multiple steps
+    for (let i = 0; i < step; i++) {
+      if (this.input.charCodeAt(this.pos) === CHAR_CODES.NEWLINE) {
+        this.row++;
+        this.col = 1;
       } else {
         this.col++;
       }
       this.pos++;
 
-      if (this.pos >= this.input.length) {
+      if (this.pos >= this.inputLength) {
         this.reachedEnd = true;
         break;
       }
@@ -144,7 +282,7 @@ class Tokenizer {
           if (!this.reachedEnd) {
             const escapeChar = this.input[this.pos];
             value += escapeChar; // Add the escape character (u, x, etc.) without backslash
-            
+
             // For \u and \x sequences, we need to add the invalid hex digits too
             if (escapeChar === 'u') {
               // Add the next 4 characters (or until end of input)
@@ -313,7 +451,7 @@ class Tokenizer {
     // treat it as an annotated string that goes to EOF
     const tokenText = this.input.substring(start, this.pos);
     let value: string;
-    
+
     if (this.reachedEnd) {
       // Extract value from unclosed string (from after opening quote to EOF)
       value = tokenText.substring(annotation.name.length + 1);
@@ -356,9 +494,8 @@ class Tokenizer {
     }
 
     try {
-      // Validate base64 format
-      const base64Regex = /^[A-Za-z0-9+/]*={0,2}$/;
-      if (!base64Regex.test(token.value)) {
+      // Validate base64 format using cached regex
+      if (!REGEX_CACHE.base64.test(token.value)) {
         throw new Error("Invalid base64 format");
       }
 
@@ -472,7 +609,7 @@ class Tokenizer {
     }
 
     // Determine the number format
-    if (this.input[this.pos] === "0" && nonDecimalPrefixes.includes(this.input[this.pos + 1])) {
+    if (this.input[this.pos] === "0" && nonDecimalPrefixes.includes(this.input[this.pos + 1] as any)) {
       switch (this.input[this.pos + 1]) {
         case "X":
         case "x":
@@ -622,7 +759,7 @@ class Tokenizer {
           if (!this.reachedEnd) {
             const escapeChar = this.input[this.pos];
             value += escapeChar; // Add the escape character (u, x, etc.)
-            
+
             // For \u and \x sequences, we need to add the invalid hex digits too
             if (escapeChar === 'u') {
               // Add the next 4 characters (or until end of input)
@@ -742,7 +879,7 @@ class Tokenizer {
    * @returns {string} The skipped whitespaces.
    */
   private skipWhitespaces(hspacesOnly: boolean = false): string {
-    let spaces = '';
+    const startPos = this.pos;
     while (!this.reachedEnd && is.isWhitespace(this.input[this.pos], hspacesOnly)) {
       const space = this.input[this.pos];
       // replace \r\n or \r with \n. This behavior is configurable
@@ -751,11 +888,21 @@ class Tokenizer {
         if (this.input[this.pos + 1] === '\n') {
           this.advance();
         }
-        spaces += '\n';
+        this.advance();
       } else {
-        spaces += space;
+        this.advance();
       }
-      this.advance();
+    }
+
+    // Optimize: use substring instead of character-by-character concatenation
+    if (startPos === this.pos) {
+      return '';
+    }
+
+    let spaces = this.input.substring(startPos, this.pos);
+    // Only normalize if we found \r characters
+    if (spaces.includes('\r')) {
+      spaces = spaces.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
     }
 
     return spaces;
@@ -766,49 +913,51 @@ class Tokenizer {
    * @returns {Token[]} Array of parsed tokens.
    */
   public tokenize(): readonly Token[] {
-    const tokens: Token[] = [];
+    // Pre-allocate array with estimated size for better performance
+    const estimatedTokens = Math.max(10, Math.floor(this.inputLength / 8));
+    const tokens: Token[] = new Array(estimatedTokens);
+    let tokenIndex = 0;
 
-    while (this.pos < this.input.length) {
-      const ch = this.input[this.pos];
+    while (this.pos < this.inputLength) {
+      const charCode = this.input.charCodeAt(this.pos);
 
-      // Whitespaces
-      if (is.isWhitespace(ch)) {
+      // Whitespaces - use fast character code checking
+      if (isWhitespaceFast(charCode)) {
         // Skip over the whitespace
         this.advance();
         continue;
       }
 
       // Single-line comments
-      else if (ch === Symbols.HASH) {
+      else if (charCode === CHAR_CODES.HASH) {
         this.parseSingleLineComment();
       }
 
       // Regular strings
-      else if (ch === Symbols.DOUBLE_QUOTE || ch === Symbols.SINGLE_QUOTE) {
-        tokens.push(this.parseRegularString(ch));
+      else if (charCode === CHAR_CODES.DOUBLE_QUOTE || charCode === CHAR_CODES.SINGLE_QUOTE) {
+        tokens[tokenIndex++] = this.parseRegularString(this.input[this.pos]);
       }
 
-      // Special symbols (e.g., curly braces, brackets, etc.)
-      else if (is.isSpecialSymbol(ch)) {
+      // Special symbols (e.g., curly braces, brackets, etc.) - use fast character code checking
+      else if (this.isSpecialSymbolFast(charCode)) {
         const startRow = this.row;
         const startCol = this.col;
-        tokens.push(
-          Token.init(
-            this.pos,
-            startRow,
-            startCol,
-            ch,
-            ch,
-            is.getSymbolTokenType(ch)
-          )
+        const ch = this.input[this.pos];
+        tokens[tokenIndex++] = Token.init(
+          this.pos,
+          startRow,
+          startCol,
+          ch,
+          ch,
+          this.getSymbolTokenTypeFast(charCode)
         );
         this.advance();
       }
 
       // Numbers
-      else if (ch === Symbols.PLUS || ch === Symbols.MINUS || ch === Symbols.DOT || is.isDigit(ch)) {
+      else if (charCode === CHAR_CODES.PLUS || charCode === CHAR_CODES.MINUS || charCode === CHAR_CODES.DOT || isDigitFast(charCode)) {
         // Check if it is a SECTION_SEP ---
-        if (ch === Symbols.MINUS) {
+        if (charCode === CHAR_CODES.MINUS) {
           // If the next two chars are -- that means it is a
           // data seperator.
           if (this.input.substring(this.pos, this.pos + 3) === "---") {
@@ -837,21 +986,21 @@ class Tokenizer {
                   nextToken.token = spaces + nextToken.token;
                   nextToken.value = spaces + nextToken.value;
                 }
-                tokens.push(this.mergeTokens(token, nextToken));
+                tokens[tokenIndex++] = this.mergeTokens(token, nextToken);
               } else {
-                tokens.push(token);
+                tokens[tokenIndex++] = token;
               }
             } else {
-              tokens.push(token);
+              tokens[tokenIndex++] = token;
             }
           } else {
-            tokens.push(token);
+            tokens[tokenIndex++] = token;
           }
         } else {
           // It wasn't a number, so it must be a literal or open string
           const token = this.parseLiteralOrOpenString();
           if (token) {
-            tokens.push(token);
+            tokens[tokenIndex++] = token;
           }
         }
       }
@@ -862,34 +1011,36 @@ class Tokenizer {
         if (annotation) {
           switch (annotation.name) {
             case "r":
-              tokens.push(this.parseRawString(annotation));
+              tokens[tokenIndex++] = this.parseRawString(annotation);
               break;
 
             case "b":
-              tokens.push(this.parseByteString(annotation));
+              tokens[tokenIndex++] = this.parseByteString(annotation);
               break;
 
             case "d":
             case "dt":
             case "t":
-              tokens.push(this.parseDateTime(annotation));
+              tokens[tokenIndex++] = this.parseDateTime(annotation);
               break;
 
             default:
               const error = new SyntaxError(ErrorCodes.unsupportedAnnotation, `The annotation '${annotation.name}' is not supported`, this.currentPosition);
               const tokenText = this.input.substring(this.pos, this.pos + annotation.name.length + 1);
-              tokens.push(this.createErrorToken(error, this.pos, this.row, this.col, tokenText));
+              tokens[tokenIndex++] = this.createErrorToken(error, this.pos, this.row, this.col, tokenText);
               this.skipToNextTokenBoundary();
           }
         } else {
           const token = this.parseLiteralOrOpenString();
           if (token) {
-            tokens.push(token);
+            tokens[tokenIndex++] = token;
           }
         }
       }
     }
 
+    // Return properly sized array
+    tokens.length = tokenIndex;
     return tokens;
   }
 
