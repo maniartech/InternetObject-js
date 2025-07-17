@@ -6,6 +6,7 @@ import InternetObject                           from './core/internet-object';
 import Section                                  from './core/section';
 import SectionCollection                        from './core/section-collection';
 import InternetObjectError                      from './errors/io-error';
+import ErrorCodes                               from './errors/io-error-codes';
 import InternetObjectSyntaxError                from './errors/io-syntax-error';
 import InternetObjectValidationError            from './errors/io-validation-error';
 import Schema                                   from './schema/schema';
@@ -32,6 +33,7 @@ const io = {
   Schema,
   Decimal,
   InternetObjectError,
+  ErrorCodes,
   InternetObjectSyntaxError,
   InternetObjectValidationError,
 };
