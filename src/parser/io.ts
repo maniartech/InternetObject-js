@@ -1,19 +1,18 @@
-import Parser from "./ast-parser";
+import parse from "./index";
 import Document from '../core/document';
-import Tokenizer from "./tokenizer";
-import Header from "../core/header";
-
 
 function io(strings: TemplateStringsArray, ...values: any[]): Document {
-  const input = strings.raw.join('');
-  const tokenizer = new Tokenizer(input);
-  const tokens = tokenizer.tokenize();
-
-  const parser = new Parser(tokens);
-  const result = parser.parse();
-
-  console.log(result);
-  return new Document(new Header(), null);
+  // Interpolate the template string with values
+  let input = '';
+  for (let i = 0; i < strings.length; i++) {
+    input += strings[i];
+    if (i < values.length) {
+      input += String(values[i]);
+    }
+  }
+  
+  // Use the main parse function to actually parse the input
+  return parse(input, null);
 }
 
 export default io;
