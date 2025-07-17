@@ -16,6 +16,7 @@ export { default as InternetObject                } from './core/internet-object
 export { default as Section                       } from './core/section';
 export { default as SectionCollection             } from './core/section-collection';
 export { default as InternetObjectError           } from './errors/io-error';
+export { default as ErrorCodes                    } from './errors/io-error-codes';
 export { default as InternetObjectSyntaxError     } from './errors/io-syntax-error';
 export { default as InternetObjectValidationError } from './errors/io-validation-error';
 export { default as Schema                        } from './schema/schema';
