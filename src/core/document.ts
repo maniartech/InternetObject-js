@@ -53,6 +53,13 @@ class Document {
 
     return data
   }
+
+  /**
+   * Alias for toJSON() method for backward compatibility
+   */
+  public toObject(): any {
+    return this.toJSON();
+  }
 }
 
 export default Document;
