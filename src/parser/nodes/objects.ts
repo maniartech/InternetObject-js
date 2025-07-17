@@ -21,7 +21,7 @@ class ObjectNode extends ContainerNode {
     }
   }
 
-  toObject(defs?: Definitions):any {
+  toObject(defs?: Definitions): any {
     const value: any = {};
     let index = 0;
     for (const child of this.children as Array<MemberNode>) {

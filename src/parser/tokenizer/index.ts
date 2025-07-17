@@ -41,7 +41,7 @@ class Tokenizer {
 
   /**
    * Initialize the tokenizer with an input string.
-   * @param {string} input - String to be tokenized.
+   * @param input - String to be tokenized.
    */
   constructor(input: string) {
     this.input = input;
@@ -765,7 +765,7 @@ class Tokenizer {
    * Tokenize the input string.
    * @returns {Token[]} Array of parsed tokens.
    */
-  public tokenize(): Token[] {
+  public tokenize(): readonly Token[] {
     const tokens: Token[] = [];
 
     while (this.pos < this.input.length) {

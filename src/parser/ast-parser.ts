@@ -17,17 +17,15 @@ import TokenNode        from './nodes/tokens';
 class ASTParser {
 
   // array of tokens produced by the tokenizer
-  private tokens: Token[];
-  private sectionNames: { [key: string]: boolean } = {};
+  private readonly tokens: readonly Token[];
+  private readonly sectionNames: { [key: string]: boolean } = {};
 
   // current token index
   private current: number;
-  private isCollection: boolean;
 
-  constructor(tokens: Token[]) {
+  constructor(tokens: readonly Token[]) {
     this.tokens = tokens;
     this.current = 0;
-    this.isCollection = false;
   }
 
   public parse(): DocumentNode {
@@ -200,7 +198,7 @@ class ASTParser {
    */
   private skipToNextCollectionItem(): void {
     // Skip tokens until we find next `~` (COLLECTION_START) or section end
-    while (this.peek() && 
+    while (this.peek() &&
            !this.match([TokenType.COLLECTION_START, TokenType.SECTION_SEP])) {
       this.advance();
     }
@@ -459,6 +457,13 @@ class ASTParser {
   }
 
   /**
+   * Type guard to check if a token is valid (not null)
+   */
+  private isValidToken(token: Token | null): token is Token {
+    return token !== null;
+  }
+
+  /**
    * Returns the current token without advancing the current index
    * @returns {Token} the current token or null if eof is reached
    */
@@ -469,48 +474,51 @@ class ASTParser {
   /**
    * Advances the current token index by the given number of steps
    */
-  private advance(steps: number = 1) {
+  private advance(steps: number = 1): void {
     this.current += steps;
-  }
-
-  private backtrack() {
-    this.current--;
   }
 
   /**
    * Checks if the current token matches any of the given types.
    * If a current token is not available, returns false.
-   * @param types
-   * @returns
+   * @param types - Array of token types to match against
+   * @returns true if current token matches any of the given types
    */
-  private match(types: TokenType[]): boolean {
+  private match(types: readonly TokenType[]): boolean {
     const currentToken = this.peek();
-    if (currentToken && types.includes(currentToken.type as TokenType)) {
+    if (this.isValidToken(currentToken) && types.includes(currentToken.type as TokenType)) {
       return true;
     }
     return false;
   }
 
-  private matchPrev(types: TokenType[]): boolean {
+  private matchPrev(types: readonly TokenType[]): boolean {
     const prevToken = this.tokens[this.current - 1];
-    if (prevToken && types.includes(prevToken.type as TokenType)) {
+    if (this.isValidToken(prevToken) && types.includes(prevToken.type as TokenType)) {
       return true;
     }
     return false;
   }
 
   /**
-   * Match the next token in the stream without advancing the current index. If the next token matches any of the given types, returns true, otherwise returns false. If the next token is not available, returns false.
+   * Match the next token in the stream without advancing the current index.
+   * If the next token matches any of the given types, returns true, otherwise returns false.
+   * If the next token is not available, returns false.
+   * @param types - Array of token types to match against
+   * @returns true if next token matches any of the given types
    */
-  private matchNext(types: TokenType[]): boolean {
+  private matchNext(types: readonly TokenType[]): boolean {
+    if (this.current + 1 >= this.tokens.length) {
+      return false;
+    }
     const nextToken = this.tokens[this.current + 1];
-    if (nextToken && types.includes(nextToken.type as TokenType)) {
+    if (this.isValidToken(nextToken) && types.includes(nextToken.type as TokenType)) {
       return true;
     }
     return false;
   }
 
-  private advanceIfMatch(types: TokenType[]): boolean {
+  private advanceIfMatch(types: readonly TokenType[]): boolean {
     if (this.match(types)) {
       this.advance();
       return true;

@@ -1,25 +1,25 @@
 
 class ParserOptions {
-  readonly continueOnError?: boolean
+  readonly continueOnError?: boolean;
 
-  readonly allowEmptyRecords?: boolean
+  readonly allowEmptyRecords?: boolean;
 
-  readonly numberOfSections?: number
+  readonly numberOfSections?: number;
 
-  readonly dataOnly?: boolean
+  readonly dataOnly?: boolean;
 
-  readonly headerOnly?: boolean
+  readonly headerOnly?: boolean;
 
-  readonly skipEmptyLines?: boolean
+  readonly skipEmptyLines?: boolean;
 
-  readonly allowVariables?: boolean
+  readonly allowVariables?: boolean;
 
-  readonly trueTokens?: string[] // By default, it's ['true', 'T']
+  readonly trueTokens?: readonly string[] // By default, it's ['true', 'T']
 
-  readonly falseTokens?: string[] // By default, it's ['false', 'F']
+  readonly falseTokens?: readonly string[] // By default, it's ['false', 'F']
 
   // replace \r\n or \r with \n. Default is true
-  readonly normalizeNewline?: boolean
+  readonly normalizeNewline?: boolean;
 
   constructor(o: Partial<ParserOptions> = {}) {
     this.continueOnError    = o.continueOnError || false;

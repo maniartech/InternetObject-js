@@ -25,12 +25,13 @@ class Token implements PositionRange {
 
   /**
    * Create a token.
-   * @param {number} pos - The starting position of the token in the input.
-   * @param {number} row - The row number of the token's starting position.
-   * @param {number} col - The column number of the token's starting position.
-   * @param {string} token - The raw text of the token from the input.
-   * @param {any} value - The parsed value of the token.
-   * @param {string} type - A descriptive type name for the token.
+   * @param pos - The starting position of the token in the input.
+   * @param row - The row number of the token's starting position.
+   * @param col - The column number of the token's starting position.
+   * @param token - The raw text of the token from the input.
+   * @param value - The parsed value of the token.
+   * @param type - A descriptive type name for the token.
+   * @param subType - Optional subtype for the token.
    */
   static init(pos: number, row: number, col: number, token: string, value: any, type: string, subType?: string): Token {
     const t = new Token()

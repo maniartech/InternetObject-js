@@ -79,7 +79,7 @@ function parseData(docNode: DocumentNode, doc: Document) {
   }
 }
 
-function parseDataWithSchema(docNode: DocumentNode, doc: Document) {
+function parseDataWithSchema(docNode: DocumentNode, doc: Document): void {
   for (let i = 0; i < docNode.children.length; i++) {
     const sectionNode = docNode.children[i];
     const schemaName = sectionNode.schemaName
@@ -95,10 +95,13 @@ function parseDataWithSchema(docNode: DocumentNode, doc: Document) {
   }
 }
 
-function parseDefs(doc: Document, cols: CollectionNode) {
-  const defs = (doc.header as any).definitions
-  const schemaDefs: { key: string, schemaDef: Node }[] = []
-  
+function parseDefs(doc: Document, cols: CollectionNode): void {
+  const defs = doc.header.definitions;
+  if (!defs) {
+    throw new Error("Document header definitions not initialized");
+  }
+  const schemaDefs: Array<{ key: string; schemaDef: Node }> = []
+
   for (let i = 0; i < cols.children.length; i++) {
     const child = cols.children[i] as ObjectNode;
 
