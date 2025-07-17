@@ -21,7 +21,7 @@ class ParserOptions {
   // replace \r\n or \r with \n. Default is true
   readonly normalizeNewline?: boolean
 
-  constructor(o: ParserOptions = {}) {
+  constructor(o: Partial<ParserOptions> = {}) {
     this.continueOnError    = o.continueOnError || false;
     this.allowEmptyRecords  = o.allowEmptyRecords || false;
     this.numberOfSections   = o.numberOfSections || 0;
