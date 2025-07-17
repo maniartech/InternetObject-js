@@ -25,7 +25,7 @@ class ObjectNode extends ContainerNode {
     const value: any = {};
     let index = 0;
     for (const child of this.children as Array<MemberNode>) {
-      if (child) {
+      if (child && child.value) {
         if (child.key) {
           value[child.key.value] = child.value.toValue(defs);
         } else {
@@ -60,7 +60,7 @@ class ObjectNode extends ContainerNode {
     const o = new InternetObject();
     for (let i=0; i<this.children.length; i++) {
       const member = this.children[i] as MemberNode;
-      if (member) {
+      if (member && member.value) {
         if (member.key) {
           // o[member.key.value] = member.value.toValue(defs);
           o.set(member.key.value, member.value.toValue(defs));
