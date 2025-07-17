@@ -1,32 +1,32 @@
-import Definitions            from '../core/definitions';
-import Document               from '../core/document';
-import Header                 from '../core/header';
-import Section                from '../core/section';
-import SectionCollection      from '../core/section-collection';
-import assertNever            from '../errors/asserts/asserts';
-import InternetObjectError    from '../errors/io-error';
-import ErrorCodes             from '../errors/io-error-codes';
-import compileObject          from '../schema/compile-object';
-import processSchema          from '../schema/processor';
-import Tokenizer              from './tokenizer';
-import TokenType              from './tokenizer/token-types';
-import ASTParser              from './ast-parser';
-import CollectionNode         from './nodes/collections';
-import DocumentNode           from './nodes/document';
-import MemberNode             from './nodes/members';
-import ObjectNode             from './nodes/objects';
-import TokenNode              from './nodes/tokens';
-import ParserOptions          from './parser-options';
-import Node                   from './nodes/nodes';
+import Definitions from '../core/definitions';
+import Document from '../core/document';
+import Header from '../core/header';
+import Section from '../core/section';
+import SectionCollection from '../core/section-collection';
+import assertNever from '../errors/asserts/asserts';
+import InternetObjectError from '../errors/io-error';
+import ErrorCodes from '../errors/io-error-codes';
+import compileObject from '../schema/compile-object';
+import processSchema from '../schema/processor';
+import Tokenizer from './tokenizer';
+import TokenType from './tokenizer/token-types';
+import ASTParser from './ast-parser';
+import CollectionNode from './nodes/collections';
+import DocumentNode from './nodes/document';
+import MemberNode from './nodes/members';
+import ObjectNode from './nodes/objects';
+import TokenNode from './nodes/tokens';
+import ParserOptions from './parser-options';
+import Node from './nodes/nodes';
 
 
 export default function parse(source: string, externalDefs: Definitions | null, o: ParserOptions = {}): Document {
   // Tokenize the source
   const tokenizer = new Tokenizer(source);
-  const tokens    = tokenizer.tokenize();
+  const tokens = tokenizer.tokenize();
 
   // If the source is empty, then return empty document
-  if (tokens.length === 0) { 
+  if (tokens.length === 0) {
     return new Document(new Header(), new SectionCollection());
   }
 
@@ -102,7 +102,7 @@ function parseDataWithSchema(docNode: DocumentNode, doc: Document): void {
 function parseDefs(doc: Document, cols: CollectionNode): void {
   const defs = doc.header.definitions;
   if (!defs) {
-    throw new Error("Document header definitions not initialized");
+    throw new Error("Document header definitions not initialized. This is an internal error - please report this issue.");
   }
   const schemaDefs: Array<{ key: string; schemaDef: Node }> = []
 
@@ -133,14 +133,16 @@ function parseDefs(doc: Document, cols: CollectionNode): void {
 
     // Must have a key
     if (!memberNode.key) {
-      throw new InternetObjectError(ErrorCodes.invalidDefinition, memberNode.value.toValue().toString(), memberNode.value)
+      throw new InternetObjectError(ErrorCodes.invalidDefinition,
+        `Invalid definition: missing key. Each definition must have a key (e.g., '$schema: {...}' or '@variable: value').`,
+        memberNode.value)
     }
 
     const keyToken = memberNode.key as TokenNode
 
     // Key must be a string
     if (keyToken.type !== TokenType.STRING) {
-      throw new Error("Invalid typedef definition");
+      throw new Error("Invalid typedef definition: key must be a string.");
     }
 
     let key: string = keyToken.value as string

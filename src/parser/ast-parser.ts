@@ -86,7 +86,7 @@ class ASTParser {
       if (token.type !== TokenType.SECTION_SEP) {
         throw new SyntaxError(
           ErrorCodes.unexpectedToken,
-          `Unexpected token ${token.type} at row ${token.row} col ${token.col}`,
+          `Expected section separator '---' but found '${token.token}'. Each section must be properly closed before starting a new one.`,
           token
         );
       }
@@ -125,7 +125,7 @@ class ASTParser {
     if (name && this.sectionNames[name]) {
       throw new SyntaxError(
         ErrorCodes.unexpectedToken,
-        `Duplicate section name ${name}`,
+        `Duplicate section name '${name}'. Each section must have a unique name within the document.`,
         void 0, false
         );
       }
@@ -260,7 +260,7 @@ class ASTParser {
 
     throw new SyntaxError(
       ErrorCodes.unexpectedToken,
-      token.value.toString(),
+      `Unexpected token '${token.value}'. Expected end of section or start of new collection item '~'.`,
       token, false
     );
   }
@@ -304,7 +304,7 @@ class ASTParser {
           if (!this.matchPrev([TokenType.COMMA, TokenType.CURLY_OPEN])) {
             throw new SyntaxError(
               ErrorCodes.unexpectedToken,
-              nextToken.value.toString(),
+              `Missing comma before '${nextToken.value}'. Object members must be separated by commas.`,
               nextToken, false
             );
           }
@@ -319,7 +319,8 @@ class ASTParser {
     if (!isOpenObject) {
       if (!this.match(ASTParser.CURLY_CLOSE_ARRAY)) {
         const lastToken = this.peek();
-        throw new SyntaxError(ErrorCodes.expectingBracket, Symbols.CURLY_CLOSE,
+        throw new SyntaxError(ErrorCodes.expectingBracket, 
+          `Missing closing brace '}'. Object must be properly closed.`,
           lastToken === null ? void 0 : lastToken, lastToken === null);
       }
       let closeBracket: Token | null = this.peek();
@@ -349,8 +350,9 @@ class ASTParser {
         const value = this.parseValue();
         return new MemberNode(value, leftToken as TokenNode);
       } else {
-        throw new SyntaxError(ErrorCodes.invalidKey, leftToken.token, leftToken,
-          false);
+        throw new SyntaxError(ErrorCodes.invalidKey, 
+          `Invalid key '${leftToken.token}'. Object keys must be strings, numbers, booleans, or null.`, 
+          leftToken, false);
       }
     }
 
@@ -366,7 +368,7 @@ class ASTParser {
     if (!openBracket || openBracket.type !== TokenType.BRACKET_OPEN) {
       throw new SyntaxError(
         ErrorCodes.expectingBracket,
-        Symbols.BRACKET_OPEN,
+        `Expected opening bracket '[' to start array but found '${openBracket?.token || 'end of input'}'.`,
         openBracket === null ? void 0 : openBracket,
         openBracket === null
       );
@@ -380,7 +382,7 @@ class ASTParser {
         // Unexpected end of input
         throw new SyntaxError(
           ErrorCodes.expectingBracket,
-          Symbols.BRACKET_CLOSE,
+          `Unexpected end of input while parsing array. Expected closing bracket ']'.`,
           void 0,
           true
         );
@@ -394,7 +396,7 @@ class ASTParser {
           const nextToken = this.tokens[this.current + 1];
           throw new SyntaxError(
             ErrorCodes.unexpectedToken,
-            "Unexpected token ,",
+            `Unexpected comma. Array elements cannot be empty - remove the extra comma or add a value.`,
             nextToken, false
           );
         }
@@ -416,7 +418,7 @@ class ASTParser {
       const closeBracket = this.peek();
       throw new SyntaxError(
         ErrorCodes.expectingBracket,
-        Symbols.BRACKET_CLOSE,
+        `Missing closing bracket ']'. Array must be properly closed.`,
         closeBracket === null ? void 0 : closeBracket,
         closeBracket === null
       );
@@ -430,7 +432,8 @@ class ASTParser {
   private parseValue(): Node {
     const token = this.peek();
     if (!token) {
-      throw new SyntaxError(ErrorCodes.valueRequired, "Value required",
+      throw new SyntaxError(ErrorCodes.valueRequired, 
+        `Unexpected end of input. Expected a value (string, number, boolean, null, array, or object).`,
         void 0, true);
     }
 
@@ -453,7 +456,7 @@ class ASTParser {
       default:
         throw new SyntaxError(
           ErrorCodes.unexpectedToken,
-          token.value,
+          `Unexpected token '${token.value}'. Expected a valid value (string, number, boolean, null, array, or object).`,
           token, token === null
         );
     }
