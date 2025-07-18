@@ -1,8 +1,19 @@
-import Tokenizer from "../src/parser/tokenizer";
-import TokenType from "../src/parser/tokenizer/token-types";
+import Tokenizer from "../../../../src/parser/tokenizer";
+import TokenType from "../../../../src/parser/tokenizer/token-types";
 
-describe("Tokenizer Error Handling", () => {
+describe("Error Handling and Recovery", () => {
   describe("String Error Recovery", () => {
+    it("should create error token for unclosed regular string", () => {
+      const input = `"unclosed string`;
+      const tokenizer = new Tokenizer(input);
+      const tokens = tokenizer.tokenize();
+
+      expect(tokens).toHaveLength(1);
+      expect(tokens[0].type).toBe(TokenType.ERROR);
+      expect(tokens[0].value.__error).toBe(true);
+      expect(tokens[0].value.message).toContain("Unterminated string literal");
+    });
+
     it("should handle mixed closed and unclosed strings correctly", () => {
       const input = `"unclosed string, "valid string"`;
       const tokenizer = new Tokenizer(input);
@@ -23,6 +34,40 @@ describe("Tokenizer Error Handling", () => {
       expect(tokens[2].type).toBe(TokenType.ERROR);
       expect(tokens[2].value.__error).toBe(true);
       expect(tokens[2].value.message).toContain("string-not-closed");
+    });
+
+    it("should handle invalid escape sequences gracefully", () => {
+      const input = `"valid\\z invalid", "next string"`;
+      const tokenizer = new Tokenizer(input);
+      const tokens = tokenizer.tokenize();
+
+      expect(tokens).toHaveLength(3);
+      expect(tokens[0].type).toBe(TokenType.STRING);
+      expect(tokens[0].value).toBe("validz invalid"); // Invalid escape treated as literal
+      expect(tokens[2].type).toBe(TokenType.STRING);
+      expect(tokens[2].value).toBe("next string");
+    });
+
+    it("should handle invalid unicode escape sequences", () => {
+      const input = `"test\\uZZZZ", "valid"`;
+      const tokenizer = new Tokenizer(input);
+      const tokens = tokenizer.tokenize();
+
+      expect(tokens).toHaveLength(3);
+      expect(tokens[0].type).toBe(TokenType.STRING);
+      expect(tokens[0].value).toBe("testuZZZZ"); // Invalid unicode treated as literal
+      expect(tokens[2].value).toBe("valid");
+    });
+
+    it("should handle invalid hex escape sequences", () => {
+      const input = `"test\\xZZ", "valid"`;
+      const tokenizer = new Tokenizer(input);
+      const tokens = tokenizer.tokenize();
+
+      expect(tokens).toHaveLength(3);
+      expect(tokens[0].type).toBe(TokenType.STRING);
+      expect(tokens[0].value).toBe("testxZZ"); // Invalid hex treated as literal
+      expect(tokens[2].value).toBe("valid");
     });
 
     it("should handle invalid escape sequences gracefully in regular strings", () => {
@@ -57,13 +102,48 @@ describe("Tokenizer Error Handling", () => {
 
       expect(tokens).toHaveLength(3);
       expect(tokens[0].type).toBe(TokenType.STRING);
-      expect(tokens[0].value).toBe("validuZZZZ invalid"); // Invalid unicode escape treated as literal
+      expect(tokens[0].value).toBe("validuZZZZ invalid"); // Invalid unicode treated as literal
       expect(tokens[2].type).toBe(TokenType.STRING);
       expect(tokens[2].value).toBe("valid");
     });
   });
 
   describe("Annotated String Error Recovery", () => {
+    it("should create error token for invalid base64 in byte string", () => {
+      const input = `b"invalid@base64!", "next"`;
+      const tokenizer = new Tokenizer(input);
+      const tokens = tokenizer.tokenize();
+
+      expect(tokens).toHaveLength(3);
+      expect(tokens[0].type).toBe(TokenType.ERROR);
+      expect(tokens[0].value.__error).toBe(true);
+      expect(tokens[2].type).toBe(TokenType.STRING);
+      expect(tokens[2].value).toBe("next");
+    });
+
+    it("should create error token for invalid datetime format", () => {
+      const input = `dt"invalid-date-format", "next"`;
+      const tokenizer = new Tokenizer(input);
+      const tokens = tokenizer.tokenize();
+
+      expect(tokens).toHaveLength(3);
+      expect(tokens[0].type).toBe(TokenType.ERROR);
+      expect(tokens[0].value.__error).toBe(true);
+      expect(tokens[2].type).toBe(TokenType.STRING);
+      expect(tokens[2].value).toBe("next");
+    });
+
+    it("should handle unclosed annotated strings", () => {
+      const input = `r"unclosed raw string`;
+      const tokenizer = new Tokenizer(input);
+      const tokens = tokenizer.tokenize();
+
+      expect(tokens).toHaveLength(1);
+      expect(tokens[0].type).toBe(TokenType.STRING);
+      expect(tokens[0].subType).toBe("RAW_STRING");
+      expect(tokens[0].value).toBe("unclosed raw string");
+    });
+
     it("should handle unclosed raw string correctly", () => {
       const input = `r"unclosed raw, "valid string"`;
       const tokenizer = new Tokenizer(input);
@@ -144,13 +224,25 @@ describe("Tokenizer Error Handling", () => {
     });
   });
 
+  describe("Number Error Recovery", () => {
+    it("should continue after encountering invalid number formats", () => {
+      const input = `123abc, 456`;
+      const tokenizer = new Tokenizer(input);
+      const tokens = tokenizer.tokenize();
+
+      expect(tokens).toHaveLength(3);
+      expect(tokens[0].type).toBe(TokenType.STRING); // Parsed as open string
+      expect(tokens[0].value).toBe("123abc");
+      expect(tokens[2].type).toBe(TokenType.NUMBER);
+      expect(tokens[2].value).toBe(456);
+    });
+  });
+
   describe("Section Separator Error Recovery", () => {
     it("should create error token for missing schema after separator and continue", () => {
       const input = `--- name: \n valid, content`;
       const tokenizer = new Tokenizer(input);
       const tokens = tokenizer.tokenize();
-
-      console.log(tokens);
 
       // Should have: section separator, section name, error token, then continue with content
       expect(tokens.length).toBeGreaterThan(3);
@@ -200,6 +292,28 @@ describe("Tokenizer Error Handling", () => {
   });
 
   describe("Error Token Structure", () => {
+    it("should create properly structured error tokens", () => {
+      const input = `"unclosed`;
+      const tokenizer = new Tokenizer(input);
+      const tokens = tokenizer.tokenize();
+
+      expect(tokens).toHaveLength(1);
+      const errorToken = tokens[0];
+      
+      expect(errorToken.type).toBe(TokenType.ERROR);
+      expect(errorToken.value).toHaveProperty("__error", true);
+      expect(errorToken.value).toHaveProperty("message");
+      expect(errorToken.value).toHaveProperty("originalError");
+      expect(typeof errorToken.value.message).toBe("string");
+      expect(errorToken.value.originalError).toBeInstanceOf(Error);
+      
+      // Position information should be valid
+      expect(errorToken.pos).toBeGreaterThanOrEqual(0);
+      expect(errorToken.row).toBeGreaterThanOrEqual(1);
+      expect(errorToken.col).toBeGreaterThanOrEqual(1);
+      expect(typeof errorToken.token).toBe("string");
+    });
+
     it("should create error tokens with correct structure", () => {
       const input = `xyz"test"`;
       const tokenizer = new Tokenizer(input);
