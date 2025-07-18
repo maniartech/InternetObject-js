@@ -5,9 +5,8 @@ import {
   isValidNewline,
   isValidOpenStringChar,
   getSymbolTokenType
-} from '../../../src/parser/tokenizer/is';
-import Symbols from '../../../src/parser/tokenizer/symbols';
-import TokenType from '../../../src/parser/tokenizer/token-types';
+} from '../../../../src/parser/tokenizer/is';
+import TokenType from '../../../../src/parser/tokenizer/token-types';
 
 describe('is.ts utility functions', () => {
 
