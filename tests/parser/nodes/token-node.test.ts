@@ -20,7 +20,7 @@ describe("TokenNode", () => {
     it("should create TokenNode from Token", () => {
       const originalToken = createMockToken(TokenType.STRING, "hello", 5);
       const tokenNode = new TokenNode(originalToken);
-      
+
       expect(tokenNode.type).toBe(TokenType.STRING);
       expect(tokenNode.value).toBe("hello");
       expect(tokenNode.token).toBe("hello");
@@ -34,9 +34,9 @@ describe("TokenNode", () => {
       originalToken.row = 2;
       originalToken.col = 15;
       originalToken.subType = TokenType.DECIMAL;
-      
+
       const tokenNode = new TokenNode(originalToken);
-      
+
       expect(tokenNode.type).toBe(TokenType.NUMBER);
       expect(tokenNode.value).toBe(42);
       expect(tokenNode.token).toBe("42");
@@ -49,7 +49,7 @@ describe("TokenNode", () => {
     it("should handle boolean tokens", () => {
       const originalToken = createMockToken(TokenType.BOOLEAN, true, 0);
       const tokenNode = new TokenNode(originalToken);
-      
+
       expect(tokenNode.type).toBe(TokenType.BOOLEAN);
       expect(tokenNode.value).toBe(true);
       expect(tokenNode.token).toBe("true");
@@ -58,7 +58,7 @@ describe("TokenNode", () => {
     it("should handle null tokens", () => {
       const originalToken = createMockToken(TokenType.NULL, null, 0);
       const tokenNode = new TokenNode(originalToken);
-      
+
       expect(tokenNode.type).toBe(TokenType.NULL);
       expect(tokenNode.value).toBeNull();
       expect(tokenNode.token).toBe("null");
@@ -67,7 +67,7 @@ describe("TokenNode", () => {
     it("should handle undefined tokens", () => {
       const originalToken = createMockToken(TokenType.UNDEFINED, undefined, 0);
       const tokenNode = new TokenNode(originalToken);
-      
+
       expect(tokenNode.type).toBe(TokenType.UNDEFINED);
       expect(tokenNode.value).toBeUndefined();
       expect(tokenNode.token).toBe("undefined");
@@ -78,7 +78,7 @@ describe("TokenNode", () => {
     it("should return string value for string tokens", () => {
       const token = createMockToken(TokenType.STRING, "hello world", 0);
       const tokenNode = new TokenNode(token);
-      
+
       const result = tokenNode.toValue();
       expect(result).toBe("hello world");
     });
@@ -86,7 +86,7 @@ describe("TokenNode", () => {
     it("should return number value for number tokens", () => {
       const token = createMockToken(TokenType.NUMBER, 42, 0);
       const tokenNode = new TokenNode(token);
-      
+
       const result = tokenNode.toValue();
       expect(result).toBe(42);
     });
@@ -94,10 +94,10 @@ describe("TokenNode", () => {
     it("should return boolean value for boolean tokens", () => {
       const trueToken = createMockToken(TokenType.BOOLEAN, true, 0);
       const falseToken = createMockToken(TokenType.BOOLEAN, false, 5);
-      
+
       const trueNode = new TokenNode(trueToken);
       const falseNode = new TokenNode(falseToken);
-      
+
       expect(trueNode.toValue()).toBe(true);
       expect(falseNode.toValue()).toBe(false);
     });
@@ -105,7 +105,7 @@ describe("TokenNode", () => {
     it("should return null for null tokens", () => {
       const token = createMockToken(TokenType.NULL, null, 0);
       const tokenNode = new TokenNode(token);
-      
+
       const result = tokenNode.toValue();
       expect(result).toBeNull();
     });
@@ -113,7 +113,7 @@ describe("TokenNode", () => {
     it("should return undefined for undefined tokens", () => {
       const token = createMockToken(TokenType.UNDEFINED, undefined, 0);
       const tokenNode = new TokenNode(token);
-      
+
       const result = tokenNode.toValue();
       expect(result).toBeUndefined();
     });
@@ -121,7 +121,7 @@ describe("TokenNode", () => {
     it("should return bigint value for bigint tokens", () => {
       const token = createMockToken(TokenType.BIGINT, BigInt(123456789012345), 0);
       const tokenNode = new TokenNode(token);
-      
+
       const result = tokenNode.toValue();
       expect(result).toBe(BigInt(123456789012345));
     });
@@ -129,7 +129,7 @@ describe("TokenNode", () => {
     it("should return decimal value for decimal tokens", () => {
       const token = createMockToken(TokenType.DECIMAL, 3.14159, 0);
       const tokenNode = new TokenNode(token);
-      
+
       const result = tokenNode.toValue();
       expect(result).toBe(3.14159);
     });
@@ -138,7 +138,7 @@ describe("TokenNode", () => {
       const dateValue = new Date("2023-01-01T00:00:00Z");
       const token = createMockToken(TokenType.DATETIME, dateValue, 0);
       const tokenNode = new TokenNode(token);
-      
+
       const result = tokenNode.toValue();
       expect(result).toBe(dateValue);
     });
@@ -146,34 +146,33 @@ describe("TokenNode", () => {
 
   describe("toValue with definitions", () => {
     it("should resolve string references when definitions provided", () => {
-      // TODO: Verify and finalize variable resolution behavior - currently getV throws error instead of returning undefined
       const defs = new Definitions();
       defs.set("@userName", "Alice");
-      
+
       const token = createMockToken(TokenType.STRING, "@userName", 0);
       const tokenNode = new TokenNode(token);
-      
+
       const result = tokenNode.toValue(defs);
-      expect(result).toBe("@userName"); // Currently returns original value due to getV throwing error
+      expect(result).toBe("Alice");
     });
 
     it("should return original string when not found in definitions", () => {
       const defs = new Definitions();
       defs.set("@userName", "Alice");
-      
+
       const token = createMockToken(TokenType.STRING, "unknownVar", 0);
       const tokenNode = new TokenNode(token);
-      
+
       const result = tokenNode.toValue(defs);
       expect(result).toBe("unknownVar");
     });
 
     it("should return original string when definitions is empty", () => {
       const defs = new Definitions();
-      
+
       const token = createMockToken(TokenType.STRING, "someString", 0);
       const tokenNode = new TokenNode(token);
-      
+
       const result = tokenNode.toValue(defs);
       expect(result).toBe("someString");
     });
@@ -181,56 +180,56 @@ describe("TokenNode", () => {
     it("should not resolve non-string tokens even with definitions", () => {
       const defs = new Definitions();
       defs.set("@42", "should not resolve");
-      
+
       const token = createMockToken(TokenType.NUMBER, 42, 0);
       const tokenNode = new TokenNode(token);
-      
+
       const result = tokenNode.toValue(defs);
       expect(result).toBe(42);
     });
 
     it("should handle complex variable resolution", () => {
-      // TODO: Verify and finalize variable resolution behavior - currently getV throws error instead of returning undefined
       const defs = new Definitions();
       defs.set("@city", "New York");
       defs.set("@country", "USA");
       defs.set("@fullLocation", "New York, USA");
-      
+
       const cityToken = createMockToken(TokenType.STRING, "@city", 0);
       const countryToken = createMockToken(TokenType.STRING, "@country", 5);
       const fullToken = createMockToken(TokenType.STRING, "@fullLocation", 10);
-      
+
       const cityNode = new TokenNode(cityToken);
       const countryNode = new TokenNode(countryToken);
       const fullNode = new TokenNode(fullToken);
-      
-      expect(cityNode.toValue(defs)).toBe("@city");
-      expect(countryNode.toValue(defs)).toBe("@country");
-      expect(fullNode.toValue(defs)).toBe("@fullLocation");
+
+      expect(cityNode.toValue(defs)).toBe("New York");
+      expect(countryNode.toValue(defs)).toBe("USA");
+      expect(fullNode.toValue(defs)).toBe("New York, USA");
     });
 
     it("should handle undefined values in definitions", () => {
-      // TODO: Verify and finalize variable resolution behavior - currently getV throws error instead of returning undefined
+      // When value is undefined, it should return the original token value
+
       const defs = new Definitions();
       defs.set("@undefinedVar", undefined);
-      
+
       const token = createMockToken(TokenType.STRING, "@undefinedVar", 0);
       const tokenNode = new TokenNode(token);
-      
+
       const result = tokenNode.toValue(defs);
-      expect(result).toBe("@undefinedVar"); // Currently returns original value due to getV throwing error
+      expect(result).toBe("@undefinedVar");
+
     });
 
     it("should handle null values in definitions", () => {
-      // TODO: Verify and finalize variable resolution behavior - currently getV throws error instead of returning undefined
       const defs = new Definitions();
       defs.set("@nullVar", null);
-      
+
       const token = createMockToken(TokenType.STRING, "@nullVar", 0);
       const tokenNode = new TokenNode(token);
-      
+
       const result = tokenNode.toValue(defs);
-      expect(result).toBe("@nullVar"); // Currently returns original value due to getV throwing error
+      expect(result).toBeNull();
     });
   });
 
@@ -240,7 +239,7 @@ describe("TokenNode", () => {
       token.row = 2;
       token.col = 15;
       const tokenNode = new TokenNode(token);
-      
+
       // TokenNode should inherit position methods from Token
       expect(tokenNode.pos).toBe(10);
       expect(tokenNode.row).toBe(2);
@@ -252,7 +251,7 @@ describe("TokenNode", () => {
       token.row = 3;
       token.col = 8;
       const tokenNode = new TokenNode(token);
-      
+
       expect(tokenNode.pos).toBe(25);
       expect(tokenNode.row).toBe(3);
       expect(tokenNode.col).toBe(8);
@@ -263,28 +262,28 @@ describe("TokenNode", () => {
     it("should handle empty string tokens", () => {
       const token = createMockToken(TokenType.STRING, "", 0);
       const tokenNode = new TokenNode(token);
-      
+
       expect(tokenNode.toValue()).toBe("");
     });
 
     it("should handle zero number tokens", () => {
       const token = createMockToken(TokenType.NUMBER, 0, 0);
       const tokenNode = new TokenNode(token);
-      
+
       expect(tokenNode.toValue()).toBe(0);
     });
 
     it("should handle negative number tokens", () => {
       const token = createMockToken(TokenType.NUMBER, -42, 0);
       const tokenNode = new TokenNode(token);
-      
+
       expect(tokenNode.toValue()).toBe(-42);
     });
 
     it("should handle floating point number tokens", () => {
       const token = createMockToken(TokenType.NUMBER, 3.14159, 0);
       const tokenNode = new TokenNode(token);
-      
+
       expect(tokenNode.toValue()).toBe(3.14159);
     });
 
@@ -292,7 +291,7 @@ describe("TokenNode", () => {
       const largeNumber = Number.MAX_SAFE_INTEGER;
       const token = createMockToken(TokenType.NUMBER, largeNumber, 0);
       const tokenNode = new TokenNode(token);
-      
+
       expect(tokenNode.toValue()).toBe(largeNumber);
     });
 
@@ -300,7 +299,7 @@ describe("TokenNode", () => {
       const smallNumber = Number.MIN_SAFE_INTEGER;
       const token = createMockToken(TokenType.NUMBER, smallNumber, 0);
       const tokenNode = new TokenNode(token);
-      
+
       expect(tokenNode.toValue()).toBe(smallNumber);
     });
 
@@ -308,7 +307,7 @@ describe("TokenNode", () => {
       const specialString = "Hello\nWorld\t\"quoted\"\r\n";
       const token = createMockToken(TokenType.STRING, specialString, 0);
       const tokenNode = new TokenNode(token);
-      
+
       expect(tokenNode.toValue()).toBe(specialString);
     });
 
@@ -316,7 +315,7 @@ describe("TokenNode", () => {
       const unicodeString = "Hello 世界 🌍 café";
       const token = createMockToken(TokenType.STRING, unicodeString, 0);
       const tokenNode = new TokenNode(token);
-      
+
       expect(tokenNode.toValue()).toBe(unicodeString);
     });
 
@@ -324,7 +323,7 @@ describe("TokenNode", () => {
       const longString = "a".repeat(10000);
       const token = createMockToken(TokenType.STRING, longString, 0);
       const tokenNode = new TokenNode(token);
-      
+
       expect(tokenNode.toValue()).toBe(longString);
     });
   });
@@ -335,9 +334,9 @@ describe("TokenNode", () => {
       originalToken.subType = TokenType.SECTION_NAME;
       originalToken.row = 2;
       originalToken.col = 10;
-      
+
       const tokenNode = new TokenNode(originalToken);
-      
+
       // Should have all the same properties as the original token
       expect(tokenNode.type).toBe(originalToken.type);
       expect(tokenNode.value).toBe(originalToken.value);
@@ -351,7 +350,7 @@ describe("TokenNode", () => {
     it("should be instance of both TokenNode and Token", () => {
       const token = createMockToken(TokenType.STRING, "test", 0);
       const tokenNode = new TokenNode(token);
-      
+
       expect(tokenNode).toBeInstanceOf(TokenNode);
       expect(tokenNode).toBeInstanceOf(Token);
     });
@@ -359,34 +358,32 @@ describe("TokenNode", () => {
 
   describe("Variable Resolution Edge Cases", () => {
     it("should handle circular references gracefully", () => {
-      // TODO: Verify and finalize variable resolution behavior - currently getV throws error instead of returning undefined
       const defs = new Definitions();
       // This would create a circular reference if not handled properly
       defs.set("@var1", "var2");
       defs.set("@var2", "var1");
-      
+
       const token = createMockToken(TokenType.STRING, "@var1", 0);
       const tokenNode = new TokenNode(token);
-      
+
       // Should return the resolved value (var2) not cause infinite loop
       const result = tokenNode.toValue(defs);
-      expect(result).toBe("@var1"); // Currently returns original value due to getV throwing error
+      expect(result).toBe("var2");
     });
 
     it("should handle case-sensitive variable names", () => {
-      // TODO: Verify and finalize variable resolution behavior - currently getV throws error instead of returning undefined
       const defs = new Definitions();
       defs.set("@Variable", "uppercase");
       defs.set("@variable", "lowercase");
-      
+
       const upperToken = createMockToken(TokenType.STRING, "@Variable", 0);
       const lowerToken = createMockToken(TokenType.STRING, "@variable", 5);
-      
+
       const upperNode = new TokenNode(upperToken);
       const lowerNode = new TokenNode(lowerToken);
-      
-      expect(upperNode.toValue(defs)).toBe("@Variable"); // Currently returns original value due to getV throwing error
-      expect(lowerNode.toValue(defs)).toBe("@variable"); // Currently returns original value due to getV throwing error
+
+      expect(upperNode.toValue(defs)).toBe("uppercase");
+      expect(lowerNode.toValue(defs)).toBe("lowercase");
     });
   });
 });
