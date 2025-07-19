@@ -1,5 +1,6 @@
 import Definitions  from '../../core/definitions';
 import Position from '../../core/position';
+import TokenType from '../tokenizer/token-types';
 import Token        from '../tokenizer/tokens';
 import Node         from './nodes';
 
@@ -19,7 +20,7 @@ class TokenNode extends Token implements Node {
    * @returns The parsed value.
    */
   toValue(defs?: Definitions): any {
-    if (this.type === 'string' && defs !== undefined) {
+    if ((this.type === 'string' || this.type === TokenType.STRING) && defs !== undefined) {
       const valueFound = defs.getV(this.value);
       return valueFound === undefined ? this.value : valueFound;
     }
