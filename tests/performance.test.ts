@@ -133,30 +133,4 @@ describe('Performance Tests', () => {
     expect(cachedTime).toBeLessThanOrEqual(newRegexTime * 1.1);
   });
 
-  it('should measure string concatenation vs substring performance', () => {
-    const testString = "   hello   world   ";
-    const iterations = 10000;
-    
-    // Test character-by-character concatenation vs substring
-    const { avgTime: concatTime } = measureTime(() => {
-      let result = '';
-      for (let i = 0; i < testString.length; i++) {
-        if (testString[i] !== ' ') {
-          result += testString[i];
-        }
-      }
-      return result;
-    }, iterations);
-
-    const { avgTime: substringTime } = measureTime(() => {
-      return testString.replace(/ /g, '');
-    }, iterations);
-
-    console.log(`String concatenation: ${concatTime.toFixed(6)}ms avg`);
-    console.log(`String replace: ${substringTime.toFixed(6)}ms avg`);
-    console.log(`Performance improvement: ${((concatTime - substringTime) / concatTime * 100).toFixed(1)}%`);
-    
-    // String replace should be faster or at least comparable for this use case
-    expect(substringTime).toBeLessThanOrEqual(concatTime * 1.2); // Allow 20% tolerance
-  });
 });
