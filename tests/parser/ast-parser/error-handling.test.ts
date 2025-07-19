@@ -339,35 +339,33 @@ describe("AST Parser - Error Handling", () => {
 
     it("should throw error for missing section separator", () => {
       const input = `
-      a,b,c
-      1,2,3
+      a,b,c # there should be a section separator here after this header line
+      ~ 1,2,3
       `;
 
       const tokenizer = new Tokenizer(input);
       const tokens = tokenizer.tokenize();
       const astParser = new ASTParser(tokens);
 
-      // TODO: Verify error handling behavior - parser may have been made more lenient
-      expect(() => astParser.parse()).not.toThrow();
+      expect(() => astParser.parse()).toThrow();
     });
   });
 
   describe("Error Recovery Boundaries", () => {
     it("should not recover from errors in single object sections", () => {
-      const input = `{name: "Alice", invalid syntax}`;
+      const input = `{name: "Alice" invalid syntax}`;
 
       const tokenizer = new Tokenizer(input);
       const tokens = tokenizer.tokenize();
       const astParser = new ASTParser(tokens);
 
-      // TODO: Verify error handling behavior - parser may have been made more lenient
-      expect(() => astParser.parse()).not.toThrow();
+      expect(() => astParser.parse()).toThrow();
     });
 
     it("should only recover in collection contexts", () => {
       const input = `
       --- section1
-      {name: "Alice", invalid syntax}
+      {name: "Alice" invalid syntax}
       --- section2
       ~ name: "Bob"
       `;
@@ -376,9 +374,7 @@ describe("AST Parser - Error Handling", () => {
       const tokens = tokenizer.tokenize();
       const astParser = new ASTParser(tokens);
 
-      // TODO: Verify error handling behavior - parser may have been made more lenient
-      // Should throw because first section has invalid single object
-      expect(() => astParser.parse()).not.toThrow();
+      expect(() => astParser.parse()).toThrow();
     });
 
     it("should handle mixed valid sections and collection errors", () => {
