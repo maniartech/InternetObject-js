@@ -37,7 +37,7 @@ describe("SectionNode", () => {
     it("should create SectionNode with object child and no name/schema", () => {
       const objectChild = createSimpleObject();
       const section = new SectionNode(objectChild, null, null);
-      
+
       expect(section.type).toBe("section");
       expect(section.child).toBe(objectChild);
       expect(section.nameNode).toBeNull();
@@ -47,7 +47,7 @@ describe("SectionNode", () => {
     it("should create SectionNode with collection child and no name/schema", () => {
       const collectionChild = createSimpleCollection();
       const section = new SectionNode(collectionChild, null, null);
-      
+
       expect(section.type).toBe("section");
       expect(section.child).toBe(collectionChild);
       expect(section.nameNode).toBeNull();
@@ -56,7 +56,7 @@ describe("SectionNode", () => {
 
     it("should create SectionNode with null child", () => {
       const section = new SectionNode(null, null, null);
-      
+
       expect(section.type).toBe("section");
       expect(section.child).toBeNull();
       expect(section.nameNode).toBeNull();
@@ -67,7 +67,7 @@ describe("SectionNode", () => {
       const objectChild = createSimpleObject();
       const nameToken = new TokenNode(createMockToken(TokenType.STRING, "users", 0));
       const section = new SectionNode(objectChild, nameToken, null);
-      
+
       expect(section.type).toBe("section");
       expect(section.child).toBe(objectChild);
       expect(section.nameNode).toBe(nameToken);
@@ -78,7 +78,7 @@ describe("SectionNode", () => {
       const objectChild = createSimpleObject();
       const schemaToken = new TokenNode(createMockToken(TokenType.STRING, "$userSchema", 0));
       const section = new SectionNode(objectChild, null, schemaToken);
-      
+
       expect(section.type).toBe("section");
       expect(section.child).toBe(objectChild);
       expect(section.nameNode).toBeNull();
@@ -90,7 +90,7 @@ describe("SectionNode", () => {
       const nameToken = new TokenNode(createMockToken(TokenType.STRING, "users", 0));
       const schemaToken = new TokenNode(createMockToken(TokenType.STRING, "$userSchema", 10));
       const section = new SectionNode(objectChild, nameToken, schemaToken);
-      
+
       expect(section.type).toBe("section");
       expect(section.child).toBe(objectChild);
       expect(section.nameNode).toBe(nameToken);
@@ -103,7 +103,7 @@ describe("SectionNode", () => {
       const objectChild = createSimpleObject();
       const nameToken = new TokenNode(createMockToken(TokenType.STRING, "users", 0));
       const section = new SectionNode(objectChild, nameToken, null);
-      
+
       expect(section.name).toBe("users");
     });
 
@@ -111,14 +111,14 @@ describe("SectionNode", () => {
       const objectChild = createSimpleObject();
       const schemaToken = new TokenNode(createMockToken(TokenType.STRING, "$userSchema", 0));
       const section = new SectionNode(objectChild, null, schemaToken);
-      
+
       expect(section.name).toBe("userSchema");
     });
 
     it("should return 'unnamed' when no nameNode or schemaNode", () => {
       const objectChild = createSimpleObject();
       const section = new SectionNode(objectChild, null, null);
-      
+
       expect(section.name).toBe("unnamed");
     });
 
@@ -127,7 +127,7 @@ describe("SectionNode", () => {
       const nameToken = new TokenNode(createMockToken(TokenType.STRING, "users", 0));
       const schemaToken = new TokenNode(createMockToken(TokenType.STRING, "$userSchema", 10));
       const section = new SectionNode(objectChild, nameToken, schemaToken);
-      
+
       expect(section.name).toBe("users");
     });
   });
@@ -137,14 +137,14 @@ describe("SectionNode", () => {
       const objectChild = createSimpleObject();
       const schemaToken = new TokenNode(createMockToken(TokenType.STRING, "$userSchema", 0));
       const section = new SectionNode(objectChild, null, schemaToken);
-      
+
       expect(section.schemaName).toBe("$userSchema");
     });
 
     it("should return default '$schema' when no schemaNode", () => {
       const objectChild = createSimpleObject();
       const section = new SectionNode(objectChild, null, null);
-      
+
       expect(section.schemaName).toBe("$schema");
     });
   });
@@ -153,13 +153,13 @@ describe("SectionNode", () => {
     it("should return child when child exists", () => {
       const objectChild = createSimpleObject();
       const section = new SectionNode(objectChild, null, null);
-      
+
       expect(section.firstChild).toBe(objectChild);
     });
 
     it("should return null when child is null", () => {
       const section = new SectionNode(null, null, null);
-      
+
       expect(section.firstChild).toBeNull();
     });
   });
@@ -168,27 +168,27 @@ describe("SectionNode", () => {
     it("should return object when child is ObjectNode", () => {
       const objectChild = createSimpleObject();
       const section = new SectionNode(objectChild, null, null);
-      
+
       expect(section.firstChildObject).toBe(objectChild);
     });
 
     it("should return first object from collection when child is CollectionNode", () => {
       const collectionChild = createSimpleCollection();
       const section = new SectionNode(collectionChild, null, null);
-      
+
       expect(section.firstChildObject).toBe(collectionChild.children[0]);
     });
 
     it("should return null when child is null", () => {
       const section = new SectionNode(null, null, null);
-      
+
       expect(section.firstChildObject).toBeNull();
     });
 
     it("should return null when collection is empty", () => {
       const emptyCollection = new CollectionNode([]);
       const section = new SectionNode(emptyCollection, null, null);
-      
+
       expect(section.firstChildObject).toBeNull();
     });
   });
@@ -197,14 +197,14 @@ describe("SectionNode", () => {
     it("should return child start position when child exists", () => {
       const objectChild = createSimpleObject();
       const section = new SectionNode(objectChild, null, null);
-      
+
       const startPos = section.getStartPos();
       expect(startPos).toEqual(objectChild.getStartPos());
     });
 
     it("should return default position when child is null", () => {
       const section = new SectionNode(null, null, null);
-      
+
       const startPos = section.getStartPos();
       expect(startPos).toEqual({ row: 0, col: 0, pos: 0 });
     });
@@ -212,14 +212,14 @@ describe("SectionNode", () => {
     it("should return child end position when child exists", () => {
       const objectChild = createSimpleObject();
       const section = new SectionNode(objectChild, null, null);
-      
+
       const endPos = section.getEndPos();
       expect(endPos).toEqual(objectChild.getEndPos());
     });
 
     it("should return default position for end when child is null", () => {
       const section = new SectionNode(null, null, null);
-      
+
       const endPos = section.getEndPos();
       expect(endPos).toEqual({ row: 0, col: 0, pos: 0 });
     });
@@ -231,9 +231,9 @@ describe("SectionNode", () => {
       const nameToken = new TokenNode(createMockToken(TokenType.STRING, "testSection", 0));
       const schemaToken = new TokenNode(createMockToken(TokenType.STRING, "$testSchema", 10));
       const section = new SectionNode(objectChild, nameToken, schemaToken);
-      
+
       const result = section.toValue();
-      
+
       expect(result).toBeInstanceOf(Section);
       expect(result.name).toBe("testSection");
       expect(result.schemaName).toBe("$testSchema");
@@ -244,9 +244,9 @@ describe("SectionNode", () => {
       const collectionChild = createSimpleCollection();
       const nameToken = new TokenNode(createMockToken(TokenType.STRING, "items", 0));
       const section = new SectionNode(collectionChild, nameToken, null);
-      
+
       const result = section.toValue();
-      
+
       expect(result).toBeInstanceOf(Section);
       expect(result.name).toBe("items");
       expect(result.schemaName).toBe("$schema");
@@ -256,9 +256,9 @@ describe("SectionNode", () => {
     it("should convert to Section with null data", () => {
       const nameToken = new TokenNode(createMockToken(TokenType.STRING, "empty", 0));
       const section = new SectionNode(null, nameToken, null);
-      
+
       const result = section.toValue();
-      
+
       expect(result).toBeInstanceOf(Section);
       expect(result.name).toBe("empty");
       expect(result.schemaName).toBe("$schema");
@@ -269,9 +269,9 @@ describe("SectionNode", () => {
       const objectChild = createSimpleObject();
       const schemaToken = new TokenNode(createMockToken(TokenType.STRING, "$userSchema", 0));
       const section = new SectionNode(objectChild, null, schemaToken);
-      
+
       const result = section.toValue();
-      
+
       expect(result).toBeInstanceOf(Section);
       expect(result.name).toBe("userSchema"); // Schema name without $
       expect(result.schemaName).toBe("$userSchema");
@@ -280,9 +280,9 @@ describe("SectionNode", () => {
     it("should use 'unnamed' when no name or schema", () => {
       const objectChild = createSimpleObject();
       const section = new SectionNode(objectChild, null, null);
-      
+
       const result = section.toValue();
-      
+
       expect(result).toBeInstanceOf(Section);
       expect(result.name).toBe("unnamed");
       expect(result.schemaName).toBe("$schema");
@@ -291,15 +291,19 @@ describe("SectionNode", () => {
     it("should pass definitions to child toValue", () => {
       const objectChild = createSimpleObject();
       const section = new SectionNode(objectChild, null, null);
-      
+
       // Mock definitions
-      const mockDefs = {} as any;
-      
+      const mockDefs = {
+        getV: (key: string) => {
+          return key === "test" ? "mockValue" : null;
+        }
+      } as any;
+
       // Spy on child's toValue method
       const toValueSpy = jest.spyOn(objectChild, 'toValue');
-      
+
       section.toValue(mockDefs);
-      
+
       expect(toValueSpy).toHaveBeenCalledWith(mockDefs);
     });
   });
@@ -312,20 +316,20 @@ describe("SectionNode", () => {
         new TokenNode(createMockToken(TokenType.STRING, "innerKey", 5))
       );
       const innerObject = new ObjectNode([innerMember]);
-      
+
       const outerMember = new MemberNode(
         innerObject,
         new TokenNode(createMockToken(TokenType.STRING, "nested", 0))
       );
       const outerObject = new ObjectNode([outerMember]);
-      
+
       const nameToken = new TokenNode(createMockToken(TokenType.STRING, "complex", 0));
       const section = new SectionNode(outerObject, nameToken, null);
-      
+
       expect(section.child).toBe(outerObject);
       expect(section.name).toBe("complex");
       expect(section.firstChildObject).toBe(outerObject);
-      
+
       const result = section.toValue();
       expect(result).toBeInstanceOf(Section);
       expect(result.name).toBe("complex");
@@ -336,14 +340,14 @@ describe("SectionNode", () => {
       const obj2 = createSimpleObject("second");
       const obj3 = createSimpleObject("third");
       const collection = new CollectionNode([obj1, obj2, obj3]);
-      
+
       const nameToken = new TokenNode(createMockToken(TokenType.STRING, "multiItems", 0));
       const section = new SectionNode(collection, nameToken, null);
-      
+
       expect(section.child).toBe(collection);
       expect(section.name).toBe("multiItems");
       expect(section.firstChildObject).toBe(obj1);
-      
+
       const result = section.toValue();
       expect(result).toBeInstanceOf(Section);
       expect(result.name).toBe("multiItems");
@@ -355,7 +359,7 @@ describe("SectionNode", () => {
       const objectChild = createSimpleObject();
       const nameToken = new TokenNode(createMockToken(TokenType.STRING, "", 0));
       const section = new SectionNode(objectChild, nameToken, null);
-      
+
       expect(section.name).toBe("unnamed"); // Empty string falls back to 'unnamed'
     });
 
@@ -363,7 +367,7 @@ describe("SectionNode", () => {
       const objectChild = createSimpleObject();
       const schemaToken = new TokenNode(createMockToken(TokenType.STRING, "plainSchema", 0));
       const section = new SectionNode(objectChild, null, schemaToken);
-      
+
       expect(section.name).toBe("lainSchema"); // First character is removed by substring(1)
       expect(section.schemaName).toBe("plainSchema");
     });
@@ -373,7 +377,7 @@ describe("SectionNode", () => {
       const objectChild = createSimpleObject();
       const nameToken = new TokenNode(createMockToken(TokenType.STRING, longName, 0));
       const section = new SectionNode(objectChild, nameToken, null);
-      
+
       expect(section.name).toBe(longName);
     });
 
@@ -382,7 +386,7 @@ describe("SectionNode", () => {
       const objectChild = createSimpleObject();
       const nameToken = new TokenNode(createMockToken(TokenType.STRING, specialName, 0));
       const section = new SectionNode(objectChild, nameToken, null);
-      
+
       expect(section.name).toBe(specialName);
     });
 
@@ -390,7 +394,7 @@ describe("SectionNode", () => {
       const objectChild = createSimpleObject();
       const nameToken = new TokenNode(createMockToken(TokenType.NUMBER, 123, 0));
       const section = new SectionNode(objectChild, nameToken, null);
-      
+
       expect(section.name).toBe(123);
     });
   });
@@ -399,7 +403,7 @@ describe("SectionNode", () => {
     it("should maintain type property", () => {
       const objectChild = createSimpleObject();
       const section = new SectionNode(objectChild, null, null);
-      
+
       expect(section.type).toBe("section");
     });
 
@@ -408,7 +412,7 @@ describe("SectionNode", () => {
       const nameToken = new TokenNode(createMockToken(TokenType.STRING, "test", 0));
       const schemaToken = new TokenNode(createMockToken(TokenType.STRING, "$test", 5));
       const section = new SectionNode(objectChild, nameToken, schemaToken);
-      
+
       expect(section.type).toBe("section");
     });
   });
