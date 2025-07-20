@@ -1,4 +1,4 @@
-import PositionRange from "../core/position-range"
+import PositionRange from "../core/positions"
 
 /**
  * Represents the base error class in InternetObject.
