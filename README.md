@@ -42,7 +42,6 @@ const userSchema = io.defs`
   email: string
 `;
 
-
 // Parse with external schema
 const users = io.doc.with(userSchema)`
   Alice, 30, alice@example.com
@@ -143,7 +142,7 @@ if (defs) {
 For advanced use cases, you can access the underlying parsing components:
 
 ```ts
-import { Tokenizer, ASTParser, Document, Definitions } from 'internet-object';
+import { Tokenizer, ASTParser, IODocument, IODefinitions } from 'internet-object';
 
 // Tokenize source code
 const tokenizer = new Tokenizer(source);
@@ -153,7 +152,7 @@ const tokens = tokenizer.tokenize();
 const parser = new ASTParser(tokens);
 const ast = parser.parse();
 
-// Convert to Document or work with the AST directly
+// Convert to IODocument or work with the AST directly
 const doc = ast.toDocument();
 ```
 
@@ -180,8 +179,8 @@ const doc = ast.toDocument();
     - [x] Date
     - [x] Time
   - [x] Binary Data
-- [x] Collections
-- [x] Definitions
+- [x] IOCollections
+- [x] IODefinitions
 - [ ] Serialization (WIP)
 - [ ] API Interface Finalization (WIP)
 - [ ] Errors Standardization (WIP)
