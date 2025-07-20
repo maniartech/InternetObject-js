@@ -1,4 +1,4 @@
-import { Position }  from "../../core/position-range";
+import { Position }  from "../../core/positions";
 
 /**
  * Place this function to check and ensure the code where invoked must never

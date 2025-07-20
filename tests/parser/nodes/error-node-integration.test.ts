@@ -1,7 +1,7 @@
 import ErrorNode from "../../../src/parser/nodes/error";
 import ObjectNode from "../../../src/parser/nodes/objects";
 import CollectionNode from "../../../src/parser/nodes/collections";
-import { Position } from "../../../src/core/position-range";
+import { Position } from "../../../src/core/positions";
 
 describe('ErrorNode Integration', () => {
   const mockPosition: Position = { pos: 10, row: 2, col: 5 };

@@ -2,7 +2,7 @@ import ObjectNode from "../../../src/parser/nodes/objects";
 import MemberNode from "../../../src/parser/nodes/members";
 import TokenNode from "../../../src/parser/nodes/tokens";
 import Token from "../../../src/parser/tokenizer/tokens";
-import { Position } from "../../../src/core/position-range";
+import { Position } from "../../../src/core/positions";
 
 // Mock classes for testing
 class MockValueNode {

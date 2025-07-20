@@ -1,5 +1,5 @@
 import CollectionNode from "../../../src/parser/nodes/collections";
-import { Position } from "../../../src/core/position-range";
+import { Position } from "../../../src/core/positions";
 
 // Mock node class for testing
 class MockNode {

@@ -1,5 +1,5 @@
 import ErrorNode from "../../../src/parser/nodes/error";
-import { Position } from "../../../src/core/position-range";
+import { Position } from "../../../src/core/positions";
 
 describe('ErrorNode', () => {
   const mockPosition: Position = { pos: 10, row: 2, col: 5 };

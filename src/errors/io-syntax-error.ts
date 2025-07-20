@@ -1,4 +1,4 @@
-import PositionRange from "../core/position-range"
+import PositionRange from "../core/positions"
 import InternetObjectError from "./io-error"
 
 

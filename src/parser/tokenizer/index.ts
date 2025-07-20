@@ -1,5 +1,5 @@
 import Decimal        from '../../core/decimal';
-import PositionRange  from '../../core/position-range';
+import PositionRange  from '../../core/positions';
 import assertNever    from '../../errors/asserts/asserts';
 import ErrorCodes     from '../../errors/io-error-codes';
 import SyntaxError    from '../../errors/io-syntax-error';

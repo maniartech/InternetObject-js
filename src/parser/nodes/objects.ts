@@ -1,6 +1,6 @@
 import Definitions    from '../../core/definitions';
 import InternetObject from '../../core/internet-object';
-import { Position } from '../../core/position-range';
+import { Position } from '../../core/positions';
 import Token from '../tokenizer/tokens';
 import ContainerNode  from './containers';
 import MemberNode     from './members';

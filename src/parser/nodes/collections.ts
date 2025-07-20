@@ -1,6 +1,6 @@
 import Collection from "../../core/collection";
 import Definitions from "../../core/definitions";
-import { Position } from '../../core/position-range';
+import { Position } from '../../core/positions';
 import ContainerNode from "./containers";
 import Node from "./nodes";
 
