@@ -1,12 +1,10 @@
 class IOObject<T = any> implements Iterable<[string | undefined, T]> {
   private items: ([string | undefined, T] | undefined)[];
   private keyMap: Map<string, number>;
-  private _size: number;
 
   constructor(o?: Record<string, T>) {
     this.items = [];
     this.keyMap = new Map();
-    this._size = 0;
 
     if (o) {
       for (const [key, value] of Object.entries(o)) {
@@ -30,7 +28,6 @@ class IOObject<T = any> implements Iterable<[string | undefined, T]> {
       const index = this.items.length;
       this.items.push([key, value]);
       this.keyMap.set(key, index);
-      this._size++;
     }
     return this;
   }
@@ -50,10 +47,8 @@ class IOObject<T = any> implements Iterable<[string | undefined, T]> {
         const index = this.items.length;
         this.items.push([key, value]);
         this.keyMap.set(key, index);
-        this._size++;
       } else {
-        this.items.push([undefined, item]);
-        this._size++;
+  this.items.push([undefined, item]);
       }
     }
   }
@@ -117,7 +112,6 @@ class IOObject<T = any> implements Iterable<[string | undefined, T]> {
     if (index !== undefined && this.items[index]) {
       this.items[index] = undefined;
       this.keyMap.delete(key);
-      this._size--;
       return true;
     }
     return false;
@@ -142,7 +136,6 @@ class IOObject<T = any> implements Iterable<[string | undefined, T]> {
         this.keyMap.delete(key);
       }
       this.items[index] = undefined;
-      this._size--;
       return true;
     }
     return false;
@@ -193,7 +186,7 @@ class IOObject<T = any> implements Iterable<[string | undefined, T]> {
    * @returns True if empty, otherwise false.
    */
   isEmpty(): boolean {
-    return this._size === 0;
+  return this.length === 0;
   }
 
   /**
@@ -221,19 +214,11 @@ class IOObject<T = any> implements Iterable<[string | undefined, T]> {
   }
 
   /**
-   * Returns the number of active entries in the IOObject.
-   */
-  get size(): number {
-    return this._size;
-  }
-
-  /**
    * Clears all key-value pairs from the IOObject.
    */
   clear(): void {
-    this.items = [];
-    this.keyMap.clear();
-    this._size = 0;
+  this.items = [];
+  this.keyMap.clear();
   }
 
   /**
@@ -255,9 +240,8 @@ class IOObject<T = any> implements Iterable<[string | undefined, T]> {
       }
     }
 
-    this.items = newItems;
-    this.keyMap = newKeyMap;
-    this._size = this.items.length;
+  this.items = newItems;
+  this.keyMap = newKeyMap;
   }
 
   /**
