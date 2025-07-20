@@ -1,12 +1,13 @@
-import Collection     from "./collection";
-import InternetObject from "./internet-object";
 
-class Section<T  = any> {
-  private _data: Collection<T> | InternetObject<T> | null;
+import IOCollection from "./collection";
+import IOObject from "./internet-object";
+
+class IOSection<T = any> {
+  private _data: IOCollection<T> | IOObject<T> | null;
   private _name?: string;
   private _schemaName?: string;
 
-  constructor(data:any, name?: string, _schemaName?: string) {
+  constructor(data: any, name?: string, _schemaName?: string) {
     this._data = data;
     this._name = name;
     this._schemaName = _schemaName;
@@ -20,25 +21,21 @@ class Section<T  = any> {
     return this._schemaName;
   }
 
-  public get data(): Collection<T> | InternetObject<T> | null {
+  public get data(): IOCollection<T> | IOObject<T> | null {
     return this._data;
   }
 
   public toJSON(): any {
-
-    // Internet Object
-    if (this._data instanceof InternetObject) {
+    // IOObject
+    if (this._data instanceof IOObject) {
       return this._data.toJSON();
     }
-
-    // Collection
-    else if (this._data instanceof Collection) {
+    // IOCollection
+    else if (this._data instanceof IOCollection) {
       return this._data.toJSON();
     }
-
     return null;
   }
-
 }
 
-export default Section;
+export default IOSection;

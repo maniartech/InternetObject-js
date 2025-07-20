@@ -1,11 +1,16 @@
 import assertNever from '../errors/asserts/asserts';
 import InternetObject from './internet-object';
 
-class Collection<T = InternetObject> {
+import IOObject from "./internet-object";
+
+/**
+ * IOCollection is a collection of IOObject instances.
+ */
+class IOCollection<T = IOObject> {
   private _items: T[];
 
   /**
-   * Constructs a new Collection instance.
+   * Constructs a new IOCollection instance.
    * @param items - An optional array of items to initialize the collection with.
    */
   constructor(items: T[] = []) {
@@ -13,11 +18,11 @@ class Collection<T = InternetObject> {
   }
 
   /**
-   * Pushes one or more items to the collection
+   * Pushes one or more items to the IOCollection
    * @param items - The items to push.
-   * @returns The updated collection.
+   * @returns The updated IOCollection.
    */
-  public push(...items: T[]): Collection<T> {
+  public push(...items: T[]): IOCollection<T> {
     this._items.push(...items);
     return this;
   }
@@ -40,9 +45,9 @@ class Collection<T = InternetObject> {
    * @param index - The index at which to set the item.
    * @param item - The item to set.
    * @throws {Error} If the index is negative.
-   * @returns The updated collection.
+   * @returns The updated IOCollection.
    */
-  public setAt(index: number, item: T): Collection<T> {
+  public setAt(index: number, item: T): IOCollection<T> {
     if (index < 0) {
       throw new Error('Index cannot be negative.');
     }
@@ -55,12 +60,12 @@ class Collection<T = InternetObject> {
   }
 
   /**
-   * Deletes an item from the collection at the specified index.
+   * Deletes an item from the IOCollection at the specified index.
    * @param index - The index of the item to delete.
    * @throws {Error} If the index is out of range.
-   * @returns The updated collection.
+   * @returns The updated IOCollection.
    */
-  public deleteAt(index: number): Collection<T> {
+  public deleteAt(index: number): IOCollection<T> {
     if (index < 0 || index >= this._items.length) {
       throw new Error('Index out of range');
     }
@@ -69,44 +74,44 @@ class Collection<T = InternetObject> {
   }
 
   /**
-   * Gets the length of the collection.
-   * @returns The number of items in the collection.
+   * Gets the length of the IOCollection.
+   * @returns The number of items in the IOCollection.
    */
   public get length(): number {
     return this._items.length;
   }
 
   /**
-   * Checks if the collection is empty.
-   * @returns True if the collection is empty, otherwise false.
+   * Checks if the IOCollection is empty.
+   * @returns True if the IOCollection is empty, otherwise false.
    */
   public get isEmpty(): boolean {
     return this.length === 0;
   }
 
   /**
-   * Creates a new collection with the results of calling a provided function on every element.
-   * @param callback - Function that produces an element of the new collection.
-   * @returns A new collection with each element being the result of the callback function.
+   * Creates a new IOCollection with the results of calling a provided function on every element.
+   * @param callback - Function that produces an element of the new IOCollection.
+   * @returns A new IOCollection with each element being the result of the callback function.
    */
-  public map<U>(callback: (item: T, index: number, array: T[]) => U): Collection<U> {
+  public map<U>(callback: (item: T, index: number, array: T[]) => U): IOCollection<U> {
     const mappedItems = this._items.map(callback);
-    return new Collection<U>(mappedItems);
+    return new IOCollection<U>(mappedItems);
   }
 
   /**
-   * Creates a new collection with all elements that pass the test implemented by the provided function.
-   * @param callback - Function to test each element of the collection.
-   * @returns A new collection with the elements that pass the test.
+   * Creates a new IOCollection with all elements that pass the test implemented by the provided function.
+   * @param callback - Function to test each element of the IOCollection.
+   * @returns A new IOCollection with the elements that pass the test.
    */
-  public filter(callback: (item: T, index: number, array: T[]) => boolean): Collection<T> {
+  public filter(callback: (item: T, index: number, array: T[]) => boolean): IOCollection<T> {
     const filteredItems = this._items.filter(callback);
-    return new Collection<T>(filteredItems);
+    return new IOCollection<T>(filteredItems);
   }
 
   /**
-   * Applies a function against an accumulator and each element in the collection to reduce it to a single value.
-   * @param callback - Function to execute on each element in the collection.
+   * Applies a function against an accumulator and each element in the IOCollection to reduce it to a single value.
+   * @param callback - Function to execute on each element in the IOCollection.
    * @param initialValue - Initial value to start the reduction.
    * @returns The single value that results from the reduction.
    */
@@ -115,7 +120,7 @@ class Collection<T = InternetObject> {
   }
 
   /**
-   * Executes a provided function once for each collection element.
+   * Executes a provided function once for each IOCollection element.
    * @param callback - Function to execute on each element.
    */
   public forEach(callback: (item: T, index: number, array: T[]) => void): void {
@@ -123,7 +128,7 @@ class Collection<T = InternetObject> {
   }
 
   /**
-   * Tests whether at least one element in the collection passes the test implemented by the provided function.
+   * Tests whether at least one element in the IOCollection passes the test implemented by the provided function.
    * @param callback - Function to test each element.
    * @returns True if the callback function returns a truthy value for at least one element, otherwise false.
    */
@@ -132,7 +137,7 @@ class Collection<T = InternetObject> {
   }
 
   /**
-   * Tests whether all elements in the collection pass the test implemented by the provided function.
+   * Tests whether all elements in the IOCollection pass the test implemented by the provided function.
    * @param callback - Function to test each element.
    * @returns True if the callback returns a truthy value for all elements, otherwise false.
    */
@@ -141,7 +146,7 @@ class Collection<T = InternetObject> {
   }
 
   /**
-   * Returns the value of the first element in the collection that satisfies the provided testing function.
+   * Returns the value of the first element in the IOCollection that satisfies the provided testing function.
    * @param callback - Function to execute on each element.
    * @returns The first element that satisfies the testing function, or undefined if no elements satisfy it.
    */
@@ -150,7 +155,7 @@ class Collection<T = InternetObject> {
   }
 
   /**
-   * Returns the index of the first element in the collection that satisfies the provided testing function.
+   * Returns the index of the first element in the IOCollection that satisfies the provided testing function.
    * @param callback - Function to execute on each element.
    * @returns The index of the first element that satisfies the testing function, or -1 if no elements satisfy it.
    */
@@ -159,10 +164,10 @@ class Collection<T = InternetObject> {
   }
 
   /**
-   * Inserts one or more items into the collection at the specified index.
+   * Inserts one or more items into the IOCollection at the specified index.
    * @param index - The index at which to insert the items.
    * @param items - The items to insert.
-   * @returns The new length of the collection.
+   * @returns The new length of the IOCollection.
    */
   public insert(index: number, ...items: T[]): number {
     this._items.splice(index, 0, ...items);
@@ -170,20 +175,20 @@ class Collection<T = InternetObject> {
   }
 
   /**
-   * Removes the last item from the collection.
-   * @returns The removed item, or undefined if the collection is empty.
+   * Removes the last item from the IOCollection.
+   * @returns The removed item, or undefined if the IOCollection is empty.
    */
   public pop(): T | undefined {
     return this._items.pop();
   }
 
   /**
-   * Converts the collection to a JSON-compatible representation.
+   * Converts the IOCollection to a JSON-compatible representation.
    * @returns An array of JSON-compatible representations of the items.
    */
   public toJSON(): any {
     return this._items.map((item) => {
-      if (item instanceof InternetObject) {
+      if (item instanceof IOObject) {
         return item.toJSON();
       } else if (typeof item === 'object' && item !== null) {
         return JSON.stringify(item);
@@ -193,8 +198,8 @@ class Collection<T = InternetObject> {
   }
 
   /**
-   * Allows iteration over the collection using for..of syntax.
-   * @returns An iterator for the collection.
+   * Allows iteration over the IOCollection using for..of syntax.
+   * @returns An iterator for the IOCollection.
    */
   *[Symbol.iterator](): IterableIterator<T> {
     yield* this._items;
@@ -221,8 +226,8 @@ class Collection<T = InternetObject> {
   }
 
   /**
-   * Returns an iterator of collection items.
-   * @returns An iterator of collection items.
+   * Returns an iterator of IOCollection items.
+   * @returns An iterator of IOCollection items.
    */
   *values(): IterableIterator<T> {
     yield* this._items;
@@ -230,7 +235,7 @@ class Collection<T = InternetObject> {
 }
 
 const proxy = {
-  get: (target: Collection<any>, property: string | symbol) => {
+  get: (target: IOCollection<any>, property: string | symbol) => {
     if (property in target) {
       return Reflect.get(target, property);
     }
@@ -242,7 +247,7 @@ const proxy = {
     assertNever(property as never);
   },
 
-  set: (target: Collection<any>, property: string | number | symbol, value: any) => {
+  set: (target: IOCollection<any>, property: string | number | symbol, value: any) => {
     if (typeof property === 'string' && /^[0-9]+$/.test(property)) {
       target.setAt(Number(property), value);
       return true;
@@ -251,7 +256,7 @@ const proxy = {
     throw new Error('Cannot set a value on a Collection');
   },
 
-  deleteProperty: (target: Collection<any>, property: string | symbol) => {
+  deleteProperty: (target: IOCollection<any>, property: string | symbol) => {
     if (typeof property === 'string' && /^[0-9]+$/.test(property)) {
       const index = Number(property);
       target.deleteAt(index);
@@ -262,4 +267,4 @@ const proxy = {
   }
 };
 
-export default Collection;
+export default IOCollection;

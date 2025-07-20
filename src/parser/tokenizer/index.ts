@@ -1,15 +1,14 @@
-import assertNever from '../../errors/asserts/asserts';
-import ErrorCodes from '../../errors/io-error-codes';
-import SyntaxError from '../../errors/io-syntax-error';
-import * as dtParser from '../../utils/datetime';
-import * as is from './is';
-import Literals from './literals';
-import Position from '../../core/position';
-import Symbols from './symbols';
-import TokenType from './token-types';
-import Token from './tokens';
-import PositionRange from '../../core/position-range';
-import Decimal from '../../core/decimal';
+import Decimal        from '../../core/decimal';
+import PositionRange  from '../../core/position-range';
+import assertNever    from '../../errors/asserts/asserts';
+import ErrorCodes     from '../../errors/io-error-codes';
+import SyntaxError    from '../../errors/io-syntax-error';
+import * as dtParser  from '../../utils/datetime';
+import * as is        from './is';
+import Literals       from './literals';
+import Symbols        from './symbols';
+import TokenType      from './token-types';
+import Token          from './tokens';
 
 // Cached regex patterns for performance optimization
 const REGEX_CACHE = {
@@ -312,12 +311,12 @@ class Tokenizer {
       }
     }
 
-    // If we reached the end without finding the closing quote, 
+    // If we reached the end without finding the closing quote,
     // create an error token for the unclosed string
     if (this.reachedEnd) {
       const tokenText = this.input.substring(start, this.pos);
-      const error = new SyntaxError(ErrorCodes.stringNotClosed, 
-        `Unterminated string literal. Expected closing quote '"' before end of input.`, 
+      const error = new SyntaxError(ErrorCodes.stringNotClosed,
+        `Unterminated string literal. Expected closing quote '"' before end of input.`,
         this.currentPosition);
       return this.createErrorToken(error, start, startRow, startCol, tokenText);
     }
@@ -347,7 +346,7 @@ class Tokenizer {
     if (this.reachedEnd) {
       throw new SyntaxError(
         ErrorCodes.invalidEscapeSequence,
-        `Invalid escape sequence at end of input. Expected escape character after backslash.`, 
+        `Invalid escape sequence at end of input. Expected escape character after backslash.`,
         this.currentPosition, true
       )
     }
@@ -378,7 +377,7 @@ class Tokenizer {
         } else {
           throw new SyntaxError(
             ErrorCodes.invalidEscapeSequence,
-            `Invalid Unicode escape sequence '\\u${hex}'. Expected 4 hexadecimal digits (0-9, A-F).`, 
+            `Invalid Unicode escape sequence '\\u${hex}'. Expected 4 hexadecimal digits (0-9, A-F).`,
             this.currentPosition);
         }
         break;
@@ -392,7 +391,7 @@ class Tokenizer {
         } else {
           throw new SyntaxError(
             ErrorCodes.invalidEscapeSequence,
-            `Invalid hexadecimal escape sequence '\\x${hexByte}'. Expected 2 hexadecimal digits (0-9, A-F).`, 
+            `Invalid hexadecimal escape sequence '\\x${hexByte}'. Expected 2 hexadecimal digits (0-9, A-F).`,
             this.currentPosition);
         }
         break;
@@ -443,8 +442,8 @@ class Tokenizer {
 
     if (this.reachedEnd) {
       const tokenText = this.input.substring(start, this.pos);
-      const error = new SyntaxError(ErrorCodes.stringNotClosed, 
-        `Unterminated annotated string literal. Expected closing quote '${annotation.quote}' before end of input.`, 
+      const error = new SyntaxError(ErrorCodes.stringNotClosed,
+        `Unterminated annotated string literal. Expected closing quote '${annotation.quote}' before end of input.`,
         this.currentPosition);
       return this.createErrorToken(error, start, startRow, startCol, tokenText);
     }
@@ -454,7 +453,7 @@ class Tokenizer {
       this.advance();
     }
 
-    // If we reached the end without finding the closing quote, 
+    // If we reached the end without finding the closing quote,
     // treat it as an annotated string that goes to EOF
     const tokenText = this.input.substring(start, this.pos);
     let value: string;
@@ -547,8 +546,8 @@ class Tokenizer {
 
       const dt = fn(token.value);
       if (!dt) {
-        const error = new SyntaxError(ErrorCodes.invalidDateTime, 
-          `Invalid ${annotation.name === 'dt' ? 'datetime' : annotation.name === 'd' ? 'date' : 'time'} format '${token.value}'. Expected valid ISO 8601 format.`, 
+        const error = new SyntaxError(ErrorCodes.invalidDateTime,
+          `Invalid ${annotation.name === 'dt' ? 'datetime' : annotation.name === 'd' ? 'date' : 'time'} format '${token.value}'. Expected valid ISO 8601 format.`,
           token);
         return this.createErrorToken(error, token.pos, token.row, token.col, token.token);
       }
@@ -1034,8 +1033,8 @@ class Tokenizer {
               break;
 
             default:
-              const error = new SyntaxError(ErrorCodes.unsupportedAnnotation, 
-                `Unsupported annotation '${annotation.name}'. Supported annotations are: 'r' (raw string), 'b' (binary), 'dt' (datetime), 'd' (date), 't' (time).`, 
+              const error = new SyntaxError(ErrorCodes.unsupportedAnnotation,
+                `Unsupported annotation '${annotation.name}'. Supported annotations are: 'r' (raw string), 'b' (binary), 'dt' (datetime), 'd' (date), 't' (time).`,
                 this.currentPosition);
               const tokenText = this.input.substring(this.pos, this.pos + annotation.name.length + 1);
               tokens[tokenIndex++] = this.createErrorToken(error, this.pos, this.row, this.col, tokenText);
@@ -1115,8 +1114,8 @@ class Tokenizer {
 
           // Once the sep is detected, the schema must be present
           if (!schema) {
-            const error = new SyntaxError(ErrorCodes.schemaMissing, 
-              `Missing schema definition after section separator. Expected schema name starting with '$' (e.g., '$mySchema').`, 
+            const error = new SyntaxError(ErrorCodes.schemaMissing,
+              `Missing schema definition after section separator. Expected schema name starting with '$' (e.g., '$mySchema').`,
               this.currentPosition);
             tokens[tokenIndex++] = this.createErrorToken(error, this.pos, this.row, this.col, "");
             return tokenIndex;
@@ -1136,7 +1135,7 @@ class Tokenizer {
         }
       }
     }
-    
+
     return tokenIndex;
   }
 }

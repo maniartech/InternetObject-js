@@ -1,20 +1,18 @@
-import Section from "./section";
 
-class SectionCollection<T = any> {
-  private _sections: Array<Section<T>> = [];
+import IOSection from "./section";
+
+class IOSectionCollection<T = any> {
+  private _sections: Array<IOSection<T>> = [];
   private _sectionNames: { [key: string]: number } = {};
 
   // Support index access
-  [key: string]: any
+  [key: string]: any;
 
-  constructor() {/* The `return new Proxy(this, proxy)` statement in the
-  constructor of the `SectionCollection` class is creating a
-  proxy object for the instance of the class. */
-
+  constructor() {
     return new Proxy(this, proxy);
   }
 
-  public get sections(): Array<Section> {
+  public get sections(): Array<IOSection<T>> {
     return this._sections;
   }
 
@@ -22,7 +20,7 @@ class SectionCollection<T = any> {
     return this._sections.length;
   }
 
-  public get(nameOrIndex: string | number): Section<T> | undefined {
+  public get(nameOrIndex: string | number): IOSection<T> | undefined {
     if (typeof nameOrIndex === 'string') {
       const index = this._sectionNames[nameOrIndex];
       if (index === undefined) {
@@ -30,11 +28,10 @@ class SectionCollection<T = any> {
       }
       return this._sections[index];
     }
-
     return this._sections[nameOrIndex];
   }
 
-  public push(section: Section<T>) {
+  public push(section: IOSection<T>) {
     if (section.name !== undefined) {
       this._sectionNames[section.name] = this._sections.length;
     }
@@ -42,7 +39,7 @@ class SectionCollection<T = any> {
   }
 
   /**
-   * Makes the SectionCollection iterable, yielding key-value pairs.
+   * Makes the IOSectionCollection iterable, yielding key-value pairs.
    */
   *[Symbol.iterator]() {
     for (const section of this._sections) {
@@ -52,26 +49,20 @@ class SectionCollection<T = any> {
 }
 
 const proxy = {
-  get: (target: SectionCollection<any>, property: string | symbol) => {
-    // If the property is a member of the InternetObject, return it
+  get: (target: IOSectionCollection<any>, property: string | symbol) => {
     if (property in target) {
       return Reflect.get(target, property);
     }
-
     if (typeof property === 'string') {
-      // If the property is a number, get the value at that index
       if (/^[0-9]+$/.test(property)) {
         return target.get(Number(property));
       }
-
-      // Return the string-keyed value
       return target.get(property);
     }
   },
-
-  set: (target: SectionCollection<any>, property: string | number | symbol, value: any) => {
-    throw new Error('Cannot set a value on a SectionCollection');
+  set: (target: IOSectionCollection<any>, property: string | number | symbol, value: any) => {
+    throw new Error('Cannot set a value on a IOSectionCollection');
   }
-}
+};
 
-export default SectionCollection;
+export default IOSectionCollection;

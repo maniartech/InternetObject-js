@@ -1,12 +1,13 @@
-import Schema       from "../schema/schema";
-import Definitions  from './definitions';
 
-class Header {
+import Schema from "../schema/schema";
+import IODefinitions from './definitions';
+
+class IOHeader {
   private _schema: Schema | null = null;
-  private _definitions: Definitions;
+  private _definitions: IODefinitions;
 
   constructor() {
-    this._definitions = new Definitions();
+    this._definitions = new IODefinitions();
   }
 
   get schema(): Schema | null {
@@ -17,15 +18,14 @@ class Header {
     this._schema = value;
   }
 
-  get definitions(): Definitions {
+  get definitions(): IODefinitions {
     return this._definitions;
   }
 
-  merge(other: Header, override: boolean = false) {
+  merge(other: IOHeader, override: boolean = false) {
     if (override && other.schema) {
       this._schema = other.schema;
     }
-
     if (other.definitions) {
       this._definitions.merge(other.definitions, override);
     }
@@ -34,9 +34,6 @@ class Header {
   toJSON() {
     return this._definitions.toJSON();
   }
-
 }
 
-
-
-export default Header;
+export default IOHeader;

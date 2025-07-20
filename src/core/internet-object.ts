@@ -1,4 +1,4 @@
-class InternetObject<T = any> implements Iterable<[string | undefined, T]> {
+class IOObject<T = any> implements Iterable<[string | undefined, T]> {
   private items: ([string | undefined, T] | undefined)[];
   private keyMap: Map<string, number>;
   private _size: number;
@@ -16,11 +16,11 @@ class InternetObject<T = any> implements Iterable<[string | undefined, T]> {
   }
 
   /**
-   * Adds or updates a key-value pair in the InternetObject.
+   * Adds or updates a key-value pair in the IOObject.
    * If the key exists, updates the value at its index.
    * @param key The key to add or update.
    * @param value The value associated with the key.
-   * @returns The InternetObject instance.
+   * @returns The IOObject instance.
    */
   set(key: string, value: T): this {
     if (this.keyMap.has(key)) {
@@ -36,7 +36,7 @@ class InternetObject<T = any> implements Iterable<[string | undefined, T]> {
   }
 
   /**
-   * Appends values to the InternetObject.
+   * Appends values to the IOObject.
    * Values can be with or without keys.
    * @param items Variadic arguments of values or [key, value] pairs.
    */
@@ -99,7 +99,7 @@ class InternetObject<T = any> implements Iterable<[string | undefined, T]> {
   }
 
   /**
-   * Checks if the InternetObject contains a given key.
+   * Checks if the IOObject contains a given key.
    * @param key The key to check.
    * @returns True if the key exists, otherwise false.
    */
@@ -108,7 +108,7 @@ class InternetObject<T = any> implements Iterable<[string | undefined, T]> {
   }
 
   /**
-   * Deletes a key-value pair from the InternetObject by key.
+   * Deletes a key-value pair from the IOObject by key.
    * @param key The key to delete.
    * @returns True if the key was found and deleted, otherwise false.
    */
@@ -189,7 +189,7 @@ class InternetObject<T = any> implements Iterable<[string | undefined, T]> {
   }
 
   /**
-   * Checks if the InternetObject is empty.
+   * Checks if the IOObject is empty.
    * @returns True if empty, otherwise false.
    */
   isEmpty(): boolean {
@@ -197,12 +197,12 @@ class InternetObject<T = any> implements Iterable<[string | undefined, T]> {
   }
 
   /**
-   * Creates an InternetObject from an array of values or [key, value] pairs.
+   * Creates an IOObject from an array of values or [key, value] pairs.
    * @param array The array to create from.
-   * @returns A new InternetObject instance.
+   * @returns A new IOObject instance.
    */
-  static fromArray<T>(array: (T | [string, T])[]): InternetObject<T> {
-    const io = new InternetObject<T>();
+  static fromArray<T>(array: (T | [string, T])[]): IOObject<T> {
+    const io = new IOObject<T>();
     for (const item of array) {
       if (Array.isArray(item)) {
         io.set(item[0], item[1]);
@@ -214,21 +214,21 @@ class InternetObject<T = any> implements Iterable<[string | undefined, T]> {
   }
 
   /**
-   * Returns the number of entries in the InternetObject, including undefined entries.
+   * Returns the number of entries in the IOObject, including undefined entries.
    */
   get length(): number {
     return this.items.length;
   }
 
   /**
-   * Returns the number of active entries in the InternetObject.
+   * Returns the number of active entries in the IOObject.
    */
   get size(): number {
     return this._size;
   }
 
   /**
-   * Clears all key-value pairs from the InternetObject.
+   * Clears all key-value pairs from the IOObject.
    */
   clear(): void {
     this.items = [];
@@ -278,14 +278,14 @@ class InternetObject<T = any> implements Iterable<[string | undefined, T]> {
   }
 
   /**
-   * Returns an iterable of key, value pairs for every entry in the InternetObject.
+   * Returns an iterable of key, value pairs for every entry in the IOObject.
    */
   entries(): IterableIterator<[string | undefined, T]> {
     return this._createIterator((entry) => entry);
   }
 
   /**
-   * Returns an array of keys in the InternetObject.
+   * Returns an array of keys in the IOObject.
    * Excludes entries without keys (i.e., where key is undefined).
    * @returns An array of keys.
    */
@@ -296,7 +296,7 @@ class InternetObject<T = any> implements Iterable<[string | undefined, T]> {
   }
 
   /**
-   * Returns an iterable of keys in the InternetObject.
+   * Returns an iterable of keys in the IOObject.
    * Excludes entries without keys (i.e., where key is undefined).
    */
   keys(): IterableIterator<string> {
@@ -310,7 +310,7 @@ class InternetObject<T = any> implements Iterable<[string | undefined, T]> {
   }
 
   /**
-   * Returns an iterable of values in the InternetObject.
+   * Returns an iterable of values in the IOObject.
    */
   values(): IterableIterator<T> {
     return (function* (items) {
@@ -323,7 +323,7 @@ class InternetObject<T = any> implements Iterable<[string | undefined, T]> {
   }
 
   /**
-   * Returns an array of values in the InternetObject.
+   * Returns an array of values in the IOObject.
    * Includes all entries, even those without keys.
    * @returns An array of values.
    */
@@ -358,7 +358,7 @@ class InternetObject<T = any> implements Iterable<[string | undefined, T]> {
    * Returns the default string representation of the object.
    */
   get [Symbol.toStringTag](): string {
-    return 'InternetObject';
+    return 'IOObject';
   }
 
   /**
@@ -439,4 +439,4 @@ class InternetObject<T = any> implements Iterable<[string | undefined, T]> {
   }
 }
 
-export default InternetObject;
+export default IOObject;
