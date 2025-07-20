@@ -39,7 +39,9 @@
     "deps:check": "yarn outdated",
     "deps:update": "yarn upgrade",
     "precommit": "yarn lint && yarn type-check && yarn test",
-    "prepare": "yarn build"
+    "prepare": "yarn build",
+    "perf": "ts-node performance.ts || node dist/performance.js",
+    "build:perf": "yarn build && yarn perf"
   },
   "devDependencies": {
     "@types/jest": "^29.5.4",

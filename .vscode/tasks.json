@@ -1,0 +1,11 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"type": "shell",
+			"label": "Run perf command",
+			"command": "yarn perf",
+			"group": "test"
+		}
+	]
+}
