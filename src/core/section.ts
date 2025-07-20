@@ -34,6 +34,10 @@ class IOSection<T = any> {
     else if (this._data instanceof IOCollection) {
       return this._data.toJSON();
     }
+    // Plain object
+    else if (this._data && typeof this._data === 'object') {
+      return this._data;
+    }
     return null;
   }
 }

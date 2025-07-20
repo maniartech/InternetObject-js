@@ -27,13 +27,10 @@ class IODocument {
     const sectionsLen = this._sections?.length || 0;
     let data: any = null;
 
-    // Only one section
     if (sectionsLen === 1) {
       const section = this._sections?.get(0) as IOSection;
       data = section.toJSON();
-    }
-    // More than one section
-    else {
+    } else if (sectionsLen > 1) {
       data = {};
       for (let i = 0; i < sectionsLen; i++) {
         const section = this._sections?.get(i) as IOSection;
@@ -41,14 +38,13 @@ class IODocument {
       }
     }
 
-    if (this.header.definitions?.length) {
-      const headerObject = this.header.toJSON();
-      if (headerObject) {
-        return {
-          header: headerObject,
-          data,
-        };
-      }
+    // Only return header+data if header has non-empty definitions
+    const headerObject = this.header.toJSON();
+    if (headerObject && Object.keys(headerObject).length > 0) {
+      return {
+        header: headerObject,
+        data,
+      };
     }
 
     return data;
