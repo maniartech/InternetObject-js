@@ -2,20 +2,20 @@ import ObjectNode from "../../../src/parser/nodes/objects";
 import MemberNode from "../../../src/parser/nodes/members";
 import TokenNode from "../../../src/parser/nodes/tokens";
 import Token from "../../../src/parser/tokenizer/tokens";
-import Position from "../../../src/core/position";
+import { Position } from "../../../src/core/position-range";
 
 // Mock classes for testing
 class MockValueNode {
   constructor(private value: any) {}
-  
+
   toValue() {
     return this.value;
   }
-  
+
   getStartPos(): Position {
     return { pos: 0, row: 1, col: 1 };
   }
-  
+
   getEndPos(): Position {
     return { pos: 5, row: 1, col: 6 };
   }
@@ -27,11 +27,11 @@ class MockKeyToken extends Token {
     this.value = value;
     this.type = 'string';
   }
-  
+
   getStartPos(): Position {
     return { pos: 0, row: 1, col: 1 };
   }
-  
+
   getEndPos(): Position {
     return { pos: this.value.length, row: 1, col: this.value.length + 1 };
   }
@@ -269,10 +269,10 @@ describe('ObjectNode Utility Methods', () => {
         new TokenNode(new MockKeyToken('name')) as any
       );
       const objectNode = new ObjectNode([member]);
-      
+
       expect(objectNode.isEmpty()).toBe(false);
       expect(objectNode.hasKey('name')).toBe(true);
-      
+
       const value = objectNode.toValue();
       expect(value.get('name')).toBe('John');
     });
@@ -285,7 +285,7 @@ describe('ObjectNode Utility Methods', () => {
         new TokenNode(new MockKeyToken('name')) as any
       );
       const objectNode = new ObjectNode([member], openBracket, closeBracket);
-      
+
       expect(objectNode.isEmpty()).toBe(false);
       expect(typeof objectNode.getStartPos).toBe('function');
       expect(typeof objectNode.getEndPos).toBe('function');

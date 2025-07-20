@@ -1,6 +1,6 @@
 import Definitions from '../../core/definitions';
 import Document from '../../core/document';
-import Position from '../../core/position';
+import { Position } from '../../core/position-range';
 import SectionCollection from '../../core/section-collection';
 import Node         from './nodes';
 import SectionNode  from './section';

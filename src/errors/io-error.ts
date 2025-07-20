@@ -1,4 +1,3 @@
-import Position from "../core/position"
 import PositionRange from "../core/position-range"
 
 /**

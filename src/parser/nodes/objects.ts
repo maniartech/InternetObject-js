@@ -1,6 +1,6 @@
 import Definitions    from '../../core/definitions';
 import InternetObject from '../../core/internet-object';
-import Position from '../../core/position';
+import { Position } from '../../core/position-range';
 import Token from '../tokenizer/tokens';
 import ContainerNode  from './containers';
 import MemberNode     from './members';
@@ -81,15 +81,15 @@ class ObjectNode extends ContainerNode {
   toDebugString(): string {
     const memberStrings = this.children.map((child, index) => {
       if (!child) return `[${index}]: undefined`;
-      
+
       const member = child as MemberNode;
       const keyStr = member.key ? member.key.value : `[${index}]`;
-      const valueStr = member.value ? 
-        (typeof member.value.toValue === 'function' ? 
-          JSON.stringify(member.value.toValue()) : 
-          String(member.value)) : 
+      const valueStr = member.value ?
+        (typeof member.value.toValue === 'function' ?
+          JSON.stringify(member.value.toValue()) :
+          String(member.value)) :
         'undefined';
-      
+
       return `${keyStr}: ${valueStr}`;
     });
 
@@ -123,19 +123,19 @@ class ObjectNode extends ContainerNode {
     // An object is valid if none of its members contain ErrorNodes
     return this.children.every(child => {
       if (!child) return true; // undefined members are considered valid
-      
+
       const member = child as MemberNode;
-      
+
       // Check if the member value is an ErrorNode
       if (member.value && (member.value as any).error !== undefined) {
         return false;
       }
-      
+
       // Check if the member key is an ErrorNode (though this is less common)
       if (member.key && (member.key as any).error !== undefined) {
         return false;
       }
-      
+
       return true;
     });
   }

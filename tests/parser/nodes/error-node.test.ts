@@ -1,5 +1,5 @@
 import ErrorNode from "../../../src/parser/nodes/error";
-import Position from "../../../src/core/position";
+import { Position } from "../../../src/core/position-range";
 
 describe('ErrorNode', () => {
   const mockPosition: Position = { pos: 10, row: 2, col: 5 };
@@ -9,7 +9,7 @@ describe('ErrorNode', () => {
   describe('constructor', () => {
     it('should create ErrorNode with error and position', () => {
       const errorNode = new ErrorNode(mockError, mockPosition);
-      
+
       expect(errorNode.error).toBe(mockError);
       expect(errorNode.position).toBe(mockPosition);
       expect(errorNode.endPosition).toBeUndefined();
@@ -17,7 +17,7 @@ describe('ErrorNode', () => {
 
     it('should create ErrorNode with error, position, and end position', () => {
       const errorNode = new ErrorNode(mockError, mockPosition, mockEndPosition);
-      
+
       expect(errorNode.error).toBe(mockError);
       expect(errorNode.position).toBe(mockPosition);
       expect(errorNode.endPosition).toBe(mockEndPosition);
@@ -67,19 +67,19 @@ describe('ErrorNode', () => {
   describe('position tracking', () => {
     it('should return correct start position', () => {
       const errorNode = new ErrorNode(mockError, mockPosition);
-      
+
       expect(errorNode.getStartPos()).toBe(mockPosition);
     });
 
     it('should return correct end position when provided', () => {
       const errorNode = new ErrorNode(mockError, mockPosition, mockEndPosition);
-      
+
       expect(errorNode.getEndPos()).toBe(mockEndPosition);
     });
 
     it('should return start position as end position when end position not provided', () => {
       const errorNode = new ErrorNode(mockError, mockPosition);
-      
+
       expect(errorNode.getEndPos()).toBe(mockPosition);
     });
   });
@@ -87,14 +87,14 @@ describe('ErrorNode', () => {
   describe('Node interface compliance', () => {
     it('should implement Node interface correctly', () => {
       const errorNode = new ErrorNode(mockError, mockPosition);
-      
+
       // Should have toValue method
       expect(typeof errorNode.toValue).toBe('function');
-      
+
       // Should have position methods (from PositionRange)
       expect(typeof errorNode.getStartPos).toBe('function');
       expect(typeof errorNode.getEndPos).toBe('function');
-      
+
       // Should return valid positions
       expect(errorNode.getStartPos()).toEqual(mockPosition);
       expect(errorNode.getEndPos()).toEqual(mockPosition);

@@ -1,4 +1,9 @@
-import Position from "./position";
+
+export interface Position {
+  pos: number;
+  row: number;
+  col: number;
+}
 
 interface PositionRange {
   getStartPos(): Position;

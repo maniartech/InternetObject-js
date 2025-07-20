@@ -1,5 +1,5 @@
 import Definitions from "../../core/definitions";
-import Position from "../../core/position";
+import { Position } from '../../core/position-range';
 import Section from "../../core/section";
 import SectionCollection from "../../core/section-collection";
 import CollectionNode from "./collections";

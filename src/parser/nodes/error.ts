@@ -1,5 +1,5 @@
 import Definitions from "../../core/definitions";
-import Position from "../../core/position";
+import { Position } from '../../core/position-range';
 import Node from "./nodes";
 
 /**

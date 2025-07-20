@@ -1,5 +1,5 @@
 import Definitions    from "../../core/definitions";
-import Position from "../../core/position";
+import { Position } from '../../core/position-range';
 import Token from "../tokenizer/tokens";
 import ContainerNode  from "./containers";
 import Node           from "./nodes";

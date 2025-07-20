@@ -1,4 +1,4 @@
-import Position from "../../core/position";
+import { Position } from '../../core/position-range';
 import PositionRange from "../../core/position-range";
 
 /**

@@ -1,6 +1,6 @@
 import Collection from "../../core/collection";
 import Definitions from "../../core/definitions";
-import Position from "../../core/position";
+import { Position } from '../../core/position-range';
 import ContainerNode from "./containers";
 import Node from "./nodes";
 
@@ -51,12 +51,12 @@ class CollectionNode extends ContainerNode {
   hasValidItems(): boolean {
     return this.children.some(child => {
       if (!child) return true; // undefined items are valid
-      
+
       // Check if the child is an ErrorNode
       if ((child as any).error !== undefined) {
         return false;
       }
-      
+
       return true; // Valid item found
     });
   }
@@ -64,12 +64,12 @@ class CollectionNode extends ContainerNode {
   getValidItems(): Node[] {
     return this.children.filter((child): child is Node => {
       if (!child) return true; // undefined items are valid
-      
+
       // Check if the child is an ErrorNode
       if ((child as any).error !== undefined) {
         return false;
       }
-      
+
       return true; // Valid item
     });
   }

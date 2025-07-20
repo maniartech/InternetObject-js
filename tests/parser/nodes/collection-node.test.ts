@@ -1,18 +1,18 @@
 import CollectionNode from "../../../src/parser/nodes/collections";
-import Position from "../../../src/core/position";
+import { Position } from "../../../src/core/position-range";
 
 // Mock node class for testing
 class MockNode {
   constructor(private value: any) {}
-  
+
   toValue() {
     return this.value;
   }
-  
+
   getStartPos(): Position {
     return { pos: 0, row: 1, col: 1 };
   }
-  
+
   getEndPos(): Position {
     return { pos: 5, row: 1, col: 6 };
   }
@@ -162,7 +162,7 @@ describe('CollectionNode Utility Methods', () => {
       const node2 = new MockNode('second') as any;
       const collectionNode = new CollectionNode([node1, undefined, node2]);
       const validItems = collectionNode.getValidItems();
-      
+
       expect(validItems).toHaveLength(3);
       expect(validItems[0]).toBe(node1);
       expect(validItems[1]).toBeUndefined();
@@ -174,7 +174,7 @@ describe('CollectionNode Utility Methods', () => {
       const node2 = new MockNode('second') as any;
       const collectionNode = new CollectionNode([node1, node2]);
       const validItems = collectionNode.getValidItems();
-      
+
       expect(validItems).toHaveLength(2);
       expect(validItems).toEqual([node1, node2]);
     });
@@ -184,7 +184,7 @@ describe('CollectionNode Utility Methods', () => {
       const validNode = new MockNode('value') as any;
       const collectionNode = new CollectionNode([validNode, errorNode, undefined]);
       const validItems = collectionNode.getValidItems();
-      
+
       expect(validItems).toHaveLength(2);
       expect(validItems[0]).toBe(validNode);
       expect(validItems[1]).toBeUndefined();
@@ -235,11 +235,11 @@ describe('CollectionNode Utility Methods', () => {
       const node1 = new MockNode('first') as any;
       const node2 = new MockNode('second') as any;
       const collectionNode = new CollectionNode([node1, node2]);
-      
+
       expect(collectionNode.isEmpty()).toBe(false);
       expect(collectionNode.size()).toBe(2);
       expect(collectionNode.isValid()).toBe(true);
-      
+
       const value = collectionNode.toValue();
       expect(value.length).toBe(2);
       expect(value.getAt(0)).toBe('first');
@@ -249,7 +249,7 @@ describe('CollectionNode Utility Methods', () => {
     it('should work correctly with position methods', () => {
       const node = new MockNode('value') as any;
       const collectionNode = new CollectionNode([node]);
-      
+
       expect(collectionNode.isEmpty()).toBe(false);
       expect(typeof collectionNode.getStartPos).toBe('function');
       expect(typeof collectionNode.getEndPos).toBe('function');
@@ -258,10 +258,10 @@ describe('CollectionNode Utility Methods', () => {
     it('should handle undefined items correctly in toValue', () => {
       const node = new MockNode('value') as any;
       const collectionNode = new CollectionNode([node, undefined]);
-      
+
       expect(collectionNode.size()).toBe(2);
       expect(collectionNode.hasValidItems()).toBe(true);
-      
+
       const value = collectionNode.toValue();
       expect(value.length).toBe(2);
       expect(value.getAt(0)).toBe('value');
@@ -272,7 +272,7 @@ describe('CollectionNode Utility Methods', () => {
   describe('edge cases', () => {
     it('should handle collections with many undefined items', () => {
       const collectionNode = new CollectionNode([undefined, undefined, undefined, undefined]);
-      
+
       expect(collectionNode.isEmpty()).toBe(true);
       expect(collectionNode.size()).toBe(4);
       expect(collectionNode.hasValidItems()).toBe(true);
@@ -283,7 +283,7 @@ describe('CollectionNode Utility Methods', () => {
     it('should handle single item collections', () => {
       const node = new MockNode('single') as any;
       const collectionNode = new CollectionNode([node]);
-      
+
       expect(collectionNode.isEmpty()).toBe(false);
       expect(collectionNode.size()).toBe(1);
       expect(collectionNode.hasValidItems()).toBe(true);
@@ -292,17 +292,17 @@ describe('CollectionNode Utility Methods', () => {
     });
 
     it('should handle collections with complex nested objects', () => {
-      const complexNode = new MockNode({ 
-        nested: { 
-          array: [1, 2, 3], 
-          object: { key: 'value' } 
-        } 
+      const complexNode = new MockNode({
+        nested: {
+          array: [1, 2, 3],
+          object: { key: 'value' }
+        }
       }) as any;
       const collectionNode = new CollectionNode([complexNode]);
-      
+
       expect(collectionNode.size()).toBe(1);
       expect(collectionNode.isValid()).toBe(true);
-      
+
       const debugString = collectionNode.toDebugString();
       expect(debugString).toContain('CollectionNode');
       expect(debugString).toContain('nested');
