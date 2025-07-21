@@ -1,7 +1,6 @@
-import parse from '../../src/parser/index';
-import io from '../../src/parser/io';
-import ParserOptions from '../../src/parser/parser-options';
-import Definitions from '../../src/core/definitions';
+import parse          from '../../src/parser/index';
+import io             from '../../src/parser/io';
+import ParserOptions  from '../../src/parser/parser-options';
 
 describe('Critical Bug Fixes - Task 1', () => {
 
