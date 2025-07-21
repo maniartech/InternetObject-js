@@ -13,7 +13,8 @@ describe('IOHeader', () => {
     const header2 = new IOHeader();
     header2.definitions.set('key', 'value');
     header1.merge(header2);
-    expect(header1.definitions.getV('key')).toBe('value');
+    expect(header1.definitions.get('key')).toBe('value');
+    expect(header1.definitions.get('invalid-key')).toBeUndefined();
   });
 
   it('should serialize to JSON correctly', () => {

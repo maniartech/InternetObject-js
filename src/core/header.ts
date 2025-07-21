@@ -27,13 +27,7 @@ class IOHeader {
       this._schema = other.schema;
     }
     if (other.definitions) {
-      // Merge all keys from other.definitions into this.definitions
-      for (const key of other.definitions.keys) {
-        const value = other.definitions.getV(key);
-        if (override || typeof this._definitions.getV(key) === 'undefined') {
-          this._definitions.set(key, value);
-        }
-      }
+      this._definitions.merge(other.definitions, override);
     }
   }
 
