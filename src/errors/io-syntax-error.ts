@@ -6,9 +6,9 @@ import InternetObjectError from "./io-error"
  * Represents the syntax error in InternetObject. When this error is thrwon,
  * it suggests that a syntax in the associated object is is not correct.
  */
-class InternetObjectSyntaxError extends InternetObjectError {
+class IOSyntaxError extends InternetObjectError {
   /**
-   * Creates a new `InternetObjectSyntaxError` error.
+   * Creates a new `IOSyntaxError` error.
    * @param errorCode {string} An errorCode associated with is error
    * @param message {string} The message which needs to be displayed
    * @param node {Node} The node object, required while parsing raw internet-object data or schema
@@ -23,4 +23,4 @@ class InternetObjectSyntaxError extends InternetObjectError {
   }
 }
 
-export default InternetObjectSyntaxError
+export default IOSyntaxError

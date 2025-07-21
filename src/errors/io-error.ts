@@ -3,7 +3,7 @@ import PositionRange from "../core/positions"
 /**
  * Represents the base error class in InternetObject.
  */
-class InternetObjectError extends Error {
+class IOError extends Error {
   // Due to a bug in TypeScript specifically control the __proto__
   // Ref: https://github.com/Microsoft/TypeScript/issues/13965
   // If not, `instanceof` and `catch` won't work properly
@@ -36,7 +36,7 @@ class InternetObjectError extends Error {
   public isEof: boolean
 
   /**
-   * Initialize the new instance of `InternetObjectError`.
+   * Initialize the new instance of `IOError`.
    *
    * @param errorCode {string} An error-code associated with this error
    * @param fact {string} The  reason for the error
@@ -51,13 +51,13 @@ class InternetObjectError extends Error {
     this.fact           = fact
     this.#positionRange = positionRange
     this.isEof          = isEof
-    this.name           = 'InternetObjectError'
+    this.name           = 'IOError'
 
     // Format the error message
     this.updateMessage()
 
     // TODO: After stability, change the SSF class
-    // Error.captureStackTrace(this, InternetObjectError)
+    // Error.captureStackTrace(this, IOError)
     // Error.captureStackTrace(this, ssf || InternetObject)
     this.__proto__ = new.target.prototype
   }
@@ -81,6 +81,6 @@ class InternetObjectError extends Error {
   }
 }
 
-export default InternetObjectError
+export default IOError
 
 

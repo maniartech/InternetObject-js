@@ -5,9 +5,9 @@ import InternetObjectError  from "./io-error"
  * Represents the validation error in InternetObject. This error is thrown when a validation
  * issue is found while validating the internet-object data against the associated schema.
  */
-class InternetObjectValidationError extends InternetObjectError {
+class IOValidationError extends InternetObjectError {
   /**
-   * Creates a new `InternetObjectValidationError` error.
+   * Creates a new `IOValidationError` error.
    *
    * @param errorCode {string} An error-code associated with this error
    * @param fact {string} The  reason for the error
@@ -22,4 +22,4 @@ class InternetObjectValidationError extends InternetObjectError {
   }
 }
 
-export default InternetObjectValidationError
+export default IOValidationError
