@@ -33,6 +33,15 @@ class IODefinitions {
   }
 
   /**
+   * Gets a definition value by key, regardless of whether it's a variable, schema, or regular definition.
+   * @param key The definition key
+   * @returns The value associated with the key, or undefined if not found
+   */
+  public get(key: string): any {
+    return this._definitions[key]?.value;
+  }
+
+  /**
    * Gets the variable value. This function is intended to be used internally
    * for quickly fetching the variable value, hence it accepts any key to keep the
    * consumer code free from type checking. The function validates the key and
@@ -51,32 +60,34 @@ class IODefinitions {
       return;
     }
 
-    // If key is not
-    if (key.startsWith("$") || key.startsWith("@")) {
-      const def = this._definitions[key];
-      if (!def) {
+    const def = this._definitions[key];
+    if (!def) {
+      // Only throw errors for variables and schemas
+      if (key.startsWith("$") || key.startsWith("@")) {
         const positionParam = (typeof k === 'string') ? undefined : k;
         if (key.startsWith("$")) {
           throw new ValidationError(ErrorCodes.schemaNotDefined, `Schema ${key} is not defined.`, positionParam);
         }
         throw new ValidationError(ErrorCodes.variableNotDefined, `Variable ${key} is not defined.`, positionParam);
       }
-      if (def.isVariable) {
-        return def.value;
-      }
+      return undefined;
+    }
 
-      // Check nested references. If yes, then resolve them and set in the
-      // place of the variable.
-      if (def.value instanceof TokenNode) {
-        const schema = this.getV(def.value);
-        if (schema instanceof Schema) {
-          this.set(key, schema);
-          return schema;
-        }
-      }
-
+    if (def.isVariable) {
       return def.value;
     }
+
+    // Check nested references. If yes, then resolve them and set in the
+    // place of the variable.
+    if (def.value instanceof TokenNode) {
+      const schema = this.getV(def.value);
+      if (schema instanceof Schema) {
+        this.set(key, schema);
+        return schema;
+      }
+    }
+
+    return def.value;
   }
 
   public set(k: string, v: any) {
