@@ -5,11 +5,11 @@ import SyntaxError        from '../errors/io-syntax-error';
 import ValidationError    from '../errors/io-validation-error';
 import MemberNode         from '../parser/nodes/members';
 import ObjectNode         from '../parser/nodes/objects';
-import MemberDef          from '../types/memberdef';
 import TokenNode          from '../parser/nodes/tokens';
 import assertNever        from '../errors/asserts/asserts';
 import TypedefRegistry    from './typedef-registry';
 import Schema             from './schema';
+import MemberDef          from './types/memberdef';
 
 export default function processObject(data: ObjectNode, schema: Schema | TokenNode, defs?: Definitions, collectionIndex?: number) {
   if (schema instanceof TokenNode) {

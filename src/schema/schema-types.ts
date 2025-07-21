@@ -1,4 +1,4 @@
-import MemberDef from "../types/memberdef";
+import MemberDef from "./types/memberdef";
 
 export type MemberMap = Record<string, MemberDef>;
 

@@ -1,4 +1,4 @@
-import MemberDef from "../types/memberdef";
+import MemberDef from "./types/memberdef";
 import { MemberMap } from "./schema-types";
 
 export default class Schema {
