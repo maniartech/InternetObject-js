@@ -1,4 +1,5 @@
 import MemberDef from "../types/memberdef";
+import { MemberMap } from "./schema-types";
 
 export default class Schema {
 
@@ -10,12 +11,12 @@ export default class Schema {
   /**
    * The names of the members (properties) in the schema
    */
-  public names: string[] = [];
+  public readonly names: string[] = [];
 
   /**
    * The definitions of the members (properties) in the schema
    */
-  public defs: { [key: string]: MemberDef } = {};
+  public readonly defs: MemberMap = {};
 
   /**
    * When true, allows additional members in the object.
