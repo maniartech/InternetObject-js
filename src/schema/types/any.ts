@@ -1,13 +1,13 @@
-import Definitions            from '../core/definitions';
-import ErrorCodes             from '../errors/io-error-codes';
-import InternetObjectError    from '../errors/io-error';
-import ValidationError        from '../errors/io-validation-error';
-import MemberNode             from '../parser/nodes/members';
-import Node                   from '../parser/nodes/nodes';
-import { getMemberDef       } from '../schema/compile-object';
-import Schema                 from '../schema/schema';
-import TypeDef                from '../schema/typedef';
-import TypedefRegistry        from '../schema/typedef-registry';
+import Definitions            from '../../core/definitions';
+import ErrorCodes             from '../../errors/io-error-codes';
+import InternetObjectError    from '../../errors/io-error';
+import ValidationError        from '../../errors/io-validation-error';
+import MemberNode             from '../../parser/nodes/members';
+import Node                   from '../../parser/nodes/nodes';
+import { getMemberDef       } from '../../schema/compile-object';
+import Schema                 from '../../schema/schema';
+import TypeDef                from '../../schema/typedef';
+import TypedefRegistry        from '../../schema/typedef-registry';
 import doCommonTypeCheck      from './common-type';
 import MemberDef              from './memberdef';
 

@@ -1,10 +1,10 @@
-import Definitions                    from '../core/definitions'
-import ErrorCodes                     from '../errors/io-error-codes'
-import InternetObjectValidationError  from '../errors/io-validation-error'
-import ErrorArgs                      from '../errors/error-args'
-import Node                           from '../parser/nodes/nodes'
-import TokenNode                      from '../parser/nodes/tokens'
-import TokenType                      from '../parser/tokenizer/token-types'
+import Definitions                    from '../../core/definitions'
+import ErrorCodes                     from '../../errors/io-error-codes'
+import InternetObjectValidationError  from '../../errors/io-validation-error'
+import ErrorArgs                      from '../../errors/error-args'
+import Node                           from '../../parser/nodes/nodes'
+import TokenNode                      from '../../parser/nodes/tokens'
+import TokenType                      from '../../parser/tokenizer/token-types'
 import MemberDef                      from './memberdef'
 
 type CommonTypeCheckResult = {

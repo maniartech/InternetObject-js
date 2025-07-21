@@ -1,4 +1,4 @@
-import TypedefRegistry  from '../schema/typedef-registry'
+import TypedefRegistry  from '../../schema/typedef-registry'
 
 import AnyDef           from './any'
 import ArrayDef         from './array'
