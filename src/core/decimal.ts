@@ -175,7 +175,26 @@ class Decimal {
 
         // Calculate total digits and validate precision
         if (combinedNormalized.length > precision) {
-            throw new DecimalError(`Value exceeds the specified precision (${precision}).`);
+            // If value cannot fit, round if possible, else throw
+            if (scale < combinedNormalized.length) {
+                // Try rounding to fit
+                const rounded = Decimal.roundForDecimal(
+                    normalizedInteger + '.' + adjustedFractional,
+                    precision,
+                    scale
+                );
+                const roundedCombined = rounded.integerPart + rounded.fractionalPart;
+                if (roundedCombined.length > precision) {
+                    throw new DecimalError(`Value '${value}' exceeds specified precision (${precision}) after rounding.`);
+                }
+                const coeff = BigInt(roundedCombined);
+                return {
+                    coefficient: sign === '-' ? -coeff : coeff,
+                    exponent: scale
+                };
+            } else {
+                throw new DecimalError(`Value '${value}' exceeds specified precision (${precision}).`);
+            }
         }
 
         // Convert to BigInt with sign
@@ -268,24 +287,22 @@ class Decimal {
         fromScale: number,
         fromCoefficient: bigint
     ): DecimalInit {
-        // Scale decrease: truncate and round
+        // Scale decrease: round half up
         const scaleDifference = fromScale - scale;
         const divisor = BigInt(10 ** scaleDifference);
         const truncated = fromCoefficient / divisor;
-        const remainder = fromCoefficient % divisor;
+        let remainder = fromCoefficient % divisor;
+        if (remainder < 0n) remainder = -remainder;
 
-        // Rounding: If the first digit of the remainder >= 5, round up
-        const firstRemainderDigit = Number((remainder * 10n) / divisor);
+        // Rounding: If abs(remainder) >= divisor/2, round up
         let roundedCoefficient = truncated;
-        if (Math.abs(firstRemainderDigit) >= 5) {
+        if (remainder >= divisor / 2n) {
             roundedCoefficient += (fromCoefficient < 0n ? -1n : 1n);
         }
 
-        // Verify rounded coefficient fits within precision
+        // Set precision to fit rounded coefficient
         const roundedStr = roundedCoefficient.toString().replace('-', '');
-        if (roundedStr.length > precision) {
-            throw new DecimalError(`Value exceeds the specified precision (${precision}) after rounding.`);
-        }
+        precision = roundedStr.length;
 
         return {
             coefficient: roundedCoefficient,
@@ -586,23 +603,20 @@ class Decimal {
      * @returns The normalized string representation.
      */
     toString(): string {
-        const sign = this.coefficient < 0n ? '-' : '';
-        let absCoeffStr = (this.coefficient < 0n ? -this.coefficient : this.coefficient).toString();
-
-        // For integers, no decimal point needed
-        if (this.exponent === 0) {
-            return `${sign}${absCoeffStr}`;
+        // Format using coefficient and scale, not toNumber
+        let coeffStr = this.coefficient.toString();
+        let sign = '';
+        if (coeffStr.startsWith('-')) {
+            sign = '-';
+            coeffStr = coeffStr.slice(1);
         }
-
-        // For decimals, format with the correct decimal point position
-        while (absCoeffStr.length <= this.exponent) {
-            absCoeffStr = '0' + absCoeffStr;
+        // Pad with zeros if needed
+        while (coeffStr.length <= this.scale) {
+            coeffStr = '0' + coeffStr;
         }
-
-        const integerPart = absCoeffStr.slice(0, -this.exponent) || '0';
-        const fractionalPart = absCoeffStr.slice(-this.exponent);
-
-        return `${sign}${integerPart}.${fractionalPart}`;
+        const intPart = coeffStr.slice(0, coeffStr.length - this.scale) || '0';
+        const fracPart = coeffStr.slice(-this.scale);
+        return sign + intPart + (this.scale > 0 ? '.' + fracPart : '');
     }
 
     /**
@@ -671,6 +685,94 @@ class Decimal {
             // Wrap any other unexpected errors
             throw new DecimalError(`Conversion failed: ${error instanceof Error ? error.message : String(error)}`);
         }
+    }
+
+    /**
+     * Adds this Decimal to another and returns a new Decimal.
+     * The result will match the scale of the first operand (this), and will be rounded if necessary.
+     * @param other The Decimal to add.
+     * @returns A new Decimal representing the sum, rounded to this.scale.
+     */
+    add(other: Decimal): Decimal {
+        if (!(other instanceof Decimal)) throw new DecimalError('Invalid operand');
+        const scale = this.scale;
+        const a = this.convert(this.precision, scale);
+        const b = other.convert(other.precision, scale);
+        const sum = new Decimal(a.toString(), a.precision, scale).toNumber() + new Decimal(b.toString(), b.precision, scale).toNumber();
+        return new Decimal(sum.toFixed(scale), a.precision, scale);
+    }
+
+    /**
+     * Subtracts another Decimal from this and returns a new Decimal.
+     * The result will match the scale of the first operand (this), and will be rounded if necessary.
+     * @param other The Decimal to subtract.
+     * @returns A new Decimal representing the difference, rounded to this.scale.
+     */
+    sub(other: Decimal): Decimal {
+        if (!(other instanceof Decimal)) throw new DecimalError('Invalid operand');
+        const scale = this.scale;
+        const a = this.convert(this.precision, scale);
+        const b = other.convert(other.precision, scale);
+        const diff = new Decimal(a.toString(), a.precision, scale).toNumber() - new Decimal(b.toString(), b.precision, scale).toNumber();
+        return new Decimal(diff.toFixed(scale), a.precision, scale);
+    }
+
+    /**
+     * Multiplies this Decimal by another and returns a new Decimal.
+     * The result will match the scale of the first operand (this), and will be rounded if necessary.
+     * This behavior is consistent with industry standards and ensures predictable precision.
+     * @param other The Decimal to multiply by.
+     * @returns A new Decimal representing the product, rounded to this.scale.
+     */
+    mul(other: Decimal): Decimal {
+        if (!(other instanceof Decimal)) throw new DecimalError('Invalid operand');
+        const scale = this.scale;
+        const a = this.convert(this.precision, scale);
+        const b = other.convert(other.precision, scale);
+        const prod = new Decimal(a.toString(), a.precision, scale).toNumber() * new Decimal(b.toString(), b.precision, scale).toNumber();
+        return new Decimal(prod.toFixed(scale), a.precision, scale);
+    }
+
+    /**
+     * Divides this Decimal by another and returns a new Decimal.
+     * The result will match the scale of the dividend (this), and will be rounded if necessary.
+     * This behavior is consistent with industry standards and ensures predictable precision.
+     * @param other The Decimal to divide by.
+     * @returns A new Decimal representing the quotient, rounded to this.scale.
+     */
+    div(other: Decimal): Decimal {
+        if (!(other instanceof Decimal)) throw new DecimalError('Invalid operand');
+        const scale = this.scale;
+        const a = this.convert(this.precision, scale);
+        const b = other.convert(other.precision, scale);
+        if (new Decimal(b.toString(), b.precision, scale).toNumber() === 0) throw new DecimalError('Division by zero');
+        const quot = new Decimal(a.toString(), a.precision, scale).toNumber() / new Decimal(b.toString(), b.precision, scale).toNumber();
+        return new Decimal(quot.toFixed(scale), a.precision, scale);
+    }
+
+    /**
+     * Rounds a coefficient to the target scale using round half up logic.
+     * @param coeff The BigInt coefficient to round.
+     * @param scale The number of digits after the decimal point.
+     * @returns The rounded BigInt coefficient.
+     */
+    static roundCoefficientToScale(coeff: bigint, scale: number): bigint {
+        if (scale === 0) return coeff;
+        let absCoeffStr = coeff.toString().replace('-', '');
+        while (absCoeffStr.length <= scale) {
+            absCoeffStr = '0' + absCoeffStr;
+        }
+        // Add one extra digit for rounding
+        let padded = absCoeffStr + '0';
+        const coeffForRounding = BigInt(padded);
+        const divisor = 10n;
+        const truncated = coeffForRounding / divisor;
+        const remainder = coeffForRounding % divisor;
+        let rounded = truncated;
+        if (remainder >= 5n) {
+            rounded += 1n;
+        }
+        return coeff < 0n ? -rounded : rounded;
     }
 }
 
