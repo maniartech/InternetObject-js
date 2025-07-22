@@ -5,7 +5,6 @@ tools: ['changes', 'codebase', 'editFiles', 'extensions', 'fetch', 'findTestFile
 model: GPT-4.1
 ---
 
-
 # Review and Planning Chat Mode Instructions
 
 ## Requirements File Location
