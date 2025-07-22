@@ -50,6 +50,7 @@ Review and enhance the `core` package for maintainability, clarity, performance,
 
      - Document APIs
      - Add robust error handling
+     - High performant arithmetic
 
    - **Minimalism & Guidelines:**
 
