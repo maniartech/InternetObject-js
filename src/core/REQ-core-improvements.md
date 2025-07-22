@@ -15,7 +15,7 @@ Review and enhance the `core` package for maintainability, clarity, performance,
      - [ ] Ensure all mutating methods return `this` for chaining
      - [ ] Add iterator and serialization methods
      - [ ] Document all public methods
-     - [ ] Add/expand unit tests for all methods
+     - [ ] Add/expand unit tests for all methods in the `tests/core` directory
 
    - **Test Criteria:**
 
