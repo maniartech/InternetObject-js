@@ -11,15 +11,15 @@ Review and enhance the `core` package for maintainability, clarity, performance,
 
    - **Todo List:**
 
-     - [ ] Use native JS Map/Array internally where possible
-     - [ ] Ensure all mutating methods return `this` for chaining
-     - [ ] Add iterator and serialization methods
-     - [ ] Document all public methods
-     - [ ] Add/expand unit tests for all methods in the `tests/core` directory
+     - [x] Use native JS Map/Array internally where possible
+     - [x] Ensure all mutating methods return `this` for chaining
+     - [x] Add iterator and serialization methods
+     - [x] Document all public methods
+     - [x] Add/expand unit tests for all methods in the `tests/core` directory
 
    - **Test Criteria:**
 
-     - [ ] All collection/object methods work as expected and are covered by tests
+     - [x] All collection/object methods work as expected and are covered by tests
 
    - **Coding Standards & Best Practices:**
 
