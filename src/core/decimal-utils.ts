@@ -56,3 +56,45 @@ export function getSign(coefficient: bigint): 1 | -1 | 0 {
     if (coefficient === 0n) return 0;
     return coefficient > 0n ? 1 : -1;
 }
+
+/**
+ * Scales up a coefficient by multiplying by powers of 10.
+ * Effectively moves the decimal point to the right.
+ * 
+ * @param coefficient The BigInt coefficient to scale up
+ * @param scaleFactor The number of decimal places to scale up (must be non-negative)
+ * @returns The scaled up coefficient
+ * @throws Error if scaleFactor is negative
+ */
+export function scaleUp(coefficient: bigint, scaleFactor: number): bigint {
+    if (scaleFactor < 0) {
+        throw new Error('Scale factor must be non-negative');
+    }
+    
+    if (scaleFactor === 0) {
+        return coefficient;
+    }
+    
+    return coefficient * (10n ** BigInt(scaleFactor));
+}
+
+/**
+ * Scales down a coefficient by dividing by powers of 10 with basic truncation.
+ * Effectively moves the decimal point to the left.
+ * 
+ * @param coefficient The BigInt coefficient to scale down
+ * @param scaleFactor The number of decimal places to scale down (must be non-negative)
+ * @returns The scaled down coefficient (truncated, not rounded)
+ * @throws Error if scaleFactor is negative
+ */
+export function scaleDown(coefficient: bigint, scaleFactor: number): bigint {
+    if (scaleFactor < 0) {
+        throw new Error('Scale factor must be non-negative');
+    }
+    
+    if (scaleFactor === 0) {
+        return coefficient;
+    }
+    
+    return coefficient / (10n ** BigInt(scaleFactor));
+}
