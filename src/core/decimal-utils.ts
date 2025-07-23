@@ -1,6 +1,6 @@
 /**
  * Decimal Utility Functions
- * 
+ *
  * Core utility functions for decimal arithmetic operations following KISS principles.
  * All functions use BigInt-only calculations and avoid JavaScript Number class.
  */
@@ -24,7 +24,7 @@ export interface ValidationResult {
 
 /**
  * Normalizes a BigInt coefficient by handling leading zeros and sign normalization.
- * 
+ *
  * @param coefficient The BigInt coefficient to normalize
  * @returns Normalized coefficient and zero flag
  */
@@ -47,7 +47,7 @@ export function normalizeCoefficient(coefficient: bigint): NormalizedCoefficient
 
 /**
  * Gets the absolute value of a BigInt coefficient.
- * 
+ *
  * @param coefficient The BigInt coefficient
  * @returns The absolute value as BigInt
  */
@@ -57,7 +57,7 @@ export function getAbsoluteValue(coefficient: bigint): bigint {
 
 /**
  * Gets the sign of a BigInt coefficient.
- * 
+ *
  * @param coefficient The BigInt coefficient
  * @returns 1 for positive, -1 for negative, 0 for zero
  */
@@ -67,9 +67,29 @@ export function getSign(coefficient: bigint): 1 | -1 | 0 {
 }
 
 /**
+ * Cache for powers of 10
+ */
+const POW10_CACHE: Map<number, bigint> = new Map();
+
+/**
+ * Gets a power of 10 as BigInt, using cache for performance.
+ * @param exponent The exponent for the power of 10
+ * @returns 10^exponent as BigInt
+ */
+export function getPow10(exponent: number): bigint {
+    if (exponent < 0) {
+        throw new Error('Exponent must be non-negative');
+    }
+    if (!POW10_CACHE.has(exponent)) {
+        POW10_CACHE.set(exponent, 10n ** BigInt(exponent));
+    }
+    return POW10_CACHE.get(exponent)!;
+}
+
+/**
  * Scales up a coefficient by multiplying by powers of 10.
  * Effectively moves the decimal point to the right.
- * 
+ *
  * @param coefficient The BigInt coefficient to scale up
  * @param scaleFactor The number of decimal places to scale up (must be non-negative)
  * @returns The scaled up coefficient
@@ -77,20 +97,18 @@ export function getSign(coefficient: bigint): 1 | -1 | 0 {
  */
 export function scaleUp(coefficient: bigint, scaleFactor: number): bigint {
     if (scaleFactor < 0) {
-        throw new Error('Scale factor must be non-negative');
+        throw new Error(`Scale factor must be non-negative, got ${scaleFactor}`);
     }
-
     if (scaleFactor === 0) {
         return coefficient;
     }
-
-    return coefficient * (10n ** BigInt(scaleFactor));
+    return coefficient * getPow10(scaleFactor);
 }
 
 /**
  * Scales down a coefficient by dividing by powers of 10 with basic truncation.
  * Effectively moves the decimal point to the left.
- * 
+ *
  * @param coefficient The BigInt coefficient to scale down
  * @param scaleFactor The number of decimal places to scale down (must be non-negative)
  * @returns The scaled down coefficient (truncated, not rounded)
@@ -105,12 +123,12 @@ export function scaleDown(coefficient: bigint, scaleFactor: number): bigint {
         return coefficient;
     }
 
-    return coefficient / (10n ** BigInt(scaleFactor));
+    return coefficient / getPow10(scaleFactor);
 }
 
 /**
  * Rounds a coefficient using round-half-up behavior when scaling down.
- * 
+ *
  * @param coefficient The BigInt coefficient to round
  * @param currentScale The current scale of the coefficient
  * @param targetScale The target scale after rounding
@@ -129,7 +147,7 @@ export function roundHalfUp(coefficient: bigint, currentScale: number, targetSca
 
     // Scale down with rounding
     const scaleDiff = currentScale - targetScale;
-    const divisor = 10n ** BigInt(scaleDiff);
+    const divisor = getPow10(scaleDiff);
     const quotient = coefficient / divisor;
     const remainder = coefficient % divisor;
 
@@ -146,7 +164,7 @@ export function roundHalfUp(coefficient: bigint, currentScale: number, targetSca
 
 /**
  * Rounds a coefficient using ceiling behavior (always round up) when scaling down.
- * 
+ *
  * @param coefficient The BigInt coefficient to round
  * @param currentScale The current scale of the coefficient
  * @param targetScale The target scale after rounding
@@ -165,7 +183,7 @@ export function ceilRound(coefficient: bigint, currentScale: number, targetScale
 
     // Scale down with ceiling
     const scaleDiff = currentScale - targetScale;
-    const divisor = 10n ** BigInt(scaleDiff);
+    const divisor = getPow10(scaleDiff);
     const quotient = coefficient / divisor;
     const remainder = coefficient % divisor;
 
@@ -180,7 +198,7 @@ export function ceilRound(coefficient: bigint, currentScale: number, targetScale
 
 /**
  * Rounds a coefficient using floor behavior (always round down) when scaling down.
- * 
+ *
  * @param coefficient The BigInt coefficient to round
  * @param currentScale The current scale of the coefficient
  * @param targetScale The target scale after rounding
@@ -199,7 +217,7 @@ export function floorRound(coefficient: bigint, currentScale: number, targetScal
 
     // Scale down with floor
     const scaleDiff = currentScale - targetScale;
-    const divisor = 10n ** BigInt(scaleDiff);
+    const divisor = getPow10(scaleDiff);
     const quotient = coefficient / divisor;
     const remainder = coefficient % divisor;
 
@@ -215,7 +233,7 @@ export function floorRound(coefficient: bigint, currentScale: number, targetScal
 /**
  * Formats a BigInt coefficient as a decimal string with the specified scale and precision.
  * Uses normalization utilities for proper coefficient handling and decimal point placement.
- * 
+ *
  * @param coefficient The BigInt coefficient to format
  * @param scale The number of decimal places
  * @param precision Optional. The total number of significant digits. If provided, validates that the coefficient fits within precision.
@@ -277,7 +295,7 @@ export function formatBigIntAsDecimal(coefficient: bigint, scale: number, precis
 /**
  * Fits a coefficient to the specified precision by truncating and rounding if necessary.
  * Uses the specified rounding mode to handle precision overflow.
- * 
+ *
  * @param coefficient The BigInt coefficient to fit to precision
  * @param precision The maximum number of significant digits allowed
  * @param scale The current scale of the coefficient
@@ -383,7 +401,7 @@ export function fitToPrecision(
 
 /**
  * Validates if a coefficient fits within the specified precision and scale constraints.
- * 
+ *
  * @param coefficient The BigInt coefficient to validate
  * @param precision The maximum number of significant digits allowed
  * @param scale The number of decimal places
@@ -451,7 +469,7 @@ export interface DivisionResult {
 /**
  * Performs long division between two BigInt coefficients with specified scale and precision.
  * Handles repeating decimals and precision constraints.
- * 
+ *
  * @param dividend The dividend coefficient
  * @param divisor The divisor coefficient (must not be zero)
  * @param scale The desired scale (decimal places) for the result
@@ -471,19 +489,19 @@ export function performLongDivision(
     if (divisor === 0n) {
         throw new DecimalError("Division by zero");
     }
-    
+
     if (precision <= 0) {
         throw new DecimalError("Precision must be positive");
     }
-    
+
     if (scale < 0) {
         throw new DecimalError("Scale must be non-negative");
     }
-    
+
     if (scale > precision) {
         throw new DecimalError("Scale must be less than or equal to precision");
     }
-    
+
     // Handle zero dividend case
     if (dividend === 0n) {
         return {
@@ -492,40 +510,40 @@ export function performLongDivision(
             isExact: true
         };
     }
-    
+
     // Work with absolute values for division
     const isNegative = (dividend < 0n) !== (divisor < 0n);
     const absDividend = getAbsoluteValue(dividend);
     const absDivisor = getAbsoluteValue(divisor);
-    
+
     // Scale up the dividend to get the desired decimal places
     const scaledDividend = absDividend * (10n ** BigInt(scale));
-    
+
     // Perform integer division
     let quotient = scaledDividend / absDivisor;
     const remainder = scaledDividend % absDivisor;
-    
+
     // Check if division is exact
     const isExact = remainder === 0n;
-    
+
     // Apply sign to quotient
     if (isNegative) {
         quotient = -quotient;
     }
-    
+
     // Check for repeating decimals if not exact
     let repeatingDigits: string | undefined;
     if (!isExact && scale > 0) {
         repeatingDigits = detectRepeatingDecimals(absDividend, absDivisor, scale, maxIterations);
     }
-    
+
     // Ensure the result fits within precision constraints
     const quotientStr = getAbsoluteValue(quotient).toString();
     if (quotientStr.length > precision) {
         // For division, we should truncate excess digits rather than trying to round
         // This is because division can produce an infinite number of digits
         const excessDigits = quotientStr.length - precision;
-        
+
         if (excessDigits <= scale) {
             // We can truncate from the fractional part
             const divisor = 10n ** BigInt(excessDigits);
@@ -538,7 +556,7 @@ export function performLongDivision(
             );
         }
     }
-    
+
     return {
         quotient,
         remainder: isNegative ? -remainder : remainder,
@@ -560,7 +578,7 @@ export interface AlignedOperands {
 /**
  * Aligns two decimal operands to have the same scale for arithmetic operations.
  * Scales up the operand with the smaller scale to match the larger scale.
- * 
+ *
  * @param aCoefficient First operand coefficient
  * @param aScale Scale of the first operand
  * @param bCoefficient Second operand coefficient
@@ -586,7 +604,7 @@ export function alignOperands(
             scaleAdjustment: 0
         };
     }
-    
+
     if (bCoefficient === 0n) {
         return {
             a: aCoefficient,
@@ -595,31 +613,31 @@ export function alignOperands(
             scaleAdjustment: 0
         };
     }
-    
+
     // Determine target scale (the larger of the two scales)
     let targetScale = Math.max(aScale, bScale);
-    
+
     // Apply maximum scale constraint if provided
     if (maxScale !== undefined && targetScale > maxScale) {
         targetScale = maxScale;
     }
-    
+
     // Calculate scale adjustments
     const aAdjustment = targetScale - aScale;
     const bAdjustment = targetScale - bScale;
-    
+
     // Scale up operands as needed
     let adjustedA = aCoefficient;
     let adjustedB = bCoefficient;
-    
+
     if (aAdjustment > 0) {
         adjustedA = scaleUp(aCoefficient, aAdjustment);
     }
-    
+
     if (bAdjustment > 0) {
         adjustedB = scaleUp(bCoefficient, bAdjustment);
     }
-    
+
     // If maxScale is less than either original scale, we need to scale down
     if (maxScale !== undefined) {
         if (aScale > maxScale) {
@@ -638,7 +656,7 @@ export function alignOperands(
                     throw new DecimalError(`Invalid rounding mode: ${roundingMode}`);
             }
         }
-        
+
         if (bScale > maxScale) {
             // Use the specified rounding mode
             switch (roundingMode) {
@@ -656,7 +674,7 @@ export function alignOperands(
             }
         }
     }
-    
+
     return {
         a: adjustedA,
         b: adjustedB,
@@ -668,7 +686,7 @@ export function alignOperands(
 /**
  * Detects repeating decimals in division operation.
  * Uses the standard long division algorithm to identify repeating patterns.
- * 
+ *
  * @param dividend The dividend (absolute value)
  * @param divisor The divisor (absolute value)
  * @param scale The desired scale (decimal places)
@@ -684,22 +702,22 @@ function detectRepeatingDecimals(
     // First, get the integer part out of the way
     const integerPart = dividend / divisor;
     let remainder = dividend % divisor;
-    
+
     // If remainder is zero, there's no repeating decimal
     if (remainder === 0n) {
         return undefined;
     }
-    
+
     // Track remainders to detect cycles
     const remainders: Map<string, number> = new Map();
     let fractionalDigits = '';
     let position = 0;
-    
+
     // Perform long division algorithm
     while (remainder !== 0n && position < maxIterations) {
         // Scale up remainder by 10
         remainder = remainder * 10n;
-        
+
         // Store the current remainder and position
         const remainderKey = remainder.toString();
         if (remainders.has(remainderKey)) {
@@ -707,18 +725,18 @@ function detectRepeatingDecimals(
             const cycleStart = remainders.get(remainderKey)!;
             return fractionalDigits.substring(cycleStart);
         }
-        
+
         remainders.set(remainderKey, position);
-        
+
         // Calculate next digit and remainder
         const digit = remainder / divisor;
         remainder = remainder % divisor;
-        
+
         // Add digit to fractional part
         fractionalDigits += digit.toString();
         position++;
     }
-    
+
     // If we've reached max iterations without finding a cycle,
     // we can't determine if there's a repeating pattern
     return undefined;
