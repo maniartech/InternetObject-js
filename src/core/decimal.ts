@@ -683,6 +683,96 @@ class Decimal {
     }
 
     /**
+     * Rounds this Decimal to the specified precision and scale using round-half-up behavior.
+     * @param targetPrecision The total number of significant digits (M)
+     * @param targetScale The number of digits after the decimal point (D)
+     * @returns A new Decimal with the specified precision and scale, rounded using round-half-up
+     * @throws {DecimalError} If targetScale > targetPrecision or if parameters are invalid
+     */
+    round(targetPrecision: number, targetScale: number): Decimal {
+        // Import the utility function
+        const { roundHalfUp, formatBigIntAsDecimal } = require('./decimal-utils');
+        
+        // Validate parameters
+        if (targetScale > targetPrecision) {
+            throw new DecimalError("Scale must be less than or equal to precision.");
+        }
+        if (targetPrecision < 1) {
+            throw new DecimalError("Precision must be at least 1.");
+        }
+        if (targetScale < 0) {
+            throw new DecimalError("Scale must be non-negative.");
+        }
+
+        // Round the coefficient to the target scale
+        const roundedCoeff = roundHalfUp(this.coefficient, this.scale, targetScale);
+        
+        // Format as decimal string and create new Decimal
+        const decimalStr = formatBigIntAsDecimal(roundedCoeff, targetScale);
+        return new Decimal(decimalStr, targetPrecision, targetScale);
+    }
+
+    /**
+     * Rounds this Decimal to the specified precision and scale using ceiling behavior (always round up).
+     * @param targetPrecision The total number of significant digits (M)
+     * @param targetScale The number of digits after the decimal point (D)
+     * @returns A new Decimal with the specified precision and scale, rounded using ceiling
+     * @throws {DecimalError} If targetScale > targetPrecision or if parameters are invalid
+     */
+    ceil(targetPrecision: number, targetScale: number): Decimal {
+        // Import the utility function
+        const { ceilRound, formatBigIntAsDecimal } = require('./decimal-utils');
+        
+        // Validate parameters
+        if (targetScale > targetPrecision) {
+            throw new DecimalError("Scale must be less than or equal to precision.");
+        }
+        if (targetPrecision < 1) {
+            throw new DecimalError("Precision must be at least 1.");
+        }
+        if (targetScale < 0) {
+            throw new DecimalError("Scale must be non-negative.");
+        }
+
+        // Round the coefficient using ceiling behavior
+        const ceiledCoeff = ceilRound(this.coefficient, this.scale, targetScale);
+        
+        // Format as decimal string and create new Decimal
+        const decimalStr = formatBigIntAsDecimal(ceiledCoeff, targetScale);
+        return new Decimal(decimalStr, targetPrecision, targetScale);
+    }
+
+    /**
+     * Rounds this Decimal to the specified precision and scale using floor behavior (always round down).
+     * @param targetPrecision The total number of significant digits (M)
+     * @param targetScale The number of digits after the decimal point (D)
+     * @returns A new Decimal with the specified precision and scale, rounded using floor
+     * @throws {DecimalError} If targetScale > targetPrecision or if parameters are invalid
+     */
+    floor(targetPrecision: number, targetScale: number): Decimal {
+        // Import the utility function
+        const { floorRound, formatBigIntAsDecimal } = require('./decimal-utils');
+        
+        // Validate parameters
+        if (targetScale > targetPrecision) {
+            throw new DecimalError("Scale must be less than or equal to precision.");
+        }
+        if (targetPrecision < 1) {
+            throw new DecimalError("Precision must be at least 1.");
+        }
+        if (targetScale < 0) {
+            throw new DecimalError("Scale must be non-negative.");
+        }
+
+        // Round the coefficient using floor behavior
+        const flooredCoeff = floorRound(this.coefficient, this.scale, targetScale);
+        
+        // Format as decimal string and create new Decimal
+        const decimalStr = formatBigIntAsDecimal(flooredCoeff, targetScale);
+        return new Decimal(decimalStr, targetPrecision, targetScale);
+    }
+
+    /**
      * Adds this Decimal to another and returns a new Decimal.
      * The result will match the scale of the first operand (this), and will be rounded if necessary.
      * @param other The Decimal to add.

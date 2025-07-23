@@ -98,3 +98,137 @@ export function scaleDown(coefficient: bigint, scaleFactor: number): bigint {
     
     return coefficient / (10n ** BigInt(scaleFactor));
 }
+
+/**
+ * Rounds a coefficient using round-half-up behavior when scaling down.
+ * 
+ * @param coefficient The BigInt coefficient to round
+ * @param currentScale The current scale of the coefficient
+ * @param targetScale The target scale after rounding
+ * @returns The rounded coefficient
+ * @throws Error if targetScale is negative or currentScale is negative
+ */
+export function roundHalfUp(coefficient: bigint, currentScale: number, targetScale: number): bigint {
+    if (currentScale < 0 || targetScale < 0) {
+        throw new Error('Scales must be non-negative');
+    }
+    
+    if (currentScale <= targetScale) {
+        // Scale up by padding zeros
+        return scaleUp(coefficient, targetScale - currentScale);
+    }
+    
+    // Scale down with rounding
+    const scaleDiff = currentScale - targetScale;
+    const divisor = 10n ** BigInt(scaleDiff);
+    const quotient = coefficient / divisor;
+    const remainder = coefficient % divisor;
+    
+    // Round half up logic
+    const halfDivisor = divisor / 2n;
+    const absRemainder = remainder < 0n ? -remainder : remainder;
+    
+    if (absRemainder >= halfDivisor) {
+        return quotient + (coefficient >= 0n ? 1n : -1n);
+    }
+    
+    return quotient;
+}
+
+/**
+ * Rounds a coefficient using ceiling behavior (always round up) when scaling down.
+ * 
+ * @param coefficient The BigInt coefficient to round
+ * @param currentScale The current scale of the coefficient
+ * @param targetScale The target scale after rounding
+ * @returns The ceiling rounded coefficient
+ * @throws Error if targetScale is negative or currentScale is negative
+ */
+export function ceilRound(coefficient: bigint, currentScale: number, targetScale: number): bigint {
+    if (currentScale < 0 || targetScale < 0) {
+        throw new Error('Scales must be non-negative');
+    }
+    
+    if (currentScale <= targetScale) {
+        // Scale up by padding zeros
+        return scaleUp(coefficient, targetScale - currentScale);
+    }
+    
+    // Scale down with ceiling
+    const scaleDiff = currentScale - targetScale;
+    const divisor = 10n ** BigInt(scaleDiff);
+    const quotient = coefficient / divisor;
+    const remainder = coefficient % divisor;
+    
+    // Ceiling logic: if there's any remainder and coefficient is positive, round up
+    // If coefficient is negative and there's remainder, don't round (towards zero)
+    if (remainder !== 0n && coefficient > 0n) {
+        return quotient + 1n;
+    }
+    
+    return quotient;
+}
+
+/**
+ * Rounds a coefficient using floor behavior (always round down) when scaling down.
+ * 
+ * @param coefficient The BigInt coefficient to round
+ * @param currentScale The current scale of the coefficient
+ * @param targetScale The target scale after rounding
+ * @returns The floor rounded coefficient
+ * @throws Error if targetScale is negative or currentScale is negative
+ */
+export function floorRound(coefficient: bigint, currentScale: number, targetScale: number): bigint {
+    if (currentScale < 0 || targetScale < 0) {
+        throw new Error('Scales must be non-negative');
+    }
+    
+    if (currentScale <= targetScale) {
+        // Scale up by padding zeros
+        return scaleUp(coefficient, targetScale - currentScale);
+    }
+    
+    // Scale down with floor
+    const scaleDiff = currentScale - targetScale;
+    const divisor = 10n ** BigInt(scaleDiff);
+    const quotient = coefficient / divisor;
+    const remainder = coefficient % divisor;
+    
+    // Floor logic: if there's any remainder and coefficient is negative, round down
+    // If coefficient is positive and there's remainder, don't round (towards zero)
+    if (remainder !== 0n && coefficient < 0n) {
+        return quotient - 1n;
+    }
+    
+    return quotient;
+}
+
+/**
+ * Formats a BigInt coefficient as a decimal string with the specified scale.
+ * 
+ * @param coefficient The BigInt coefficient to format
+ * @param scale The number of decimal places
+ * @returns The formatted decimal string
+ */
+export function formatBigIntAsDecimal(coefficient: bigint, scale: number): string {
+    // Handle zero case
+    if (coefficient === 0n) {
+        return scale > 0 ? `0.${'0'.repeat(scale)}` : '0';
+    }
+    
+    // Extract sign and work with absolute value
+    const sign = coefficient < 0n ? '-' : '';
+    const absCoeff = coefficient < 0n ? -coefficient : coefficient;
+    let coeffStr = absCoeff.toString();
+    
+    // Pad with leading zeros if needed
+    while (coeffStr.length <= scale) {
+        coeffStr = '0' + coeffStr;
+    }
+    
+    // Split into integer and fractional parts
+    const integerPart = coeffStr.slice(0, coeffStr.length - scale) || '0';
+    const fractionalPart = scale > 0 ? coeffStr.slice(-scale) : '';
+    
+    return sign + integerPart + (scale > 0 ? '.' + fractionalPart : '');
+}
