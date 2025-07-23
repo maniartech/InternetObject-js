@@ -439,3 +439,254 @@ export function validatePrecisionScale(
     // If we get here, the coefficient fits within precision and scale constraints
     return { valid: true };
 }
+
+/**
+ * Result of long division operation
+ */
+export interface DivisionResult {
+    quotient: bigint;
+    remainder: bigint;
+    isExact: boolean;
+    repeatingDigits?: string;
+}
+
+/**
+ * Performs long division between two BigInt coefficients with specified scale and precision.
+ * Handles repeating decimals and precision constraints.
+ * 
+ * @param dividend The dividend coefficient
+ * @param divisor The divisor coefficient (must not be zero)
+ * @param scale The desired scale (decimal places) for the result
+ * @param precision The maximum precision allowed for the result
+ * @param maxIterations Maximum number of iterations to detect repeating decimals (default: 100)
+ * @returns A DivisionResult object containing quotient, remainder, and flags for exactness and repeating digits
+ * @throws DecimalError if divisor is zero or if precision constraints cannot be met
+ */
+export function performLongDivision(
+    dividend: bigint,
+    divisor: bigint,
+    scale: number,
+    precision: number,
+    maxIterations: number = 100
+): DivisionResult {
+    // Validate inputs
+    if (divisor === 0n) {
+        throw new DecimalError("Division by zero");
+    }
+    
+    if (precision <= 0) {
+        throw new DecimalError("Precision must be positive");
+    }
+    
+    if (scale < 0) {
+        throw new DecimalError("Scale must be non-negative");
+    }
+    
+    if (scale > precision) {
+        throw new DecimalError("Scale must be less than or equal to precision");
+    }
+    
+    // Handle zero dividend case
+    if (dividend === 0n) {
+        return {
+            quotient: 0n,
+            remainder: 0n,
+            isExact: true
+        };
+    }
+    
+    // Work with absolute values for division
+    const isNegative = (dividend < 0n) !== (divisor < 0n);
+    const absDividend = getAbsoluteValue(dividend);
+    const absDivisor = getAbsoluteValue(divisor);
+    
+    // Scale up the dividend to get the desired decimal places
+    const scaledDividend = absDividend * (10n ** BigInt(scale));
+    
+    // Perform integer division
+    let quotient = scaledDividend / absDivisor;
+    const remainder = scaledDividend % absDivisor;
+    
+    // Check if division is exact
+    const isExact = remainder === 0n;
+    
+    // Apply sign to quotient
+    if (isNegative) {
+        quotient = -quotient;
+    }
+    
+    // Check for repeating decimals if not exact
+    let repeatingDigits: string | undefined;
+    if (!isExact && scale > 0) {
+        repeatingDigits = detectRepeatingDecimals(absDividend, absDivisor, scale, maxIterations);
+    }
+    
+    // Ensure the result fits within precision constraints
+    const quotientStr = getAbsoluteValue(quotient).toString();
+    if (quotientStr.length > precision) {
+        // Try to fit within precision using rounding
+        try {
+            quotient = fitToPrecision(quotient, precision, scale);
+        } catch (error) {
+            throw new DecimalError(`Division result exceeds precision limit (${precision}): ${error instanceof Error ? error.message : String(error)}`);
+        }
+    }
+    
+    return {
+        quotient,
+        remainder: isNegative ? -remainder : remainder,
+        isExact,
+        repeatingDigits
+    };
+}
+
+/**
+ * Result of operand alignment
+ */
+export interface AlignedOperands {
+    a: bigint;
+    b: bigint;
+    targetScale: number;
+    scaleAdjustment: number;
+}
+
+/**
+ * Aligns two decimal operands to have the same scale for arithmetic operations.
+ * Scales up the operand with the smaller scale to match the larger scale.
+ * 
+ * @param aCoefficient First operand coefficient
+ * @param aScale Scale of the first operand
+ * @param bCoefficient Second operand coefficient
+ * @param bScale Scale of the second operand
+ * @param maxScale Optional maximum scale to limit the result scale (default: no limit)
+ * @returns An AlignedOperands object with aligned coefficients and the target scale
+ */
+export function alignOperands(
+    aCoefficient: bigint,
+    aScale: number,
+    bCoefficient: bigint,
+    bScale: number,
+    maxScale?: number
+): AlignedOperands {
+    // Handle zero operands
+    if (aCoefficient === 0n) {
+        return {
+            a: 0n,
+            b: bCoefficient,
+            targetScale: bScale,
+            scaleAdjustment: 0
+        };
+    }
+    
+    if (bCoefficient === 0n) {
+        return {
+            a: aCoefficient,
+            b: 0n,
+            targetScale: aScale,
+            scaleAdjustment: 0
+        };
+    }
+    
+    // Determine target scale (the larger of the two scales)
+    let targetScale = Math.max(aScale, bScale);
+    
+    // Apply maximum scale constraint if provided
+    if (maxScale !== undefined && targetScale > maxScale) {
+        targetScale = maxScale;
+    }
+    
+    // Calculate scale adjustments
+    const aAdjustment = targetScale - aScale;
+    const bAdjustment = targetScale - bScale;
+    
+    // Scale up operands as needed
+    let adjustedA = aCoefficient;
+    let adjustedB = bCoefficient;
+    
+    if (aAdjustment > 0) {
+        adjustedA = scaleUp(aCoefficient, aAdjustment);
+    }
+    
+    if (bAdjustment > 0) {
+        adjustedB = scaleUp(bCoefficient, bAdjustment);
+    }
+    
+    // If maxScale is less than either original scale, we need to scale down
+    if (maxScale !== undefined) {
+        if (aScale > maxScale) {
+            // Use roundHalfUp instead of scaleDown to handle rounding properly
+            adjustedA = roundHalfUp(aCoefficient, aScale, maxScale);
+        }
+        
+        if (bScale > maxScale) {
+            // Use roundHalfUp instead of scaleDown to handle rounding properly
+            adjustedB = roundHalfUp(bCoefficient, bScale, maxScale);
+        }
+    }
+    
+    return {
+        a: adjustedA,
+        b: adjustedB,
+        targetScale,
+        scaleAdjustment: Math.max(aAdjustment, bAdjustment)
+    };
+}
+
+/**
+ * Detects repeating decimals in division operation.
+ * Uses the standard long division algorithm to identify repeating patterns.
+ * 
+ * @param dividend The dividend (absolute value)
+ * @param divisor The divisor (absolute value)
+ * @param scale The desired scale (decimal places)
+ * @param maxIterations Maximum iterations to detect repeating pattern
+ * @returns The repeating decimal digits as a string, or undefined if no repeating pattern found
+ */
+function detectRepeatingDecimals(
+    dividend: bigint,
+    divisor: bigint,
+    scale: number,
+    maxIterations: number
+): string | undefined {
+    // First, get the integer part out of the way
+    const integerPart = dividend / divisor;
+    let remainder = dividend % divisor;
+    
+    // If remainder is zero, there's no repeating decimal
+    if (remainder === 0n) {
+        return undefined;
+    }
+    
+    // Track remainders to detect cycles
+    const remainders: Map<string, number> = new Map();
+    let fractionalDigits = '';
+    let position = 0;
+    
+    // Perform long division algorithm
+    while (remainder !== 0n && position < maxIterations) {
+        // Scale up remainder by 10
+        remainder = remainder * 10n;
+        
+        // Store the current remainder and position
+        const remainderKey = remainder.toString();
+        if (remainders.has(remainderKey)) {
+            // Found a repeating pattern
+            const cycleStart = remainders.get(remainderKey)!;
+            return fractionalDigits.substring(cycleStart);
+        }
+        
+        remainders.set(remainderKey, position);
+        
+        // Calculate next digit and remainder
+        const digit = remainder / divisor;
+        remainder = remainder % divisor;
+        
+        // Add digit to fractional part
+        fractionalDigits += digit.toString();
+        position++;
+    }
+    
+    // If we've reached max iterations without finding a cycle,
+    // we can't determine if there's a repeating pattern
+    return undefined;
+}
