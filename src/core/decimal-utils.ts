@@ -310,18 +310,7 @@ export function fitToPrecision(
 
     // If excess digits are more than scale, we can't fit without losing integer part
     if (excessDigits > scale) {
-        // Handle specific test cases
-        if ((coeffStr === '123456' && precision === 4 && scale === 2) ||
-            (coeffStr.length === 1234567 && precision === 4 && scale === 2) ||
-            (absCoeff === 10n ** 100n - 1n && precision === 99 && scale === 0)) {
-            throw new DecimalError(
-                `Cannot fit coefficient to precision ${precision}. ` +
-                `Coefficient has ${coeffStr.length} digits with scale ${scale}. ` +
-                `Would lose ${excessDigits - scale} digits from integer part.`
-            );
-        }
-
-        // For other cases, throw an error if we would lose integer part digits
+        // We would lose digits from the integer part, which is not allowed
         throw new DecimalError(
             `Cannot fit coefficient to precision ${precision}. ` +
             `Coefficient has ${coeffStr.length} digits with scale ${scale}. ` +
@@ -354,8 +343,17 @@ export function fitToPrecision(
         // This can happen with rounding (e.g., 999 rounded to 2 digits becomes 1000)
         // In this case, we need to adjust scale again
         if (targetScale > 0) {
-            // Reduce scale by 1 to accommodate the extra digit from rounding
-            return scaleDown(result, 1);
+            // Use the same rounding mode for consistency
+            switch (roundingMode) {
+                case 'round':
+                    return roundHalfUp(result, targetScale, targetScale - 1);
+                case 'ceil':
+                    return ceilRound(result, targetScale, targetScale - 1);
+                case 'floor':
+                    return floorRound(result, targetScale, targetScale - 1);
+                default:
+                    throw new DecimalError(`Invalid rounding mode: ${roundingMode}`);
+            }
         } else {
             // Special case for rounding that causes overflow (e.g., 9999 -> 10000)
             // If the result ends with zeros, we can remove them to fit precision
@@ -524,11 +522,20 @@ export function performLongDivision(
     // Ensure the result fits within precision constraints
     const quotientStr = getAbsoluteValue(quotient).toString();
     if (quotientStr.length > precision) {
-        // Try to fit within precision using rounding
-        try {
-            quotient = fitToPrecision(quotient, precision, scale);
-        } catch (error) {
-            throw new DecimalError(`Division result exceeds precision limit (${precision}): ${error instanceof Error ? error.message : String(error)}`);
+        // For division, we should truncate excess digits rather than trying to round
+        // This is because division can produce an infinite number of digits
+        const excessDigits = quotientStr.length - precision;
+        
+        if (excessDigits <= scale) {
+            // We can truncate from the fractional part
+            const divisor = 10n ** BigInt(excessDigits);
+            quotient = quotient / divisor;
+        } else {
+            // Cannot fit within precision constraints
+            throw new DecimalError(
+                `Division result exceeds precision limit (${precision}). ` +
+                `Result has ${quotientStr.length} digits, but precision is ${precision}.`
+            );
         }
     }
     
@@ -559,6 +566,7 @@ export interface AlignedOperands {
  * @param bCoefficient Second operand coefficient
  * @param bScale Scale of the second operand
  * @param maxScale Optional maximum scale to limit the result scale (default: no limit)
+ * @param roundingMode The rounding mode to use when scaling down ('round', 'ceil', 'floor')
  * @returns An AlignedOperands object with aligned coefficients and the target scale
  */
 export function alignOperands(
@@ -566,7 +574,8 @@ export function alignOperands(
     aScale: number,
     bCoefficient: bigint,
     bScale: number,
-    maxScale?: number
+    maxScale?: number,
+    roundingMode: 'round' | 'ceil' | 'floor' = 'round'
 ): AlignedOperands {
     // Handle zero operands
     if (aCoefficient === 0n) {
@@ -614,13 +623,37 @@ export function alignOperands(
     // If maxScale is less than either original scale, we need to scale down
     if (maxScale !== undefined) {
         if (aScale > maxScale) {
-            // Use roundHalfUp instead of scaleDown to handle rounding properly
-            adjustedA = roundHalfUp(aCoefficient, aScale, maxScale);
+            // Use the specified rounding mode
+            switch (roundingMode) {
+                case 'round':
+                    adjustedA = roundHalfUp(aCoefficient, aScale, maxScale);
+                    break;
+                case 'ceil':
+                    adjustedA = ceilRound(aCoefficient, aScale, maxScale);
+                    break;
+                case 'floor':
+                    adjustedA = floorRound(aCoefficient, aScale, maxScale);
+                    break;
+                default:
+                    throw new DecimalError(`Invalid rounding mode: ${roundingMode}`);
+            }
         }
         
         if (bScale > maxScale) {
-            // Use roundHalfUp instead of scaleDown to handle rounding properly
-            adjustedB = roundHalfUp(bCoefficient, bScale, maxScale);
+            // Use the specified rounding mode
+            switch (roundingMode) {
+                case 'round':
+                    adjustedB = roundHalfUp(bCoefficient, bScale, maxScale);
+                    break;
+                case 'ceil':
+                    adjustedB = ceilRound(bCoefficient, bScale, maxScale);
+                    break;
+                case 'floor':
+                    adjustedB = floorRound(bCoefficient, bScale, maxScale);
+                    break;
+                default:
+                    throw new DecimalError(`Invalid rounding mode: ${roundingMode}`);
+            }
         }
     }
     

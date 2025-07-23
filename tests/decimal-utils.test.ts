@@ -12,10 +12,150 @@ import {
   fitToPrecision,
   validatePrecisionScale,
   performLongDivision,
-  alignOperands
+  alignOperands,
+  NormalizedCoefficient
 } from '../src/core/decimal-utils';
 
 describe('Decimal Utility Functions', () => {
+  describe('normalizeCoefficient', () => {
+    it('should normalize zero coefficient correctly', () => {
+      const result: NormalizedCoefficient = normalizeCoefficient(0n);
+      expect(result.coefficient).toBe(0n);
+      expect(result.isZero).toBe(true);
+    });
+
+    it('should normalize positive coefficients correctly', () => {
+      const result: NormalizedCoefficient = normalizeCoefficient(123n);
+      expect(result.coefficient).toBe(123n);
+      expect(result.isZero).toBe(false);
+    });
+
+    it('should normalize negative coefficients correctly', () => {
+      const result: NormalizedCoefficient = normalizeCoefficient(-123n);
+      expect(result.coefficient).toBe(-123n);
+      expect(result.isZero).toBe(false);
+    });
+
+    it('should handle very large coefficients', () => {
+      const largeCoeff = 10n ** 100n;
+      const result: NormalizedCoefficient = normalizeCoefficient(largeCoeff);
+      expect(result.coefficient).toBe(largeCoeff);
+      expect(result.isZero).toBe(false);
+    });
+  });
+
+  describe('getAbsoluteValue', () => {
+    it('should return the same value for positive numbers', () => {
+      expect(getAbsoluteValue(123n)).toBe(123n);
+    });
+
+    it('should return the positive value for negative numbers', () => {
+      expect(getAbsoluteValue(-123n)).toBe(123n);
+    });
+
+    it('should return zero for zero', () => {
+      expect(getAbsoluteValue(0n)).toBe(0n);
+    });
+
+    it('should handle very large numbers', () => {
+      const largeNegative = -(10n ** 100n);
+      expect(getAbsoluteValue(largeNegative)).toBe(10n ** 100n);
+    });
+  });
+
+  describe('getSign', () => {
+    it('should return 1 for positive numbers', () => {
+      expect(getSign(123n)).toBe(1);
+    });
+
+    it('should return -1 for negative numbers', () => {
+      expect(getSign(-123n)).toBe(-1);
+    });
+
+    it('should return 0 for zero', () => {
+      expect(getSign(0n)).toBe(0);
+    });
+  });
+
+  describe('scaleUp and scaleDown', () => {
+    it('should scale up correctly', () => {
+      expect(scaleUp(123n, 2)).toBe(12300n);
+      expect(scaleUp(0n, 5)).toBe(0n);
+      expect(scaleUp(-123n, 2)).toBe(-12300n);
+    });
+
+    it('should handle scale factor of zero in scaleUp', () => {
+      expect(scaleUp(123n, 0)).toBe(123n);
+    });
+
+    it('should throw error for negative scale factor in scaleUp', () => {
+      expect(() => scaleUp(123n, -1)).toThrow('Scale factor must be non-negative');
+    });
+
+    it('should scale down correctly', () => {
+      expect(scaleDown(12345n, 2)).toBe(123n);
+      expect(scaleDown(0n, 5)).toBe(0n);
+      expect(scaleDown(-12345n, 2)).toBe(-123n);
+    });
+
+    it('should handle scale factor of zero in scaleDown', () => {
+      expect(scaleDown(123n, 0)).toBe(123n);
+    });
+
+    it('should throw error for negative scale factor in scaleDown', () => {
+      expect(() => scaleDown(123n, -1)).toThrow('Scale factor must be non-negative');
+    });
+
+    it('should handle truncation in scaleDown', () => {
+      expect(scaleDown(127n, 1)).toBe(12n); // 12.7 -> 12
+      expect(scaleDown(-127n, 1)).toBe(-12n); // -12.7 -> -12
+    });
+
+    it('should handle very large scale factors', () => {
+      const largeCoeff = 10n ** 20n;
+      expect(scaleUp(1n, 20)).toBe(largeCoeff);
+      expect(scaleDown(largeCoeff, 20)).toBe(1n);
+    });
+  });
+
+  describe('roundHalfUp, ceilRound, floorRound', () => {
+    // Additional tests for exact midpoint cases
+    it('should handle exact midpoint cases in roundHalfUp', () => {
+      // 12.5 -> 13
+      expect(roundHalfUp(125n, 1, 0)).toBe(13n);
+      // -12.5 -> -12 (round towards zero for negative numbers)
+      expect(roundHalfUp(-125n, 1, 0)).toBe(-13n);
+    });
+
+    it('should handle exact midpoint cases in ceilRound', () => {
+      // 12.5 -> 13
+      expect(ceilRound(125n, 1, 0)).toBe(13n);
+      // -12.5 -> -12 (ceiling for negative is towards zero)
+      expect(ceilRound(-125n, 1, 0)).toBe(-12n);
+    });
+
+    it('should handle exact midpoint cases in floorRound', () => {
+      // 12.5 -> 12
+      expect(floorRound(125n, 1, 0)).toBe(12n);
+      // -12.5 -> -13 (floor for negative is away from zero)
+      expect(floorRound(-125n, 1, 0)).toBe(-13n);
+    });
+
+    it('should handle scaling up in all rounding functions', () => {
+      expect(roundHalfUp(123n, 0, 2)).toBe(12300n);
+      expect(ceilRound(123n, 0, 2)).toBe(12300n);
+      expect(floorRound(123n, 0, 2)).toBe(12300n);
+    });
+
+    it('should throw errors for negative scales in all rounding functions', () => {
+      expect(() => roundHalfUp(123n, -1, 0)).toThrow('Scales must be non-negative');
+      expect(() => roundHalfUp(123n, 0, -1)).toThrow('Scales must be non-negative');
+      expect(() => ceilRound(123n, -1, 0)).toThrow('Scales must be non-negative');
+      expect(() => ceilRound(123n, 0, -1)).toThrow('Scales must be non-negative');
+      expect(() => floorRound(123n, -1, 0)).toThrow('Scales must be non-negative');
+      expect(() => floorRound(123n, 0, -1)).toThrow('Scales must be non-negative');
+    });
+  });
   describe('formatBigIntAsDecimal', () => {
     // Zero coefficient tests
     it('should format zero coefficient correctly with various scales', () => {
@@ -279,6 +419,29 @@ describe('Decimal Utility Functions', () => {
       expect(result3.isExact).toBe(false);
     });
     
+    // Additional tests for division at precision boundaries
+    it('should handle division at precision boundaries', () => {
+      // Division that exactly hits precision limit
+      const result = performLongDivision(1000000n, 3n, 6, 10);
+      expect(result.quotient.toString().length).toBe(10); // 10 digits total
+      expect(result.quotient).toBe(3333333333n); // 333333.3333 with 6 decimal places
+      
+      // Division that would exceed precision but gets truncated
+      const result2 = performLongDivision(1000000n, 3n, 5, 10);
+      expect(result2.quotient.toString().length).toBeLessThanOrEqual(10);
+    });
+    
+    // Test for complex repeating decimal patterns
+    it('should detect complex repeating decimal patterns', () => {
+      // 1/7 = 0.142857142857... (repeating pattern of 6 digits)
+      const result = performLongDivision(1n, 7n, 12, 20);
+      expect(result.repeatingDigits).toBe('142857');
+      
+      // 1/11 = 0.09090909... (repeating pattern of 2 digits)
+      const result2 = performLongDivision(1n, 11n, 8, 20);
+      expect(result2.repeatingDigits).toBe('09');
+    });
+    
     // Division with very small numbers
     it('should handle division with very small numbers', () => {
       // 1 / 1000 = 0.001 (with scale 3)
@@ -304,7 +467,7 @@ describe('Decimal Utility Functions', () => {
       
       // 1 / 6 = 0.166... (with scale 10)
       const result2 = performLongDivision(1n, 6n, 10, 15);
-      expect(result2.quotient).toBe(1666666666n); // Truncated, not rounded
+      expect(result2.quotient).toBe(1666666666n); // Truncated to 10 decimal places
       expect(result2.isExact).toBe(false);
       expect(result2.repeatingDigits).toBe('6');
     });
@@ -396,6 +559,36 @@ describe('Decimal Utility Functions', () => {
       expect(result2.b).toBe(6789n);
       expect(result2.targetScale).toBe(2);
       expect(result2.scaleAdjustment).toBe(1);
+    });
+    
+    // Test for cases where both operands need scaling
+    it('should handle cases where both operands need scaling', () => {
+      // 123.45 and 67.89 with maxScale 1 -> 123.5 and 67.9
+      const result = alignOperands(12345n, 2, 6789n, 2, 1);
+      expect(result.a).toBe(1235n); // Rounded from 123.45 to 123.5
+      expect(result.b).toBe(679n);  // Rounded from 67.89 to 67.9
+      expect(result.targetScale).toBe(1);
+      
+      // Test with different rounding modes
+      const resultCeil = alignOperands(12345n, 2, 6789n, 2, 1, 'ceil');
+      expect(resultCeil.a).toBe(1235n); // Ceiling from 123.45 to 123.5
+      expect(resultCeil.b).toBe(679n);  // Ceiling from 67.89 to 67.9
+      
+      const resultFloor = alignOperands(12345n, 2, 6789n, 2, 1, 'floor');
+      expect(resultFloor.a).toBe(1234n); // Floor from 123.45 to 123.4
+      expect(resultFloor.b).toBe(678n);  // Floor from 67.89 to 67.8
+    });
+    
+    // Test for alignment with precision limits
+    it('should handle alignment with precision limits', () => {
+      // Very large coefficients that might approach precision limits
+      const largeCoeff1 = 10n ** 15n - 1n; // 999...999 (15 digits)
+      const largeCoeff2 = 10n ** 10n - 1n; // 999...999 (10 digits)
+      
+      const result = alignOperands(largeCoeff1, 5, largeCoeff2, 3);
+      expect(result.a).toBe(largeCoeff1);
+      expect(result.b).toBe(largeCoeff2 * 100n); // Scaled up by 2 decimal places
+      expect(result.targetScale).toBe(5);
     });
     
     // Zero operand tests

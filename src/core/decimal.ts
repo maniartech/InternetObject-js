@@ -1,18 +1,18 @@
 // Decimal.ts
 // A high-precision decimal number implementation with controlled rounding behaviors
 export class DecimalError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = "DecimalError";
-  }
+    constructor(message: string) {
+        super(message);
+        this.name = "DecimalError";
+    }
 }
 
 /**
  * Interface representing the internal state of a Decimal.
  */
 interface DecimalInit {
-  coefficient: bigint;
-  exponent: number;
+    coefficient: bigint;
+    exponent: number;
 }
 
 class Decimal {
@@ -128,8 +128,12 @@ class Decimal {
      * @private
      */
     private validatePrecisionAndScale(precision: number, scale: number): void {
-        if (scale > precision) {
-            throw new DecimalError("Scale must be less than or equal to precision.");
+        // Use the utility function for validation
+        const { validatePrecisionScale } = require('./decimal-utils');
+        const result = validatePrecisionScale(1n, precision, scale); // Coefficient doesn't matter for parameter validation
+
+        if (!result.valid) {
+            throw new DecimalError(result.reason || "Invalid precision or scale");
         }
     }
 
@@ -692,7 +696,7 @@ class Decimal {
     round(targetPrecision: number, targetScale: number): Decimal {
         // Import the utility function
         const { roundHalfUp, formatBigIntAsDecimal } = require('./decimal-utils');
-        
+
         // Validate parameters
         if (targetScale > targetPrecision) {
             throw new DecimalError("Scale must be less than or equal to precision.");
@@ -706,7 +710,7 @@ class Decimal {
 
         // Round the coefficient to the target scale
         const roundedCoeff = roundHalfUp(this.coefficient, this.scale, targetScale);
-        
+
         // Format as decimal string and create new Decimal
         const decimalStr = formatBigIntAsDecimal(roundedCoeff, targetScale);
         return new Decimal(decimalStr, targetPrecision, targetScale);
@@ -722,7 +726,7 @@ class Decimal {
     ceil(targetPrecision: number, targetScale: number): Decimal {
         // Import the utility function
         const { ceilRound, formatBigIntAsDecimal } = require('./decimal-utils');
-        
+
         // Validate parameters
         if (targetScale > targetPrecision) {
             throw new DecimalError("Scale must be less than or equal to precision.");
@@ -736,7 +740,7 @@ class Decimal {
 
         // Round the coefficient using ceiling behavior
         const ceiledCoeff = ceilRound(this.coefficient, this.scale, targetScale);
-        
+
         // Format as decimal string and create new Decimal
         const decimalStr = formatBigIntAsDecimal(ceiledCoeff, targetScale);
         return new Decimal(decimalStr, targetPrecision, targetScale);
@@ -752,7 +756,7 @@ class Decimal {
     floor(targetPrecision: number, targetScale: number): Decimal {
         // Import the utility function
         const { floorRound, formatBigIntAsDecimal } = require('./decimal-utils');
-        
+
         // Validate parameters
         if (targetScale > targetPrecision) {
             throw new DecimalError("Scale must be less than or equal to precision.");
@@ -766,7 +770,7 @@ class Decimal {
 
         // Round the coefficient using floor behavior
         const flooredCoeff = floorRound(this.coefficient, this.scale, targetScale);
-        
+
         // Format as decimal string and create new Decimal
         const decimalStr = formatBigIntAsDecimal(flooredCoeff, targetScale);
         return new Decimal(decimalStr, targetPrecision, targetScale);
