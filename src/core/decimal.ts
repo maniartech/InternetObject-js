@@ -175,26 +175,21 @@ class Decimal {
 
         // Calculate total digits and validate precision
         if (combinedNormalized.length > precision) {
-            // If value cannot fit, round if possible, else throw
-            if (scale < combinedNormalized.length) {
-                // Try rounding to fit
-                const rounded = Decimal.roundForDecimal(
-                    normalizedInteger + '.' + adjustedFractional,
-                    precision,
-                    scale
-                );
-                const roundedCombined = rounded.integerPart + rounded.fractionalPart;
-                if (roundedCombined.length > precision) {
-                    throw new DecimalError(`Value '${value}' exceeds specified precision (${precision}) after rounding.`);
-                }
-                const coeff = BigInt(roundedCombined);
-                return {
-                    coefficient: sign === '-' ? -coeff : coeff,
-                    exponent: scale
-                };
-            } else {
-                throw new DecimalError(`Value '${value}' exceeds specified precision (${precision}).`);
+            // Try rounding to fit
+            const rounded = Decimal.roundForDecimal(
+                normalizedInteger + '.' + adjustedFractional,
+                precision,
+                scale
+            );
+            const roundedCombined = rounded.integerPart + rounded.fractionalPart;
+            if (roundedCombined.length > precision) {
+                throw new DecimalError(`Value '${value}' exceeds specified precision (${precision}) after rounding.`);
             }
+            const coeff = BigInt(roundedCombined);
+            return {
+                coefficient: sign === '-' ? -coeff : coeff,
+                exponent: scale
+            };
         }
 
         // Convert to BigInt with sign
@@ -695,11 +690,23 @@ class Decimal {
      */
     add(other: Decimal): Decimal {
         if (!(other instanceof Decimal)) throw new DecimalError('Invalid operand');
-        const scale = this.scale;
-        const a = this.convert(this.precision, scale);
-        const b = other.convert(other.precision, scale);
-        const sum = new Decimal(a.toString(), a.precision, scale).toNumber() + new Decimal(b.toString(), b.precision, scale).toNumber();
-        return new Decimal(sum.toFixed(scale), a.precision, scale);
+        // Align scales
+        const targetScale = this.scale;
+        const scaleDiff = targetScale - other.scale;
+        let aCoeff = this.coefficient;
+        let bCoeff = other.coefficient;
+        if (scaleDiff > 0) {
+            bCoeff = bCoeff * BigInt(10 ** scaleDiff);
+        } else if (scaleDiff < 0) {
+            aCoeff = aCoeff * BigInt(10 ** (-scaleDiff));
+        }
+        const resultCoeff = aCoeff + bCoeff;
+        // Round result if needed (should already be aligned)
+        return new Decimal(
+            (resultCoeff < 0n ? '-' : '') + resultCoeff.toString().replace('-', '').padStart(targetScale + 1, '0').replace(new RegExp(`(\d{${targetScale}})$`), '.$1'),
+            this.precision,
+            targetScale
+        );
     }
 
     /**
@@ -710,11 +717,26 @@ class Decimal {
      */
     sub(other: Decimal): Decimal {
         if (!(other instanceof Decimal)) throw new DecimalError('Invalid operand');
-        const scale = this.scale;
-        const a = this.convert(this.precision, scale);
-        const b = other.convert(other.precision, scale);
-        const diff = new Decimal(a.toString(), a.precision, scale).toNumber() - new Decimal(b.toString(), b.precision, scale).toNumber();
-        return new Decimal(diff.toFixed(scale), a.precision, scale);
+        // Align scales
+        const targetScale = this.scale;
+        const scaleDiff = targetScale - other.scale;
+        let aCoeff = this.coefficient;
+        let bCoeff = other.coefficient;
+        if (scaleDiff > 0) {
+            bCoeff = bCoeff * BigInt(10 ** scaleDiff);
+        } else if (scaleDiff < 0) {
+            aCoeff = aCoeff * BigInt(10 ** (-scaleDiff));
+        }
+        const resultCoeff = aCoeff - bCoeff;
+        const resultStr = formatBigIntAsDecimal(resultCoeff, targetScale);
+        // const resultStr = (resultCoeff < 0n ? '-' : '') + resultCoeff.toString().replace('-', '').padStart(targetScale + 1, '0').replace(new RegExp(`(\d{${targetScale}})$`), '.$1');
+
+
+        return new Decimal(
+            resultStr,
+            this.precision,
+            targetScale
+        );
     }
 
     /**
@@ -726,11 +748,26 @@ class Decimal {
      */
     mul(other: Decimal): Decimal {
         if (!(other instanceof Decimal)) throw new DecimalError('Invalid operand');
-        const scale = this.scale;
-        const a = this.convert(this.precision, scale);
-        const b = other.convert(other.precision, scale);
-        const prod = new Decimal(a.toString(), a.precision, scale).toNumber() * new Decimal(b.toString(), b.precision, scale).toNumber();
-        return new Decimal(prod.toFixed(scale), a.precision, scale);
+        // Multiply coefficients, sum scales
+        const resultCoeff = this.coefficient * other.coefficient;
+        const resultScale = this.scale + other.scale;
+        // Adjust result to target scale (this.scale)
+        let adjustedCoeff = resultCoeff;
+        if (resultScale > this.scale) {
+            const diff = resultScale - this.scale;
+            const divisor = BigInt(10 ** diff);
+            // Round half up
+            const truncated = adjustedCoeff / divisor;
+            const remainder = adjustedCoeff % divisor;
+            adjustedCoeff = truncated + (remainder >= divisor / 2n ? 1n : 0n);
+        } else if (resultScale < this.scale) {
+            adjustedCoeff = adjustedCoeff * BigInt(10 ** (this.scale - resultScale));
+        }
+        return new Decimal(
+            (adjustedCoeff < 0n ? '-' : '') + adjustedCoeff.toString().replace('-', '').padStart(this.scale + 1, '0').replace(new RegExp(`(\d{${this.scale}})$`), '.$1'),
+            this.precision,
+            this.scale
+        );
     }
 
     /**
@@ -742,12 +779,22 @@ class Decimal {
      */
     div(other: Decimal): Decimal {
         if (!(other instanceof Decimal)) throw new DecimalError('Invalid operand');
-        const scale = this.scale;
-        const a = this.convert(this.precision, scale);
-        const b = other.convert(other.precision, scale);
-        if (new Decimal(b.toString(), b.precision, scale).toNumber() === 0) throw new DecimalError('Division by zero');
-        const quot = new Decimal(a.toString(), a.precision, scale).toNumber() / new Decimal(b.toString(), b.precision, scale).toNumber();
-        return new Decimal(quot.toFixed(scale), a.precision, scale);
+        if (other.coefficient === 0n) throw new DecimalError('Division by zero');
+        // To preserve scale, upshift numerator
+        const scaleFactor = BigInt(10 ** this.scale);
+        const numerator = this.coefficient * scaleFactor;
+        const denominator = other.coefficient;
+        let quotient = numerator / denominator;
+        let remainder = numerator % denominator;
+        // Round half up
+        if (remainder * 2n >= denominator) {
+            quotient += (quotient < 0n ? -1n : 1n);
+        }
+        return new Decimal(
+            (quotient < 0n ? '-' : '') + quotient.toString().replace('-', '').padStart(this.scale + 1, '0').replace(new RegExp(`(\d{${this.scale}})$`), '.$1'),
+            this.precision,
+            this.scale
+        );
     }
 
     /**
@@ -774,6 +821,24 @@ class Decimal {
         }
         return coeff < 0n ? -rounded : rounded;
     }
+
+}
+
+// Converts a BigInt coefficient and scale to a decimal string
+function formatBigIntAsDecimal(coeff: bigint, scale: number): string {
+    let coeffStr = coeff.toString();
+    let sign = '';
+    if (coeffStr.startsWith('-')) {
+        sign = '-';
+        coeffStr = coeffStr.slice(1);
+    }
+    // Pad with zeros if needed
+    while (coeffStr.length <= scale) {
+        coeffStr = '0' + coeffStr;
+    }
+    const intPart = coeffStr.slice(0, coeffStr.length - scale) || '0';
+    const fracPart = coeffStr.slice(-scale);
+    return sign + intPart + (scale > 0 ? '.' + fracPart : '');
 }
 
 export default Decimal;
