@@ -1,5 +1,7 @@
 // Decimal.ts
 // A high-precision decimal number implementation with controlled rounding behaviors
+import { alignOperands, formatBigIntAsDecimal, roundHalfUp, ceilRound, floorRound, validatePrecisionScale } from './decimal-utils';
+
 export class DecimalError extends Error {
     constructor(message: string) {
         super(message);
@@ -129,7 +131,6 @@ class Decimal {
      */
     private validatePrecisionAndScale(precision: number, scale: number): void {
         // Use the utility function for validation
-        const { validatePrecisionScale } = require('./decimal-utils');
         const result = validatePrecisionScale(1n, precision, scale); // Coefficient doesn't matter for parameter validation
 
         if (!result.valid) {
@@ -179,14 +180,16 @@ class Decimal {
 
         // Calculate total digits and validate precision
         if (combinedNormalized.length > precision) {
-            // Try rounding to fit
+            // Try rounding to fit precision
             const rounded = Decimal.roundForDecimal(
                 normalizedInteger + '.' + adjustedFractional,
                 precision,
                 scale
             );
             const roundedCombined = rounded.integerPart + rounded.fractionalPart;
-            if (roundedCombined.length > precision) {
+
+            // Only throw error if rounding still doesn't fit - this should be very rare
+            if (roundedCombined.replace(/^0+/, '').length > precision) {
                 throw new DecimalError(`Value '${value}' exceeds specified precision (${precision}) after rounding.`);
             }
             const coeff = BigInt(roundedCombined);
@@ -694,8 +697,7 @@ class Decimal {
      * @throws {DecimalError} If targetScale > targetPrecision or if parameters are invalid
      */
     round(targetPrecision: number, targetScale: number): Decimal {
-        // Import the utility function
-        const { roundHalfUp, formatBigIntAsDecimal } = require('./decimal-utils');
+        // Use the utility function
 
         // Validate parameters
         if (targetScale > targetPrecision) {
@@ -724,8 +726,7 @@ class Decimal {
      * @throws {DecimalError} If targetScale > targetPrecision or if parameters are invalid
      */
     ceil(targetPrecision: number, targetScale: number): Decimal {
-        // Import the utility function
-        const { ceilRound, formatBigIntAsDecimal } = require('./decimal-utils');
+        // Use the utility function
 
         // Validate parameters
         if (targetScale > targetPrecision) {
@@ -754,8 +755,7 @@ class Decimal {
      * @throws {DecimalError} If targetScale > targetPrecision or if parameters are invalid
      */
     floor(targetPrecision: number, targetScale: number): Decimal {
-        // Import the utility function
-        const { floorRound, formatBigIntAsDecimal } = require('./decimal-utils');
+        // Use the utility function
 
         // Validate parameters
         if (targetScale > targetPrecision) {
@@ -782,25 +782,56 @@ class Decimal {
      * @param other The Decimal to add.
      * @returns A new Decimal representing the sum, rounded to this.scale.
      */
+    /**
+ * Adds this Decimal to another and returns a new Decimal.
+ * The result will match the scale of the first operand (this), and will be rounded if necessary.
+ * @param other The Decimal to add.
+ * @returns A new Decimal representing the sum, rounded to this.scale.
+ */
+    /**
+ * Adds this Decimal to another and returns a new Decimal.
+ * The result will match the scale of the first operand (this), and will be rounded if necessary.
+ * @param other The Decimal to add.
+ * @returns A new Decimal representing the sum, rounded to this.scale.
+ */
     add(other: Decimal): Decimal {
         if (!(other instanceof Decimal)) throw new DecimalError('Invalid operand');
-        // Align scales
-        const targetScale = this.scale;
-        const scaleDiff = targetScale - other.scale;
-        let aCoeff = this.coefficient;
-        let bCoeff = other.coefficient;
-        if (scaleDiff > 0) {
-            bCoeff = bCoeff * BigInt(10 ** scaleDiff);
-        } else if (scaleDiff < 0) {
-            aCoeff = aCoeff * BigInt(10 ** (-scaleDiff));
+
+        // Use imported utility functions
+
+        // Convert the second operand to match the first operand's precision and scale if needed
+        let otherOperand = other;
+        if (this.precision !== other.precision || this.scale !== other.scale) {
+            otherOperand = other.convert(this.precision, this.scale);
         }
-        const resultCoeff = aCoeff + bCoeff;
-        // Round result if needed (should already be aligned)
-        return new Decimal(
-            (resultCoeff < 0n ? '-' : '') + resultCoeff.toString().replace('-', '').padStart(targetScale + 1, '0').replace(new RegExp(`(\d{${targetScale}})$`), '.$1'),
-            this.precision,
-            targetScale
+
+        // Align operands to ensure proper scale handling
+        const { a: aCoeff, b: bCoeff } = alignOperands(
+            this.coefficient,
+            this.scale,
+            otherOperand.coefficient,
+            otherOperand.scale
         );
+
+        // Perform addition with aligned coefficients
+        const resultCoeff = aCoeff + bCoeff;
+
+        // The result scale should match the first operand's scale (RDBMS-like behavior)
+        const resultScale = this.scale;
+        
+        // Round the result coefficient to the target scale if necessary
+        const roundedCoeff = roundHalfUp(resultCoeff, Math.max(this.scale, otherOperand.scale), resultScale);
+
+        // Check if result fits within the precision of the first operand (this)
+        const resultDigits = roundedCoeff.toString().replace('-', '').length;
+        if (resultDigits > this.precision) {
+            throw new DecimalError(`Addition result exceeds precision limit (${this.precision}). Result has ${resultDigits} digits.`);
+        }
+
+        // Format the result using the utility function and create a new Decimal
+        // The result maintains the same precision and scale as the first operand
+        const resultStr = formatBigIntAsDecimal(roundedCoeff, resultScale);
+        return new Decimal(resultStr, this.precision, resultScale);
     }
 
     /**
@@ -918,21 +949,8 @@ class Decimal {
 
 }
 
-// Converts a BigInt coefficient and scale to a decimal string
-function formatBigIntAsDecimal(coeff: bigint, scale: number): string {
-    let coeffStr = coeff.toString();
-    let sign = '';
-    if (coeffStr.startsWith('-')) {
-        sign = '-';
-        coeffStr = coeffStr.slice(1);
-    }
-    // Pad with zeros if needed
-    while (coeffStr.length <= scale) {
-        coeffStr = '0' + coeffStr;
-    }
-    const intPart = coeffStr.slice(0, coeffStr.length - scale) || '0';
-    const fracPart = coeffStr.slice(-scale);
-    return sign + intPart + (scale > 0 ? '.' + fracPart : '');
-}
+
 
 export default Decimal;
+
+
