@@ -51,6 +51,22 @@ This document lists only the recommendations that are not yet implemented or req
 
 ---
 
+
+
+## RDBMS/SQL Standard for Addition Result Precision and Scale
+
+- **RDBMS/SQL standard:**
+    - Result scale: `scale = max(s1, s2)`
+    - Result precision: `precision = max(p1 - s1, p2 - s2) + scale + 1`
+    - Where `p1, s1` are the precision and scale of the first operand, and `p2, s2` are those of the second operand.
+
+- **Serialization/Data Interchange (Internet Object) standard:**
+    - There is no artificial system precision limit (such as 38 digits in RDBMS).
+    - Precision in the results should be expanded as needed to accommodate the calculated value, unless the value cannot be represented by the underlying data type (e.g., BigInt limits).
+    - Only throw an error if the integer part cannot be represented, not due to arbitrary system limits.
+
+---
+
 ## Review of Current Public Methods vs. RDBMS Standards
 
 ### Methods that **do not** fully match RDBMS/SQL standards:
