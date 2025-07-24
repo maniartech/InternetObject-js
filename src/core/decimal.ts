@@ -1,6 +1,6 @@
 // Decimal.ts
 // A high-precision decimal number implementation with controlled rounding behaviors
-import { alignOperands, formatBigIntAsDecimal, roundHalfUp, ceilRound, floorRound, validatePrecisionScale, calculateRdbmsArithmeticResult } from './decimal-utils';
+import { alignOperands, formatBigIntAsDecimal, roundHalfUp, ceilRound, floorRound, validatePrecisionScale, calculateRdbmsArithmeticResult, scaleUp } from './decimal-utils';
 
 export class DecimalError extends Error {
     constructor(message: string) {
@@ -828,13 +828,13 @@ class Decimal {
         let finalPrecision = resultPrecision;
         let finalCoeff = resultCoeff;
         let finalScale = resultScale;
-        
+
         // If result exceeds calculated precision, expand precision to accommodate
         if (resultDigits > resultPrecision) {
             // For serialization format, expand precision to match actual result
             // JavaScript's BigInt can handle arbitrarily large integers safely
             finalPrecision = resultDigits;
-            
+
             // No artificial limits - BigInt handles the constraints naturally
             // Only potential issue would be system memory, which BigInt manages gracefully
         }
@@ -876,33 +876,43 @@ class Decimal {
 
     /**
      * Multiplies this Decimal by another and returns a new Decimal.
-     * The result will match the scale of the first operand (this), and will be rounded if necessary.
-     * This behavior is consistent with industry standards and ensures predictable precision.
+     * Uses utility functions for scale operations and rounding.
+     * The result scale follows RDBMS standard: max(scale1, scale2).
      * @param other The Decimal to multiply by.
-     * @returns A new Decimal representing the product, rounded to this.scale.
+     * @returns A new Decimal representing the product with RDBMS-compliant scale.
      */
     mul(other: Decimal): Decimal {
         if (!(other instanceof Decimal)) throw new DecimalError('Invalid operand');
-        // Multiply coefficients, sum scales
+
+        // Multiply coefficients directly using BigInt arithmetic
         const resultCoeff = this.coefficient * other.coefficient;
-        const resultScale = this.scale + other.scale;
-        // Adjust result to target scale (this.scale)
+        const intermediateScale = this.scale + other.scale;
+
+        // Result scale should be max(s1, s2) according to RDBMS standard
+        const targetScale = Math.max(this.scale, other.scale);
+
+        // Adjust result to target scale using utility functions
         let adjustedCoeff = resultCoeff;
-        if (resultScale > this.scale) {
-            const diff = resultScale - this.scale;
-            const divisor = BigInt(10 ** diff);
-            // Round half up
-            const truncated = adjustedCoeff / divisor;
-            const remainder = adjustedCoeff % divisor;
-            adjustedCoeff = truncated + (remainder >= divisor / 2n ? 1n : 0n);
-        } else if (resultScale < this.scale) {
-            adjustedCoeff = adjustedCoeff * BigInt(10 ** (this.scale - resultScale));
+        if (intermediateScale > targetScale) {
+            // Scale down with rounding using utility function
+            adjustedCoeff = roundHalfUp(resultCoeff, intermediateScale, targetScale);
+        } else if (intermediateScale < targetScale) {
+            // Scale up using utility function
+            adjustedCoeff = scaleUp(resultCoeff, targetScale - intermediateScale);
         }
-        return new Decimal(
-            (adjustedCoeff < 0n ? '-' : '') + adjustedCoeff.toString().replace('-', '').padStart(this.scale + 1, '0').replace(new RegExp(`(\d{${this.scale}})$`), '.$1'),
-            this.precision,
-            this.scale
-        );
+
+        // Calculate appropriate precision for the result
+        const resultDigits = adjustedCoeff.toString().replace('-', '').length;
+        let finalPrecision = Math.max(this.precision, other.precision, resultDigits);
+
+        // Ensure precision accommodates the result
+        if (resultDigits > finalPrecision) {
+            finalPrecision = resultDigits;
+        }
+
+        // Format the result using the utility function and create a new Decimal
+        const resultStr = formatBigIntAsDecimal(adjustedCoeff, targetScale);
+        return new Decimal(resultStr, finalPrecision, targetScale);
     }
 
     /**
