@@ -740,4 +740,279 @@ function detectRepeatingDecimals(
     // If we've reached max iterations without finding a cycle,
     // we can't determine if there's a repeating pattern
     return undefined;
+}/**
+
+ * RDBMS-compliant precision and scale calculation result
+ */
+export interface RdbmsArithmeticResult {
+    precision: number;
+    scale: number;
+}
+
+/**
+ * Calculates the result precision and scale for addition/subtraction operations
+ * following RDBMS/SQL standards.
+ * 
+ * RDBMS Standard for Addition/Subtraction:
+ * - Result Scale = max(scale1, scale2)
+ * - Result Precision = max(precision1 - scale1, precision2 - scale2) + result_scale + 1
+ * 
+ * The +1 accounts for potential carry in addition or borrow in subtraction.
+ * 
+ * @param precision1 Precision of first operand
+ * @param scale1 Scale of first operand
+ * @param precision2 Precision of second operand
+ * @param scale2 Scale of second operand
+ * @returns RdbmsArithmeticResult with calculated precision and scale
+ * @throws DecimalError if parameters are invalid
+ */
+export function calculateAdditionResultPrecisionScale(
+    precision1: number,
+    scale1: number,
+    precision2: number,
+    scale2: number
+): RdbmsArithmeticResult {
+    // Validate input parameters
+    if (precision1 <= 0 || precision2 <= 0) {
+        throw new DecimalError('Precision must be positive');
+    }
+    if (scale1 < 0 || scale2 < 0) {
+        throw new DecimalError('Scale must be non-negative');
+    }
+    if (scale1 > precision1 || scale2 > precision2) {
+        throw new DecimalError('Scale must not exceed precision');
+    }
+
+    // Calculate result scale (maximum of input scales)
+    const resultScale = Math.max(scale1, scale2);
+
+    // Calculate integer digits for each operand
+    const integerDigits1 = precision1 - scale1;
+    const integerDigits2 = precision2 - scale2;
+
+    // Calculate result precision
+    // max(integer_digits) + result_scale + 1 (for potential carry/borrow)
+    const maxIntegerDigits = Math.max(integerDigits1, integerDigits2);
+    const resultPrecision = maxIntegerDigits + resultScale + 1;
+
+    return {
+        precision: resultPrecision,
+        scale: resultScale
+    };
+}
+
+/**
+ * Calculates the result precision and scale for multiplication operations
+ * following RDBMS/SQL standards.
+ * 
+ * RDBMS Standard for Multiplication:
+ * - Result Scale = scale1 + scale2
+ * - Result Precision = precision1 + precision2 + 1
+ * 
+ * The +1 accounts for potential overflow in multiplication.
+ * 
+ * @param precision1 Precision of first operand
+ * @param scale1 Scale of first operand
+ * @param precision2 Precision of second operand
+ * @param scale2 Scale of second operand
+ * @returns RdbmsArithmeticResult with calculated precision and scale
+ * @throws DecimalError if parameters are invalid
+ */
+export function calculateMultiplicationResultPrecisionScale(
+    precision1: number,
+    scale1: number,
+    precision2: number,
+    scale2: number
+): RdbmsArithmeticResult {
+    // Validate input parameters
+    if (precision1 <= 0 || precision2 <= 0) {
+        throw new DecimalError('Precision must be positive');
+    }
+    if (scale1 < 0 || scale2 < 0) {
+        throw new DecimalError('Scale must be non-negative');
+    }
+    if (scale1 > precision1 || scale2 > precision2) {
+        throw new DecimalError('Scale must not exceed precision');
+    }
+
+    // Calculate result scale (sum of input scales)
+    const resultScale = scale1 + scale2;
+
+    // Calculate result precision (sum of input precisions + 1 for overflow)
+    const resultPrecision = precision1 + precision2 + 1;
+
+    return {
+        precision: resultPrecision,
+        scale: resultScale
+    };
+}
+
+/**
+ * Calculates the result precision and scale for division operations
+ * following RDBMS/SQL standards.
+ * 
+ * RDBMS Standard for Division (varies by system, this follows common approach):
+ * - Result Scale = max(6, scale1 + precision2 + 1)
+ * - Result Precision = precision1 - scale1 + scale2 + max(6, scale1 + precision2 + 1)
+ * 
+ * Different RDBMS systems handle division differently:
+ * - SQL Server: Uses a complex formula with minimum scale of 6
+ * - PostgreSQL: Uses configurable precision
+ * - Oracle: Uses maximum available precision
+ * 
+ * This implementation follows a conservative approach similar to SQL Server.
+ * 
+ * @param precision1 Precision of dividend
+ * @param scale1 Scale of dividend
+ * @param precision2 Precision of divisor
+ * @param scale2 Scale of divisor
+ * @param minScale Minimum scale for result (default: 6, following SQL Server)
+ * @returns RdbmsArithmeticResult with calculated precision and scale
+ * @throws DecimalError if parameters are invalid
+ */
+export function calculateDivisionResultPrecisionScale(
+    precision1: number,
+    scale1: number,
+    precision2: number,
+    scale2: number,
+    minScale: number = 6
+): RdbmsArithmeticResult {
+    // Validate input parameters
+    if (precision1 <= 0 || precision2 <= 0) {
+        throw new DecimalError('Precision must be positive');
+    }
+    if (scale1 < 0 || scale2 < 0) {
+        throw new DecimalError('Scale must be non-negative');
+    }
+    if (scale1 > precision1 || scale2 > precision2) {
+        throw new DecimalError('Scale must not exceed precision');
+    }
+    if (minScale < 0) {
+        throw new DecimalError('Minimum scale must be non-negative');
+    }
+
+    // Calculate result scale
+    const calculatedScale = scale1 + precision2 + 1;
+    const resultScale = Math.max(minScale, calculatedScale);
+
+    // Calculate result precision
+    const integerDigits1 = precision1 - scale1;
+    const resultPrecision = integerDigits1 + scale2 + resultScale;
+
+    return {
+        precision: resultPrecision,
+        scale: resultScale
+    };
+}
+
+/**
+ * Validates that the calculated precision and scale are within reasonable limits
+ * and adjusts them if necessary to prevent overflow or excessive memory usage.
+ * 
+ * @param precision The calculated precision
+ * @param scale The calculated scale
+ * @param maxPrecision Maximum allowed precision (default: 38, SQL Server limit)
+ * @param maxScale Maximum allowed scale (default: same as maxPrecision)
+ * @returns Adjusted RdbmsArithmeticResult within limits
+ * @throws DecimalError if the result cannot be represented within limits
+ */
+export function validateAndAdjustPrecisionScale(
+    precision: number,
+    scale: number,
+    maxPrecision: number = 38,
+    maxScale?: number
+): RdbmsArithmeticResult {
+    const effectiveMaxScale = maxScale ?? maxPrecision;
+
+    // Validate basic constraints
+    if (precision <= 0) {
+        throw new DecimalError('Precision must be positive');
+    }
+    if (scale < 0) {
+        throw new DecimalError('Scale must be non-negative');
+    }
+    if (scale > precision) {
+        throw new DecimalError('Scale must not exceed precision');
+    }
+
+    // Check if within limits
+    if (precision <= maxPrecision && scale <= effectiveMaxScale) {
+        return { precision, scale };
+    }
+
+    // Adjust if exceeding limits
+    let adjustedPrecision = Math.min(precision, maxPrecision);
+    let adjustedScale = Math.min(scale, effectiveMaxScale);
+
+    // Ensure scale doesn't exceed adjusted precision
+    if (adjustedScale > adjustedPrecision) {
+        // Prioritize scale, but ensure we have at least 1 integer digit
+        adjustedScale = Math.max(0, adjustedPrecision - 1);
+    }
+
+    // Ensure we have at least 1 integer digit
+    if (adjustedScale >= adjustedPrecision) {
+        adjustedScale = Math.max(0, adjustedPrecision - 1);
+    }
+
+    return {
+        precision: adjustedPrecision,
+        scale: adjustedScale
+    };
+}
+
+/**
+ * Determines the appropriate precision and scale for a decimal result
+ * based on the operation type and operand characteristics.
+ * 
+ * This is a convenience function that combines the specific calculation
+ * functions with validation and adjustment.
+ * 
+ * @param operation The arithmetic operation type
+ * @param precision1 Precision of first operand
+ * @param scale1 Scale of first operand
+ * @param precision2 Precision of second operand
+ * @param scale2 Scale of second operand
+ * @param options Optional configuration for limits and division behavior
+ * @returns RdbmsArithmeticResult with final precision and scale
+ */
+export function calculateRdbmsArithmeticResult(
+    operation: 'add' | 'subtract' | 'multiply' | 'divide',
+    precision1: number,
+    scale1: number,
+    precision2: number,
+    scale2: number,
+    options?: {
+        maxPrecision?: number;
+        maxScale?: number;
+        divisionMinScale?: number;
+    }
+): RdbmsArithmeticResult {
+    let result: RdbmsArithmeticResult;
+
+    // Calculate based on operation type
+    switch (operation) {
+        case 'add':
+        case 'subtract':
+            result = calculateAdditionResultPrecisionScale(precision1, scale1, precision2, scale2);
+            break;
+        case 'multiply':
+            result = calculateMultiplicationResultPrecisionScale(precision1, scale1, precision2, scale2);
+            break;
+        case 'divide':
+            result = calculateDivisionResultPrecisionScale(
+                precision1, scale1, precision2, scale2, options?.divisionMinScale
+            );
+            break;
+        default:
+            throw new DecimalError(`Unsupported operation: ${operation}`);
+    }
+
+    // Validate and adjust if necessary
+    return validateAndAdjustPrecisionScale(
+        result.precision,
+        result.scale,
+        options?.maxPrecision,
+        options?.maxScale
+    );
 }

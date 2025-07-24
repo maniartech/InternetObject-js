@@ -1,6 +1,6 @@
 // Decimal.ts
 // A high-precision decimal number implementation with controlled rounding behaviors
-import { alignOperands, formatBigIntAsDecimal, roundHalfUp, ceilRound, floorRound, validatePrecisionScale } from './decimal-utils';
+import { alignOperands, formatBigIntAsDecimal, roundHalfUp, ceilRound, floorRound, validatePrecisionScale, calculateRdbmsArithmeticResult } from './decimal-utils';
 
 export class DecimalError extends Error {
     constructor(message: string) {
@@ -797,17 +797,22 @@ class Decimal {
     add(other: Decimal): Decimal {
         if (!(other instanceof Decimal)) throw new DecimalError('Invalid operand');
 
-        // Calculate result precision and scale following RDBMS standards
-        // For addition: result scale = max(scale1, scale2)
-        // For addition: result precision = max(precision1 - scale1, precision2 - scale2) + result_scale + 1
-        const resultScale = Math.max(this.scale, other.scale);
-        const leftIntegerDigits = this.precision - this.scale;
-        const rightIntegerDigits = other.precision - other.scale;
-        const maxIntegerDigits = Math.max(leftIntegerDigits, rightIntegerDigits);
-        const resultPrecision = maxIntegerDigits + resultScale + 1; // +1 for potential carry
+        // Calculate result precision and scale using RDBMS utility function
+        // For serialization format, use very high limits to preserve precision
+        const { precision: resultPrecision, scale: resultScale } = calculateRdbmsArithmeticResult(
+            'add',
+            this.precision,
+            this.scale,
+            other.precision,
+            other.scale,
+            {
+                maxPrecision: 10000, // Very high limit for serialization format
+                maxScale: 10000      // Very high limit for serialization format
+            }
+        );
 
         // Align operands to the common scale
-        const { a: aCoeff, b: bCoeff, targetScale } = alignOperands(
+        const { a: aCoeff, b: bCoeff } = alignOperands(
             this.coefficient,
             this.scale,
             other.coefficient,
@@ -820,13 +825,23 @@ class Decimal {
 
         // Check if result fits within the calculated precision
         const resultDigits = resultCoeff.toString().replace('-', '').length;
+        let finalPrecision = resultPrecision;
+        let finalCoeff = resultCoeff;
+        let finalScale = resultScale;
+        
+        // If result exceeds calculated precision, expand precision to accommodate
         if (resultDigits > resultPrecision) {
-            throw new DecimalError(`Addition result exceeds calculated precision limit (${resultPrecision}). Result has ${resultDigits} digits.`);
+            // For serialization format, expand precision to match actual result
+            // JavaScript's BigInt can handle arbitrarily large integers safely
+            finalPrecision = resultDigits;
+            
+            // No artificial limits - BigInt handles the constraints naturally
+            // Only potential issue would be system memory, which BigInt manages gracefully
         }
 
         // Format the result using the utility function and create a new Decimal
-        const resultStr = formatBigIntAsDecimal(resultCoeff, resultScale);
-        return new Decimal(resultStr, resultPrecision, resultScale);
+        const resultStr = formatBigIntAsDecimal(finalCoeff, finalScale);
+        return new Decimal(resultStr, finalPrecision, finalScale);
     }
 
     /**
