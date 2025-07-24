@@ -797,41 +797,36 @@ class Decimal {
     add(other: Decimal): Decimal {
         if (!(other instanceof Decimal)) throw new DecimalError('Invalid operand');
 
-        // Use imported utility functions
+        // Calculate result precision and scale following RDBMS standards
+        // For addition: result scale = max(scale1, scale2)
+        // For addition: result precision = max(precision1 - scale1, precision2 - scale2) + result_scale + 1
+        const resultScale = Math.max(this.scale, other.scale);
+        const leftIntegerDigits = this.precision - this.scale;
+        const rightIntegerDigits = other.precision - other.scale;
+        const maxIntegerDigits = Math.max(leftIntegerDigits, rightIntegerDigits);
+        const resultPrecision = maxIntegerDigits + resultScale + 1; // +1 for potential carry
 
-        // Convert the second operand to match the first operand's precision and scale if needed
-        let otherOperand = other;
-        if (this.precision !== other.precision || this.scale !== other.scale) {
-            otherOperand = other.convert(this.precision, this.scale);
-        }
-
-        // Align operands to ensure proper scale handling
-        const { a: aCoeff, b: bCoeff } = alignOperands(
+        // Align operands to the common scale
+        const { a: aCoeff, b: bCoeff, targetScale } = alignOperands(
             this.coefficient,
             this.scale,
-            otherOperand.coefficient,
-            otherOperand.scale
+            other.coefficient,
+            other.scale,
+            resultScale // Use the calculated result scale as max scale
         );
 
         // Perform addition with aligned coefficients
         const resultCoeff = aCoeff + bCoeff;
 
-        // The result scale should match the first operand's scale (RDBMS-like behavior)
-        const resultScale = this.scale;
-        
-        // Round the result coefficient to the target scale if necessary
-        const roundedCoeff = roundHalfUp(resultCoeff, Math.max(this.scale, otherOperand.scale), resultScale);
-
-        // Check if result fits within the precision of the first operand (this)
-        const resultDigits = roundedCoeff.toString().replace('-', '').length;
-        if (resultDigits > this.precision) {
-            throw new DecimalError(`Addition result exceeds precision limit (${this.precision}). Result has ${resultDigits} digits.`);
+        // Check if result fits within the calculated precision
+        const resultDigits = resultCoeff.toString().replace('-', '').length;
+        if (resultDigits > resultPrecision) {
+            throw new DecimalError(`Addition result exceeds calculated precision limit (${resultPrecision}). Result has ${resultDigits} digits.`);
         }
 
         // Format the result using the utility function and create a new Decimal
-        // The result maintains the same precision and scale as the first operand
-        const resultStr = formatBigIntAsDecimal(roundedCoeff, resultScale);
-        return new Decimal(resultStr, this.precision, resultScale);
+        const resultStr = formatBigIntAsDecimal(resultCoeff, resultScale);
+        return new Decimal(resultStr, resultPrecision, resultScale);
     }
 
     /**
