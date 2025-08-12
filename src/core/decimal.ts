@@ -1,6 +1,6 @@
 // Decimal.ts
 // A high-precision decimal number implementation with controlled rounding behaviors
-import { alignOperands, formatBigIntAsDecimal, roundHalfUp, ceilRound, floorRound, validatePrecisionScale, calculateRdbmsArithmeticResult, scaleUp } from './decimal-utils';
+import { alignOperands, formatBigIntAsDecimal, roundHalfUp, ceilRound, floorRound, validatePrecisionScale, calculateRdbmsArithmeticResult, scaleUp, getPow10 } from './decimal-utils';
 
 export class DecimalError extends Error {
     constructor(message: string) {
@@ -262,10 +262,9 @@ class Decimal {
         fromScale: number,
         fromCoefficient: bigint
     ): DecimalInit {
-        // Scale increase: pad with zeros
-        const scaleDifference = scale - fromScale;
-    const multiplier = 10n ** BigInt(scaleDifference);
-        const newCoefficient = fromCoefficient * multiplier;
+    // Scale increase: pad with zeros using util
+    const scaleDifference = scale - fromScale;
+    const newCoefficient = scaleUp(fromCoefficient, scaleDifference);
 
         // Verify the new coefficient fits within precision
         const newCoeffStr = newCoefficient.toString().replace('-', '');
@@ -290,20 +289,10 @@ class Decimal {
         fromScale: number,
         fromCoefficient: bigint
     ): DecimalInit {
-        // Scale decrease: round half up
-        const scaleDifference = fromScale - scale;
-    const divisor = 10n ** BigInt(scaleDifference);
-        const truncated = fromCoefficient / divisor;
-        let remainder = fromCoefficient % divisor;
-        if (remainder < 0n) remainder = -remainder;
+        // Scale decrease: use util roundHalfUp
+        const roundedCoefficient = roundHalfUp(fromCoefficient, fromScale, scale);
 
-        // Rounding: If abs(remainder) >= divisor/2, round up
-        let roundedCoefficient = truncated;
-        if (remainder >= divisor / 2n) {
-            roundedCoefficient += (fromCoefficient < 0n ? -1n : 1n);
-        }
-
-        // Set precision to fit rounded coefficient
+        // Update precision to match resultant digits
         const roundedStr = roundedCoefficient.toString().replace('-', '');
         precision = roundedStr.length;
 
@@ -341,53 +330,23 @@ class Decimal {
      */
     private static roundForDecimal(
         value: string,
-        precision: number,
-        scale: number
+        _precision: number,
+        targetScale: number
     ): { integerPart: string, fractionalPart: string } {
-        // Parse the number into integer and fractional parts
-        const parts = value.split('.');
-        const integerPart = parts[0] || '0';
-        const origFractional = parts[1] || '';
+        // Parse into parts (positive only; sign handled by caller)
+        const [intRaw = '0', fracRaw = ''] = value.split('.');
+        const currentScale = fracRaw.length;
 
-        // If fractional part length is less than or equal to scale, just pad with zeros
-        if (origFractional.length <= scale) {
-            return {
-                integerPart,
-                fractionalPart: origFractional.padEnd(scale, '0')
-            };
-        }
+        // Build coefficient (no sign)
+        const coeff = BigInt((intRaw || '0') + (fracRaw || ''));
 
-        // Need to truncate and potentially round
-        const truncatedFractional = origFractional.slice(0, scale);
-        const nextDigit = parseInt(origFractional.charAt(scale), 10);
+        // Adjust scale using canonical roundHalfUp
+        const adjusted = roundHalfUp(coeff, currentScale, targetScale);
 
-        // No rounding needed
-        if (nextDigit < 5) {
-            return {
-                integerPart,
-                fractionalPart: truncatedFractional
-            };
-        }
-
-        // Rounding needed
-    const fractionalNum = BigInt(truncatedFractional || '0') + 1n;
-    const scaleFactor = 10n ** BigInt(scale);
-
-        // Check if rounding caused overflow
-        if (fractionalNum === scaleFactor) {
-            // Carry to integer part
-            const integerNum = BigInt(integerPart) + 1n;
-            return {
-                integerPart: integerNum.toString(),
-                fractionalPart: '0'.repeat(scale)
-            };
-        }
-
-        // No overflow, just use the rounded fractional part
-        return {
-            integerPart,
-            fractionalPart: fractionalNum.toString().padStart(scale, '0')
-        };
+        // Format via canonical formatter and split
+        const formatted = formatBigIntAsDecimal(adjusted, targetScale);
+        const [integerPart, fractionalPart = ''] = formatted.split('.');
+        return { integerPart, fractionalPart };
     }
 
     /**
@@ -606,20 +565,7 @@ class Decimal {
      * @returns The normalized string representation.
      */
     toString(): string {
-        // Format using coefficient and scale, not toNumber
-        let coeffStr = this.coefficient.toString();
-        let sign = '';
-        if (coeffStr.startsWith('-')) {
-            sign = '-';
-            coeffStr = coeffStr.slice(1);
-        }
-        // Pad with zeros if needed
-        while (coeffStr.length <= this.scale) {
-            coeffStr = '0' + coeffStr;
-        }
-        const intPart = coeffStr.slice(0, coeffStr.length - this.scale) || '0';
-        const fracPart = coeffStr.slice(-this.scale);
-        return sign + intPart + (this.scale > 0 ? '.' + fracPart : '');
+        return formatBigIntAsDecimal(this.coefficient, this.scale);
     }
 
     /**
@@ -953,9 +899,9 @@ class Decimal {
     const exponentAdjustment = targetScale + other.scale - this.scale;
         let numerator: bigint;
         if (exponentAdjustment >= 0) {
-            numerator = this.coefficient * (10n ** BigInt(exponentAdjustment));
+            numerator = this.coefficient * getPow10(exponentAdjustment);
         } else {
-            const down = 10n ** BigInt(-exponentAdjustment);
+            const down = getPow10(-exponentAdjustment);
             numerator = this.coefficient / down;
         }
         const denominator = other.coefficient;
@@ -978,30 +924,7 @@ class Decimal {
     return new Decimal(resultStr, finalPrecision, targetScale);
     }
 
-    /**
-     * Rounds a coefficient to the target scale using round half up logic.
-     * @param coeff The BigInt coefficient to round.
-     * @param scale The number of digits after the decimal point.
-     * @returns The rounded BigInt coefficient.
-     */
-    static roundCoefficientToScale(coeff: bigint, scale: number): bigint {
-        if (scale === 0) return coeff;
-        let absCoeffStr = coeff.toString().replace('-', '');
-        while (absCoeffStr.length <= scale) {
-            absCoeffStr = '0' + absCoeffStr;
-        }
-        // Add one extra digit for rounding
-        let padded = absCoeffStr + '0';
-        const coeffForRounding = BigInt(padded);
-        const divisor = 10n;
-        const truncated = coeffForRounding / divisor;
-        const remainder = coeffForRounding % divisor;
-        let rounded = truncated;
-        if (remainder >= 5n) {
-            rounded += 1n;
-        }
-        return coeff < 0n ? -rounded : rounded;
-    }
+    // (roundCoefficientToScale removed; use roundHalfUp from utils instead)
 
 }
 
