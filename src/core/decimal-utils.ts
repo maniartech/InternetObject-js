@@ -516,8 +516,8 @@ export function performLongDivision(
     const absDividend = getAbsoluteValue(dividend);
     const absDivisor = getAbsoluteValue(divisor);
 
-    // Scale up the dividend to get the desired decimal places
-    const scaledDividend = absDividend * (10n ** BigInt(scale));
+    // Scale up the dividend to get the desired decimal places (use cached pow10)
+    const scaledDividend = absDividend * getPow10(scale);
 
     // Perform integer division
     let quotient = scaledDividend / absDivisor;
@@ -752,13 +752,13 @@ export interface RdbmsArithmeticResult {
 /**
  * Calculates the result precision and scale for addition/subtraction operations
  * following RDBMS/SQL standards.
- * 
+ *
  * RDBMS Standard for Addition/Subtraction:
  * - Result Scale = max(scale1, scale2)
  * - Result Precision = max(precision1 - scale1, precision2 - scale2) + result_scale + 1
- * 
+ *
  * The +1 accounts for potential carry in addition or borrow in subtraction.
- * 
+ *
  * @param precision1 Precision of first operand
  * @param scale1 Scale of first operand
  * @param precision2 Precision of second operand
@@ -804,13 +804,13 @@ export function calculateAdditionResultPrecisionScale(
 /**
  * Calculates the result precision and scale for multiplication operations
  * following RDBMS/SQL standards.
- * 
+ *
  * RDBMS Standard for Multiplication:
  * - Result Scale = scale1 + scale2
  * - Result Precision = precision1 + precision2 + 1
- * 
+ *
  * The +1 accounts for potential overflow in multiplication.
- * 
+ *
  * @param precision1 Precision of first operand
  * @param scale1 Scale of first operand
  * @param precision2 Precision of second operand
@@ -850,18 +850,18 @@ export function calculateMultiplicationResultPrecisionScale(
 /**
  * Calculates the result precision and scale for division operations
  * following RDBMS/SQL standards.
- * 
+ *
  * RDBMS Standard for Division (varies by system, this follows common approach):
  * - Result Scale = max(6, scale1 + precision2 + 1)
  * - Result Precision = precision1 - scale1 + scale2 + max(6, scale1 + precision2 + 1)
- * 
+ *
  * Different RDBMS systems handle division differently:
  * - SQL Server: Uses a complex formula with minimum scale of 6
  * - PostgreSQL: Uses configurable precision
  * - Oracle: Uses maximum available precision
- * 
+ *
  * This implementation follows a conservative approach similar to SQL Server.
- * 
+ *
  * @param precision1 Precision of dividend
  * @param scale1 Scale of dividend
  * @param precision2 Precision of divisor
@@ -908,7 +908,7 @@ export function calculateDivisionResultPrecisionScale(
 /**
  * Validates that the calculated precision and scale are within reasonable limits
  * and adjusts them if necessary to prevent overflow or excessive memory usage.
- * 
+ *
  * @param precision The calculated precision
  * @param scale The calculated scale
  * @param maxPrecision Maximum allowed precision (default: 38, SQL Server limit)
@@ -964,10 +964,10 @@ export function validateAndAdjustPrecisionScale(
 /**
  * Determines the appropriate precision and scale for a decimal result
  * based on the operation type and operand characteristics.
- * 
+ *
  * This is a convenience function that combines the specific calculation
  * functions with validation and adjustment.
- * 
+ *
  * @param operation The arithmetic operation type
  * @param precision1 Precision of first operand
  * @param scale1 Scale of first operand
