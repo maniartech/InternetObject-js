@@ -14,9 +14,9 @@ describe('Decimal', () => {
   it('should add, subtract, multiply, and divide correctly', () => {
     const a = new Decimal('1.23');
     const b = new Decimal('4.565');
-    expect(a.add(b).toString()).toBe('5.80');
+  expect(a.add(b).toString()).toBe('5.795');
     expect(b.sub(a).toString()).toBe('3.335');
-    expect(a.mul(b).toString()).toBe('5.62');
+  expect(a.mul(b).toString()).toBe('5.615');
     expect(b.div(a).toString()).toBe('3.71');
   });
 

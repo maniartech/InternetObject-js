@@ -17,12 +17,20 @@ export class ValidationUtils {
     schema: unknown
   ): { data: ObjectNode | CollectionNode; schema: Schema | TokenNode } {
     if (!ValidationUtils.isValidDataNode(data)) {
-      const typeName = data === null ? 'null' : data === undefined ? 'undefined' : (data as any)?.constructor?.name || 'unknown';
+      const hasCtorName = (data as any)?.constructor?.name;
+      const typeName = data === null ? 'null'
+        : data === undefined ? 'undefined'
+        : hasCtorName === undefined ? 'undefined'
+        : hasCtorName || 'unknown';
       throw new Error(`Invalid data node type: ${typeName}`);
     }
 
     if (!ValidationUtils.isValidSchema(schema)) {
-      const typeName = schema === null ? 'null' : schema === undefined ? 'undefined' : (schema as any)?.constructor?.name || 'unknown';
+      const hasCtorName = (schema as any)?.constructor?.name;
+      const typeName = schema === null ? 'null'
+        : schema === undefined ? 'undefined'
+        : hasCtorName === undefined ? 'undefined'
+        : hasCtorName || 'unknown';
       throw new Error(`Invalid schema type: ${typeName}`);
     }
 
