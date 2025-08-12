@@ -778,6 +778,37 @@ class Decimal {
     }
 
     /**
+     * Computes the modulo (remainder) of this Decimal by another Decimal.
+     * Uses truncation toward zero for the quotient (RDBMS-like), so the remainder has the same sign as the dividend.
+     * Result scale is max(scale1, scale2).
+     * @param other The Decimal divisor
+     * @returns A new Decimal representing (this % other)
+     */
+    mod(other: Decimal): Decimal {
+        if (!(other instanceof Decimal)) throw new DecimalError('Invalid operand');
+        if (other.coefficient === 0n) throw new DecimalError('Division by zero');
+
+        // Align both operands to a common scale T = max(s1, s2) without losing precision
+        const { a: aCoeff, b: bCoeff, targetScale } = alignOperands(
+            this.coefficient,
+            this.scale,
+            other.coefficient,
+            other.scale
+        );
+
+        // Integer division with truncation toward zero (BigInt division semantics)
+        const q = aCoeff / bCoeff;
+        const remainderCoeff = aCoeff - q * bCoeff;
+
+        // Determine precision from actual digits
+        const digits = remainderCoeff.toString().replace('-', '').length;
+        const finalPrecision = Math.max(digits, this.precision, other.precision);
+
+        const resultStr = formatBigIntAsDecimal(remainderCoeff, targetScale);
+        return new Decimal(resultStr, finalPrecision, targetScale);
+    }
+
+    /**
      * Adds this Decimal to another and returns a new Decimal.
      * The result will match the scale of the first operand (this), and will be rounded if necessary.
      * @param other The Decimal to add.
