@@ -1,4 +1,5 @@
 class IOObject<T = any> implements Iterable<[string | undefined, T]> {
+  [key: string]: any;
   private items: ([string | undefined, T] | undefined)[];
   private keyMap: Map<string, number>;
 
@@ -29,6 +30,13 @@ class IOObject<T = any> implements Iterable<[string | undefined, T]> {
       this.items.push([key, value]);
       this.keyMap.set(key, index);
     }
+    // Synchronize instance property
+    Object.defineProperty(this, key, {
+      value,
+      writable: true,
+      enumerable: true,
+      configurable: true
+    });
     return this;
   }
 
@@ -112,6 +120,8 @@ class IOObject<T = any> implements Iterable<[string | undefined, T]> {
     if (index !== undefined && this.items[index]) {
       this.items[index] = undefined;
       this.keyMap.delete(key);
+      // Remove instance property
+      delete this[key];
       return true;
     }
     return false;
@@ -217,8 +227,12 @@ class IOObject<T = any> implements Iterable<[string | undefined, T]> {
    * Clears all key-value pairs from the IOObject.
    */
   clear(): void {
-  this.items = [];
-  this.keyMap.clear();
+    // Remove all instance properties for keys
+    for (const key of this.keysArray()) {
+      delete this[key];
+    }
+    this.items = [];
+    this.keyMap.clear();
   }
 
   /**
