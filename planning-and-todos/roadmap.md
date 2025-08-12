@@ -69,6 +69,10 @@ This document outlines the roadmap for the Internet Object library, focusing on 
 * [ ] Add or refine linting, formatting, and pre-publish checks.
 * [ ] Publish pre-releases (`beta`, `rc`) for community testing.
 * [ ] Update license/copyright.
+* [ ] Performance soft guard in CI (parser + Decimal):
+  * Emit machine-readable perf JSON from `yarn perf` and `yarn perf:decimal`.
+  * Compare against baselines and post warnings on PRs for regressions (do not fail by default).
+  * Artifact current perf results and allow a manual “promote baseline” step after releases.
 
 ### PHASE 7: Community, Feedback, and Openness
 
