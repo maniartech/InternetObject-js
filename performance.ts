@@ -12,6 +12,10 @@ try {
 
 const perfSummary: Array<{ Test: string; 'Avg Time (ms)': string; 'Total Time (ms)': string; Iterations: number; Status: string }> = [];
 
+// Pre-declared regex literals (cached at module scope)
+const HEX_RE_CACHED = /^[0-9a-fA-F]+$/;
+const HEX_PATTERN = '^[0-9a-fA-F]+$';
+
 function generateLargeDocument(itemCount: number): string {
   let doc = '--- data\n';
   for (let i = 0; i < itemCount; i++) {
@@ -129,18 +133,21 @@ function runBenchmarks() {
   // Regex (cached vs new)
   {
     const testString = "0x1234ABCD";
-    const iterations = 10000;
-    const hexRegex = /^[0-9a-fA-F]+$/;
-    const { avgTime: cachedTime } = measureTime(() => {
-      return hexRegex.test(testString.substring(2));
-    }, iterations);
-    const { avgTime: newRegexTime } = measureTime(() => {
-      return /^[0-9a-fA-F]+$/.test(testString.substring(2));
-    }, iterations);
-    let status = cachedTime <= newRegexTime * 1.1 ? chalk.green('PASS') : chalk.red('FAIL');
+    const s = testString.slice(2); // avoid substring cost within iterations
+    // Warm up both paths to avoid JIT bias
+    for (let i = 0; i < 10000; i++) {
+      HEX_RE_CACHED.test(s);
+      new RegExp(HEX_PATTERN).test(s);
+    }
+    const iterations = 1_000_000;
+    const { avgTime: cachedTime } = measureTime(() => HEX_RE_CACHED.test(s), iterations);
+    // Force a new RegExp object each iteration to measure construction + test cost
+    const { avgTime: newRegexTime } = measureTime(() => new RegExp(HEX_PATTERN).test(s), iterations);
+    // Allow small noise; cached should not be slower than new by more than ~5%
+    const status = cachedTime <= newRegexTime * 1.05 ? chalk.green('PASS') : chalk.red('FAIL');
     perfSummary.push({
       Test: 'Regex (cached vs new)',
-      'Avg Time (ms)': cachedTime.toFixed(6),
+      'Avg Time (ms)': `cached=${cachedTime.toFixed(6)} new=${newRegexTime.toFixed(6)}`,
       'Total Time (ms)': '-',
       Iterations: iterations,
       Status: status
