@@ -97,11 +97,12 @@ describe('IODefinitions', () => {
     const defs = new IODefinitions();
     expect(() => defs.getV('@foo')).toThrow();
 
-    // Before defining @foo, calling baz should throw
-    expect(() => defs.get('baz')()).toBeUndefined();
+    // Before defining @foo, referencing baz should not be resolvable
+    expect(defs.get('baz')).toBeUndefined();
     defs.set('@foo', 'bar');
     // After defining @foo, calling baz should work
-    expect(defs.get('baz')()).toBe('bar');
+  defs.set('baz', defs.getV('@foo'));
+  expect(defs.get('baz')).toBe('bar');
   });
 
   it('should throw when referencing undefined variable', () => {

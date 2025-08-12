@@ -29,13 +29,17 @@ export class SchemaValidator {
 
     // Validate constraints based on type
     if (memberDef.type === 'string') {
-      if (memberDef.minLength && memberDef.maxLength && memberDef.minLength > memberDef.maxLength) {
+  const hasMin = memberDef.minLength !== undefined;
+  const hasMax = memberDef.maxLength !== undefined;
+  if (hasMin && hasMax && (memberDef.minLength as number) > (memberDef.maxLength as number)) {
         errors.push('minLength cannot be greater than maxLength');
       }
     }
 
     if (memberDef.type === 'number') {
-      if (memberDef.min && memberDef.max && memberDef.min > memberDef.max) {
+  const hasMin = memberDef.min !== undefined;
+  const hasMax = memberDef.max !== undefined;
+  if (hasMin && hasMax && (memberDef.min as number) > (memberDef.max as number)) {
         errors.push('min cannot be greater than max');
       }
     }
@@ -62,7 +66,7 @@ export class SchemaValidator {
   static validateSchemaName(name: string): ValidationResult {
     const errors: string[] = [];
 
-    if (!name || typeof name !== 'string') {
+    if (typeof name !== 'string') {
       errors.push('Schema name must be a non-empty string');
     } else if (name.trim().length === 0) {
       errors.push('Schema name cannot be empty or whitespace only');

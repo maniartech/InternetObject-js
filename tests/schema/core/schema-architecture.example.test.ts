@@ -51,10 +51,11 @@ describe('Schema Architecture Example', () => {
 
     // Simulate validation (not using SchemaValidator here)
     for (const key of schema.names) {
-      expect(sample).toHaveProperty(key);
-      expect(typeof sample[key]).toBe(
-        schema.get(key)?.type === 'array' ? 'object' : schema.get(key)?.type
-      );
+        expect(sample).toHaveProperty(key);
+        // Use type assertion to avoid TS7053 error
+        expect(typeof (sample as any)[key]).toBe(
+          schema.get(key)?.type === 'array' ? 'object' : schema.get(key)?.type
+        );
     }
   });
 });

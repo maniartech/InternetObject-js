@@ -102,6 +102,9 @@ export class SchemaBuilder {
       schema.defs[n] = this.defs[n];
     }
     schema.open = this.isOpen;
+    // Freeze names and defs for immutability
+    Object.freeze(schema.names);
+    Object.freeze(schema.defs);
     return schema;
   }
 }

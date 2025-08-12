@@ -19,7 +19,8 @@ export default class TypedefRegistry {
     for (const Constructor of typeDefConstructors) {
       for (const type of Constructor.types) {
         if (this.typeDefMap.has(type)) {
-          // Silently skip already registered types to avoid test noise
+          // Warn and skip duplicate registration (expected by tests)
+          console.warn(`TypeDef for '${type}' is already registered. Skipping.`);
           continue;
         }
 
