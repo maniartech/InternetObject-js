@@ -4,6 +4,11 @@ Welcome to the official JavaScript repository for Internet Object, a lean, robus
 
 For specification and more information, visit [InternetObject.org Docs](https://docs.internetobject.org).
 
+See also:
+
+- Decimal design, semantics, and usage: `docs/decimal.md`.
+- Performance harness: `yarn perf` (parser) and `yarn perf:decimal` (Decimal operations).
+
 ## 🚧 Work In Progress - API MAY CHANGE
 
 ### Example Usage
