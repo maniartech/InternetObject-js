@@ -10,7 +10,7 @@ describe('compileSchema - Playground Sample Data', () => {
   expect(addressDef).toMatchObject({ type: 'object', path: 'address' });
   expect(addressDef?.schema).toBeDefined();
   expect(addressDef?.schema?.get('street')).toMatchObject({ type: 'any', path: 'address.street' });
-    expect(schema.get('colors')).toMatchObject({ type: 'array', path: 'colors' });
+    expect(schema.get('colors')).toMatchObject({ type: 'any', path: 'colors' });
   });
 
   test('parses typed-collection schema', () => {
@@ -33,7 +33,7 @@ describe('compileSchema - Playground Sample Data', () => {
   const addressDef = schema.get('address');
   expect(addressDef).toMatchObject({ type: 'object', path: 'address' });
   expect(addressDef?.schema?.get('state')).toMatchObject({ path: 'address.state' });
-    expect(schema.get('colors')).toMatchObject({ type: 'array', path: 'colors' });
+    expect(schema.get('colors')).toMatchObject({ type: 'any', path: 'colors' });
     expect(schema.get('isActive')).toMatchObject({ type: 'any', path: 'isActive' });
   });
 

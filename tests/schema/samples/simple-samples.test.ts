@@ -17,8 +17,14 @@ describe('Sample Data - Simple', () => {
     const sample = require('../../../../io-playground/src/sample-data/simple/simple-object').default;
     const ast = parseDoc(sample.doc);
 
-    // The first child should be an ObjectNode
-    const objectNode = ast.children[1]?.child as ObjectNode; // index 1 due to header line
+    // Find the first ObjectNode in AST children
+    let objectNode: ObjectNode | undefined = undefined;
+    for (const child of ast.children) {
+      if (child?.child instanceof ObjectNode) {
+        objectNode = child.child;
+        break;
+      }
+    }
     expect(objectNode).toBeInstanceOf(ObjectNode);
 
     // Without schema, processSchema should accept null schema as Token ref not provided
@@ -27,7 +33,7 @@ describe('Sample Data - Simple', () => {
     const schemaText = 'name, age, isActive, joiningDt, address: {street, city, state}, colors';
     const schema = compileSchema('SimpleObject', schemaText);
 
-    const result = processSchema(objectNode, schema, defs);
+    const result = processSchema(objectNode!, schema, defs);
     expect(result).toBeTruthy();
     expect((result as any).name).toBeDefined();
     expect((result as any).address).toBeDefined();
@@ -41,11 +47,17 @@ describe('Sample Data - Simple', () => {
     const schemaText = 'name, age, gender, joiningDt, address: {street, city, state?}, colors, isActive';
     const schema = compileSchema('SimpleCollection', schemaText);
 
-    // The first collection block after header should be a CollectionNode
-    const collectionNode = ast.children[1]?.child as CollectionNode;
+    // Find the first CollectionNode in AST children
+    let collectionNode: CollectionNode | undefined = undefined;
+    for (const child of ast.children) {
+      if (child?.child instanceof CollectionNode) {
+        collectionNode = child.child;
+        break;
+      }
+    }
     expect(collectionNode).toBeInstanceOf(CollectionNode);
 
-    const result = processSchema(collectionNode, schema, defs);
+    const result = processSchema(collectionNode!, schema, defs);
     expect(result).toBeTruthy();
     expect((result as any).length).toBeGreaterThan(0);
   });

@@ -92,10 +92,13 @@ function _processObject(data: ObjectNode, schema: Schema, defs?: Definitions, co
         ErrorCodes.unknownMember, `The ${schema.name ? `${schema.name} ` : ''}schema does not define a member named '${name}'.`, member.key)
     }
 
-    // In a open schema, the memberDef is not found. Hence, create a new
-    // memberDef with the type as 'any'.
-    if (!memberDef) {
-      memberDef = { type: 'any', path: name};
+    // In an open schema, the memberDef is not found. Use schema.open constraints if available, else type 'any'.
+    if (!memberDef && schema.open) {
+      if (typeof schema.open === 'object' && schema.open.type) {
+        memberDef = { ...schema.open, path: name };
+      } else {
+        memberDef = { type: 'any', path: name };
+      }
     }
 
     processedNames.add(name);
@@ -126,6 +129,24 @@ function _processObject(data: ObjectNode, schema: Schema, defs?: Definitions, co
     }
   }
 
+  // Fallback: if schema is open and result is empty, process all data members as type 'any' or using schema.open constraints
+  if ((schema.open === true || (typeof schema.open === 'object' && schema.open.type)) && o.isEmpty()) {
+    for (const member of data.children) {
+      if (!member) continue;
+      const memberNode = member as any;
+      let name = memberNode.key ? memberNode.key.value : undefined;
+      if (!name) continue;
+      let memberDef: MemberDef;
+      if (typeof schema.open === 'object' && schema.open.type) {
+        memberDef = { ...schema.open, path: name };
+      } else {
+        memberDef = { type: 'any', path: name };
+      }
+      const val = processMember(memberNode, memberDef, defs);
+      o.set(name, val);
+    }
+    return o;
+  }
 
   return o;
 }

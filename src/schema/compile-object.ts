@@ -263,6 +263,7 @@ function parseObjectDef(o: ObjectNode, schema:Schema, path:string, defs?:Definit
         continue;
       }
       const fieldInfo = parseName(memberNode.value);
+      // Always infer type as 'any' if not explicitly provided
       const memberDef = {
         ...fieldInfo,
         type: 'any'
