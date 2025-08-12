@@ -217,37 +217,44 @@ function parseArrayOrTypeDef(a:ArrayNode, path:string, defs?:Definitions) :any {
 
 function parseObjectDef(o: ObjectNode, schema:Schema, path:string, defs?:Definitions): Schema {
   if (!o.children) {
-    schema.open = true
-    return schema
+    schema.open = true;
+    return schema;
   }
 
-  // Loop through all the children
-  // for (const child of o.children) {
-  for(let index=0; index<o.children.length; index++) {
+  for (let index = 0; index < o.children.length; index++) {
     const child = o.children[index];
-
     if (child === null) {
-      assertNever("Child value must not be null in schema definition.")
+      assertNever("Child value must not be null in schema definition.");
     }
-
     const memberNode = child as MemberNode;
     if (memberNode.value instanceof TokenNode && memberNode.value.type === TokenType.UNDEFINED) {
       throw new SyntaxError(ErrorCodes.emptyMemberDef, "The next member definition is empty.", memberNode.value);
     }
 
-    // If key and value both presents in the member node, then fetch
-    // the key and typedef from key and value respectively. Generally
-    // the value is always present, but in case of member node with
-    // no type definition, the key will not be present. In this case
-    // the membername will be read from the value node.
+    // Handle additional properties (dynamic fields)
+    if (memberNode.key && memberNode.key.value === '*') {
+      // Use canonicalizer for additional property MemberDef
+      if (memberNode.value) {
+        const { canonicalizeAdditionalProps } = require('./additional-props-canonicalizer');
+        const additionalDef = canonicalizeAdditionalProps(memberNode.value, '*');
+        schema.defs['*'] = additionalDef;
+        schema.open = additionalDef;
+      } else {
+        schema.open = true;
+      }
+      if (index !== o.children.length - 1) {
+        throw new SyntaxError(ErrorCodes.invalidSchema, "The * is only allowed at the last position.", memberNode.value);
+      }
+      continue;
+    }
+
+    // Regular member
     if (memberNode.key) {
       const memberDef = getMemberDef(memberNode, path, defs);
       addMemberDef(memberDef, schema, path);
     } else {
-      // If the last index and the value is *, then this is an open schema, a
-      // schema that can accept any member even if it is not defined in the schema.
+      // If the last index and the value is *, then this is an open schema
       const open = memberNode.value instanceof TokenNode && memberNode.value.type === TokenType.STRING && memberNode.value.value === '*';
-
       if (open) {
         if (index !== o.children.length - 1) {
           throw new SyntaxError(ErrorCodes.invalidSchema, "The * is only allowed at the last position.", memberNode.value);
@@ -255,13 +262,11 @@ function parseObjectDef(o: ObjectNode, schema:Schema, path:string, defs?:Definit
         schema.open = true;
         continue;
       }
-
       const fieldInfo = parseName(memberNode.value);
       const memberDef = {
         ...fieldInfo,
         type: 'any'
       } as MemberDef;
-
       addMemberDef(memberDef, schema, path);
     }
   }
