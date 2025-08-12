@@ -1,4 +1,4 @@
-import Decimal from '../src/core/decimal';
+import Decimal from '../../../../src/core/decimal';
 
 describe('Decimal Edge Cases', () => {
   it('throws on overflow (too many digits for precision)', () => {

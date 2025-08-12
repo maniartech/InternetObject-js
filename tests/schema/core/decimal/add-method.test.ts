@@ -1,4 +1,4 @@
-import Decimal from '../src/core/decimal';
+import Decimal from '../../../../src/core/decimal';
 
 describe('Decimal Addition Tests', () => {
   test('should correctly add two decimal values with same precision and scale', () => {

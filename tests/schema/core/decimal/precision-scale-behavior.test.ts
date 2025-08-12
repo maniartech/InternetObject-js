@@ -1,4 +1,4 @@
-import Decimal from '../src/core/decimal';
+import Decimal from '../../../../src/core/decimal';
 
 describe('Decimal Addition - Precision and Scale Behavior', () => {
     test('Addition uses RDBMS precision/scale (scale=max, precision accommodates carry)', () => {

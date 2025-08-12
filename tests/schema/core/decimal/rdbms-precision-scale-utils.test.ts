@@ -5,12 +5,12 @@ import {
     validateAndAdjustPrecisionScale,
     calculateRdbmsArithmeticResult,
     RdbmsArithmeticResult
-} from '../src/core/decimal-utils';
+} from '../../../../src/core/decimal-utils';
 
 describe('RDBMS Precision and Scale Utility Functions', () => {
-    
+
     describe('calculateAdditionResultPrecisionScale', () => {
-        
+
         describe('Basic Addition Cases', () => {
             test('same precision and scale', () => {
                 const result = calculateAdditionResultPrecisionScale(5, 2, 5, 2);
@@ -107,7 +107,7 @@ describe('RDBMS Precision and Scale Utility Functions', () => {
     });
 
     describe('calculateMultiplicationResultPrecisionScale', () => {
-        
+
         describe('Basic Multiplication Cases', () => {
             test('simple multiplication', () => {
                 const result = calculateMultiplicationResultPrecisionScale(5, 2, 4, 1);
@@ -158,7 +158,7 @@ describe('RDBMS Precision and Scale Utility Functions', () => {
     });
 
     describe('calculateDivisionResultPrecisionScale', () => {
-        
+
         describe('Basic Division Cases', () => {
             test('simple division with default min scale', () => {
                 const result = calculateDivisionResultPrecisionScale(10, 2, 5, 1);
@@ -212,7 +212,7 @@ describe('RDBMS Precision and Scale Utility Functions', () => {
     });
 
     describe('validateAndAdjustPrecisionScale', () => {
-        
+
         describe('Within Limits Cases', () => {
             test('values within default limits', () => {
                 const result = validateAndAdjustPrecisionScale(20, 5);
@@ -284,7 +284,7 @@ describe('RDBMS Precision and Scale Utility Functions', () => {
     });
 
     describe('calculateRdbmsArithmeticResult', () => {
-        
+
         describe('Addition Operations', () => {
             test('basic addition', () => {
                 const result = calculateRdbmsArithmeticResult('add', 5, 2, 4, 1);
@@ -346,7 +346,7 @@ describe('RDBMS Precision and Scale Utility Functions', () => {
     });
 
     describe('Real-world RDBMS Examples', () => {
-        
+
         describe('SQL Server Examples', () => {
             test('DECIMAL(10,4) + DECIMAL(8,2)', () => {
                 const result = calculateRdbmsArithmeticResult('add', 10, 4, 8, 2);
@@ -392,7 +392,7 @@ describe('RDBMS Precision and Scale Utility Functions', () => {
     });
 
     describe('Extreme Edge Cases', () => {
-        
+
         test('maximum precision operations', () => {
             const result = calculateRdbmsArithmeticResult('add', 38, 19, 38, 18, { maxPrecision: 38 });
             expect(result.scale).toBe(19); // max(19, 18) = 19

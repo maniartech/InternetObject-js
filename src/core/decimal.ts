@@ -264,7 +264,7 @@ class Decimal {
     ): DecimalInit {
         // Scale increase: pad with zeros
         const scaleDifference = scale - fromScale;
-        const multiplier = BigInt(10 ** scaleDifference);
+    const multiplier = 10n ** BigInt(scaleDifference);
         const newCoefficient = fromCoefficient * multiplier;
 
         // Verify the new coefficient fits within precision
@@ -292,7 +292,7 @@ class Decimal {
     ): DecimalInit {
         // Scale decrease: round half up
         const scaleDifference = fromScale - scale;
-        const divisor = BigInt(10 ** scaleDifference);
+    const divisor = 10n ** BigInt(scaleDifference);
         const truncated = fromCoefficient / divisor;
         let remainder = fromCoefficient % divisor;
         if (remainder < 0n) remainder = -remainder;
@@ -370,8 +370,8 @@ class Decimal {
         }
 
         // Rounding needed
-        const fractionalNum = BigInt(truncatedFractional || '0') + 1n;
-        const scaleFactor = BigInt(10 ** scale);
+    const fractionalNum = BigInt(truncatedFractional || '0') + 1n;
+    const scaleFactor = 10n ** BigInt(scale);
 
         // Check if rounding caused overflow
         if (fractionalNum === scaleFactor) {
@@ -661,7 +661,7 @@ class Decimal {
     getFormatPattern(): string {
         const precision = 'x'.repeat(this.precision - this.scale);
         const scale = 'x'.repeat(this.scale);
-        return `${precision}.${scale}`;
+    return this.scale > 0 ? `${precision}.${scale}` : `${precision}`;
     }
 
     /**
@@ -838,26 +838,37 @@ class Decimal {
      */
     sub(other: Decimal): Decimal {
         if (!(other instanceof Decimal)) throw new DecimalError('Invalid operand');
-        // Align scales
-        const targetScale = this.scale;
-        const scaleDiff = targetScale - other.scale;
-        let aCoeff = this.coefficient;
-        let bCoeff = other.coefficient;
-        if (scaleDiff > 0) {
-            bCoeff = bCoeff * BigInt(10 ** scaleDiff);
-        } else if (scaleDiff < 0) {
-            aCoeff = aCoeff * BigInt(10 ** (-scaleDiff));
-        }
-        const resultCoeff = aCoeff - bCoeff;
-        const resultStr = formatBigIntAsDecimal(resultCoeff, targetScale);
-        // const resultStr = (resultCoeff < 0n ? '-' : '') + resultCoeff.toString().replace('-', '').padStart(targetScale + 1, '0').replace(new RegExp(`(\d{${targetScale}})$`), '.$1');
 
-
-        return new Decimal(
-            resultStr,
+        // RDBMS subtraction: use utility to determine result precision/scale
+        const { precision: calcPrecision, scale: calcScale } = calculateRdbmsArithmeticResult(
+            'subtract',
             this.precision,
-            targetScale
+            this.scale,
+            other.precision,
+            other.scale,
+            { maxPrecision: 10000, maxScale: 10000 }
         );
+
+        // Align operands to calcScale
+        const { a: aCoeff, b: bCoeff } = alignOperands(
+            this.coefficient,
+            this.scale,
+            other.coefficient,
+            other.scale,
+            calcScale,
+            'round'
+        );
+
+        // Subtract aligned coefficients
+        const diffCoeff = aCoeff - bCoeff;
+
+        // Determine final precision: accommodate actual digits if they exceed calcPrecision
+        const digits = diffCoeff.toString().replace('-', '').length;
+        const finalPrecision = Math.max(calcPrecision, digits);
+
+        // Format and construct
+        const resultStr = formatBigIntAsDecimal(diffCoeff, calcScale);
+        return new Decimal(resultStr, finalPrecision, calcScale);
     }
 
     /**
@@ -869,34 +880,26 @@ class Decimal {
      */
     mul(other: Decimal): Decimal {
         if (!(other instanceof Decimal)) throw new DecimalError('Invalid operand');
-
         // Multiply coefficients directly using BigInt arithmetic
         const resultCoeff = this.coefficient * other.coefficient;
         const intermediateScale = this.scale + other.scale;
 
-        // Result scale should be max(s1, s2) according to RDBMS standard
+        // Tests expect result scale to be max(s1, s2)
         const targetScale = Math.max(this.scale, other.scale);
 
-        // Adjust result to target scale using utility functions
+        // Adjust result to target scale
         let adjustedCoeff = resultCoeff;
         if (intermediateScale > targetScale) {
-            // Scale down with rounding using utility function
             adjustedCoeff = roundHalfUp(resultCoeff, intermediateScale, targetScale);
         } else if (intermediateScale < targetScale) {
-            // Scale up using utility function
             adjustedCoeff = scaleUp(resultCoeff, targetScale - intermediateScale);
         }
 
-        // Calculate appropriate precision for the result
+        // Compute appropriate precision
         const resultDigits = adjustedCoeff.toString().replace('-', '').length;
         let finalPrecision = Math.max(this.precision, other.precision, resultDigits);
+        if (resultDigits > finalPrecision) finalPrecision = resultDigits;
 
-        // Ensure precision accommodates the result
-        if (resultDigits > finalPrecision) {
-            finalPrecision = resultDigits;
-        }
-
-        // Format the result using the utility function and create a new Decimal
         const resultStr = formatBigIntAsDecimal(adjustedCoeff, targetScale);
         return new Decimal(resultStr, finalPrecision, targetScale);
     }
@@ -912,18 +915,16 @@ class Decimal {
         if (!(other instanceof Decimal)) throw new DecimalError('Invalid operand');
         if (other.coefficient === 0n) throw new DecimalError('Division by zero');
 
-        // Result scale follows the divisor's scale (common expectation in our tests)
-        const targetScale = other.scale;
+    // Tests expect result scale to follow the divisor's scale
+    const targetScale = other.scale;
 
-        // Upscale numerator to achieve the desired decimal places in the quotient
-        // Coefficient math: value = (coeffA / 10^scaleA) / (coeffB / 10^scaleB)
-        // => result coefficient at targetScale T is coeffA * 10^(T + scaleB - scaleA) / coeffB
-        const exponentAdjustment = targetScale + other.scale - this.scale;
-        const scaleFactor = BigInt(10 ** Math.max(0, exponentAdjustment));
-        let numerator = this.coefficient * scaleFactor;
-        // If adjustment is negative (rare), we effectively scale down before dividing
-        if (exponentAdjustment < 0) {
-            const down = BigInt(10 ** Math.abs(exponentAdjustment));
+    // Compute numerator scaling: coeffA * 10^(targetScale + sB - sA)
+    const exponentAdjustment = targetScale + other.scale - this.scale;
+        let numerator: bigint;
+        if (exponentAdjustment >= 0) {
+            numerator = this.coefficient * (10n ** BigInt(exponentAdjustment));
+        } else {
+            const down = 10n ** BigInt(-exponentAdjustment);
             numerator = this.coefficient / down;
         }
         const denominator = other.coefficient;
@@ -931,22 +932,19 @@ class Decimal {
         let quotient = numerator / denominator;
         let remainder = numerator % denominator;
 
-        // Use absolute values for rounding decision
+        // Round half up from remainder using the true sign of the result
         const absDen = denominator < 0n ? -denominator : denominator;
-        let absRem = remainder < 0n ? -remainder : remainder;
-        // Round half up
+        const absRem = remainder < 0n ? -remainder : remainder;
         if (absRem * 2n >= absDen) {
-            quotient += (quotient < 0n ? -1n : 1n);
+            const isNegative = (numerator < 0n) !== (denominator < 0n);
+            quotient += isNegative ? -1n : 1n;
         }
 
-        // Format quotient with correct scale
-        const resultStr = formatBigIntAsDecimal(quotient, targetScale);
+    const resultStr = formatBigIntAsDecimal(quotient, targetScale);
+    const digits = (quotient < 0n ? (-quotient).toString() : quotient.toString()).length;
+    const finalPrecision = Math.max(this.precision, other.precision, digits);
 
-        // Choose a precision that fits the actual significant digits
-        const digits = (quotient < 0n ? (-quotient).toString() : quotient.toString()).length;
-        const finalPrecision = Math.max(digits, this.precision, other.precision);
-
-        return new Decimal(resultStr, finalPrecision, targetScale);
+    return new Decimal(resultStr, finalPrecision, targetScale);
     }
 
     /**

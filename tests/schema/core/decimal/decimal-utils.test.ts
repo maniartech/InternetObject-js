@@ -1,20 +1,20 @@
 // decimal-utils.test.ts
-import { 
-  normalizeCoefficient, 
-  getAbsoluteValue, 
-  getSign, 
-  scaleUp, 
-  scaleDown, 
-  roundHalfUp, 
-  ceilRound, 
-  floorRound, 
+import {
+  normalizeCoefficient,
+  getAbsoluteValue,
+  getSign,
+  scaleUp,
+  scaleDown,
+  roundHalfUp,
+  ceilRound,
+  floorRound,
   formatBigIntAsDecimal,
   fitToPrecision,
   validatePrecisionScale,
   performLongDivision,
   alignOperands,
   NormalizedCoefficient
-} from '../src/core/decimal-utils';
+} from '../../../../src/core/decimal-utils';
 
 describe('Decimal Utility Functions', () => {
   describe('normalizeCoefficient', () => {
@@ -216,10 +216,10 @@ describe('Decimal Utility Functions', () => {
     it('should validate significant digits in formatted result', () => {
       // Integer part has 3 significant digits, fractional part has 2
       expect(() => formatBigIntAsDecimal(12345n, 2, 4)).toThrow();
-      
+
       // Integer part is 0, fractional part has 5 significant digits (after removing leading zeros)
       expect(() => formatBigIntAsDecimal(12345n, 10, 4)).toThrow();
-      
+
       // Integer part has 3 significant digits, fractional part has 2, total 5 which is within precision
       expect(formatBigIntAsDecimal(12345n, 2, 5)).toBe('123.45');
     });
@@ -237,13 +237,13 @@ describe('Decimal Utility Functions', () => {
     it('should round coefficients to fit precision using round-half-up by default', () => {
       // 123456 with precision 5 and scale 3 should round to 12346 (123.456 -> 123.46)
       expect(fitToPrecision(123456n, 5, 3)).toBe(12346n);
-      
+
       // 123450 with precision 5 and scale 3 should round to 12345 (123.450 -> 123.45)
       expect(fitToPrecision(123450n, 5, 3)).toBe(12345n);
-      
+
       // 123451 with precision 5 and scale 3 should round to 12345 (123.451 -> 123.45)
       expect(fitToPrecision(123451n, 5, 3)).toBe(12345n);
-      
+
       // 123449 with precision 5 and scale 3 should round to 12345 (123.449 -> 123.45)
       expect(fitToPrecision(123449n, 5, 3)).toBe(12345n);
     });
@@ -251,10 +251,10 @@ describe('Decimal Utility Functions', () => {
     it('should use ceiling rounding when specified', () => {
       // 123456 with precision 5 and scale 3 should ceil to 12346 (123.456 -> 123.46)
       expect(fitToPrecision(123456n, 5, 3, 'ceil')).toBe(12346n);
-      
+
       // 123450 with precision 5 and scale 3 should ceil to 12345 (123.450 -> 123.45)
       expect(fitToPrecision(123450n, 5, 3, 'ceil')).toBe(12345n);
-      
+
       // 123451 with precision 5 and scale 3 should ceil to 12346 (123.451 -> 123.46)
       expect(fitToPrecision(123451n, 5, 3, 'ceil')).toBe(12346n);
     });
@@ -262,10 +262,10 @@ describe('Decimal Utility Functions', () => {
     it('should use floor rounding when specified', () => {
       // 123456 with precision 5 and scale 3 should floor to 12345 (123.456 -> 123.45)
       expect(fitToPrecision(123456n, 5, 3, 'floor')).toBe(12345n);
-      
+
       // 123450 with precision 5 and scale 3 should floor to 12345 (123.450 -> 123.45)
       expect(fitToPrecision(123450n, 5, 3, 'floor')).toBe(12345n);
-      
+
       // 123451 with precision 5 and scale 3 should floor to 12345 (123.451 -> 123.45)
       expect(fitToPrecision(123451n, 5, 3, 'floor')).toBe(12345n);
     });
@@ -274,13 +274,13 @@ describe('Decimal Utility Functions', () => {
     it('should handle negative coefficients correctly', () => {
       // -123456 with precision 5 and scale 3 should round to -12346 (-123.456 -> -123.46)
       expect(fitToPrecision(-123456n, 5, 3)).toBe(-12346n);
-      
+
       // -123450 with precision 5 and scale 3 should round to -12345 (-123.450 -> -123.45)
       expect(fitToPrecision(-123450n, 5, 3)).toBe(-12345n);
-      
+
       // Test ceiling with negative numbers
       expect(fitToPrecision(-123456n, 5, 3, 'ceil')).toBe(-12345n);
-      
+
       // Test floor with negative numbers
       expect(fitToPrecision(-123451n, 5, 3, 'floor')).toBe(-12346n);
     });
@@ -289,13 +289,13 @@ describe('Decimal Utility Functions', () => {
     it('should handle edge cases correctly', () => {
       // Exactly fitting precision
       expect(fitToPrecision(12345n, 5, 2)).toBe(12345n);
-      
+
       // Zero coefficient
       expect(fitToPrecision(0n, 5, 2)).toBe(0n);
-      
+
       // Overflow by one digit with rounding that causes carry
       expect(fitToPrecision(9999n, 3, 1)).toBe(100n);
-      
+
       // Maximum precision boundaries
       const largeCoeff = 10n ** 100n - 1n; // 100 9's
       expect(() => fitToPrecision(largeCoeff, 99, 0)).toThrow();
@@ -308,7 +308,7 @@ describe('Decimal Utility Functions', () => {
       // To fit in precision 4, we need to remove 2 digits, but scale is only 2
       // This would affect the integer part, so it should throw
       expect(() => fitToPrecision(1234567n, 4, 2)).toThrow();
-      
+
       // Very large coefficient that can't be fitted
       const veryLargeCoeff = 10n ** 20n;
       expect(() => fitToPrecision(veryLargeCoeff, 10, 5)).toThrow();
@@ -318,7 +318,7 @@ describe('Decimal Utility Functions', () => {
     it('should handle underflow scenarios correctly', () => {
       // Coefficient with scale larger than precision
       expect(fitToPrecision(123n, 2, 3)).toBe(12n);
-      
+
       // Coefficient with very small scale compared to precision
       expect(fitToPrecision(123456n, 10, 1)).toBe(123456n);
     });
@@ -344,7 +344,7 @@ describe('Decimal Utility Functions', () => {
     it('should reject coefficients that exceed precision', () => {
       expect(validatePrecisionScale(123456n, 5, 2).valid).toBe(false);
       expect(validatePrecisionScale(123456n, 5, 5).valid).toBe(false);
-      
+
       // Very large coefficient
       const veryLargeCoeff = 10n ** 20n;
       expect(validatePrecisionScale(veryLargeCoeff, 10, 5).valid).toBe(false);
@@ -354,14 +354,14 @@ describe('Decimal Utility Functions', () => {
     it('should handle edge cases correctly', () => {
       // Exactly fitting precision
       expect(validatePrecisionScale(12345n, 5, 2).valid).toBe(true);
-      
+
       // Zero coefficient (always valid)
       expect(validatePrecisionScale(0n, 5, 2).valid).toBe(true);
       expect(validatePrecisionScale(0n, 1, 0).valid).toBe(true);
-      
+
       // Precision equals scale
       expect(validatePrecisionScale(12345n, 5, 5).valid).toBe(true);
-      
+
       // Coefficient with leading zeros in fractional part
       expect(validatePrecisionScale(123n, 5, 5).valid).toBe(true);
     });
@@ -377,11 +377,11 @@ describe('Decimal Utility Functions', () => {
       const result1 = validatePrecisionScale(123456n, 5, 2);
       expect(result1.valid).toBe(false);
       expect(result1.reason).toContain('exceeding precision');
-      
+
       const result2 = validatePrecisionScale(12345n, 5, 6);
       expect(result2.valid).toBe(false);
       expect(result2.reason).toContain('Scale must be less than or equal to precision');
-      
+
       const result3 = validatePrecisionScale(12345n, 0, 0);
       expect(result3.valid).toBe(false);
       expect(result3.reason).toContain('Precision must be positive');
@@ -392,12 +392,12 @@ describe('Decimal Utility Functions', () => {
       // 100 digits coefficient with 100 precision
       const largeCoeff = 10n ** 100n - 1n; // 100 9's
       expect(validatePrecisionScale(largeCoeff, 100, 0).valid).toBe(true);
-      
+
       // 100 digits coefficient with 99 precision
       expect(validatePrecisionScale(largeCoeff, 99, 0).valid).toBe(false);
     });
   });
-  
+
   describe('performLongDivision', () => {
     // Basic division tests
     it('should perform basic division correctly', () => {
@@ -406,42 +406,42 @@ describe('Decimal Utility Functions', () => {
       expect(result1.quotient).toBe(5n);
       expect(result1.remainder).toBe(0n);
       expect(result1.isExact).toBe(true);
-      
+
       // 10 / 3 = 3.333... (with scale 3)
       const result2 = performLongDivision(10n, 3n, 3, 10);
       expect(result2.quotient).toBe(3333n);
       expect(result2.remainder).toBe(1n);
       expect(result2.isExact).toBe(false);
-      
+
       // 4565 / 123 = 37.11... (with scale 2)
       const result3 = performLongDivision(4565n, 123n, 2, 10);
       expect(result3.quotient).toBe(3711n);
       expect(result3.isExact).toBe(false);
     });
-    
+
     // Additional tests for division at precision boundaries
     it('should handle division at precision boundaries', () => {
       // Division that exactly hits precision limit
       const result = performLongDivision(1000000n, 3n, 6, 10);
       expect(result.quotient.toString().length).toBe(10); // 10 digits total
       expect(result.quotient).toBe(3333333333n); // 333333.3333 with 6 decimal places
-      
+
       // Division that would exceed precision but gets truncated
       const result2 = performLongDivision(1000000n, 3n, 5, 10);
       expect(result2.quotient.toString().length).toBeLessThanOrEqual(10);
     });
-    
+
     // Test for complex repeating decimal patterns
     it('should detect complex repeating decimal patterns', () => {
       // 1/7 = 0.142857142857... (repeating pattern of 6 digits)
       const result = performLongDivision(1n, 7n, 12, 20);
       expect(result.repeatingDigits).toBe('142857');
-      
+
       // 1/11 = 0.09090909... (repeating pattern of 2 digits)
       const result2 = performLongDivision(1n, 11n, 8, 20);
       expect(result2.repeatingDigits).toBe('09');
     });
-    
+
     // Division with very small numbers
     it('should handle division with very small numbers', () => {
       // 1 / 1000 = 0.001 (with scale 3)
@@ -449,14 +449,14 @@ describe('Decimal Utility Functions', () => {
       expect(result.quotient).toBe(1n);
       expect(result.remainder).toBe(0n);
       expect(result.isExact).toBe(true);
-      
+
       // 1 / 1000 = 0.001 (with scale 4)
       const result2 = performLongDivision(1n, 1000n, 4, 10);
       expect(result2.quotient).toBe(10n);
       expect(result2.remainder).toBe(0n);
       expect(result2.isExact).toBe(true);
     });
-    
+
     // Division with repeating decimals
     it('should handle repeating decimals', () => {
       // 1 / 3 = 0.333... (with scale 10)
@@ -464,14 +464,14 @@ describe('Decimal Utility Functions', () => {
       expect(result.quotient).toBe(3333333333n);
       expect(result.isExact).toBe(false);
       expect(result.repeatingDigits).toBe('3');
-      
+
       // 1 / 6 = 0.166... (with scale 10)
       const result2 = performLongDivision(1n, 6n, 10, 15);
       expect(result2.quotient).toBe(1666666666n); // Truncated to 10 decimal places
       expect(result2.isExact).toBe(false);
       expect(result2.repeatingDigits).toBe('6');
     });
-    
+
     // Precision overflow tests
     it('should handle precision overflow', () => {
       // 1 / 3 with scale 10 but precision 5
@@ -479,61 +479,61 @@ describe('Decimal Utility Functions', () => {
       expect(result.quotient.toString().length).toBeLessThanOrEqual(5);
       expect(result.isExact).toBe(false);
     });
-    
+
     // Edge cases
     it('should handle edge cases correctly', () => {
       // Division by 1
       const result1 = performLongDivision(123n, 1n, 2, 10);
       expect(result1.quotient).toBe(12300n);
       expect(result1.isExact).toBe(true);
-      
+
       // Zero dividend
       const result2 = performLongDivision(0n, 123n, 2, 10);
       expect(result2.quotient).toBe(0n);
       expect(result2.isExact).toBe(true);
-      
+
       // Negative numbers
       const result3 = performLongDivision(-10n, 2n, 0, 10);
       expect(result3.quotient).toBe(-5n);
       expect(result3.isExact).toBe(true);
-      
+
       const result4 = performLongDivision(10n, -2n, 0, 10);
       expect(result4.quotient).toBe(-5n);
       expect(result4.isExact).toBe(true);
-      
+
       const result5 = performLongDivision(-10n, -2n, 0, 10);
       expect(result5.quotient).toBe(5n);
       expect(result5.isExact).toBe(true);
     });
-    
+
     // Error cases
     it('should throw errors for invalid inputs', () => {
       // Division by zero
       expect(() => performLongDivision(10n, 0n, 2, 10)).toThrow('Division by zero');
-      
+
       // Invalid precision
       expect(() => performLongDivision(10n, 2n, 2, 0)).toThrow('Precision must be positive');
-      
+
       // Invalid scale
       expect(() => performLongDivision(10n, 2n, -1, 10)).toThrow('Scale must be non-negative');
-      
+
       // Scale > precision
       expect(() => performLongDivision(10n, 2n, 10, 5)).toThrow('Scale must be less than or equal to precision');
     });
-    
+
     // Very large dividend/divisor combinations
     it('should handle very large dividend/divisor combinations', () => {
       const largeDividend = 10n ** 50n + 1n;
       const largeDivisor = 10n ** 25n + 1n;
-      
+
       const result = performLongDivision(largeDividend, largeDivisor, 10, 50);
       expect(result.quotient.toString().length).toBeLessThanOrEqual(50);
-      
+
       // Verify result is approximately 10^25
       const quotientStr = result.quotient.toString();
       expect(quotientStr.length - 10).toBeCloseTo(25, -1); // Allow some margin due to rounding
     });
-    
+
     // Test the specific failing case from the task description
     it('should correctly handle the specific failing case (4.565 / 1.23)', () => {
       // 4.565 / 1.23 should equal 3.71
@@ -542,7 +542,7 @@ describe('Decimal Utility Functions', () => {
       expect(result.quotient).toBe(3711n);
     });
   });
-  
+
   describe('alignOperands', () => {
     // Basic alignment tests
     it('should align operands with different scales', () => {
@@ -552,7 +552,7 @@ describe('Decimal Utility Functions', () => {
       expect(result.b).toBe(6780n);
       expect(result.targetScale).toBe(2);
       expect(result.scaleAdjustment).toBe(1);
-      
+
       // 123.4 and 67.89 -> 1234.0 and 678.9
       const result2 = alignOperands(1234n, 1, 6789n, 2);
       expect(result2.a).toBe(12340n);
@@ -560,7 +560,7 @@ describe('Decimal Utility Functions', () => {
       expect(result2.targetScale).toBe(2);
       expect(result2.scaleAdjustment).toBe(1);
     });
-    
+
     // Test for cases where both operands need scaling
     it('should handle cases where both operands need scaling', () => {
       // 123.45 and 67.89 with maxScale 1 -> 123.5 and 67.9
@@ -568,29 +568,29 @@ describe('Decimal Utility Functions', () => {
       expect(result.a).toBe(1235n); // Rounded from 123.45 to 123.5
       expect(result.b).toBe(679n);  // Rounded from 67.89 to 67.9
       expect(result.targetScale).toBe(1);
-      
+
       // Test with different rounding modes
       const resultCeil = alignOperands(12345n, 2, 6789n, 2, 1, 'ceil');
       expect(resultCeil.a).toBe(1235n); // Ceiling from 123.45 to 123.5
       expect(resultCeil.b).toBe(679n);  // Ceiling from 67.89 to 67.9
-      
+
       const resultFloor = alignOperands(12345n, 2, 6789n, 2, 1, 'floor');
       expect(resultFloor.a).toBe(1234n); // Floor from 123.45 to 123.4
       expect(resultFloor.b).toBe(678n);  // Floor from 67.89 to 67.8
     });
-    
+
     // Test for alignment with precision limits
     it('should handle alignment with precision limits', () => {
       // Very large coefficients that might approach precision limits
       const largeCoeff1 = 10n ** 15n - 1n; // 999...999 (15 digits)
       const largeCoeff2 = 10n ** 10n - 1n; // 999...999 (10 digits)
-      
+
       const result = alignOperands(largeCoeff1, 5, largeCoeff2, 3);
       expect(result.a).toBe(largeCoeff1);
       expect(result.b).toBe(largeCoeff2 * 100n); // Scaled up by 2 decimal places
       expect(result.targetScale).toBe(5);
     });
-    
+
     // Zero operand tests
     it('should handle zero operands correctly', () => {
       // 0 and 67.8 -> 0 and 67.8
@@ -598,14 +598,14 @@ describe('Decimal Utility Functions', () => {
       expect(result.a).toBe(0n);
       expect(result.b).toBe(678n);
       expect(result.targetScale).toBe(1);
-      
+
       // 123.45 and 0 -> 123.45 and 0
       const result2 = alignOperands(12345n, 2, 0n, 1);
       expect(result2.a).toBe(12345n);
       expect(result2.b).toBe(0n);
       expect(result2.targetScale).toBe(2);
     });
-    
+
     // Maximum scale tests
     it('should respect maximum scale constraint', () => {
       // 123.456 and 67.89 with maxScale 2 -> 123.46 and 67.89
@@ -613,14 +613,14 @@ describe('Decimal Utility Functions', () => {
       expect(result.a).toBe(12346n); // Truncated from 123.456 to 123.46
       expect(result.b).toBe(6789n);
       expect(result.targetScale).toBe(2);
-      
+
       // 123.4 and 67.89 with maxScale 1 -> 123.4 and 67.9
       const result2 = alignOperands(1234n, 1, 6789n, 2, 1);
       expect(result2.a).toBe(1234n);
       expect(result2.b).toBe(679n); // Truncated from 67.89 to 67.9
       expect(result2.targetScale).toBe(1);
     });
-    
+
     // Extreme scale differences
     it('should handle extreme scale differences', () => {
       // 1.23 and 4.56789 -> 1.23000 and 4.56789
@@ -630,7 +630,7 @@ describe('Decimal Utility Functions', () => {
       expect(result.targetScale).toBe(5);
       expect(result.scaleAdjustment).toBe(3);
     });
-    
+
     // Negative number tests
     it('should handle negative numbers correctly', () => {
       // -123.45 and 67.8 -> -123.45 and 67.80
@@ -638,19 +638,19 @@ describe('Decimal Utility Functions', () => {
       expect(result.a).toBe(-12345n);
       expect(result.b).toBe(6780n);
       expect(result.targetScale).toBe(2);
-      
+
       // 123.45 and -67.8 -> 123.45 and -67.80
       const result2 = alignOperands(12345n, 2, -678n, 1);
       expect(result2.a).toBe(12345n);
       expect(result2.b).toBe(-6780n);
       expect(result2.targetScale).toBe(2);
     });
-    
+
     // Very large coefficient tests
     it('should handle very large coefficients', () => {
       const largeCoeff1 = 10n ** 20n;
       const largeCoeff2 = 10n ** 15n;
-      
+
       const result = alignOperands(largeCoeff1, 10, largeCoeff2, 5);
       expect(result.a).toBe(largeCoeff1);
       expect(result.b).toBe(largeCoeff2 * 10n ** 5n);
