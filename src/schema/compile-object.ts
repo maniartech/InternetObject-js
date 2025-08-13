@@ -15,8 +15,10 @@ import Token            from '../parser/tokenizer/tokens';
 import registerTypes    from './types';
 import MemberDef        from './types/memberdef';
 import createMemberDef  from './types/memberdef-factory';
-import { canonicalizeAdditionalProps } from './additional-props-canonicalizer';
+import { canonicalizeAdditionalProps } from './utils/additional-props-canonicalizer';
 import { normalizeKeyToken } from './utils/member-utils';
+
+// Register built-in types
 
 registerTypes();
 

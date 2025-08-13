@@ -10,7 +10,7 @@ import assertNever        from '../errors/asserts/asserts';
 import TypedefRegistry    from './typedef-registry';
 import Schema             from './schema';
 import MemberDef          from './types/memberdef';
-import { processMember }  from './member-processor';
+import { processMember }  from './processing/member-processor';
 
 export default function processObject(data: ObjectNode, schema: Schema | TokenNode, defs?: Definitions, collectionIndex?: number) {
   if (schema instanceof TokenNode) {

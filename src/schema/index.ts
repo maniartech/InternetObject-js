@@ -7,16 +7,18 @@ export { default as TypeDef } from './typedef';
 // Processing
 export { default as processSchema } from './processor';
 export { default as processObject } from './object-processor';
+export { default as processCollection } from './processing/collection-processor';
 export { default as compileObject } from './compile-object';
 export { MemberProcessorFactory } from './processing/member-processor-factory';
-export { processMember } from './member-processor';
+export { processMember } from './processing/member-processor';
 
 // Utilities
 export { SchemaUtils, SchemaMetrics } from './schema-utils';
 export { SchemaResolver } from './utils/schema-resolver';
 export { ValidationUtils, ProcessingResult } from './utils/validation-utils';
 export { SchemaValidator, ValidationResult } from './validation/schema-validator';
-export { canonicalizeAdditionalProps } from './additional-props-canonicalizer';
+export { canonicalizeAdditionalProps } from './utils/additional-props-canonicalizer';
+export { normalizeKeyToken } from './utils/member-utils';
 
 // Types
 export { MemberMap, SchemaConstructorArg } from './schema-types';

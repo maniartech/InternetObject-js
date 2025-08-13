@@ -1,8 +1,8 @@
-import MemberDef from './types/memberdef';
-import TokenNode from '../parser/nodes/tokens';
-import ObjectNode from '../parser/nodes/objects';
-import ArrayNode from '../parser/nodes/array';
-import TypedefRegistry from './typedef-registry';
+import MemberDef from '../types/memberdef';
+import TokenNode from '../../parser/nodes/tokens';
+import ObjectNode from '../../parser/nodes/objects';
+import ArrayNode from '../../parser/nodes/array';
+import TypedefRegistry from '../typedef-registry';
 
 /**
  * Converts additional property schema node to canonical MemberDef.
@@ -29,16 +29,16 @@ export function canonicalizeAdditionalProps(node: any, path: string = '*'): Memb
       return { type: 'object', path, open: true };
     }
     // Check if first child is a MemberNode with no key and value is TokenNode (type)
-    const firstChild = node.children[0] as import('../parser/nodes/members').default;
+    const firstChild = node.children[0] as import('../../parser/nodes/members').default;
     if (firstChild && !firstChild.key && firstChild.value instanceof TokenNode) {
       const typeToken = firstChild.value as TokenNode;
       if (typeof typeToken.value === 'string' && TypedefRegistry.isRegisteredType(typeToken.value)) {
         // Collect constraints from other children (MemberNode with key)
         const memberDef: MemberDef = { type: typeToken.value, path };
         for (let i = 1; i < node.children.length; i++) {
-          const child = node.children[i] as import('../parser/nodes/members').default;
+          const child = node.children[i] as import('../../parser/nodes/members').default;
           if (child && child.key && child.value instanceof TokenNode) {
-            memberDef[child.key.value] = child.value.value;
+            (memberDef as any)[child.key.value] = (child.value as any).value;
           }
         }
         return memberDef;
@@ -60,8 +60,8 @@ export function canonicalizeAdditionalProps(node: any, path: string = '*'): Memb
     return { type: 'array', path };
   }
   // Already a MemberDef or unknown node
-  if (typeof node === 'object' && node.type) {
-    return { ...node, path };
+  if (typeof node === 'object' && (node as any).type) {
+    return { ...(node as any), path };
   }
   return { type: 'any', path };
 }
