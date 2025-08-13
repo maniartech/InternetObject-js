@@ -2,7 +2,44 @@
 
 A concise, actionable plan to harden schema compilation while keeping behavior stable, code simple (KISS), and responsibilities minimal (SRP). Focus is on correctness, type-safety, and modest performance wins without over-engineering.
 
+## Status updates (today)
+
+- Marking as Done in this document: (2) Idempotent typedef registration, (3) Canonicalizer import and typing, (4) Array item optionality cleanup, (5) $schemaVar in object typedefs, (6) Duplicate member detection.
+- Acceptance criteria update: “Importing modules does not emit duplicate type registration warnings.” Done (duplicate warnings only occur in an integration test that explicitly re-registers types and are rate-limited once per type by design).
+- Typed-open behavior clarified and covered by tests in revamp suite.
+- Next micro cleanups to implement now:
+  - Remove dead branch `if (!o.children)` in `parseObjectDef`.
+  - Remove unused local `fieldName` in `getMemberDef`.
+  - Optional follow-up: tiny `MemberDef` factory (deferred).
+
 ## Objectives
+## Done/Pending checklist
+
+- Done
+  - Idempotent typedef registration (no import-time warnings; explicit duplicate register warns once per type)
+  - Canonicalizer import hoisted and typed
+  - Array item optionality cleanup for []
+  - $schemaVar parity in object typedefs (shorthand and type: $Var)
+  - Duplicate member detection in compiler
+  - Typed-open behavior validated (processors use schema.open MemberDef for unknown keys)
+  - Full test suite green; revamp tests cover key scenarios
+- Pending
+  - Optional MemberDef factory for construction hardening
+  - Optional keyless name normalizer helper
+  - Minor cleanup: trim legacy notes further if needed
+  - Perf baseline maintenance per release
+
+See tests: `tests/schema/revamp/revamp-suite.test.ts` for open-schema, typed-open, array semantics, `$Var` parity, duplicates; and integration tests for registry behavior.
+
+## Performance baseline (Aug 13, 2025)
+
+Measured with `yarn perf` (Windows):
+- Tokenizer: ~0.0018–0.0024 ms avg (100k)
+- AST Parser: ~0.00051–0.00068 ms avg (100k)
+- Full Parser (object): ~0.0041–0.0047 ms avg (100k)
+- Full Parser (array): ~0.0032–0.0042 ms avg (100k)
+- Regex cached vs new: ~0.00003 vs ~0.00014 ms avg (1M)
+
 
 - Preserve current external behavior; avoid breaking changes unless clearly justified and typed.
 - Make parsing/compilation robust to AST variations and authoring mistakes.
@@ -119,6 +156,8 @@ Phase 3: Feature parity
 
 - Hoist canonicalizer import; avoid per-iteration `require`.
 - Keep lookups O(1) and string ops minimal. No further perf work unless profiling shows hotspots.
+
+
 
 ## Ownership and follow-up
 

@@ -227,10 +227,7 @@ function parseArrayOrTypeDef(a:ArrayNode, path:string, defs?:Definitions) :any {
 // }
 
 function parseObjectDef(o: ObjectNode, schema:Schema, path:string, defs?:Definitions): Schema {
-  if (!o.children) {
-    schema.open = true;
-    return schema;
-  }
+  // Note: empty-object and no-names cases are handled explicitly below.
 
   for (let index = 0; index < o.children.length; index++) {
     const child = o.children[index];
@@ -361,7 +358,6 @@ const parseName = (keyNode: Node): {
 }
 
 export function getMemberDef(memberDef:MemberNode, path:string, defs?:Definitions): MemberDef {
-  const fieldName = memberDef.key?.value;
   const node = memberDef.value;
 
   let fieldInfo = { name: "" }
