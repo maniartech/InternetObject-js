@@ -173,6 +173,53 @@ describe('Revamp plan coverage (non-invasive)', () => {
     });
   });
 
+  describe('Object typedefs: built-in shorthand and $schemaVar support', () => {
+    test('built-in shorthand { string, minLen: 2 } compiles via typedef schema', () => {
+      const node = parseFirstChildObject('{ name: { string, minLen: 2 } }');
+      const schema: any = compileObject('Types', node);
+      expect(schema.defs.name).toBeTruthy();
+      expect(schema.defs.name.type).toBe('string');
+      expect(schema.defs.name.minLen).toBe(2);
+    });
+
+    test('invalid constraint for string (min) throws via typedef schema', () => {
+      const node = parseFirstChildObject('{ name: { string, min: 1 } }');
+      expect(() => compileObject('Types', node)).toThrow();
+    });
+
+    test('schema var shorthand { $Person } sets type object with schema token', () => {
+      const node = parseFirstChildObject('{ person: { $Person } }');
+      const schema: any = compileObject('Types', node);
+      expect(schema.defs.person.type).toBe('object');
+      expect(schema.defs.person.schema).toBeTruthy();
+    });
+
+    test('type: $Person supported in object typedef', () => {
+      const node = parseFirstChildObject('{ person: { type: $Person } }');
+      const schema: any = compileObject('Types', node);
+      expect(schema.defs.person.type).toBe('object');
+      expect(schema.defs.person.schema).toBeTruthy();
+    });
+  });
+
+  describe('Object typedefs: $schemaVar parity', () => {
+    test('shorthand: first member is $Var inside object typedef', () => {
+      const node = parseFirstChildObject('{ person: { $Person, min: 1 } }');
+      const schema: any = compileObject('ObjVar', node);
+      expect(schema.defs.person.type).toBe('object');
+      expect(schema.defs.person.schema).toBeInstanceOf(TokenNode);
+      expect(schema.defs.person.schema.value).toBe('$Person');
+    });
+
+    test('type property: { type: $Var, ... } inside object typedef', () => {
+      const node = parseFirstChildObject('{ person: { type: $Person, min: 1 } }');
+      const schema: any = compileObject('ObjVarType', node);
+      expect(schema.defs.person.type).toBe('object');
+      expect(schema.defs.person.schema).toBeInstanceOf(TokenNode);
+      expect(schema.defs.person.schema.value).toBe('$Person');
+    });
+  });
+
   describe('processSchema routing and open/closed behavior', () => {
     test('routes ObjectNode and CollectionNode; null returns null', () => {
       const obj = parseFirstChildObject('1, 2, 3');
@@ -263,10 +310,45 @@ describe('Revamp plan coverage (non-invasive)', () => {
   });
 
   describe('Registry idempotency (planned)', () => {
-    test.todo('Duplicate type registration should be idempotent without warnings');
+  test('Duplicate type registration should be idempotent and produce no warnings via registerTypes()', () => {
+      const TypedefRegistry = require('../../../src/schema/typedef-registry').default as any;
+      const typesIndex = require('../../../src/schema/types');
+
+      // Ensure warnings are enabled for this test and spy on console.warn locally
+      TypedefRegistry.setWarnOnDuplicates(true);
+      const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+
+      // Capture initial count and attempt to register built-in types again
+      const beforeCount = TypedefRegistry.count;
+      const { default: registerTypes } = typesIndex;
+
+  // First duplicate registration should not change count and should not warn
+      registerTypes();
+      const afterFirst = TypedefRegistry.count;
+      expect(afterFirst).toBe(beforeCount);
+
+      const warnsAfterFirst = warnSpy.mock.calls.length;
+  expect(warnsAfterFirst).toBe(0);
+
+  // Second duplicate registration should produce no warnings either
+      registerTypes();
+      const warnsAfterSecond = warnSpy.mock.calls.length;
+      expect(warnsAfterSecond).toBe(warnsAfterFirst);
+
+      warnSpy.mockRestore();
+    });
   });
 
   describe('Duplicate member detection (planned)', () => {
-    test.todo('Compiling schema with duplicate field names should throw');
+    test('Compiling schema with duplicate field names should throw', () => {
+      const node = parseFirstChildObject('{ name: string, name: number }');
+      try {
+        compileObject('DupFields', node);
+        throw new Error('Expected duplicateMember error');
+      } catch (e: any) {
+        expect(e).toBeInstanceOf(Error);
+        expect(e.errorCode || e.code).toBe(ErrorCodes.duplicateMember);
+      }
+    });
   });
 });

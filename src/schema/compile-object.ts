@@ -14,6 +14,7 @@ import Schema           from './schema';
 import Token            from '../parser/tokenizer/tokens';
 import registerTypes    from './types';
 import MemberDef        from './types/memberdef';
+import { canonicalizeAdditionalProps } from './additional-props-canonicalizer';
 
 registerTypes();
 
@@ -62,8 +63,15 @@ function parseObjectOrTypeDef(o: ObjectNode, path:string, defs?:Definitions) {
   if (!firstNode.key) {
     if (firstNode.value instanceof TokenNode) {
       const token = firstNode.value;
-      if (token.type === TokenType.STRING && TypedefRegistry.isRegisteredType(token.value)) {
-        return parseMemberDef(token.value, o);
+      if (token.type === TokenType.STRING) {
+        // Built-in type shorthand: { string, min: ..., max: ... }
+        if (TypedefRegistry.isRegisteredType(token.value)) {
+          return parseMemberDef(token.value, o);
+        }
+        // Schema variable shorthand: { $Person, ... }
+        if (typeof token.value === 'string' && token.value.startsWith('$')) {
+          return { type: 'object', schema: token, path } as MemberDef;
+        }
       }
     }
   }
@@ -88,6 +96,10 @@ function parseObjectOrTypeDef(o: ObjectNode, path:string, defs?:Definitions) {
   // If type exists, and a valid type, then parse the member definition
   // name: { minLength: 10, maxLength: 20, type: string }
   if (type !== '') {
+    // Support type: $SchemaVar
+    if (typeof type === 'string' && type.startsWith('$')) {
+      return { type: 'object', schema: typeNode as any, path } as MemberDef;
+    }
     if (TypedefRegistry.isRegisteredType(type)) {
       return parseMemberDef(type, o);
     }
@@ -234,7 +246,6 @@ function parseObjectDef(o: ObjectNode, schema:Schema, path:string, defs?:Definit
     if (memberNode.key && memberNode.key.value === '*') {
       // Use canonicalizer for additional property MemberDef
       if (memberNode.value) {
-        const { canonicalizeAdditionalProps } = require('./additional-props-canonicalizer');
         const additionalDef = canonicalizeAdditionalProps(memberNode.value, '*');
         schema.defs['*'] = additionalDef;
         schema.open = additionalDef;
