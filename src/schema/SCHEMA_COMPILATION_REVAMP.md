@@ -4,13 +4,13 @@ A concise, actionable plan to harden schema compilation while keeping behavior s
 
 ## Status updates (today)
 
-- Marking as Done in this document: (2) Idempotent typedef registration, (3) Canonicalizer import and typing, (4) Array item optionality cleanup, (5) $schemaVar in object typedefs, (6) Duplicate member detection.
-- Acceptance criteria update: “Importing modules does not emit duplicate type registration warnings.” Done (duplicate warnings only occur in an integration test that explicitly re-registers types and are rate-limited once per type by design).
-- Typed-open behavior clarified and covered by tests in revamp suite.
-- Next micro cleanups to implement now:
-  - Remove dead branch `if (!o.children)` in `parseObjectDef`.
-  - Remove unused local `fieldName` in `getMemberDef`.
-  - Optional follow-up: tiny `MemberDef` factory (deferred).
+- Done in this update: (2) Idempotent typedef registration, (3) Canonicalizer import and typing, (4) Array item optionality cleanup, (5) $schemaVar in object typedefs, (6) Duplicate member detection, (7) MemberDef factory wired into compile paths.
+- Acceptance criteria update: “Importing modules does not emit duplicate type registration warnings.” Done. Default warnings are disabled; targeted tests enable warnings and assert via a spy.
+- Typed-open behavior clarified and covered by tests in revamp suite (compile-time mirror to schema.open and runtime validation).
+- Micro cleanups implemented:
+  - Added a small keyless key normalizer used only before parseName in the keyless path (no behavior change, prevents brittle type-shape issues).
+  - Standardized the regex micro-benchmark to 1M iterations with warm-up to avoid flaky FAIL flags.
+  - Reduced console noise in integration by default; explicit tests cover warning behavior with spies.
 
 ## Objectives
 ## Done/Pending checklist
@@ -23,9 +23,10 @@ A concise, actionable plan to harden schema compilation while keeping behavior s
   - Duplicate member detection in compiler
   - Typed-open behavior validated (processors use schema.open MemberDef for unknown keys)
   - Full test suite green; revamp tests cover key scenarios
+  - MemberDef factory for safe construction (arrays/objects/keyless paths)
+  - Registry warnings behavior quiet by default; tested explicitly with spies
 - Pending
-  - Optional MemberDef factory for construction hardening
-  - Optional keyless name normalizer helper
+  - Optional keyless name normalizer generalization (if reused elsewhere)
   - Minor cleanup: trim legacy notes further if needed
   - Perf baseline maintenance per release
 
@@ -38,7 +39,7 @@ Measured with `yarn perf` (Windows):
 - AST Parser: ~0.00051–0.00068 ms avg (100k)
 - Full Parser (object): ~0.0041–0.0047 ms avg (100k)
 - Full Parser (array): ~0.0032–0.0042 ms avg (100k)
-- Regex cached vs new: ~0.00003 vs ~0.00014 ms avg (1M)
+- Regex cached vs new: ~0.00003 vs ~0.00014–0.00024 ms avg (1M), PASS
 
 
 - Preserve current external behavior; avoid breaking changes unless clearly justified and typed.
@@ -65,7 +66,7 @@ Measured with `yarn perf` (Windows):
 
 1) Keyless member parsing is brittle
 - Problem: When `memberNode.key` is missing, `parseName(memberNode.value)` expects a `Token` but may receive a `TokenNode` (STRING), causing false “key must be a string” errors.
-- Action: Create a tiny helper to extract the raw string from `Token | TokenNode` (STRING) and call `parseName` with that shape; throw `invalidKey` otherwise.
+- Action: Create a tiny helper to normalize `Token | TokenNode(STRING)` to a TokenNode and call `parseName`; throw `invalidKey` otherwise. Use only in the keyless path.
 - Benefit: Aligns with actual AST, prevents spurious failures.
 
 2) Idempotent typedef registration
@@ -143,9 +144,11 @@ Phase 3: Feature parity
 
 - Keyless member names: plain, `?`, `*`, `?*` → `{ type:'any' }` with correct flags.
 - Additional props: `*` must be last; earlier `*` throws; canonicalized def mirrors to `schema.defs['*']` and `schema.open`.
+- Regression guard: `*` must not appear in `schema.names`.
 - Arrays: `[]`, `[string]`, `[ {object} ]`, nested arrays → item optionality not set; nullability as intended.
 - `$Var` in object typedefs: `{ $Person, min:2 }` and `{ type: $Person, min:2 }` behave like array counterparts.
 - Duplicate members: defining same field twice throws a clear `SyntaxError`.
+- Typed-open mirror exists at compile-time; runtime validates unknown keyed members against the typed-open MemberDef.
 
 ## Risk and rollback
 
@@ -156,6 +159,7 @@ Phase 3: Feature parity
 
 - Hoist canonicalizer import; avoid per-iteration `require`.
 - Keep lookups O(1) and string ops minimal. No further perf work unless profiling shows hotspots.
+- Standardize micro-bench iterations (1M) with warm-up; update baseline table per release, not per commit.
 
 
 

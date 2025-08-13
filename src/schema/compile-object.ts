@@ -14,6 +14,7 @@ import Schema           from './schema';
 import Token            from '../parser/tokenizer/tokens';
 import registerTypes    from './types';
 import MemberDef        from './types/memberdef';
+import createMemberDef  from './types/memberdef-factory';
 import { canonicalizeAdditionalProps } from './additional-props-canonicalizer';
 
 registerTypes();
@@ -147,14 +148,15 @@ function parseArrayOrTypeDef(a:ArrayNode, path:string, defs?:Definitions) :any {
   // For example:
   // tags: []
   if (a.children.length === 0) {
-    return {
+    return createMemberDef({
       type: 'array',
       of: {
         type: 'any',
         path,
         null: true,
       },
-    } as MemberDef;
+      path,
+    }, { allowNameless: true });
   }
 
   // When the array node has one child, then it is a type definition.
@@ -167,27 +169,28 @@ function parseArrayOrTypeDef(a:ArrayNode, path:string, defs?:Definitions) :any {
       const type = child.value as string;
     // [string], [number], [boolean], [object], [array] etc.
     if (TypedefRegistry.isRegisteredType(type)) {
-      return {
-        type: "array",
-        "of": {
-          "type": child.value,
+      return createMemberDef({
+        type: 'array',
+        of: {
+          type: child.value,
           path,
         },
-      } as MemberDef;
+        path,
+      }, { allowNameless: true });
     }
 
     // If the type is a schema variable, then return the schema variable
     // [$employee], [$address], [$person] etc.
     else if (!!defs && type.startsWith('$')) {
-      const memberDef = {
-        type: "array",
-        "of": {
-          "type": "object",
+      return createMemberDef({
+        type: 'array',
+        of: {
+          type: 'object',
           schema: child,
           path,
-        }
-      } as MemberDef;
-      return memberDef;
+        },
+        path,
+      }, { allowNameless: true });
     }
   }
 
@@ -199,22 +202,22 @@ function parseArrayOrTypeDef(a:ArrayNode, path:string, defs?:Definitions) :any {
   // For example:
   // friends: [ { name: string, age: number } ]
   if (child instanceof ObjectNode) {
-    return {
+    return createMemberDef({
       type: 'array',
       of: parseObjectOrTypeDef(child, path, defs),
       path,
-    } as MemberDef;
+    }, { allowNameless: true });
   }
 
   // If the child is an array node, then it is an array type definition
   // For example:
   // friends: [ [string] ] or friends: [ [ { name: string, age: number } ] ]
   if (child instanceof ArrayNode) {
-    return {
+    return createMemberDef({
       type: 'array',
       of: parseArrayOrTypeDef(child, path, defs),
       path,
-    } as MemberDef;
+    }, { allowNameless: true });
   }
 
   // Throw an error if the child is not a string or object node
@@ -269,12 +272,14 @@ function parseObjectDef(o: ObjectNode, schema:Schema, path:string, defs?:Definit
         schema.open = true;
         continue;
       }
-      const fieldInfo = parseName(memberNode.value);
+  // Normalize key token for keyless path to ensure Token | TokenNode(STRING)
+  const keyToken = normalizeKeyToken(memberNode.value);
+  const fieldInfo = parseName(keyToken);
       // Always infer type as 'any' if not explicitly provided
-      const memberDef = {
+      const memberDef = createMemberDef({
         ...fieldInfo,
         type: 'any'
-      } as MemberDef;
+      });
       addMemberDef(memberDef, schema, path);
     }
   }
@@ -357,12 +362,26 @@ const parseName = (keyNode: Node): {
   return { name: key, optional: false, null: false }
 }
 
+// Key token normalizer (Token | TokenNode with STRING) for keyless members only
+function normalizeKeyToken(keyNode: Node): Node {
+  if (!keyNode) {
+    assertNever("Key node must not be null in schema definition.");
+  }
+  // Accept Token or TokenNode that represent a STRING token
+  if (keyNode instanceof TokenNode) {
+    if (keyNode.type === TokenType.STRING) return keyNode;
+  } else if (keyNode instanceof Token) {
+    if (keyNode.type === TokenType.STRING) return new TokenNode(keyNode);
+  }
+  throw new SyntaxError(ErrorCodes.invalidKey, "The key must be a string.", keyNode as any);
+}
+
 export function getMemberDef(memberDef:MemberNode, path:string, defs?:Definitions): MemberDef {
   const node = memberDef.value;
 
   let fieldInfo = { name: "" }
   if (memberDef.key) {
-    fieldInfo = parseName(memberDef.key);
+  fieldInfo = parseName(normalizeKeyToken(memberDef.key));
   }
 
   // If the value token is a string, then ensure that it is a valid type

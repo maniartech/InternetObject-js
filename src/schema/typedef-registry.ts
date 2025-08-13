@@ -10,7 +10,7 @@ interface TypeDefConstructor {
 export default class TypedefRegistry {
   private static readonly typeDefMap = new Map<string, TypeDef>();
   private static readonly typeNames = new Set<string>();
-  private static warnDuplicates = true;
+  private static warnDuplicates = false;
   private static warnedDuplicateTypes = new Set<string>();
 
   /**

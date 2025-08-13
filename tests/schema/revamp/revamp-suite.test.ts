@@ -133,9 +133,17 @@ describe('Revamp plan coverage (non-invasive)', () => {
       expect(schema.defs['*'].type || schema.open.type).toBe('string');
     });
 
+    test("schema.names doesn't include '*' (regression guard)", () => {
+      const node = parseFirstChildObject('{ name, *: number }');
+      const schema: any = compileObject('NoStarInNames', node);
+      expect(schema.names.includes('*')).toBe(false);
+    });
+
   test('typed open schema validates unknown members against the type', () => {
       const node = parseFirstChildObject('{ name, *: number }');
       const schema: any = compileObject('TypedOpen', node);
+      // Compile-time mirror check
+      expect(schema.open && schema.open.type).toBe('number');
       // extra with wrong type should fail
       const bad = parseFirstChildObject('{ name: John, extra: "oops" }');
       try {

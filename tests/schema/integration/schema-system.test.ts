@@ -48,6 +48,8 @@ function createTestToken(value: any, type: string = 'string'): Token {
 describe('Schema System Integration Tests', () => {
   beforeEach(() => {
     TypedefRegistry.clear();
+  // Keep tests quiet and deterministic; warnings are covered elsewhere
+  TypedefRegistry.setWarnOnDuplicates(false);
     TypedefRegistry.register(MockStringTypeDef, MockNumberTypeDef, MockObjectTypeDef);
   });
 
@@ -309,6 +311,34 @@ describe('Schema System Integration Tests', () => {
       const metrics = SchemaUtils.getSchemaMetrics(legacySchema);
       expect(metrics.typeDistribution.string).toBe(1);
       expect(metrics.typeDistribution.number).toBe(1);
+    });
+  });
+
+  describe('Registry warnings behavior', () => {
+    test('should not emit duplicate warnings when disabled (quiet mode)', () => {
+      const spy = jest.spyOn(console, 'warn').mockImplementation();
+
+      // beforeEach registered types with warnings disabled
+      // Attempt duplicate registration; should be quiet
+      TypedefRegistry.register(MockStringTypeDef, MockNumberTypeDef, MockObjectTypeDef);
+
+      expect(spy).not.toHaveBeenCalled();
+      spy.mockRestore();
+    });
+
+    test('should emit a single warning when enabled and duplicate occurs', () => {
+      // Enable warnings just for this test
+      TypedefRegistry.setWarnOnDuplicates(true);
+      const spy = jest.spyOn(console, 'warn').mockImplementation();
+
+      // Trigger a duplicate for 'string'
+      TypedefRegistry.register(MockStringTypeDef);
+
+      expect(spy).toHaveBeenCalledWith("TypeDef for 'string' is already registered. Skipping.");
+
+      // Cleanup
+      spy.mockRestore();
+      TypedefRegistry.setWarnOnDuplicates(false);
     });
   });
 });

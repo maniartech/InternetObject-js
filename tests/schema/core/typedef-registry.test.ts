@@ -37,6 +37,8 @@ describe('TypedefRegistry', () => {
   beforeEach(() => {
     // Clear registry before each test
     TypedefRegistry.clear();
+  // Defaults: keep warnings off for most tests to avoid noise
+  TypedefRegistry.setWarnOnDuplicates(false);
   });
 
   afterEach(() => {
@@ -70,6 +72,9 @@ describe('TypedefRegistry', () => {
 
     test('should warn and skip duplicate registration', () => {
       const consoleSpy = jest.spyOn(console, 'warn').mockImplementation();
+
+  // Explicitly enable warnings for this test
+  TypedefRegistry.setWarnOnDuplicates(true);
 
       TypedefRegistry.register(MockStringTypeDef);
       TypedefRegistry.register(MockStringTypeDef); // Duplicate
