@@ -16,6 +16,7 @@ import registerTypes    from './types';
 import MemberDef        from './types/memberdef';
 import createMemberDef  from './types/memberdef-factory';
 import { canonicalizeAdditionalProps } from './additional-props-canonicalizer';
+import { normalizeKeyToken } from './utils/member-utils';
 
 registerTypes();
 
@@ -362,19 +363,7 @@ const parseName = (keyNode: Node): {
   return { name: key, optional: false, null: false }
 }
 
-// Key token normalizer (Token | TokenNode with STRING) for keyless members only
-function normalizeKeyToken(keyNode: Node): Node {
-  if (!keyNode) {
-    assertNever("Key node must not be null in schema definition.");
-  }
-  // Accept Token or TokenNode that represent a STRING token
-  if (keyNode instanceof TokenNode) {
-    if (keyNode.type === TokenType.STRING) return keyNode;
-  } else if (keyNode instanceof Token) {
-    if (keyNode.type === TokenType.STRING) return new TokenNode(keyNode);
-  }
-  throw new SyntaxError(ErrorCodes.invalidKey, "The key must be a string.", keyNode as any);
-}
+// moved to utils/member-utils.ts
 
 export function getMemberDef(memberDef:MemberNode, path:string, defs?:Definitions): MemberDef {
   const node = memberDef.value;

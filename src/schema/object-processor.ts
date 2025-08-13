@@ -10,6 +10,7 @@ import assertNever        from '../errors/asserts/asserts';
 import TypedefRegistry    from './typedef-registry';
 import Schema             from './schema';
 import MemberDef          from './types/memberdef';
+import { processMember }  from './member-processor';
 
 export default function processObject(data: ObjectNode, schema: Schema | TokenNode, defs?: Definitions, collectionIndex?: number) {
   if (schema instanceof TokenNode) {
@@ -153,18 +154,4 @@ function _processObject(data: ObjectNode, schema: Schema, defs?: Definitions, co
   }
 
   return o;
-}
-
-function processMember(member: MemberNode, memberDef: MemberDef, defs?: Definitions): any {
-  const typeDef = TypedefRegistry.get(memberDef.type);
-
-  if (!typeDef) {
-    throw new Error(`Type ${memberDef.type} is not registered.`);
-  }
-
-  // Check if the values is present and it is a variable that starts
-  // with @. If so, then unwrap the variable and return the value.
-  let valueNode = member?.value
-
-  return typeDef.parse(valueNode, memberDef, defs);
 }
