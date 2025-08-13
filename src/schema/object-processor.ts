@@ -110,6 +110,10 @@ function _processObject(data: ObjectNode, schema: Schema, defs?: Definitions, co
   // default value, then set the default value. Otherwise, throw an error.
   // But before throwing an error reset the position to the data node.
   for (const name in schema.defs) {
+  // Skip the wildcard additional property definition ('*').
+  // It's not an actual member and must not participate in required checks.
+  if (name === '*') continue;
+
     const memberDef = schema.defs[name];
     if (!processedNames.has(name)) {
       const member = data.children.find((m) => (m as any).key?.value === name)

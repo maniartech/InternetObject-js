@@ -31,6 +31,16 @@ class IOError extends Error {
   }
 
   /**
+   * Backward-compat: some tests and callers expect `code` instead of `errorCode`.
+   */
+  get code(): string { return this.errorCode }
+
+  /**
+   * Backward-compat: expose `position` alias for `positionRange` used by older tests.
+   */
+  get position(): any { return this.#positionRange as any }
+
+  /**
    * Indicates whether the error is caused by EOF.
    */
   public isEof: boolean
@@ -72,9 +82,14 @@ class IOError extends Error {
     if (this.isEof) {
       errorMsg += `at EOF`
     } else if (this.#positionRange) {
-      // Handle case where position is just Position
-      const startPos = this.#positionRange.getStartPos()
-      errorMsg += `at ${startPos.row}:${startPos.col}`
+      // Handle both PositionRange (with getStartPos) and plain Position-like objects
+      const pr: any = this.#positionRange as any
+      if (typeof pr.getStartPos === 'function') {
+        const startPos = pr.getStartPos()
+        errorMsg += `at ${startPos.row}:${startPos.col}`
+      } else if (typeof pr.row === 'number' && typeof pr.col === 'number') {
+        errorMsg += `at ${pr.row}:${pr.col}`
+      }
     }
 
     this.message = errorMsg

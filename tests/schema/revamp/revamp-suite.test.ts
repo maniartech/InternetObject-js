@@ -1,0 +1,272 @@
+import Tokenizer from '../../../src/parser/tokenizer';
+import ASTParser from '../../../src/parser/ast-parser';
+import ObjectNode from '../../../src/parser/nodes/objects';
+import CollectionNode from '../../../src/parser/nodes/collections';
+import TokenNode from '../../../src/parser/nodes/tokens';
+import TokenType from '../../../src/parser/tokenizer/token-types';
+import Token from '../../../src/parser/tokenizer/tokens';
+import IODefinitions from '../../../src/core/definitions';
+import Schema from '../../../src/schema/schema';
+import ValidationError from '../../../src/errors/io-validation-error';
+import ErrorCodes from '../../../src/errors/io-error-codes';
+import processSchema from '../../../src/schema/processor';
+import compileObject from '../../../src/schema/compile-object';
+
+function parseFirstChildObject(source: string): ObjectNode {
+  const tokens = new Tokenizer(source).tokenize();
+  const ast = new ASTParser(tokens).parse();
+  const section = ast.children[0];
+  if (!(section.child instanceof ObjectNode)) {
+    throw new Error('Expected ObjectNode');
+  }
+  return section.child as ObjectNode;
+}
+
+function parseFirstChildCollection(source: string): CollectionNode {
+  const tokens = new Tokenizer(source).tokenize();
+  const ast = new ASTParser(tokens).parse();
+  const section = ast.children[0];
+  if (!(section.child instanceof CollectionNode)) {
+    throw new Error('Expected CollectionNode');
+  }
+  return section.child as CollectionNode;
+}
+
+function makeStringTokenNode(value: string): TokenNode {
+  const t = new Token();
+  t.type = TokenType.STRING;
+  t.value = value;
+  t.token = value;
+  t.pos = 0; t.row = 1; t.col = 1;
+  return new TokenNode(t);
+}
+
+describe('Revamp suite: Definitions and processing contracts', () => {
+  test('definitions: resolves present @var and $Schema', () => {
+    const defs = new IODefinitions();
+    defs.set('@r', 'red');
+    const emp = new Schema('Employee');
+    defs.set('$Employee', emp);
+
+    expect(defs.getV('@r')).toBe('red');
+    expect(defs.getV('$Employee')).toBe(emp);
+  });
+
+  test('definitions: missing $Schema throws schemaNotDefined', () => {
+    const defs = new IODefinitions();
+    try {
+      defs.getV('$MissingSchema');
+      throw new Error('Expected schemaNotDefined error');
+    } catch (e: any) {
+  expect(e).toBeInstanceOf(ValidationError);
+  expect(e.errorCode).toBe(ErrorCodes.schemaNotDefined);
+      // Position is undefined when key is provided as string
+      // console.log('schemaNotDefined', { code: e.code, message: e.message, pos: e.position });
+    }
+  });
+
+  test('definitions: missing @var throws variableNotDefined', () => {
+    const defs = new IODefinitions();
+    try {
+      defs.getV('@missingVar');
+      throw new Error('Expected variableNotDefined error');
+    } catch (e: any) {
+  expect(e).toBeInstanceOf(ValidationError);
+  expect(e.errorCode).toBe(ErrorCodes.variableNotDefined);
+      // console.log('variableNotDefined', { code: e.code, message: e.message, pos: e.position });
+    }
+  });
+
+  test('processSchema: returns null for null data', () => {
+    const schema = new Schema('Dummy');
+    const result = processSchema(null as any, schema, undefined as any);
+    expect(result).toBeNull();
+  });
+});
+
+describe('Revamp plan coverage (non-invasive)', () => {
+  describe('Definitions: @ and $ resolution error modes', () => {
+    test('missing $Schema throws schemaNotDefined', () => {
+      const defs = new IODefinitions();
+      const tok = makeStringTokenNode('$Missing');
+      expect(() => defs.getV(tok)).toThrow(ValidationError);
+      try {
+        defs.getV(tok);
+      } catch (e: any) {
+  expect(e).toBeInstanceOf(ValidationError);
+  expect(e.errorCode).toBe(ErrorCodes.schemaNotDefined);
+      }
+    });
+
+    test('missing @var throws variableNotDefined', () => {
+      const defs = new IODefinitions();
+      const tok = makeStringTokenNode('@color');
+      expect(() => defs.getV(tok)).toThrow(ValidationError);
+      try {
+        defs.getV(tok);
+      } catch (e: any) {
+  expect(e).toBeInstanceOf(ValidationError);
+  expect(e.errorCode).toBe(ErrorCodes.variableNotDefined);
+      }
+    });
+  });
+
+  describe('compileObject: open schema and additional properties', () => {
+    test('star at last makes schema open (no value)', () => {
+      const node = parseFirstChildObject('{ name, * }');
+      const schema = compileObject('Test', node);
+      expect(schema).toBeTruthy();
+      // @ts-ignore
+      expect((schema as any).open).toBe(true);
+    });
+
+    test('star not at last position throws', () => {
+      const node = parseFirstChildObject('{ *, name }');
+      expect(() => compileObject('Test', node)).toThrow();
+    });
+
+    test('additional props with type value canonicalizes and mirrors to schema.open', () => {
+      const node = parseFirstChildObject('{ name, *: string }');
+      const schema: any = compileObject('Test', node);
+      expect(schema.defs['*']).toBeTruthy();
+      expect(typeof schema.open).toBe('object');
+      expect(schema.defs['*'].type || schema.open.type).toBe('string');
+    });
+
+  test('typed open schema validates unknown members against the type', () => {
+      const node = parseFirstChildObject('{ name, *: number }');
+      const schema: any = compileObject('TypedOpen', node);
+      // extra with wrong type should fail
+      const bad = parseFirstChildObject('{ name: John, extra: "oops" }');
+      try {
+        processSchema(bad, schema, new IODefinitions());
+        throw new Error('Expected validation to throw for wrong-typed open member');
+      } catch (e) {
+        expect(e).toBeInstanceOf(ValidationError);
+      }
+      // extra with correct type should pass
+      const good = parseFirstChildObject('{ name: John, extra: 42 }');
+      const ok = processSchema(good, schema, new IODefinitions());
+      expect(ok).toBeTruthy();
+    });
+  });
+
+  describe('compileObject: keyless fields infer any', () => {
+    test('name and age? infer type any and flags', () => {
+      const node = parseFirstChildObject('{ name, age? }');
+      const schema: any = compileObject('Test', node);
+      expect(schema.defs.name).toBeTruthy();
+      expect(schema.defs.name.type).toBe('any');
+      expect(schema.defs.age.optional).toBe(true);
+      expect(schema.defs.age.type).toBe('any');
+    });
+
+    test('suffix parsing: name*, flag?*, and flag* set null/optional correctly', () => {
+      const node = parseFirstChildObject('{ name*, opt?, both?* }');
+      const schema: any = compileObject('Suffixes', node);
+      expect(schema.defs.name.null).toBe(true);
+      expect(schema.defs.name.optional).toBe(false);
+      expect(schema.defs.opt.optional).toBe(true);
+      expect(schema.defs.opt.null).toBe(false);
+      expect(schema.defs.both.optional).toBe(true);
+      expect(schema.defs.both.null).toBe(true);
+    });
+  });
+
+  describe('processSchema routing and open/closed behavior', () => {
+    test('routes ObjectNode and CollectionNode; null returns null', () => {
+      const obj = parseFirstChildObject('1, 2, 3');
+      const col = parseFirstChildCollection('~ 1,2\n~ 3,4');
+      const openSchema: any = compileObject('Open', parseFirstChildObject('{ * }'));
+
+  const defs = new IODefinitions();
+      const r1 = processSchema(obj, openSchema, defs);
+      expect(r1).toBeTruthy();
+      const r2 = processSchema(col, openSchema, defs);
+      expect(r2).toBeTruthy();
+      const r3 = processSchema(null as any, openSchema, defs);
+      expect(r3).toBeNull();
+    });
+
+    test('closed schema rejects extra keyed members; open accepts', () => {
+      const closed = compileObject('Closed', parseFirstChildObject('{ name, age }')) as any;
+      const open = compileObject('Open', parseFirstChildObject('{ name, age, * }')) as any;
+  const defs = new IODefinitions();
+
+      const objWithExtra = parseFirstChildObject('{ name: John, age: 30, extra: true }');
+      expect(() => processSchema(objWithExtra, closed, defs)).toThrow();
+
+      const ok = processSchema(objWithExtra, open, defs);
+      expect(ok).toBeTruthy();
+    });
+
+    test('processSchema accepts a TokenNode $schema and resolves via defs', () => {
+      const schemaNode = parseFirstChildObject('{ name, age }');
+      const schema = compileObject('Employee', schemaNode) as any;
+      const token = makeStringTokenNode('$Employee');
+      const defs = new IODefinitions();
+      defs.set('$Employee', schema);
+      const obj = parseFirstChildObject('{ name: John, age: 30 }');
+      const io = processSchema(obj, token, defs);
+      expect(io).toBeTruthy();
+    });
+  });
+
+  describe('End-to-end parsing with header defs and variables', () => {
+    test('parses when @ variables are defined and $schema provided', () => {
+      const doc = `
+~ @r: red
+~ @g: green
+~ @b: blue
+~ $schema: { name: string, email: email, joiningDt: date, color: {string, choices: [@r, @g, @b]} }
+---
+~ John Doe, john.doe@example.com, d'2020-01-01', @r
+`;
+      // Use full parser to ensure integration path works
+      const tokens = new Tokenizer(doc).tokenize();
+      const ast = new ASTParser(tokens).parse();
+      expect(ast).toBeTruthy();
+      // Processing occurs in parse(), but we validate AST forms here non-invasively
+      // Header child can be ObjectNode (single schema) or CollectionNode (multiple defs)
+      const headerChild = ast.header?.child as any;
+      expect(
+        headerChild instanceof ObjectNode || headerChild instanceof CollectionNode
+      ).toBe(true);
+    });
+
+    test('missing @ variable in data should throw variableNotDefined via parse()', () => {
+      const parse = require('../../../src/parser/index').default as Function;
+      const doc = `
+~ @r: red
+~ $schema: { name: string, email: email, joiningDt: date, color: {string, choices: [@r]} }
+---
+~ John Doe, john.doe@example.com, d'2020-01-01', @missing
+`;
+      expect(() => parse(doc, null)).toThrow(ValidationError);
+      try {
+        parse(doc, null);
+      } catch (e: any) {
+  expect(e).toBeInstanceOf(ValidationError);
+  expect(e.errorCode).toBe(ErrorCodes.variableNotDefined);
+      }
+    });
+  });
+
+  describe('Arrays: item optionality cleanup (planned change)', () => {
+    test('empty array should not mark items as optional (to be changed)', () => {
+      const node = parseFirstChildObject('{ tags: [] }');
+      const schema: any = compileObject('Test', node);
+      // Current behavior: optional:true present on items; planned: remove it
+      expect(schema.defs.tags.type).toBe('array');
+      expect(schema.defs.tags.of.optional).toBeUndefined(); // planned assertion now enforced
+    });
+  });
+
+  describe('Registry idempotency (planned)', () => {
+    test.todo('Duplicate type registration should be idempotent without warnings');
+  });
+
+  describe('Duplicate member detection (planned)', () => {
+    test.todo('Compiling schema with duplicate field names should throw');
+  });
+});

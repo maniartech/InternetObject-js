@@ -10,6 +10,16 @@ interface TypeDefConstructor {
 export default class TypedefRegistry {
   private static readonly typeDefMap = new Map<string, TypeDef>();
   private static readonly typeNames = new Set<string>();
+  private static warnDuplicates = true;
+  private static warnedDuplicateTypes = new Set<string>();
+
+  /**
+   * Enable/disable console warnings on duplicate type registrations.
+   * Default is disabled to avoid noise and performance overhead in hot paths/tests.
+   */
+  public static setWarnOnDuplicates(enable: boolean): void {
+    this.warnDuplicates = enable;
+  }
 
   /**
    * Registers TypeDef constructors for the specified types.
@@ -19,8 +29,10 @@ export default class TypedefRegistry {
     for (const Constructor of typeDefConstructors) {
       for (const type of Constructor.types) {
         if (this.typeDefMap.has(type)) {
-          // Warn and skip duplicate registration (expected by tests)
-          console.warn(`TypeDef for '${type}' is already registered. Skipping.`);
+          if (this.warnDuplicates && !this.warnedDuplicateTypes.has(type)) {
+            console.warn(`TypeDef for '${type}' is already registered. Skipping.`);
+            this.warnedDuplicateTypes.add(type);
+          }
           continue;
         }
 
@@ -73,6 +85,7 @@ export default class TypedefRegistry {
   public static clear(): void {
     this.typeDefMap.clear();
     this.typeNames.clear();
+  this.warnedDuplicateTypes.clear();
   }
 
   /**

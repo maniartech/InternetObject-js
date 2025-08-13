@@ -141,7 +141,6 @@ function parseArrayOrTypeDef(a:ArrayNode, path:string, defs?:Definitions) :any {
         type: 'any',
         path,
         null: true,
-        optional: true,
       },
     } as MemberDef;
   }
@@ -286,6 +285,14 @@ function parseMemberDef(type:string, o: ObjectNode) {
 }
 
 function addMemberDef(memberDef: MemberDef, schema: Schema, path:string) {
+  // Duplicate member detection (compile-time)
+  if (schema.defs[memberDef.name]) {
+    throw new SyntaxError(
+      ErrorCodes.duplicateMember,
+      `Member ${memberDef.name} is already defined in schema ${schema.name}.`,
+      (schema.defs[memberDef.name] as any)
+    );
+  }
   memberDef.path = _(path, memberDef.name);
   schema.names.push(memberDef.name);
   schema.defs[memberDef.name] = memberDef;
