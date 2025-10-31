@@ -8,6 +8,10 @@ This directory contains comprehensive documentation for the Internet Object Java
 - **[DEVELOPMENT.md](./DEVELOPMENT.md)** - Complete development guidelines, workflow, and best practices
 - **[SECURITY.md](./SECURITY.md)** - Security policies, vulnerability reporting, and security best practices
 
+### Schema and Language
+- **[SCHEMA_DEFINITION_LANGUAGE.md](./SCHEMA_DEFINITION_LANGUAGE.md)** - Comprehensive guide to Internet Object's schema definition language
+- **[SCHEMA_ARCHITECTURE.md](./SCHEMA_ARCHITECTURE.md)** - Schema architecture and data flow documentation
+
 ### Quick Links
 - [Main README](../README.md) - Project overview and basic usage
 - [Contributing Guidelines](../CONTRIBUTING.md) - How to contribute to the project
