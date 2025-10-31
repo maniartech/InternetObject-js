@@ -121,12 +121,19 @@ Character(s)         -> Next State        -> Action
 [0-9]               -> IN_NUMBER          -> Accumulate digit
 '.'                 -> IN_NUMBER          -> Process decimal point
 'e', 'E'            -> IN_NUMBER          -> Process exponent
-'n'                 -> INITIAL            -> Emit BIGINT token
-'m'                 -> INITIAL            -> Emit DECIMAL token
-[whitespace]        -> INITIAL            -> Emit NUMBER token
-[delimiter]         -> INITIAL            -> Emit NUMBER token, reprocess char
-[identifier_char]   -> IN_IDENTIFIER      -> Merge with identifier
+'n'                 -> INITIAL            -> Emit BIGINT token (if valid) or switch to open string
+'m'                 -> INITIAL            -> Emit DECIMAL token (if valid) or switch to open string
+[whitespace]        -> INITIAL            -> Validate and emit NUMBER or IDENTIFIER token
+[delimiter]         -> INITIAL            -> Validate and emit NUMBER or IDENTIFIER token, reprocess char
+[identifier_char]   -> IN_IDENTIFIER      -> Switch to open string mode
 [other]             -> ERROR_RECOVERY     -> Handle invalid character
+
+Number Validation Strategy:
+- Attempt to parse as valid number format
+- If number format is invalid, treat entire sequence as open string
+- Invalid formats: trailing decimal (123.), incomplete exponent (123e), hex floats (0x123.45)
+- Emit IDENTIFIER token for invalid number sequences
+- No error tokens for malformed numbers - graceful fallback to open strings
 ```
 
 ## Character Handling Specifications
@@ -231,6 +238,209 @@ Unquoted identifiers (open strings) follow these rules:
 2. **Continuation Characters**: Same as start characters
 3. **Termination**: Whitespace, delimiter, or end of input
 4. **Reserved Words**: `true`, `false`, `null`, `T`, `F`, `N`, `Inf`, `NaN` are converted to appropriate token types
+
+### Literal Value Recognition
+
+#### Reserved Literal Values
+
+The following literal values are recognized and converted to appropriate token types:
+
+```
+Boolean Literals:
+true       → BOOLEAN(true)
+false      → BOOLEAN(false)
+T          → BOOLEAN(true)     // Short form
+F          → BOOLEAN(false)    // Short form
+
+Null Literals:
+null       → NULL(null)
+N          → NULL(null)        // Short form
+
+Numeric Literals:
+Inf        → NUMBER(Infinity)
++Inf       → NUMBER(Infinity)
+-Inf       → NUMBER(-Infinity)
+NaN        → NUMBER(NaN)
+
+Mixed Alphanumeric (Not Reserved):
+true123    → IDENTIFIER(true123)    // Not a reserved word
+null_val   → IDENTIFIER(null_val)   // Not a reserved word
+Infinity   → IDENTIFIER(Infinity)   // Not a reserved word (use Inf instead)
+```
+
+### Token Boundary Disambiguation
+
+#### Longest Match Rule
+
+The tokenizer MUST apply longest match for ambiguous sequences:
+
+```
+Disambiguation Examples:
+1e+2id     → NUMBER(1e+2) + IDENTIFIER(id)  // Scientific notation ends at valid boundary
+123abc     → IDENTIFIER(123abc)             // Open string (unquoted identifier)
+.5e10      → NUMBER(.5e10)                  // Valid scientific notation
+..5        → DOT + DOT + NUMBER(5)          // Two separate dots + number
+@var123    → VARIABLE(@var123)              // Variable reference
+$schema    → SCHEMA_REF($schema)            // Schema reference
+true123    → IDENTIFIER(true123)            // Not BOOLEAN + NUMBER
+null_val   → IDENTIFIER(null_val)           // Not NULL + IDENTIFIER
+Inf        → NUMBER(Infinity)               // Special numeric literal
+NaN        → NUMBER(NaN)                    // Special numeric literal
++Inf       → NUMBER(Infinity)               // Positive infinity
+-Inf       → NUMBER(-Infinity)              // Negative infinity
+```
+
+#### Numeric Canonicalization
+
+**Special Numeric Values**:
+```
+Canonical Representations:
++0         → NUMBER(0)           // Normalize positive zero
+-0         → NUMBER(0)           // Normalize negative zero to positive zero
+Inf        → NUMBER(Infinity)    // Internet Object's infinity literal
++Inf       → NUMBER(Infinity)    // Positive infinity
+-Inf       → NUMBER(-Infinity)   // Negative infinity
+NaN        → NUMBER(NaN)         // Internet Object's NaN literal
+
+Reserved Literals:
+- Inf, +Inf, -Inf are parsed as NUMBER tokens with Infinity values
+- NaN is parsed as NUMBER token with NaN value
+- These are special numeric literals, not identifiers
+- Must be handled consistently across all language implementations
+
+Cross-Language Compatibility:
+- Always normalize zeros to positive zero for consistency
+- Inf/NaN literals become language-appropriate representations
+- JavaScript: Infinity, -Infinity, NaN
+- Java: Double.POSITIVE_INFINITY, Double.NEGATIVE_INFINITY, Double.NaN
+- Python: float('inf'), float('-inf'), float('nan')
+- Rust: f64::INFINITY, f64::NEG_INFINITY, f64::NAN
+
+Overflow Behavior:
+- Integer overflow: Promote to bigint or decimal type
+- Float overflow: May result in Inf literal
+- Underflow: Round to zero (positive zero)
+```
+
+**Number Format Validation**:
+```
+Valid Decimal Numbers:
+123        → NUMBER(123)          // Valid integer
+123.45     → NUMBER(123.45)       // Valid float
+.45        → NUMBER(0.45)         // Valid float (leading zero optional)
+123e10     → NUMBER(123e10)       // Valid scientific notation
+123E-5     → NUMBER(123E-5)       // Valid scientific notation
+123.45e10  → NUMBER(123.45e10)    // Valid scientific notation
+
+Invalid Numbers (become open strings):
+123.       → IDENTIFIER(123.)     // Trailing decimal point
+123e       → IDENTIFIER(123e)     // Incomplete scientific notation
+123.e10    → IDENTIFIER(123.e10)  // Decimal point without fractional digits
+
+Valid Hexadecimal Numbers:
+0x123      → NUMBER(0x123)        // Valid hex integer
+0X123      → NUMBER(0X123)        // Valid hex integer (case insensitive)
+
+Invalid Hex (become open strings):
+0x123.45   → IDENTIFIER(0x123.45) // Hex floats not supported
+0xG123     → IDENTIFIER(0xG123)   // Invalid hex digits
+
+Valid Octal Numbers:
+0o123      → NUMBER(0o123)        // Valid octal integer
+0O123      → NUMBER(0O123)        // Valid octal integer (case insensitive)
+
+Valid Binary Numbers:
+0b101      → NUMBER(0b101)        // Valid binary integer
+0B101      → NUMBER(0B101)        // Valid binary integer (case insensitive)
+
+Valid BigInt Numbers:
+123n       → BIGINT(123n)         // Valid bigint
+0x123n     → BIGINT(0x123n)       // Valid hex bigint
+0o123n     → BIGINT(0o123n)       // Valid octal bigint
+0b101n     → BIGINT(0b101n)       // Valid binary bigint
+
+Valid Decimal Numbers:
+123.45m    → DECIMAL(123.45m)     // Valid decimal
+123m       → DECIMAL(123m)        // Valid decimal (integer coefficient)
+.45m       → DECIMAL(.45m)        // Valid decimal (fractional coefficient)
+
+Invalid Decimals (become open strings):
+123.m      → IDENTIFIER(123.m)    // Trailing decimal point
+```
+
+#### Open String Delimiters
+
+**Delimiter Character Classes**:
+```
+Structural Delimiters (ALWAYS terminate open strings):
+{ } [ ] , : ~ ---
+
+Whitespace Delimiters (terminate and are skipped):
+SPACE TAB LF CR VT FF and all Unicode whitespace
+
+Quote Delimiters (start quoted strings):
+" ' (single and double quotes)
+
+Comment Delimiters (start comments):
+# (hash symbol at start of line or after whitespace)
+
+Special Prefixes (modify string interpretation):
+r" r'  → Raw string literals
+b" b'  → Binary string literals  
+d" dt" → Date/datetime string literals
+t"     → Time string literals
+
+ASCII Punctuation Behavior:
+! @ # $ % ^ & * ( ) - + = \ | ; : ' " < > ? / .
+- Most punctuation terminates open strings
+- Exceptions: - (hyphen) and _ (underscore) are valid in identifiers
+- . (dot) terminates unless part of number
+```
+
+**Open String Examples**:
+```
+hello world    → IDENTIFIER(hello) + IDENTIFIER(world)
+hello,world    → IDENTIFIER(hello) + COMMA + IDENTIFIER(world)
+hello:world    → IDENTIFIER(hello) + COLON + IDENTIFIER(world)
+hello-world    → IDENTIFIER(hello-world)
+hello_world    → IDENTIFIER(hello_world)
+hello.world    → IDENTIFIER(hello) + DOT + IDENTIFIER(world)
+hello123       → IDENTIFIER(hello123)
+123hello       → IDENTIFIER(123hello)    // Mixed alphanumeric = open string
+123            → NUMBER(123)             // Pure number
+123.45         → NUMBER(123.45)          // Valid decimal number
+123.abc        → IDENTIFIER(123.abc)     // Invalid number = open string
+```
+
+**Number vs Open String Decision Rules**:
+```
+1. Start tokenizing as potential number if first character is digit, +, -, or .
+2. Continue accumulating characters while they could be part of a number
+3. At end of sequence, validate if it forms a complete valid number
+4. If valid number format: emit NUMBER/BIGINT/DECIMAL token
+5. If invalid number format: emit IDENTIFIER token (open string)
+6. If mixed alphanumeric: always emit IDENTIFIER token (open string)
+
+Examples of the decision process:
+- "123" → Valid number → NUMBER(123)
+- "123abc" → Mixed alphanumeric → IDENTIFIER(123abc)
+- "123.45" → Valid decimal → NUMBER(123.45)  
+- "123." → Invalid decimal (trailing dot) → IDENTIFIER(123.)
+- "123.abc" → Mixed alphanumeric → IDENTIFIER(123.abc)
+- ".45" → Valid decimal (leading dot) → NUMBER(0.45)
+- "." → Just a dot, not a number → DOT token
+- "abc123" → Starts with letter → IDENTIFIER(abc123)
+- "123e" → Invalid scientific notation → IDENTIFIER(123e)
+- "123e10" → Valid scientific notation → NUMBER(123e10)
+- "0x123.45" → Invalid hex float → IDENTIFIER(0x123.45)
+- "123.m" → Invalid decimal literal → IDENTIFIER(123.m)
+
+Graceful Fallback Strategy:
+- No error tokens for malformed numbers
+- Invalid number sequences become open strings
+- Allows flexible parsing without breaking on malformed input
+- Users can still reference malformed numbers as identifiers
+```
 
 ## Error Conditions and Recovery
 
