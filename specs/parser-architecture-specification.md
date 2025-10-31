@@ -22,11 +22,11 @@ Input Text
 └─────────────────┘
     ↓
 ┌─────────────────┐
-│ Schema Compilation │ → Compiled Schemas
+│ Schema Compilation │ → Compiled Schemas (Optional)
 └─────────────────┘
     ↓
 ┌─────────────────┐
-│   Validation    │ → Validated AST
+│   Validation    │ → Validated AST (Optional)
 └─────────────────┘
     ↓
 ┌─────────────────┐
@@ -34,6 +34,260 @@ Input Text
 └─────────────────┘
     ↓
 Output Document
+```
+
+### Schema Processing Modes
+
+Internet Object supports multiple schema processing modes:
+
+#### 1. No Schema Mode
+Parse document without any schema validation - fastest parsing mode.
+
+**Example Document:**
+```
+~ name: "John Doe", age: 30, email: "john@example.com"
+~ active: true, score: 95.5
+
+---
+
+~ title: "Product A", price: 29.99, category: "electronics"
+~ inStock: true, quantity: 100
+```
+
+**Parser Usage:**
+```typescript
+const result = parser.parse(input, { mode: ParsingMode.NO_SCHEMA });
+// All values inferred as basic types (string, number, boolean)
+// No validation performed, fastest parsing
+```
+
+#### 2. Internal Schema Mode
+Use schemas defined within the document itself.
+
+**Example Document:**
+```
+~ $user: { name: string, age: number, email: string }
+~ $product: { title: string, price: decimal, category: string, inStock?: bool }
+
+--- $user
+~ "John Doe", 30, "john@example.com"
+~ "Jane Smith", 25, "jane@example.com"
+
+--- $product  
+~ "Laptop", 999.99m, "electronics", true
+~ "Book", 15.50m, "books"
+```
+
+**Parser Usage:**
+```typescript
+const result = parser.parse(input, { mode: ParsingMode.INTERNAL });
+// Schemas compiled from document definitions
+// Data validated against internal schemas
+```
+
+#### 3. External Schema Mode
+Use externally provided pre-compiled schemas.
+
+**Schema File (schemas.io):**
+```
+~ $user: { name: string, age: number, email: string }
+~ $product: { title: string, price: decimal, category: string, inStock?: bool }
+```
+
+**Data File (data.io):**
+```
+--- $user
+~ "John Doe", 30, "john@example.com"
+~ "Jane Smith", 25, "jane@example.com"
+
+--- $product
+~ "Laptop", 999.99m, "electronics", true
+~ "Book", 15.50m, "books"
+```
+
+**Parser Usage:**
+```typescript
+// First, compile external schemas
+const schemas = parser.parseSchema(schemaFileContent);
+
+// Then parse data with external schemas
+const result = parser.parse(dataFileContent, { 
+  mode: ParsingMode.EXTERNAL,
+  externalSchemas: schemas 
+});
+```
+
+#### 4. Mixed Schema Mode
+Combine internal and external schemas with override capability.
+
+**External Schema File:**
+```
+$baseUser: name: string, email: string
+$baseProduct: title: string, price: decimal{min: 0}
+```
+
+**Document with Mixed Schemas:**
+```
+$user: $baseUser, age: number{min: 0, max: 150}, active?: bool
+$product: $baseProduct, category: string, inStock?: bool
+
+--- users: $user
+name: "John Doe", email: "john@example.com", age: 30, active: true
+name: "Jane Smith", email: "jane@example.com", age: 25
+
+--- products: $product
+title: "Laptop", price: 999.99m, category: "electronics", inStock: true
+title: "Book", price: 15.50m, category: "books"
+```
+
+**Parser Usage:**
+```typescript
+const externalSchemas = parser.parseSchema(externalSchemaContent);
+
+const result = parser.parse(input, { 
+  mode: ParsingMode.MIXED,
+  externalSchemas: externalSchemas 
+});
+// Internal schemas ($user, $product) extend external schemas ($baseUser, $baseProduct)
+// Internal definitions override external ones when conflicts occur
+```
+
+#### 5. Definitions-Only Mode
+Parse documents containing only definitions (schemas and variables) for reuse.
+
+**Schema Library (user-schemas.io):**
+```
+$person: name: string, age: number{min: 0, max: 150}
+$contact: email: string, phone?: string
+$address: street: string, city: string, zipCode: string{len: 5}
+
+$user: $person, $contact, id: string, active?: bool
+$customer: $user, $address, memberSince: datetime
+$employee: $user, department: string, salary: decimal{min: 0}
+```
+
+**API Schema (api-schemas.io):**
+```
+$apiResponse: success: bool, message?: string, timestamp: datetime
+$userResponse: $apiResponse, data?: $user
+$errorResponse: $apiResponse, errorCode: string, details?: object
+```
+
+**Parser Usage:**
+```typescript
+// Compile schema libraries
+const userSchemas = parser.parseSchemaOnly(userSchemaContent);
+const apiSchemas = parser.parseSchemaOnly(apiSchemaContent);
+
+// Use compiled schemas for validation
+const userData = parser.parse(userDataContent, {
+  mode: ParsingMode.EXTERNAL,
+  externalSchemas: userSchemas
+});
+
+const apiResponse = parser.parse(responseContent, {
+  mode: ParsingMode.EXTERNAL, 
+  externalSchemas: apiSchemas
+});
+```
+
+### Advanced Examples
+
+#### Definition Composition and Reuse
+```typescript
+// Base definitions with common variables
+const baseDefinitions = parser.parseDefinitions(`
+  @minAge: 18
+  @maxAge: 65
+  @supportedCountries: ["USA", "Canada", "Mexico"]
+  @defaultCountry: "USA"
+  
+  $basePerson: name: string, age: number{min: @minAge, max: @maxAge}
+`);
+
+// Extended definitions that reuse base variables and schemas
+const extendedDefinitions = parser.parseDefinitions(`
+  @companyName: "Acme Corp"
+  @departments: ["Engineering", "Sales", "Marketing"]
+  
+  $employee: $basePerson, 
+             company: string{default: @companyName}, 
+             department: string{choices: @departments},
+             country: string{choices: @supportedCountries, default: @defaultCountry}
+             
+  $manager: $employee, reports: [$employee]
+`, baseDefinitions);  // Pass base definitions for reference resolution
+
+// API-specific definitions building on user definitions
+const apiDefinitions = parser.parseDefinitions(`
+  @apiVersion: "v2.0"
+  @maxPageSize: 100
+  
+  $apiResponse: success: bool, version: string{default: @apiVersion}
+  $employeeResponse: $apiResponse, data: $employee
+  $managerResponse: $apiResponse, data: $manager
+`, extendedDefinitions);  // Chain definitions for complex composition
+```
+
+#### Conditional Definition Selection
+```typescript
+// Different definitions for different environments
+const baseDefinitions = parser.parseDefinitions(baseDefinitionsContent);
+
+const envDefinitions = environment === 'production' 
+  ? parser.parseDefinitions(prodDefinitionsContent, baseDefinitions)
+  : parser.parseDefinitions(devDefinitionsContent, baseDefinitions);
+
+const result = parser.parse(dataContent, {
+  mode: ParsingMode.EXTERNAL,
+  externalDefinitions: envDefinitions
+});
+```
+
+#### Modular Definition Libraries
+```typescript
+// Core definitions
+const coreDefinitions = parser.parseDefinitions(`
+  @minLength: 1
+  @maxLength: 255
+  @emailPattern: /^[^@]+@[^@]+\.[^@]+$/
+  
+  $baseEntity: id: string, createdAt: datetime, updatedAt?: datetime
+`);
+
+// User module definitions
+const userDefinitions = parser.parseDefinitions(`
+  $user: $baseEntity, 
+         name: string{minLen: @minLength, maxLen: @maxLength},
+         email: string{pattern: @emailPattern}
+`, coreDefinitions);
+
+// Product module definitions  
+const productDefinitions = parser.parseDefinitions(`
+  $product: $baseEntity,
+            title: string{minLen: @minLength, maxLen: @maxLength},
+            price: decimal{min: 0}
+`, coreDefinitions);
+
+// Order module combining user and product definitions
+const orderDefinitions = parser.parseDefinitions(`
+  $order: $baseEntity,
+          user: $user,
+          items: [$product],
+          total: decimal{min: 0}
+`, { ...userDefinitions, ...productDefinitions });
+```
+
+#### Validation-Only Mode
+```typescript
+// Parse without schema, then validate separately
+const document = parser.parse(input, { mode: ParsingMode.NO_SCHEMA });
+const schemas = parser.parseSchemaOnly(schemaContent);
+
+const validationResult = parser.validateWithSchema(input, schemas.user);
+if (!validationResult.isValid) {
+  console.log('Validation errors:', validationResult.errors);
+}
 ```
 
 ### Core Components
@@ -93,6 +347,128 @@ Tokenizer:
 3. MUST preserve position information throughout tree
 4. MUST support incremental parsing for streaming
 5. MUST validate structural correctness
+
+### Implicit vs Explicit Structure Rules
+
+#### Implicit Object Detection
+
+**Implicit Object Triggers**:
+```
+Conditions that start an implicit object:
+1. Identifier followed by colon (key: value)
+2. Positional value at document/section start
+3. Multiple comma-separated values without brackets
+
+Termination Sentinels:
+1. Section separator (---)
+2. Collection marker (~)
+3. Blank line (two consecutive newlines)
+4. End of input (EOF)
+5. Explicit bracket opening ({ or [)
+```
+
+**Precedence Rules**:
+```
+When both implicit and explicit cues are present:
+1. Explicit brackets ALWAYS take precedence
+2. Collection marker (~) forces collection mode
+3. Section separator (---) ends current structure
+4. Nested structures inherit parent's explicitness
+
+Examples:
+{ name: John, age: 30 }     → Explicit object
+name: John, age: 30         → Implicit object  
+~ name: John                → Collection with implicit objects
+{ ~ name: John }            → ERROR: Invalid nesting
+```
+
+#### Implicit Collection Detection
+
+**Collection Triggers**:
+```
+Conditions that start an implicit collection:
+1. Collection marker (~) at start of line
+2. Multiple objects without explicit array brackets
+3. Repeated object patterns separated by whitespace
+
+Termination Sentinels:
+1. Section separator (---)
+2. End of input (EOF)
+3. Explicit array opening ([)
+4. Non-object content
+```
+
+**Item Boundary Rules**:
+```
+Collection item boundaries determined by:
+1. Blank line (empty line between objects)
+2. Collection marker (~) for explicit items
+3. Structural change (different object schema)
+4. Comment blocks (# comments separate items)
+
+Whitespace Handling:
+- Single newlines within objects: ignored
+- Double newlines: item separator
+- Comments: preserve but don't affect boundaries
+- Trailing whitespace: normalized
+```
+
+#### Trailing Comma and Sparse Array Rules
+
+**Trailing Comma Preservation**:
+```
+CST MUST preserve trailing commas:
+- [1, 2, 3,] → Array with trailing comma flag
+- {a: 1, b: 2,} → Object with trailing comma flag
+- Semantic meaning: "extensible structure"
+- Round-trip requirement: preserve in serialization
+```
+
+**Sparse Array Handling**:
+```
+Sparse arrays MUST be preserved:
+- [1, , 3] → [1, undefined, 3] with sparse flag
+- [1, 2, , , 5] → [1, 2, undefined, undefined, 5]
+- CST representation: explicit undefined nodes
+- Validation: sparse arrays may violate schema constraints
+```
+
+#### Grammar Sentinels and Recovery Points
+
+**FIRST/FOLLOW Sets**:
+```
+Document FIRST: {IDENTIFIER, STRING, NUMBER, '{', '[', '~', '---', EOF}
+Section FIRST: {'---', IDENTIFIER, STRING, NUMBER, '{', '[', '~'}
+Object FIRST: {'{', IDENTIFIER}
+Array FIRST: {'['}
+Collection FIRST: {'~'}
+Member FIRST: {IDENTIFIER, STRING, NUMBER}
+
+Recovery Sentinels by Context:
+- Document: {EOF}
+- Section: {'---', EOF}
+- Object: {'}', ',', '---', EOF}
+- Array: {']', ',', '---', EOF}
+- Collection: {'---', EOF}
+- Member: {',', '}', ']', '---', EOF}
+```
+
+**Longest Match Rule**:
+```
+Token boundary disambiguation:
+- 1e+2id → NUMBER(1e+2) + IDENTIFIER(id)
+- 123abc → NUMBER(123) + IDENTIFIER(abc)  
+- .5e10 → NUMBER(.5e10)
+- ..5 → DOT + DOT + NUMBER(5)
+- @var123 → VARIABLE(@var123)
+- $schema → SCHEMA_REF($schema)
+
+Precedence Order:
+1. Exact keyword matches (true, false, null)
+2. Numeric literals (longest valid number)
+3. Identifiers (remaining alphanumeric)
+4. Operators and punctuation
+```
 
 **Interface**:
 ```
@@ -218,8 +594,173 @@ The main parser coordinates all phases:
 MainParser:
   - parse(input: String, options: ParserOptions): Document
   - parseWithDefinitions(input: String, definitions: Definitions): Document
+  - parseDefinitions(input: String, baseDefinitions?: Definitions): Definitions
   - parseStreaming(input: Stream): Iterator<Section>
   - validateSyntax(input: String): SyntaxValidationResult
+  - validateWithSchema(input: String, schema: CompiledSchema): ValidationResult
+```
+
+### Parser Options
+
+```
+ParserOptions:
+  - externalDefinitions: Definitions?    // Pre-compiled external definitions
+  - validateData: Boolean?               // Enable/disable data validation (default: true)
+  - preserveAST: Boolean?                // Keep AST after object construction (default: false)
+  - errorRecovery: Boolean?              // Enable graceful error recovery (default: true)
+  - streaming: Boolean?                  // Enable streaming mode (default: false)
+```
+
+### Automatic Mode Detection
+
+The parser automatically determines the appropriate processing mode through header analysis:
+
+#### Header Analysis Process
+
+```
+1. Parse Document Header (before first section separator):
+   - Scan for schema definitions ($schemaName: ...)
+   - Scan for variable definitions (@varName: ...)
+   - Detect definition patterns without full parsing
+
+2. Content Structure Analysis:
+   - Count section separators (---)
+   - Identify data sections vs definition-only content
+   - Determine if document has data to validate
+
+3. Processing Strategy Selection:
+   - Has internal definitions? → Compile definitions first
+   - Has external definitions? → Merge with internal definitions
+   - Has data sections + schemas? → Parse and validate data
+   - Only definitions? → Return compiled definitions
+   - No schemas available? → Parse data without validation
+```
+
+#### Header Detection Interface
+
+```
+DocumentAnalyzer:
+  - analyzeHeader(input: String): HeaderAnalysis
+  - hasDefinitions(input: String): Boolean
+  - hasSchemas(input: String): Boolean
+  - hasVariables(input: String): Boolean
+  - hasDataSections(input: String): Boolean
+
+HeaderAnalysis:
+  - hasInternalDefinitions: Boolean      // Contains $schema or @variable definitions
+  - schemaCount: Integer                 // Number of schema definitions found
+  - variableCount: Integer               // Number of variable definitions found
+  - sectionCount: Integer                // Number of data sections (--- separators)
+  - isDefinitionsOnly: Boolean           // Only contains definitions, no data
+  - definitionNames: Array<String>       // Names of found definitions
+```
+
+#### Detection Examples
+
+```typescript
+// Example 1: Document with internal schemas
+const analysis1 = parser.analyzeHeader(`
+~ $user: { name: string, age: number }
+~ $product: { title: string, price: decimal }
+
+---
+~ John, 30
+~ Jane, 25
+`);
+// Result: { hasInternalDefinitions: true, schemaCount: 2, sectionCount: 1, isDefinitionsOnly: false }
+
+// Example 2: Definitions-only document  
+const analysis2 = parser.analyzeHeader(`
+~ @minAge: 18
+~ @maxAge: 65
+~ $person: { name: string, age: number }
+`);
+// Result: { hasInternalDefinitions: true, schemaCount: 1, variableCount: 2, sectionCount: 0, isDefinitionsOnly: true }
+
+// Example 3: Data-only document
+const analysis3 = parser.analyzeHeader(`
+~ name: "John", age: 30
+~ name: "Jane", age: 25
+`);
+// Result: { hasInternalDefinitions: false, schemaCount: 0, sectionCount: 0, isDefinitionsOnly: false }
+```
+
+#### Automatic Processing Logic
+
+```typescript
+function determineProcessingStrategy(input: String, options: ParserOptions): ProcessingStrategy {
+  const analysis = analyzeHeader(input);
+  
+  if (analysis.isDefinitionsOnly) {
+    return ProcessingStrategy.DEFINITIONS_ONLY;
+  }
+  
+  const hasSchemas = analysis.hasInternalDefinitions || options.externalDefinitions;
+  const shouldValidate = options.validateData !== false && hasSchemas;
+  
+  return {
+    compileDefinitions: analysis.hasInternalDefinitions,
+    mergeExternal: !!options.externalDefinitions,
+    validateData: shouldValidate,
+    parseData: analysis.sectionCount > 0 || !analysis.hasInternalDefinitions
+  };
+}
+```
+
+```
+1. Header Section Analysis:
+   - Contains schema definitions ($schema: ...)? → Compile internal schemas
+   - Contains variable definitions (@var: ...)? → Process internal variables
+   - Empty header or no header? → No internal definitions
+
+2. Data Section Analysis:
+   - Has data sections (--- sectionName)? → Parse data sections
+   - Only header with definitions? → Definitions-only document
+   - No sections at all? → Simple data document
+
+3. Schema Resolution Strategy:
+   - Internal schemas found? → Use internal schemas for validation
+   - External definitions provided? → Merge external with internal
+   - Internal definitions override external when conflicts occur
+   - No schemas available? → Parse data without schema validation
+
+4. Validation Decision:
+   - Schemas available (internal/external) + validateData ≠ false? → Validate data
+   - No schemas available? → Parse without validation
+   - validateData: false explicitly set? → Skip validation regardless
+```
+
+### Document Structure Detection Examples
+
+```
+Example 1 - Header with schemas detected:
+$user: name: string, age: number
+$product: title: string, price: decimal
+
+--- users: $user
+John, 30
+Jane, 25
+→ Parser detects internal schemas, compiles them, validates data
+
+Example 2 - No header, direct data:
+name: "John", age: 30
+title: "Product A", price: 29.99
+→ Parser detects no schemas, parses data without validation
+
+Example 3 - Header only (definitions-only document):
+@apiVersion: "v1.0"
+$user: name: string, age: number
+$response: success: bool, data: $user
+→ Parser detects definitions-only, returns compiled definitions
+
+Example 4 - External definitions provided:
+// Document has no header
+--- users
+John, 30
+Jane, 25
+
+// External definitions provided in options
+→ Parser uses external definitions for validation
 ```
 
 **Coordination Flow**:
