@@ -352,7 +352,7 @@ Position Information:
     "column": 34,
     "offset": 145
   },
-  "context": "name: \"John\", age: 30"  // Surrounding source text
+  "context": "~ name: \"John\", age: 30"  // Surrounding source text
 }
 ```
 

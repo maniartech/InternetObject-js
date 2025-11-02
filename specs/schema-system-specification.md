@@ -12,32 +12,26 @@ Internet Object schemas are defined using a declarative syntax that specifies da
 
 ```
 Basic Schema Definition:
-name, age, email
+~ { name, age, email }
 
 Named Schema Definition:
-$person: name, age, email
+~ $person: { name, age, email }
 
 Schema with Types:
-name: string, age: number, email: string
+~ { name: string, age: number, email: string }
 
 Schema with Constraints:
-name: string{minLen: 1, maxLen: 50}, 
-age: number{min: 0, max: 150}, 
-email: string{pattern: /^[^@]+@[^@]+\.[^@]+$/}
+~ { name: string, age: number, email: string }
 
 Nested Object Schema:
-$address: street, city, zipCode
-$person: name, age, address: $address
+~ $address: { street, city, zipCode }
+~ $person: { name, age, address: $address }
 
 Array Schema:
-tags: [string], 
-scores: [number{min: 0, max: 100}]
+~ { tags: [string], scores: [number] }
 
 Optional and Nullable:
-name: string, 
-age?: number, 
-middleName?: string | null,
-bio: string | null
+~ { name: string, age?: number, middleName?: string, bio?: string }
 ```
 
 ### Schema Components
@@ -46,12 +40,12 @@ bio: string | null
 
 ```
 Schema Declaration Syntax:
-$schemaName: memberDefinitions
+~ $schemaName: { memberDefinitions }
 
 Examples:
-$user: name, email, age
-$product: title, price, category, tags
-$address: street, city, state, zipCode
+~ $user: { name, email, age }
+~ $product: { title, price, category, tags }
+~ $address: { street, city, state, zipCode }
 ```
 
 #### 2. Member Definitions
@@ -189,6 +183,85 @@ ConstraintCompiler:
   - optimizeValidation(rules: ValidationRules): OptimizedRules
   - generateValidator(rules: OptimizedRules): ValidatorFunction
   - registerCustomConstraint(name: String, validator: ConstraintValidator)
+```
+
+### Open Schema Semantics
+
+#### Additional Properties Handling
+
+**Open Schema Configuration**:
+```
+AdditionalProperties Modes:
+{
+  "false": {
+    "description": "No additional properties allowed",
+    "validation": "Error on any unknown property",
+    "example": "additionalProperties: false"
+  },
+  "true": {
+    "description": "Any additional properties allowed",
+    "validation": "Accept any unknown property without validation",
+    "example": "additionalProperties: true"
+  },
+  "TypeDefinition": {
+    "description": "Additional properties must match specified type",
+    "validation": "Validate unknown properties against type definition",
+    "example": "additionalProperties: string"
+  }
+}
+```
+
+**Validation Algorithm**:
+```
+validateAdditionalProperties(object: Object, schema: Schema): ValidationResult
+  1. Identify known properties from schema definition
+  2. Find additional properties not in schema
+  3. Apply additional properties policy:
+     - false: Error if any additional properties exist
+     - true: Accept all additional properties
+     - TypeDef: Validate each additional property against type
+  4. Return validation result with property-level errors
+```
+
+### Union Type Semantics (anyOf)
+
+#### Union Validation Strategy
+
+**Deterministic Union Resolution**:
+```
+Union Validation Rules:
+{
+  "strategy": "First successful match wins",
+  "ordering": "Schema definition order (left to right)",
+  "shortCircuit": "Stop on first successful validation",
+  "errorReporting": "Report all attempted validations if all fail",
+  "tieBreaker": "Not applicable (first match wins)"
+}
+```
+
+**Validation Algorithm**:
+```
+validateUnion(value: Any, unionTypes: Array<TypeDefinition>): ValidationResult
+  1. Iterate through union types in definition order
+  2. Attempt validation against each type
+  3. Return success on first successful validation
+  4. If all validations fail, return aggregated errors
+  5. Include metadata about which types were attempted
+```
+
+#### Union Type Scoring (Optional Enhancement)
+
+For implementations that want more sophisticated union resolution:
+
+```
+Union Scoring System (Optional):
+{
+  "exactMatch": 100,        // Exact type match
+  "compatibleMatch": 80,    // Compatible type (e.g., int → number)
+  "convertibleMatch": 60,   // Requires conversion (e.g., string → number)
+  "partialMatch": 40,       // Partial validation success
+  "noMatch": 0              // Validation failed
+}
 ```
 
 ### Compiled Schema Structure

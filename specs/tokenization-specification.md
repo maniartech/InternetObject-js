@@ -214,20 +214,24 @@ Sequence    -> Character       -> Unicode
 The following characters act as token delimiters:
 
 ```
-Structural Delimiters:
+Structural Delimiters (terminate open strings):
   { } [ ] , : ~
 
-Whitespace Delimiters:
+Whitespace Delimiters (terminate open strings):
   [All whitespace characters as defined above]
 
-String Delimiters:
+String Delimiters (start quoted strings):
   " ' (for quoted strings)
 
-Comment Delimiters:
-  # (start of line comment)
+Comment Delimiters (start comments):
+  # (start of line comment when at line start or after whitespace)
 
-Section Delimiters:
+Section Delimiters (terminate open strings):
   --- (section separator)
+
+Non-Delimiters (valid in open strings):
+  ! @ $ % ^ & * ( ) - + = \ | ; < > ? / .
+  All letters, digits, and most punctuation
 ```
 
 ### Identifier Rules
@@ -391,10 +395,18 @@ d" dt" → Date/datetime string literals
 t"     → Time string literals
 
 ASCII Punctuation Behavior:
-! @ # $ % ^ & * ( ) - + = \ | ; : ' " < > ? / .
-- Most punctuation terminates open strings
-- Exceptions: - (hyphen) and _ (underscore) are valid in identifiers
-- . (dot) terminates unless part of number
+
+Terminates Open Strings:
+, : { } [ ] ~ --- (structural delimiters)
+" ' (quote delimiters)  
+# (comment delimiter when at start of line or after whitespace)
+
+Valid in Open Strings:
+! @ $ % ^ & * ( ) - + = \ | ; < > ? / .
+- Most ASCII punctuation is valid within open strings
+- . (dot) is valid in open strings (e.g., file.txt, version.1.0)
+- - (hyphen) and _ (underscore) are valid in identifiers
+- Only structural delimiters and quotes terminate open strings
 ```
 
 **Open String Examples**:
@@ -404,12 +416,16 @@ hello,world    → IDENTIFIER(hello) + COMMA + IDENTIFIER(world)
 hello:world    → IDENTIFIER(hello) + COLON + IDENTIFIER(world)
 hello-world    → IDENTIFIER(hello-world)
 hello_world    → IDENTIFIER(hello_world)
-hello.world    → IDENTIFIER(hello) + DOT + IDENTIFIER(world)
+hello.world    → IDENTIFIER(hello.world)     // Dot is valid in open strings
+file.txt       → IDENTIFIER(file.txt)        // Common filename pattern
+version.1.0    → IDENTIFIER(version.1.0)     // Version numbers
 hello123       → IDENTIFIER(hello123)
-123hello       → IDENTIFIER(123hello)    // Mixed alphanumeric = open string
-123            → NUMBER(123)             // Pure number
-123.45         → NUMBER(123.45)          // Valid decimal number
-123.abc        → IDENTIFIER(123.abc)     // Invalid number = open string
+123hello       → IDENTIFIER(123hello)        // Mixed alphanumeric = open string
+123            → NUMBER(123)                 // Pure number
+123.45         → NUMBER(123.45)              // Valid decimal number
+123.abc        → IDENTIFIER(123.abc)         // Invalid number = open string
+user@domain    → IDENTIFIER(user@domain)     // @ is valid in open strings
+price$10       → IDENTIFIER(price$10)        // $ is valid in open strings
 ```
 
 **Number vs Open String Decision Rules**:

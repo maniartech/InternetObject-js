@@ -122,22 +122,22 @@ Combine internal and external schemas with override capability.
 
 **External Schema File:**
 ```
-$baseUser: name: string, email: string
-$baseProduct: title: string, price: decimal{min: 0}
+~ $baseUser: { name: string, email: string }
+~ $baseProduct: { title: string, price: decimal }
 ```
 
 **Document with Mixed Schemas:**
 ```
-$user: $baseUser, age: number{min: 0, max: 150}, active?: bool
-$product: $baseProduct, category: string, inStock?: bool
+~ $user: { name: string, email: string, age: number, active?: bool }
+~ $product: { title: string, price: decimal, category: string, inStock?: bool }
 
---- users: $user
-name: "John Doe", email: "john@example.com", age: 30, active: true
-name: "Jane Smith", email: "jane@example.com", age: 25
+--- $user
+~ "John Doe", "john@example.com", 30, true
+~ "Jane Smith", "jane@example.com", 25
 
---- products: $product
-title: "Laptop", price: 999.99m, category: "electronics", inStock: true
-title: "Book", price: 15.50m, category: "books"
+--- $product
+~ "Laptop", 999.99m, "electronics", true
+~ "Book", 15.50m, "books"
 ```
 
 **Parser Usage:**

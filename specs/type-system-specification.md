@@ -141,12 +141,29 @@ Float Types:
 ```
 validateNumber(value: Any, constraints: NumberConstraints, subtype: String): ValidationResult
   1. Check if value is numeric type
-  2. Validate subtype-specific range (int8, uint32, etc.)
-  3. Check min/max constraints
-  4. Validate enumerated choices (if specified)
-  5. Check format-specific parsing (hex, binary, etc.)
-  6. Validate precision for floating-point types
-  7. Return validation result with errors
+  2. Normalize zeros (always positive zero)
+  3. Validate subtype-specific range (int8, uint32, etc.)
+  4. Check min/max constraints
+  5. Validate enumerated choices (if specified)
+  6. Check format-specific parsing (hex, binary, etc.)
+  7. Validate precision for floating-point types
+  8. Return validation result with errors
+```
+
+**Cross-Language Numeric Compatibility**:
+```
+Normalization Rules:
+- All zeros normalize to positive zero (0, not -0)
+- No special IEEE 754 values (Infinity, NaN) as numeric literals
+- Consistent overflow/underflow behavior across languages
+- Predictable rounding for all numeric operations
+
+Language-Specific Handling:
+- JavaScript: Convert -0 to 0, treat Infinity/NaN as identifiers
+- Java: Use BigDecimal for decimals, normalize zeros
+- Python: Handle int/float distinction, normalize zeros
+- Rust: Use explicit numeric types, no implicit conversions
+- C#: Use decimal type for decimals, normalize zeros
 ```
 
 #### 3. Decimal Type
@@ -185,11 +202,43 @@ DecimalArithmetic (RDBMS-compliant):
   - round(value: Decimal, scale: Integer): Decimal
   - truncate(value: Decimal, scale: Integer): Decimal
 
-Precision Rules:
-  - Addition/Subtraction: max(scale1, scale2)
-  - Multiplication: scale1 + scale2
-  - Division: configurable scale (default: max(4, scale1 + precision2 + 1))
-  - Rounding: HALF_UP (banker's rounding)
+Precision Rules (SQL Standard Compliant):
+  - Addition/Subtraction: 
+    * Result scale = max(s1, s2)
+    * Result precision = max(p1-s1, p2-s2) + max(s1, s2) + 1
+  - Multiplication:
+    * Result scale = s1 + s2  
+    * Result precision = p1 + p2 + 1
+  - Division:
+    * Result scale = max(4, s1 + p2 + 1)
+    * Result precision = p1 - s1 + s2 + max(4, s1 + p2 + 1)
+  - Modulo:
+    * Result scale = max(s1, s2)
+    * Result precision = min(p1-s1, p2-s2) + max(s1, s2)
+
+Rounding Mode: HALF_UP (Banker's Rounding)
+- 0.5 rounds to 1
+- 1.5 rounds to 2  
+- 2.5 rounds to 3
+- -0.5 rounds to -1
+- -1.5 rounds to -2
+
+Overflow Behavior:
+- Precision overflow: Signal precision-error
+- Scale overflow: Truncate least significant digits with warning
+- Underflow: Round to positive zero with appropriate scale
+- Division by zero: Signal division-by-zero error
+
+Cross-Language Compatibility:
+- Always use positive zero (never negative zero)
+- Consistent rounding behavior across all implementations
+- Predictable overflow handling without language-specific edge cases
+
+String Conversion (Canonical Form):
+- Strip trailing zeros: 123.450 → "123.45"
+- Preserve scale for exact decimals: 123.00 → "123.00" (if scale=2)
+- Scientific notation for large numbers: 1.23E+10
+- No locale-specific formatting (always use . for decimal point)
 ```
 
 **Validation Algorithm**:
