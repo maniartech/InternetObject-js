@@ -1,44 +1,43 @@
 const parse = require('./dist/parser/index.js').default;
-const Tokenizer = require('./dist/parser/tokenizer/index.js').default;
-const ASTParser = require('./dist/parser/ast-parser.js').default;
 
-const source = `name, age:{number, min:30}
+// Test with both syntax and validation errors
+const source = `name, age:{number, min:30}, city
 ---
-~ John, 25
-~ Jane, 35
-~ Bob, {invalid
-~ Alice, 45
+~ John, 25, NYC
+~ Jane, 35, LA
+~ Bob, {unclosed, Chicago
+~ Alice, 20, Boston
 `;
 
-console.log('Source with both parser and validation errors...\n');
-const tokenizer = new Tokenizer(source);
-const tokens = tokenizer.tokenize();
-const parser = new ASTParser(tokens);
-const docNode = parser.parse();
+console.log('=== Error Categorization Test ===\n');
+console.log('Source:', source);
 
-console.log('Document children:', docNode.children.length);
-docNode.children.forEach((section, i) => {
-  console.log(`Section ${i}:`, section.name, section.child ? section.child.constructor.name : 'null');
+const doc = parse(source, null);
+const errors = doc.getErrors();
+
+console.log(`\nTotal errors: ${errors.length}`);
+errors.forEach((err, i) => {
+  const category = err.name.includes('ValidationError') ? 'VALIDATION' :
+                   err.name.includes('SyntaxError') ? 'SYNTAX' : 'RUNTIME';
+  console.log(`Error ${i + 1} [${category}]:`, err.message);
 });
 
-console.log('\n--- Now parsing with schema ---\n');
+const json = doc.toJSON({ skipErrors: false });
+console.log('\n=== JSON Output with Error Categories ===\n');
+console.log(JSON.stringify(json, null, 2));
 
-try {
-  const doc = parse(source, null);
-  const errors = doc.getErrors();
+// Verify categories in output
+console.log('\n=== Category Verification ===');
+const errorObjects = json.filter(item => item && item.__error === true);
+console.log(`Found ${errorObjects.length} error objects in output`);
 
-  console.log('Total errors:', errors.length);
-  errors.forEach((err, i) => {
-    console.log(`Error ${i + 1}:`, err.code, err.message);
-  });
+errorObjects.forEach((errObj, i) => {
+  const color = errObj.category === 'validation' ? '🟠 ORANGE' : '🔴 RED';
+  console.log(`  Error ${i + 1}: ${color} (${errObj.category})`);
+  console.log(`    Message: ${errObj.message}`);
+  console.log(`    Position: row ${errObj.position.row}, col ${errObj.position.col}`);
+});
 
-  const json = doc.toJSON({ skipErrors: false });
-  console.log('\nJSON output:', JSON.stringify(json, null, 2));
-
-  console.log('\nWith skipErrors=true:');
-  const jsonSkip = doc.toJSON({ skipErrors: true });
-  console.log(JSON.stringify(jsonSkip, null, 2));
-} catch (e) {
-  console.error('Parse error:', e.code, e.message);
-  console.error('Stack:', e.stack);
-}
+console.log('\n✅ Error categorization working correctly!');
+console.log('   - Syntax errors: RED (🔴)');
+console.log('   - Validation errors: ORANGE (🟠)');

@@ -81,13 +81,23 @@ This document describes the error handling architecture implemented in the Inter
 
 ### ErrorNode
 ```typescript
+export type ErrorCategory = 'syntax' | 'validation' | 'runtime';
+
 class ErrorNode implements Node {
   readonly error: Error;
   readonly position: Position;
   readonly endPosition?: Position;
 
+  private getErrorCategory(): ErrorCategory {
+    const errorName = this.error.name;
+    if (errorName.includes('SyntaxError')) return 'syntax';
+    if (errorName.includes('ValidationError')) return 'validation';
+    return 'runtime';
+  }
+
   toValue(): {
     __error: true,
+    category: ErrorCategory,
     message: string,
     name: string,
     position: Position,
@@ -102,6 +112,12 @@ class ErrorNode implements Node {
 - Allows partial parsing/validation
 - Preserves error context (position, type)
 - Serializable for UI consumption
+- **Error categorization for differential styling** (syntax: red, validation: orange)
+
+**Error Categories**:
+- `syntax`: Parser/tokenization errors (missing brackets, invalid tokens) - **Styled RED**
+- `validation`: Schema validation errors (type mismatch, range violations) - **Styled ORANGE**
+- `runtime`: Other runtime errors - **Styled RED (fallback)**
 
 ### Document Error Management
 
@@ -231,9 +247,19 @@ doc._errors = [
 ### Phase 5: Serialization
 ```javascript
 doc.toJSON({ skipErrors: false }) = [
-  { __error: true, message: "age must be >= 30", position: {...} },
+  {
+    __error: true,
+    category: "validation",
+    message: "age must be >= 30",
+    position: {...}
+  },
   { name: "Jane", age: 35 },
-  { __error: true, message: "Missing closing brace", position: {...} },
+  {
+    __error: true,
+    category: "syntax",
+    message: "Missing closing brace",
+    position: {...}
+  },
   { name: "Alice", age: 45 }
 ]
 
@@ -242,6 +268,93 @@ doc.getErrors() = [
   ValidationError(...)
 ]
 ```
+
+## Error Categorization & UI Styling
+
+### Error Categories
+
+The system classifies errors into three categories for differential UI treatment:
+
+| Category | Source | Example | UI Color | Use Case |
+|----------|--------|---------|----------|----------|
+| `syntax` | Parser/Tokenizer | Missing bracket, invalid token | **Red** | Structural issues preventing parse |
+| `validation` | Schema Validator | Type mismatch, range violation | **Orange** | Data doesn't match schema rules |
+| `runtime` | Other | Unexpected errors | **Red** | Fallback for uncategorized errors |
+
+### Category Determination
+
+Error category is determined automatically by inspecting the error's type:
+
+```typescript
+private getErrorCategory(): ErrorCategory {
+  const errorName = this.error.name;
+
+  // Check error type name
+  if (errorName.includes('SyntaxError')) return 'syntax';
+  if (errorName.includes('ValidationError')) return 'validation';
+
+  return 'runtime'; // fallback
+}
+```
+
+**Why this approach?**
+1. **Type-based**: Uses existing error hierarchy (IOSyntaxError, IOValidationError)
+2. **No additional metadata**: No need to pass category through layers
+3. **Automatic**: Category derived at serialization time
+4. **Extensible**: New error types automatically categorized
+5. **Performance**: String check is O(1) and happens once per error
+
+### UI Implementation
+
+The playground uses error categories to apply differential styling:
+
+#### JSON Output Decorations
+```typescript
+// Extract category from error object in JSON
+const categoryMatch = objText.match(/"category"\s*:\s*"(syntax|validation|runtime)"/);
+const category = categoryMatch ? categoryMatch[1] : 'syntax';
+
+// Apply category-specific styling
+const className = category === 'validation'
+  ? 'io-error-object-decoration io-error-validation'  // Orange
+  : 'io-error-object-decoration io-error-syntax';     // Red
+```
+
+**Visual Indicators**:
+- **Background highlight**: Translucent colored background on error object
+- **Left border**: 3px solid colored bar (red for syntax, orange for validation)
+- **Gutter marker**: Colored bar in editor gutter
+- **Overview ruler**: Colored marker in scrollbar
+
+#### Error Overlay
+```typescript
+// Determine error type from message prefix
+const isValidation = errMsg.startsWith('VALIDATION_ERROR:');
+const errorClass = isValidation ? 'error validation-error' : 'error';
+```
+
+**CSS Implementation**:
+```css
+/* Syntax errors - red */
+.io-error-syntax {
+  background-color: rgba(255, 83, 83, 0.16);
+  border-left: 3px solid rgba(255, 83, 83, 0.6);
+}
+
+/* Validation errors - orange */
+.io-error-validation {
+  background-color: rgba(255, 152, 0, 0.16);
+  border-left: 3px solid rgba(255, 152, 0, 0.7);
+}
+```
+
+### Benefits of Categorization
+
+1. **Visual Distinction**: Developers instantly recognize error type by color
+2. **Priority Signals**: Red (syntax) typically needs fixing before orange (validation)
+3. **Better UX**: Less cognitive load to parse error lists
+4. **Filtering Capability**: Can filter/sort by category (future enhancement)
+5. **Accessibility**: Color + text label provides redundant information
 
 ## Best Practices Followed
 
@@ -307,11 +420,13 @@ doc.getErrors() = [
 
 ## Potential Improvements (Future)
 
-1. **Error Codes**: Standardize error codes for programmatic handling
-2. **Error Severity**: Add severity levels (error, warning, info)
+1. **~~Error Codes~~**: ✅ Already implemented via errorCode property
+2. **~~Error Severity~~**: ✅ Implemented via error categorization (syntax/validation/runtime)
 3. **Error Recovery**: Smarter recovery strategies for common errors
 4. **Async Validation**: Support for async validators (API calls, etc.)
-5. **Error Filtering**: Built-in filters for error types/severity
+5. **Error Filtering**: Built-in filters for error types/severity in UI
+6. **Error Quickfixes**: Suggested fixes for common validation errors
+7. **Multi-level Severity**: Info/Warning/Error within each category
 
 ## Conclusion
 
