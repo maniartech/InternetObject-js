@@ -6,10 +6,12 @@ import IOSectionCollection from "./section-collection";
 class IODocument {
   private _header: IOHeader;
   private _sections: IOSectionCollection | null;
+  private _errors: Error[] = []; // Accumulated errors during parsing
 
-  constructor(header: IOHeader, sections: IOSectionCollection | null) {
+  constructor(header: IOHeader, sections: IOSectionCollection | null, errors: Error[] = []) {
     this._header = header;
     this._sections = sections;
+    this._errors = errors;
   }
 
   public get header(): IOHeader {
@@ -18,6 +20,14 @@ class IODocument {
 
   public get sections(): IOSectionCollection | null {
     return this._sections;
+  }
+
+  /**
+   * Returns all errors accumulated during parsing.
+   * This enables IDEs and tools to show all diagnostics in one pass.
+   */
+  public getErrors(): Error[] {
+    return this._errors;
   }
 
   /**

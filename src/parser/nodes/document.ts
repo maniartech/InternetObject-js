@@ -8,14 +8,24 @@ import SectionNode  from './section';
 class DocumentNode implements Node {
   header: SectionNode | null = null;
   children: Array<SectionNode> = [];
+  private errors: Error[] = []; // Accumulated errors during parsing
 
-  constructor(header: SectionNode | null, children: Array<SectionNode> = []) {
+  constructor(header: SectionNode | null, children: Array<SectionNode> = [], errors: Error[] = []) {
     this.header = header;
     this.children = children;
+    this.errors = errors;
   }
 
   get firstChild(): SectionNode | null {
     return this.children.length > 0 ? this.children[0] : null;
+  }
+
+  /**
+   * Returns all errors accumulated during parsing.
+   * This enables IDEs and tools to show all diagnostics in one pass.
+   */
+  getErrors(): Error[] {
+    return this.errors;
   }
 
 

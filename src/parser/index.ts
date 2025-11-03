@@ -30,12 +30,15 @@ export default function parse(source: string, externalDefs: Definitions | null, 
     return new Document(new Header(), new SectionCollection());
   }
 
-  // Create document with optimized initialization
-  const doc = new Document(new Header(), new SectionCollection());
-
   // Parse the tokens into AST - optimize for simple cases
   const parser = new ASTParser(tokens);
   const docNode = parser.parse();
+
+  // Extract errors from docNode for transfer to Document
+  const errors = docNode.getErrors();
+
+  // Create document with optimized initialization
+  const doc = new Document(new Header(), new SectionCollection(), errors);
 
   // If the docNode contains header, then parse it
   if (docNode.header) {

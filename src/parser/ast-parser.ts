@@ -19,6 +19,7 @@ class ASTParser {
   // array of tokens produced by the tokenizer
   private readonly tokens: readonly Token[];
   private readonly sectionNames: { [key: string]: boolean } = {};
+  private readonly errors: Error[] = []; // Accumulated errors during parsing
 
   // current token index
   private current: number;
@@ -82,13 +83,15 @@ class ASTParser {
       if (first) first = false;
 
       // If the next token is not a section separator, it means that
-      // the current section is not closed properly. Throw an error
+      // the current section is not closed properly. Add error and stop
       if (token.type !== TokenType.SECTION_SEP) {
-        throw new SyntaxError(
+        const error = new SyntaxError(
           ErrorCodes.unexpectedToken,
           `Expected section separator '---' but found '${token.token}'. Each section must be properly closed before starting a new one.`,
           token
         );
+        this.errors.push(error);
+        break; // Stop parsing but return partial document
       }
 
       // Move to the next token and check if it is a section separator
@@ -104,7 +107,7 @@ class ASTParser {
     //   return new DocumentNode(header ?? null, sections);
     // }
 
-    return new DocumentNode(header, sections)
+    return new DocumentNode(header, sections, this.errors);
   }
 
   private processSection(first: boolean): SectionNode {
@@ -120,21 +123,35 @@ class ASTParser {
     // section does not have a name.
     const [schemaNode, nameNode] = this.parseSectionAndSchemaNames();
     let name: string = nameNode?.value || schemaNode?.value.toString().substring(1) || 'unnamed';
+    const originalName = name;
 
-    // Check if the section name is already used
+    // Check if the section name is already used - implement auto-rename for error recovery
     if (name && this.sectionNames[name]) {
-      throw new SyntaxError(
+      const error = new SyntaxError(
         ErrorCodes.unexpectedToken,
         `Duplicate section name '${name}'. Each section must have a unique name within the document.`,
         void 0, false
-        );
+      );
+      this.errors.push(error); // Accumulate error
+
+      // Auto-rename: users -> users_2, users_3, etc.
+      let suffix = 2;
+      while (this.sectionNames[`${originalName}_${suffix}`]) {
+        suffix++;
       }
+      name = `${originalName}_${suffix}`;
+
+      // Update the nameNode with the renamed value
+      if (nameNode) {
+        nameNode.value = name;
+      }
+    }
 
     if (!first || (first && name !== 'unnamed' && this.peek()?.type !== TokenType.SECTION_SEP)) {
       this.sectionNames[name] = true;
     }
 
-    const section = this.parseSectionContent()
+    const section = this.parseSectionContent();
     return new SectionNode(section, nameNode, schemaNode);
   }
 
@@ -195,6 +212,8 @@ class ASTParser {
         // Parse the object and add to the collection
         objects.push(this.processObject(true));
       } catch (error) {
+        // Accumulate error for Phase 2
+        this.errors.push(error as Error);
         // Create error node and skip to next collection item
         const currentToken = this.peek();
         const position = currentToken ? currentToken.getStartPos() : { pos: -1, row: -1, col: -1 };
@@ -319,7 +338,7 @@ class ASTParser {
     if (!isOpenObject) {
       if (!this.match(ASTParser.CURLY_CLOSE_ARRAY)) {
         const lastToken = this.peek();
-        throw new SyntaxError(ErrorCodes.expectingBracket, 
+        throw new SyntaxError(ErrorCodes.expectingBracket,
           `Missing closing brace '}'. Object must be properly closed.`,
           lastToken === null ? void 0 : lastToken, lastToken === null);
       }
@@ -350,8 +369,8 @@ class ASTParser {
         const value = this.parseValue();
         return new MemberNode(value, leftToken as TokenNode);
       } else {
-        throw new SyntaxError(ErrorCodes.invalidKey, 
-          `Invalid key '${leftToken.token}'. Object keys must be strings, numbers, booleans, or null.`, 
+        throw new SyntaxError(ErrorCodes.invalidKey,
+          `Invalid key '${leftToken.token}'. Object keys must be strings, numbers, booleans, or null.`,
           leftToken, false);
       }
     }
@@ -432,7 +451,7 @@ class ASTParser {
   private parseValue(): Node {
     const token = this.peek();
     if (!token) {
-      throw new SyntaxError(ErrorCodes.valueRequired, 
+      throw new SyntaxError(ErrorCodes.valueRequired,
         `Unexpected end of input. Expected a value (string, number, boolean, null, array, or object).`,
         void 0, true);
     }
