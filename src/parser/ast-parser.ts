@@ -1,6 +1,7 @@
 import assertNever      from '../errors/asserts/asserts';
 import ErrorCodes       from '../errors/io-error-codes';
 import SyntaxError      from '../errors/io-syntax-error';
+import { tokenSpanRange } from '../errors/error-range-utils';
 import Symbols          from './tokenizer/symbols';
 import TokenType        from './tokenizer/token-types';
 import Token            from './tokenizer/tokens';
@@ -50,7 +51,52 @@ class ASTParser {
     return this.processDocument();
   }
 
-  private processDocument(): DocumentNode {
+  /**
+   * Creates a syntax error with proper range spanning the entire construct.
+   * Industry standard: Error should highlight from start token to end token.
+   *
+   * @param errorCode - The error code
+   * @param message - Error message
+   * @param startToken - Opening token of the construct (e.g., '{' or '[')
+   * @param members - Array of parsed members/elements (to find last token) - can include undefined
+   * @returns SyntaxError with range spanning the entire construct
+   */
+  private createUnclosedConstructError(
+    errorCode: string,
+    message: string,
+    startToken: Token | null,
+    members: Array<Node | undefined>
+  ): SyntaxError {
+    // Find the end position by looking backwards from current, skipping boundary tokens
+    let errorEndToken: Token | null = null;
+
+    // Start from the token before current position
+    let checkIndex = this.current - 1;
+
+    // Skip backwards over any boundary tokens (~ or ---)
+    while (checkIndex >= 0) {
+      const token = this.tokens[checkIndex];
+      if (token &&
+          token.type !== TokenType.COLLECTION_START &&
+          token.type !== TokenType.SECTION_SEP) {
+        errorEndToken = token;
+        break;
+      }
+      checkIndex--;
+    }
+
+    // Create the error with proper range spanning the entire construct
+    if (startToken && errorEndToken) {
+      const range = tokenSpanRange(startToken, errorEndToken);
+      return new SyntaxError(errorCode, message, range, false);
+    } else if (startToken) {
+      // Fallback: use start token only
+      return new SyntaxError(errorCode, message, startToken, false);
+    } else {
+      // No tokens available - create error without position
+      return new SyntaxError(errorCode, message, undefined, true);
+    }
+  }  private processDocument(): DocumentNode {
     const sections = new Array<SectionNode>();
     let header: SectionNode | null = null;
 
@@ -208,16 +254,39 @@ class ASTParser {
       // Consume the COLLECTION_START token
       this.advance();
 
+      // Remember the position before parsing the item (for fallback)
+      const itemStartPos = this.current;
+
       try {
         // Parse the object and add to the collection
         objects.push(this.processObject(true));
       } catch (error) {
         // Accumulate error for Phase 2
         this.errors.push(error as Error);
-        // Create error node and skip to next collection item
-        const currentToken = this.peek();
-        const position = currentToken ? currentToken.getStartPos() : { pos: -1, row: -1, col: -1 };
-        objects.push(new ErrorNode(error as Error, position));
+
+        // Create error node with actual error position
+        let position = { pos: -1, row: -1, col: -1 };
+        let endPosition = undefined;
+
+        // Extract position from IOError if available
+        if (error && typeof error === 'object' && 'positionRange' in error) {
+          const posRange = (error as any).positionRange;
+          if (posRange && posRange.getStartPos) {
+            position = posRange.getStartPos();
+            endPosition = posRange.getEndPos ? posRange.getEndPos() : undefined;
+          }
+        }
+
+        // Fallback: if no position in error, use the last valid token position
+        if (position.pos === -1 && this.current > 0 && this.current <= this.tokens.length) {
+          const lastToken = this.tokens[this.current - 1];
+          if (lastToken) {
+            position = lastToken.getEndPos(); // Use end position of last token
+            endPosition = position; // Point to same location
+          }
+        }
+
+        objects.push(new ErrorNode(error as Error, position, endPosition));
         this.skipToNextCollectionItem();
       }
       // No explicit delimiter check is required since the `~`
@@ -337,10 +406,12 @@ class ASTParser {
     // Now, expect a closing bracket if not open object
     if (!isOpenObject) {
       if (!this.match(ASTParser.CURLY_CLOSE_ARRAY)) {
-        const lastToken = this.peek();
-        throw new SyntaxError(ErrorCodes.expectingBracket,
+        throw this.createUnclosedConstructError(
+          ErrorCodes.expectingBracket,
           `Missing closing brace '}'. Object must be properly closed.`,
-          lastToken === null ? void 0 : lastToken, lastToken === null);
+          openBracket,
+          members
+        );
       }
       let closeBracket: Token | null = this.peek();
       this.advance();
@@ -399,15 +470,24 @@ class ASTParser {
       const currentToken = this.peek();
       if (!currentToken) {
         // Unexpected end of input
-        throw new SyntaxError(
+        throw this.createUnclosedConstructError(
           ErrorCodes.expectingBracket,
           `Unexpected end of input while parsing array. Expected closing bracket ']'.`,
-          void 0,
-          true
+          openBracket,
+          arr
         );
       }
       if (currentToken.type === TokenType.BRACKET_CLOSE) {
         break;
+      } else if (currentToken.type === TokenType.COLLECTION_START ||
+                 currentToken.type === TokenType.SECTION_SEP) {
+        // Reached a synchronization boundary without closing the array
+        throw this.createUnclosedConstructError(
+          ErrorCodes.expectingBracket,
+          `Missing closing bracket ']'. Array must be properly closed.`,
+          openBracket,
+          arr
+        );
       } else if (currentToken.type === TokenType.COMMA) {
         // If the next token is a comma or a closing bracket, it implies an undefined
         // element in the array, which is not allowed. Throw an error.
@@ -434,12 +514,11 @@ class ASTParser {
 
     // Now, expect a closing bracket
     if (!this.match(ASTParser.BRACKET_CLOSE_ARRAY)) {
-      const closeBracket = this.peek();
-      throw new SyntaxError(
+      throw this.createUnclosedConstructError(
         ErrorCodes.expectingBracket,
         `Missing closing bracket ']'. Array must be properly closed.`,
-        closeBracket === null ? void 0 : closeBracket,
-        closeBracket === null
+        openBracket,
+        arr
       );
     }
     const closeBracket = this.peek();

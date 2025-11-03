@@ -191,6 +191,14 @@ class IOCollection<T = IOObject> {
       if (item instanceof IOObject) {
         return item.toJSON();
       } else if (typeof item === 'object' && item !== null) {
+        // Check if item has toValue method (e.g., ErrorNode)
+        if (typeof (item as any).toValue === 'function') {
+          return (item as any).toValue();
+        }
+        // Check if item has toJSON method
+        if (typeof (item as any).toJSON === 'function') {
+          return (item as any).toJSON();
+        }
         return JSON.stringify(item);
       }
       return item;

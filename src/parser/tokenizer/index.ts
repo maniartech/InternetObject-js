@@ -3,6 +3,7 @@ import PositionRange  from '../../core/positions';
 import assertNever    from '../../errors/asserts/asserts';
 import ErrorCodes     from '../../errors/io-error-codes';
 import SyntaxError    from '../../errors/io-syntax-error';
+import { unclosedConstructRange, createPosition } from '../../errors/error-range-utils';
 import * as dtParser  from '../../utils/datetime';
 import * as is        from './is';
 import Literals       from './literals';
@@ -315,9 +316,18 @@ class Tokenizer {
     // create an error token for the unclosed string
     if (this.reachedEnd) {
       const tokenText = this.input.substring(start, this.pos);
-      const error = new SyntaxError(ErrorCodes.stringNotClosed,
+
+      // Create a temporary token for the opening quote to get proper range
+      const openingToken = Token.init(start, startRow, startCol, '"', '"', "STRING");
+      const currentPos = createPosition(this.pos, this.row, this.col);
+
+      const error = new SyntaxError(
+        ErrorCodes.stringNotClosed,
         `Unterminated string literal. Expected closing quote '"' before end of input.`,
-        this.currentPosition);
+        unclosedConstructRange(openingToken, currentPos),
+        true
+      );
+
       return this.createErrorToken(error, start, startRow, startCol, tokenText);
     }
 
@@ -442,9 +452,18 @@ class Tokenizer {
 
     if (this.reachedEnd) {
       const tokenText = this.input.substring(start, this.pos);
-      const error = new SyntaxError(ErrorCodes.stringNotClosed,
+
+      // Create a temporary token for the opening annotation to get proper range
+      const openingToken = Token.init(start, startRow, startCol, annotation.name + annotation.quote, annotation.name, "STRING");
+      const currentPos = createPosition(this.pos, this.row, this.col);
+
+      const error = new SyntaxError(
+        ErrorCodes.stringNotClosed,
         `Unterminated annotated string literal. Expected closing quote '${annotation.quote}' before end of input.`,
-        this.currentPosition);
+        unclosedConstructRange(openingToken, currentPos),
+        true
+      );
+
       return this.createErrorToken(error, start, startRow, startCol, tokenText);
     }
 

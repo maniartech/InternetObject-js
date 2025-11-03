@@ -13,7 +13,7 @@ export default function processCollection(
   data: CollectionNode,
   schema: Schema | TokenNode,
   defs?: Definitions
-): Collection<InternetObject> {
+): Collection<any> {
   // Pre-resolve schema once for better performance
   const resolvedSchema = SchemaResolver.resolve(schema, defs);
 
@@ -21,16 +21,20 @@ export default function processCollection(
   const collection = new Collection<InternetObject>();
   const length = data.children.length;
 
-  // Process items, skipping ErrorNode objects from failed parsing
+  // Process items; include ErrorNode so UI can surface error info objects
   for (let i = 0; i < length; i++) {
     const item = data.children[i];
 
-    // Skip ErrorNode - these are parsing errors that were recovered from
+    // If parsing produced an ErrorNode, preserve it in the collection
+    // so that downstream consumers (toJSON/UI) can render error info
     if (item instanceof ErrorNode) {
-      continue;
+      // Push ErrorNode directly; IOCollection.toJSON handles toValue()
+      // which serializes error details with positions.
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      collection.push(item as unknown as any);
+    } else {
+      collection.push(processObject(item as ObjectNode, resolvedSchema, defs, i));
     }
-
-    collection.push(processObject(item as ObjectNode, resolvedSchema, defs, i));
   }
 
   return collection;
