@@ -25,14 +25,14 @@ class IOSection<T = any> {
     return this._data;
   }
 
-  public toJSON(): any {
+  public toJSON(options?: { skipErrors?: boolean }): any {
     // IOObject
     if (this._data instanceof IOObject) {
       return this._data.toJSON();
     }
     // IOCollection
     else if (this._data instanceof IOCollection) {
-      return this._data.toJSON();
+      return this._data.toJSON(options);
     }
     // Plain object
     else if (this._data && typeof this._data === 'object') {

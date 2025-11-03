@@ -184,25 +184,42 @@ class IOCollection<T = IOObject> {
 
   /**
    * Converts the IOCollection to a JSON-compatible representation.
+   * @param options Optional configuration for JSON conversion
+   * @param options.skipErrors If true, excludes error objects from output (default: false)
    * @returns An array of JSON-compatible representations of the items.
    */
-  public toJSON(): any {
-    return this._items.map((item) => {
-      if (item instanceof IOObject) {
-        return item.toJSON();
-      } else if (typeof item === 'object' && item !== null) {
-        // Check if item has toValue method (e.g., ErrorNode)
-        if (typeof (item as any).toValue === 'function') {
-          return (item as any).toValue();
+  public toJSON(options?: { skipErrors?: boolean }): any {
+    const skipErrors = options?.skipErrors ?? false;
+
+    return this._items
+      .filter((item) => {
+        // If skipErrors is true, filter out items with toValue that return __error
+        if (skipErrors && typeof item === 'object' && item !== null) {
+          if (typeof (item as any).toValue === 'function') {
+            const value = (item as any).toValue();
+            if (value && value.__error === true) {
+              return false; // Skip this error item
+            }
+          }
         }
-        // Check if item has toJSON method
-        if (typeof (item as any).toJSON === 'function') {
-          return (item as any).toJSON();
+        return true; // Keep this item
+      })
+      .map((item) => {
+        if (item instanceof IOObject) {
+          return item.toJSON();
+        } else if (typeof item === 'object' && item !== null) {
+          // Check if item has toValue method (e.g., ErrorNode)
+          if (typeof (item as any).toValue === 'function') {
+            return (item as any).toValue();
+          }
+          // Check if item has toJSON method
+          if (typeof (item as any).toJSON === 'function') {
+            return (item as any).toJSON();
+          }
+          return JSON.stringify(item);
         }
-        return JSON.stringify(item);
-      }
-      return item;
-    });
+        return item;
+      });
   }
 
   /**

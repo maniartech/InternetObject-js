@@ -32,19 +32,21 @@ class IODocument {
 
   /**
    * Converts the data sections into a JavaScript object.
+   * @param options Optional configuration for JSON conversion
+   * @param options.skipErrors If true, excludes error objects from collections (default: false)
    */
-  public toJSON(): any {
+  public toJSON(options?: { skipErrors?: boolean }): any {
     const sectionsLen = this._sections?.length || 0;
     let data: any = null;
 
     if (sectionsLen === 1) {
       const section = this._sections?.get(0) as IOSection;
-      data = section.toJSON();
+      data = section.toJSON(options);
     } else if (sectionsLen > 1) {
       data = {};
       for (let i = 0; i < sectionsLen; i++) {
         const section = this._sections?.get(i) as IOSection;
-        data[section.name as string] = section.toJSON();
+        data[section.name as string] = section.toJSON(options);
       }
     }
 
@@ -62,9 +64,10 @@ class IODocument {
 
   /**
    * Alias for toJSON() method for backward compatibility
+   * @param options Optional configuration for JSON conversion
    */
-  public toObject(): any {
-    return this.toJSON();
+  public toObject(options?: { skipErrors?: boolean }): any {
+    return this.toJSON(options);
   }
 }
 
