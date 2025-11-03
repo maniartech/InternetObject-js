@@ -2,6 +2,7 @@
 import IOHeader from "./header";
 import IOSection from "./section";
 import IOSectionCollection from "./section-collection";
+import IOCollection from "./collection";
 
 class IODocument {
   private _header: IOHeader;
@@ -23,11 +24,26 @@ class IODocument {
   }
 
   /**
-   * Returns all errors accumulated during parsing.
+   * Returns all errors accumulated during parsing and validation.
    * This enables IDEs and tools to show all diagnostics in one pass.
+   *
+   * @returns A defensive copy of the errors array to prevent external mutation
    */
-  public getErrors(): Error[] {
-    return this._errors;
+  public getErrors(): ReadonlyArray<Error> {
+    return [...this._errors];
+  }
+
+  /**
+   * Adds validation errors to the document.
+   * This method is package-private and should only be called by the parser.
+   *
+   * @internal
+   * @param errors - Array of validation errors to append
+   */
+  public addErrors(errors: Error[]): void {
+    if (errors.length > 0) {
+      this._errors.push(...errors);
+    }
   }
 
   /**

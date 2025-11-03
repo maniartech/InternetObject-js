@@ -223,6 +223,26 @@ class IOCollection<T = IOObject> {
   }
 
   /**
+   * Returns all Error objects contained within this collection's ErrorNodes.
+   *
+   * Note: This method is primarily useful when working with collections directly.
+   * When using Document.getErrors(), all errors (parser + validation) are already
+   * aggregated at the document level.
+   *
+   * @returns Array of Error objects from ErrorNode items in this collection
+   */
+  public getErrors(): Error[] {
+    const errors: Error[] = [];
+    for (const item of this._items) {
+      // ErrorNode-like shape: has an `error` property of type Error
+      if (item && typeof item === 'object' && (item as any).error instanceof Error) {
+        errors.push((item as any).error as Error);
+      }
+    }
+    return errors;
+  }
+
+  /**
    * Allows iteration over the IOCollection using for..of syntax.
    * @returns An iterator for the IOCollection.
    */

@@ -16,7 +16,8 @@ type ProcessResult = InternetObject | Collection<InternetObject> | null;
 export default function processSchema(
   data: ProcessableData,
   schema: SchemaType,
-  defs?: Definitions
+  defs?: Definitions,
+  errorCollector?: Error[]
 ): ProcessResult {
   // Early return for null data
   if (data === null) {
@@ -32,5 +33,5 @@ export default function processSchema(
   }
 
   // Must be CollectionNode at this point due to validation
-  return processCollection(validData as CollectionNode, validSchema, defs);
+  return processCollection(validData as CollectionNode, validSchema, defs, errorCollector);
 }

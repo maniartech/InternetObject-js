@@ -139,7 +139,11 @@ function _intValidator(min: number | null, max: number | null, memberDef: Member
     )
   }
 
-  if ((min !== null && value < min) || (max !== null && value > max)) {
+  // Use memberDef.min/max if available, otherwise use bound min/max
+  const effectiveMin = memberDef.min !== undefined && memberDef.min !== null ? memberDef.min : min;
+  const effectiveMax = memberDef.max !== undefined && memberDef.max !== null ? memberDef.max : max;
+
+  if ((effectiveMin !== null && value < effectiveMin) || (effectiveMax !== null && value > effectiveMax)) {
     throwError(ErrorCodes.invalidRange, memberDef.path!, value, node);
   }
 

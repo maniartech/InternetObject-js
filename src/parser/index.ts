@@ -87,18 +87,37 @@ function parseData(docNode: DocumentNode, doc: Document) {
 }
 
 function parseDataWithSchema(docNode: DocumentNode, doc: Document): void {
-  for (let i = 0; i < docNode.children.length; i++) {
+  const sectionsLen = docNode.children.length;
+
+  // Early return if no sections
+  if (sectionsLen === 0) {
+    return;
+  }
+
+  // Create error collector for validation errors
+  const validationErrors: Error[] = [];
+
+  for (let i = 0; i < sectionsLen; i++) {
     const sectionNode = docNode.children[i];
-    const schemaName = sectionNode.schemaName
-    const schema = schemaName === "$schema" ? doc.header.schema : doc.header.definitions?.getV(sectionNode.schemaNode)
+    const schemaName = sectionNode.schemaName;
+
+    // If no explicit schema name, fall back to document's default schema
+    const schema = schemaName
+      ? (schemaName === "$schema" ? doc.header.schema : doc.header.definitions?.getV(sectionNode.schemaNode))
+      : doc.header.schema;
 
     if (!schema) {
-      parseData(docNode, doc)
-      continue
+      parseData(docNode, doc);
+      continue;
     }
 
-    const result = processSchema(sectionNode.child, schema, doc.header.definitions || undefined);
+    const result = processSchema(sectionNode.child, schema, doc.header.definitions || undefined, validationErrors);
     doc.sections?.push(new Section(result, sectionNode.name, schemaName));
+  }
+
+  // Append validation errors to document (parser errors are already there from constructor)
+  if (validationErrors.length > 0) {
+    doc.addErrors(validationErrors);
   }
 }
 

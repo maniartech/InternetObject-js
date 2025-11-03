@@ -12,7 +12,8 @@ import { SchemaResolver } from '../utils/schema-resolver';
 export default function processCollection(
   data: CollectionNode,
   schema: Schema | TokenNode,
-  defs?: Definitions
+  defs?: Definitions,
+  errorCollector?: Error[]
 ): Collection<any> {
   // Pre-resolve schema once for better performance
   const resolvedSchema = SchemaResolver.resolve(schema, defs);
@@ -26,14 +27,35 @@ export default function processCollection(
     const item = data.children[i];
 
     // If parsing produced an ErrorNode, preserve it in the collection
-    // so that downstream consumers (toJSON/UI) can render error info
+    // so that downstream consumers (toJSON/UI) can render error info.
+    // NOTE: Parser errors are already in document._errors, so we don't add them to errorCollector.
     if (item instanceof ErrorNode) {
       // Push ErrorNode directly; IOCollection.toJSON handles toValue()
       // which serializes error details with positions.
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       collection.push(item as unknown as any);
     } else {
-      collection.push(processObject(item as ObjectNode, resolvedSchema, defs, i));
+      try {
+        collection.push(processObject(item as ObjectNode, resolvedSchema, defs, i));
+      } catch (error) {
+        // Validation error occurred - convert to ErrorNode and collect the error
+        if (error instanceof Error) {
+          const errorNode = new ErrorNode(
+            error,
+            (item as ObjectNode).getStartPos(),
+            (item as ObjectNode).getEndPos()
+          );
+          // Add validation error to error collector if provided
+          if (errorCollector) {
+            errorCollector.push(error);
+          }
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          collection.push(errorNode as unknown as any);
+        } else {
+          // Re-throw non-Error exceptions
+          throw error;
+        }
+      }
     }
   }
 
