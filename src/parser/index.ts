@@ -8,6 +8,7 @@ import InternetObjectError from '../errors/io-error';
 import ErrorCodes from '../errors/io-error-codes';
 import compileObject from '../schema/compile-object';
 import processSchema from '../schema/processor';
+import Schema from '../schema/schema';
 import Tokenizer from './tokenizer';
 import TokenType from './tokenizer/token-types';
 import ASTParser from './ast-parser';
@@ -18,6 +19,7 @@ import ObjectNode from './nodes/objects';
 import TokenNode from './nodes/tokens';
 import ParserOptions from './parser-options';
 import Node from './nodes/nodes';
+import ErrorNode from './nodes/error';
 
 
 export default function parse(source: string, externalDefs: Definitions | null, o: ParserOptions = {}): Document {
@@ -49,15 +51,21 @@ export default function parse(source: string, externalDefs: Definitions | null, 
       // ---
       if (docNode.header.child instanceof ObjectNode) {
         const schema = compileObject("schema", docNode.header.child)
-        doc.header.definitions?.push("$schema", schema, true)
+        if (schema instanceof Schema) {
+          doc.header.definitions?.push("$schema", schema, true)
+          doc.header.schema = schema  // Set as the default schema
+        } else {
+          assertNever(schema);
+        }
       }
 
-      // If CollectionNode, it is a definitions
+      // If CollectionNode, it's always definitions (may include $schema, @variables, or regular key-values)
+      // Example: ~ $schema: {...}, ~ @x: 10, ~ success: T
       else if (docNode.header.child instanceof CollectionNode) {
-        parseDefs(doc, docNode.header.child)
+        parseDefs(doc, docNode.header.child);
       }
 
-      // Unepxected node
+      // Unexpected node
       else { assertNever(docNode.header.child) }
 
       if (externalDefs) {
@@ -129,11 +137,17 @@ function parseDefs(doc: Document, cols: CollectionNode): void {
   const schemaDefs: Array<{ key: string; schemaDef: Node }> = []
 
   for (let i = 0; i < cols.children.length; i++) {
-    const child = cols.children[i] as ObjectNode;
+    const child = cols.children[i];
 
     // If child is null then skip
     if (child === null) {
       continue;
+    }
+
+    if (child instanceof ErrorNode) {
+      throw new InternetObjectError(ErrorCodes.invalidDefinition,
+        `Invalid definition: ${child.error.message}`,
+        child);
     }
 
     // Must be an object node
