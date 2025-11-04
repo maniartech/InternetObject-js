@@ -27,6 +27,8 @@ enum ValidationErrorCodes {
   notAnInteger = 'not-an-integer',
   outOfRange = 'out-of-range',
   invalidRange = 'invalid-range',
+  invalidScale = 'invalid-scale',
+  invalidPrecision = 'invalid-precision',
 
   // Boolean validation
   notABool = 'not-a-bool',

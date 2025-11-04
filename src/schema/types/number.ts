@@ -150,23 +150,109 @@ function _intValidator(min: number | null, max: number | null, memberDef: Member
   return value;
 }
 
+// Helper function to get the number of integer digits in a decimal
+function getIntegerDigits(decimal: Decimal): number {
+  const valueStr = decimal.toString();
+  return valueStr.split('.')[0].replace('-', '').length;
+}
+
 function _decimalValidator(memberDef: MemberDef, value: any, node?: Node): (number | bigint | Decimal) {
 
-  const { min, max } = memberDef;
-
-  const minD: Decimal | null = min === null ? null : Decimal.ensureDecimal(min);
-  const maxD: Decimal | null = max === null ? null : Decimal.ensureDecimal(max);
+  const { min, max, precision: requiredPrecision, scale: requiredScale } = memberDef;
 
   const valD: Decimal = Decimal.ensureDecimal(value);
 
-  if ((minD !== null && valD.compareTo(minD) < 0) || (maxD !== null && valD.compareTo(maxD) > 0)) {
-    throwError(ErrorCodes.invalidRange, memberDef.path!, value, node);
+  // Mode check: Determine validation mode based on precision and scale
+  const hasRequiredPrecision = requiredPrecision !== null && requiredPrecision !== undefined;
+  const hasRequiredScale = requiredScale !== null && requiredScale !== undefined;
+
+  // Validate scale if specified (modes 2 and 4)
+  if (hasRequiredScale) {
+    const actualScale = valD.getScale();
+    if (actualScale !== requiredScale) {
+      throwError(
+        ErrorCodes.invalidScale,
+        memberDef.path!,
+        `Value has scale ${actualScale}, expected ${requiredScale}`,
+        node
+      );
+    }
   }
 
-  const precision = memberDef.precision || valD.getPrecision();
-  const scale = memberDef.scale || valD.getScale();
+  // Validate precision if specified (modes 3 and 4)
+  if (hasRequiredPrecision) {
+    const actualPrecision = valD.getPrecision();
 
-  return valD.convert(precision, scale);
+    if (hasRequiredScale) {
+      // Mode 4: Strict validation (both precision and scale)
+      // Check if value fits within DECIMAL(precision, scale)
+      const intDigits = getIntegerDigits(valD);
+      const maxIntDigits = requiredPrecision - requiredScale;
+
+      if (intDigits > maxIntDigits) {
+        throwError(
+          ErrorCodes.invalidPrecision,
+          memberDef.path!,
+          `Integer part has ${intDigits} digits, DECIMAL(${requiredPrecision},${requiredScale}) allows ${maxIntDigits}`,
+          node
+        );
+      }
+    } else {
+      // Mode 3: Precision-only validation
+      if (actualPrecision > requiredPrecision) {
+        throwError(
+          ErrorCodes.invalidPrecision,
+          memberDef.path!,
+          `Value has precision ${actualPrecision}, max allowed is ${requiredPrecision}`,
+          node
+        );
+      }
+    }
+  }
+
+  // Validate min constraint - normalize to same scale for comparison
+  if (min !== null && min !== undefined) {
+    const minD: Decimal = Decimal.ensureDecimal(min);
+
+    // Use the larger scale for both
+    const targetScale = Math.max(valD.getScale(), minD.getScale());
+
+    // Calculate precision needed: max integer digits + target scale
+    const valIntDigits = getIntegerDigits(valD);
+    const minIntDigits = getIntegerDigits(minD);
+    const targetPrecision = Math.max(valIntDigits, minIntDigits) + targetScale;
+
+    const normalizedVal = valD.convert(targetPrecision, targetScale);
+    const normalizedMin = minD.convert(targetPrecision, targetScale);
+
+    if (normalizedVal.compareTo(normalizedMin) < 0) {
+      throwError(ErrorCodes.invalidRange, memberDef.path!, value, node);
+    }
+  }
+
+  // Validate max constraint - normalize to same scale for comparison
+  if (max !== null && max !== undefined) {
+    const maxD: Decimal = Decimal.ensureDecimal(max);
+
+    // Use the larger scale for both
+    const targetScale = Math.max(valD.getScale(), maxD.getScale());
+
+    // Calculate precision needed: max integer digits + target scale
+    const valIntDigits = getIntegerDigits(valD);
+    const maxIntDigits = getIntegerDigits(maxD);
+    const targetPrecision = Math.max(valIntDigits, maxIntDigits) + targetScale;
+
+    const normalizedVal = valD.convert(targetPrecision, targetScale);
+    const normalizedMax = maxD.convert(targetPrecision, targetScale);
+
+    if (normalizedVal.compareTo(normalizedMax) > 0) {
+      throwError(ErrorCodes.invalidRange, memberDef.path!, value, node);
+    }
+  }
+
+  // Return the value as-is (don't convert unless necessary)
+  // If precision/scale were specified for validation, the value already passed those checks
+  return valD;
 }
 
 function _getValidator(type: string) {
@@ -209,20 +295,99 @@ function _getValidator(type: string) {
 
     case 'decimal':
       return (memberDef: MemberDef, value: any, node?: Node) => {
-        if (value instanceof Decimal) return value;
-        const { min, max } = memberDef;
-        const minD: Decimal | null = min === null ? null : Decimal.ensureDecimal(min);
-        const maxD: Decimal | null = max === null ? null : Decimal.ensureDecimal(max);
+        const { min, max, precision: requiredPrecision, scale: requiredScale } = memberDef;
         const valD: Decimal = Decimal.ensureDecimal(value);
 
-        if ((minD !== null && valD.compareTo(minD) < 0) || (maxD !== null && valD.compareTo(maxD) > 0)) {
-          throwError(ErrorCodes.invalidRange, memberDef.path!, value, node);
+        // Mode check: Determine validation mode based on precision and scale
+        const hasRequiredPrecision = requiredPrecision !== null && requiredPrecision !== undefined;
+        const hasRequiredScale = requiredScale !== null && requiredScale !== undefined;
+
+        // Validate scale if specified (modes 2 and 4)
+        if (hasRequiredScale) {
+          const actualScale = valD.getScale();
+          if (actualScale !== requiredScale) {
+            throwError(
+              ErrorCodes.invalidScale,
+              memberDef.path!,
+              `Value has scale ${actualScale}, expected ${requiredScale}`,
+              node
+            );
+          }
         }
 
-        const precision = memberDef.precision || valD.getPrecision();
-        const scale = memberDef.scale || valD.getScale();
+        // Validate precision if specified (modes 3 and 4)
+        if (hasRequiredPrecision) {
+          const actualPrecision = valD.getPrecision();
 
-        return valD.convert(precision, scale);
+          if (hasRequiredScale) {
+            // Mode 4: Strict validation (both precision and scale)
+            // Check if value fits within DECIMAL(precision, scale)
+            const intDigits = getIntegerDigits(valD);
+            const maxIntDigits = requiredPrecision - requiredScale;
+
+            if (intDigits > maxIntDigits) {
+              throwError(
+                ErrorCodes.invalidPrecision,
+                memberDef.path!,
+                `Integer part has ${intDigits} digits, DECIMAL(${requiredPrecision},${requiredScale}) allows ${maxIntDigits}`,
+                node
+              );
+            }
+          } else {
+            // Mode 3: Precision-only validation
+            if (actualPrecision > requiredPrecision) {
+              throwError(
+                ErrorCodes.invalidPrecision,
+                memberDef.path!,
+                `Value has precision ${actualPrecision}, max allowed is ${requiredPrecision}`,
+                node
+              );
+            }
+          }
+        }
+
+        // Validate min constraint - normalize to same scale for comparison
+        if (min !== null && min !== undefined) {
+          const minD: Decimal = Decimal.ensureDecimal(min);
+
+          // Use the larger scale for both
+          const targetScale = Math.max(valD.getScale(), minD.getScale());
+
+          // Calculate precision needed: max integer digits + target scale
+          const valIntDigits = getIntegerDigits(valD);
+          const minIntDigits = getIntegerDigits(minD);
+          const targetPrecision = Math.max(valIntDigits, minIntDigits) + targetScale;
+
+          const normalizedVal = valD.convert(targetPrecision, targetScale);
+          const normalizedMin = minD.convert(targetPrecision, targetScale);
+
+          if (normalizedVal.compareTo(normalizedMin) < 0) {
+            throwError(ErrorCodes.invalidRange, memberDef.path!, value, node);
+          }
+        }
+
+        // Validate max constraint - normalize to same scale for comparison
+        if (max !== null && max !== undefined) {
+          const maxD: Decimal = Decimal.ensureDecimal(max);
+
+          // Use the larger scale for both
+          const targetScale = Math.max(valD.getScale(), maxD.getScale());
+
+          // Calculate precision needed: max integer digits + target scale
+          const valIntDigits = getIntegerDigits(valD);
+          const maxIntDigits = getIntegerDigits(maxD);
+          const targetPrecision = Math.max(valIntDigits, maxIntDigits) + targetScale;
+
+          const normalizedVal = valD.convert(targetPrecision, targetScale);
+          const normalizedMax = maxD.convert(targetPrecision, targetScale);
+
+          if (normalizedVal.compareTo(normalizedMax) > 0) {
+            throwError(ErrorCodes.invalidRange, memberDef.path!, value, node);
+          }
+        }
+
+        // Return the value as-is (don't convert unless necessary)
+        return valD;
       }
 
     default:
