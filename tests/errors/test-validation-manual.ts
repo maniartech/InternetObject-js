@@ -1,4 +1,4 @@
-import { parse } from './src'
+import { parse } from '../../src'
 
 console.log('Testing decimal validation...\n')
 

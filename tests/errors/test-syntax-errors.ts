@@ -1,4 +1,4 @@
-import { parse } from './src/index';
+import { parse } from '../../src/index';
 
 const doc = `name, age, gender
 ---

@@ -1,4 +1,4 @@
-import { parse } from './src'
+import { parse } from '../../src'
 
 console.log('=== Test 1: Inline schema (no ~) ===')
 try {
