@@ -134,6 +134,11 @@ audit-results.json
 security-report.json
 vulnerability-report.json
 
+# Bundle testing temporary files
+.bundle-test/
+scripts/.bundle-history.csv
+bundle-report.txt
+
 # IDE and editor files
 .vscode/settings.json
 .idea/

@@ -39,6 +39,68 @@ jobs:
     - name: Check TypeScript compilation
       run: yarn tsc --noEmit
 
+  bundle-size:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Use Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20.x'
+        cache: 'yarn'
+
+    - name: Install dependencies
+      run: yarn install --frozen-lockfile
+
+    - name: Build project
+      run: yarn build
+
+    - name: Run bundle analysis
+      run: yarn bundle:analyze
+
+    - name: Check bundle size budgets
+      run: yarn bundle:budget-check
+
+    - name: Compare with baselines
+      run: yarn bundle:compare
+
+    - name: Comment PR with bundle size
+      if: github.event_name == 'pull_request'
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const fs = require('fs');
+          const minimal = fs.readFileSync('scripts/.bundle-baseline-minimal.txt', 'utf8').trim();
+          const full = fs.readFileSync('scripts/.bundle-baseline-full.txt', 'utf8').trim();
+          const minimalKB = Math.round(minimal / 1024);
+          const fullKB = Math.round(full / 1024);
+
+          const comment = `## 📦 Bundle Size Report
+
+          | Import Type | Size (gzipped) | Status |
+          |------------|----------------|--------|
+          | Minimal (\`{ IOObject }\`) | ${minimalKB}KB | ${minimalKB < 5 ? '✅' : '⚠️'} |
+          | Full (\`io\`) | ${fullKB}KB | ${fullKB < 25 ? '✅' : '⚠️'} |
+
+          **Tree-shaking ratio:** ${((minimalKB / fullKB) * 100).toFixed(1)}%
+
+          <details>
+          <summary>View details</summary>
+
+          - Target: Minimal < 5KB, Full < 25KB
+          - Run \`yarn bundle:analyze\` locally for detailed analysis
+
+          </details>`;
+
+          github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: comment
+          });
+
   security-audit:
     runs-on: ubuntu-latest
 

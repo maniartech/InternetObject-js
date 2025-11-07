@@ -1,0 +1,201 @@
+name: Bundle Size Check
+
+on:
+  push:
+    branches: [ master, main, develop, schema-revamp ]
+  pull_request:
+    branches: [ master, main, develop ]
+
+jobs:
+  bundle-size:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0  # Need history for comparison
+
+    - name: Use Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20.x'
+        cache: 'yarn'
+
+    - name: Install dependencies
+      run: yarn install --frozen-lockfile
+
+    - name: Build project
+      run: yarn build
+
+    - name: Run bundle analysis
+      run: yarn bundle:analyze
+
+    - name: Test minimal import (tree-shaking)
+      run: yarn bundle:test-minimal
+
+    - name: Test full import
+      run: yarn bundle:test-full
+
+    - name: Check bundle size budgets
+      id: budget-check
+      run: yarn bundle:budget-check
+      continue-on-error: true
+
+    - name: Compare with baselines
+      id: compare
+      run: |
+        yarn bundle:compare > bundle-report.txt
+        cat bundle-report.txt
+
+    - name: Upload bundle report
+      uses: actions/upload-artifact@v4
+      with:
+        name: bundle-report
+        path: bundle-report.txt
+        retention-days: 30
+
+    - name: Comment on PR
+      if: github.event_name == 'pull_request'
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const fs = require('fs');
+
+          // Read current sizes
+          const minimalBytes = parseInt(fs.readFileSync('scripts/.bundle-baseline-minimal.txt', 'utf8').trim());
+          const fullBytes = parseInt(fs.readFileSync('scripts/.bundle-baseline-full.txt', 'utf8').trim());
+
+          // Read baseline from main branch
+          let baselineMinimal = minimalBytes;
+          let baselineFull = fullBytes;
+
+          try {
+            // Try to get baseline from main branch
+            const { data: minimalFile } = await github.rest.repos.getContent({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              path: 'scripts/.bundle-baseline-minimal.txt',
+              ref: 'main'
+            });
+            const { data: fullFile } = await github.rest.repos.getContent({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              path: 'scripts/.bundle-baseline-full.txt',
+              ref: 'main'
+            });
+
+            baselineMinimal = parseInt(Buffer.from(minimalFile.content, 'base64').toString().trim());
+            baselineFull = parseInt(Buffer.from(fullFile.content, 'base64').toString().trim());
+          } catch (e) {
+            console.log('Could not fetch baseline from main branch, using current as baseline');
+          }
+
+          const minimalKB = (minimalBytes / 1024).toFixed(2);
+          const fullKB = (fullBytes / 1024).toFixed(2);
+          const baselineMinimalKB = (baselineMinimal / 1024).toFixed(2);
+          const baselineFullKB = (baselineFull / 1024).toFixed(2);
+
+          const minimalDiff = minimalBytes - baselineMinimal;
+          const fullDiff = fullBytes - baselineFull;
+          const minimalDiffKB = (minimalDiff / 1024).toFixed(2);
+          const fullDiffKB = (fullDiff / 1024).toFixed(2);
+          const minimalPercent = baselineMinimal > 0 ? ((minimalDiff / baselineMinimal) * 100).toFixed(1) : 0;
+          const fullPercent = baselineFull > 0 ? ((fullDiff / baselineFull) * 100).toFixed(1) : 0;
+
+          const ratio = ((minimalBytes / fullBytes) * 100).toFixed(1);
+
+          // Determine status
+          const minimalStatus = minimalBytes < 5120 ? '✅' : minimalBytes < 15360 ? '⚠️' : '❌';
+          const fullStatus = fullBytes < 25600 ? '✅' : fullBytes < 51200 ? '⚠️' : '❌';
+          const treeShakeStatus = ratio < 30 ? '✅' : ratio < 50 ? '⚠️' : '❌';
+
+          const minimalChange = minimalDiff === 0 ? '' :
+            minimalDiff > 0 ? `📈 +${minimalDiffKB}KB (+${minimalPercent}%)` :
+            `📉 ${minimalDiffKB}KB (${minimalPercent}%)`;
+          const fullChange = fullDiff === 0 ? '' :
+            fullDiff > 0 ? `📈 +${fullDiffKB}KB (+${fullPercent}%)` :
+            `📉 ${fullDiffKB}KB (${fullPercent}%)`;
+
+          let warnings = [];
+          if (minimalBytes > 15360) warnings.push('⚠️ Minimal import exceeds 15KB budget');
+          if (fullBytes > 51200) warnings.push('⚠️ Full import exceeds 50KB budget');
+          if (ratio > 50) warnings.push('⚠️ Tree-shaking ratio high (>50%)');
+          if (minimalPercent > 10 && minimalDiff > 0) warnings.push('⚠️ Minimal import increased by >10%');
+          if (fullPercent > 10 && fullDiff > 0) warnings.push('⚠️ Full import increased by >10%');
+
+          const comment = `## 📦 Bundle Size Report
+
+          | Import Type | Current | Baseline | Change | Status |
+          |------------|---------|----------|--------|--------|
+          | **Minimal** (\`import { IOObject }\`) | ${minimalKB}KB | ${baselineMinimalKB}KB | ${minimalChange || 'No change'} | ${minimalStatus} |
+          | **Full** (\`import io\`) | ${fullKB}KB | ${baselineFullKB}KB | ${fullChange || 'No change'} | ${fullStatus} |
+          | **Tree-shaking ratio** | ${ratio}% | - | - | ${treeShakeStatus} |
+
+          ${warnings.length > 0 ? '### ⚠️ Warnings\n\n' + warnings.map(w => `- ${w}`).join('\n') + '\n\n' : ''}
+
+          ### 🎯 Budgets
+
+          - ✅ **Target:** Minimal < 5KB, Full < 25KB (gzipped)
+          - ⚠️ **Maximum:** Minimal < 15KB, Full < 50KB (gzipped)
+          - ✅ **Tree-shaking:** Ratio < 30% (excellent), < 50% (good)
+
+          <details>
+          <summary>📊 View detailed analysis</summary>
+
+          \`\`\`
+          Bundle Health Score: ${minimalBytes < 5120 && fullBytes < 25600 && ratio < 30 ? '100/100 🎉' :
+            minimalBytes < 15360 && fullBytes < 51200 ? '85/100 ✅' : '60/100 ⚠️'}
+
+          Top modules (unminified):
+          - decimal.js: 32.49KB
+          - decimal-utils.js: 31.36KB
+          - ast-parser.js: 21.76KB
+          - compile-object.js: 14.58KB
+
+          Run locally:
+            yarn bundle:analyze      # Full analysis
+            yarn bundle:compare      # Compare with baseline
+            yarn bundle:budget-check # Check budgets
+          \`\`\`
+
+          </details>
+
+          ---
+
+          💡 *Bundle size is automatically checked on every PR. Keep imports minimal for best tree-shaking!*`;
+
+          // Find existing comment
+          const { data: comments } = await github.rest.issues.listComments({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            issue_number: context.issue.number
+          });
+
+          const botComment = comments.find(comment =>
+            comment.user.type === 'Bot' && comment.body.includes('📦 Bundle Size Report')
+          );
+
+          if (botComment) {
+            // Update existing comment
+            await github.rest.issues.updateComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              comment_id: botComment.id,
+              body: comment
+            });
+          } else {
+            // Create new comment
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: comment
+            });
+          }
+
+    - name: Fail if budget exceeded
+      if: steps.budget-check.outcome == 'failure'
+      run: |
+        echo "::error::Bundle size budget check failed!"
+        echo "Review the bundle size report above for details."
+        exit 1
