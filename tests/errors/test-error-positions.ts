@@ -1,5 +1,5 @@
-import { parse } from './src/index';
-import IOError from './src/errors/io-error';
+import { parse } from '../../src/index';
+import IOError from '../../src/errors/io-error';
 
 const doc = `name, address
 ---

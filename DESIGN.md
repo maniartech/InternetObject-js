@@ -1,6 +1,6 @@
 # Intrernet Object Library Interface Design Ideas
 
-This document is a collection of ideas for the IOJS lib interface. It is not
+This document is a collection of ideas for the Internetobject lib interface. It is not
 meant to be a complete specification, but rather a collection of ideas that
 may or may not be implemented. These ideas are written in TypeScript, but
 they are also applicable to JavaScript.
@@ -8,7 +8,7 @@ they are also applicable to JavaScript.
 ## Parsing strings into documents
 
 ```ts
-import io from 'iojs';
+import io from 'internetobject';
 
 const doc:io.Document = io.doc`
   name, age, gender, address: {street, city, state, zip}
@@ -22,7 +22,7 @@ console.log(doc);
 ## Parsing with separate definitions
 
 ```ts
-import io from 'iojs';
+import io from 'internetobject';
 
 const defs = io.defs`
   ~ @red: 0xff0000
@@ -52,7 +52,7 @@ doc.data.pushToFirst(collection);
 
 ## Building Objects
 
-Objects are the core and the building blocks of the IOJS library. Objects can
+Objects are the core and the building blocks of the Internetobject library. Objects can
 be created in many ways. The following are some examples.
 
 ```ts

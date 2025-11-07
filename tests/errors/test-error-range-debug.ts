@@ -1,4 +1,4 @@
-import { parse } from './src';
+import { parse } from '../../src';
 
 const doc = `name, age, gender, joiningDt, address: {street, city, state?}, colors, isActive
 ---
@@ -8,14 +8,14 @@ const doc = `name, age, gender, joiningDt, address: {street, city, state?}, colo
 try {
   const result = parse(doc);
   const errors = result.getErrors();
-  
+
   console.log(`\nFound ${errors.length} error(s):\n`);
-  
+
   errors.forEach((err: any, idx: number) => {
     console.log(`Error ${idx + 1}:`);
     console.log(`  Message: ${err.message}`);
     console.log(`  Name: ${err.name}`);
-    
+
     if (err.positionRange) {
       const start = err.positionRange.getStartPos();
       const end = err.positionRange.getEndPos();
@@ -26,10 +26,10 @@ try {
     }
     console.log('');
   });
-  
+
   console.log('\nJSON Output:');
   console.log(JSON.stringify(result.toJSON(), null, 2));
-  
+
 } catch (e: any) {
   console.error('Parse failed:', e.message);
   if (e.positionRange) {

@@ -1,4 +1,4 @@
-import Decimal from './src/core/decimal';
+import Decimal from '../../src/core/decimal';
 
 let chalk: any;
 try {

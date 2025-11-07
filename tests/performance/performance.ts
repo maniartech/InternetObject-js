@@ -1,6 +1,6 @@
-import { parse } from './src/index';
-import Tokenizer from './src/parser/tokenizer';
-import ASTParser from './src/parser/ast-parser';
+import { parse } from '../../src/index';
+import Tokenizer from '../../src/parser/tokenizer';
+import ASTParser from '../../src/parser/ast-parser';
 
 // Use chalk for colored output
 let chalk: any;

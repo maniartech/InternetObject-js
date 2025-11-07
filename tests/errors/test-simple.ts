@@ -1,4 +1,4 @@
-import { parse } from './src'
+import { parse } from '../../src'
 
 // Test 1: Should pass
 console.log('=== Test 1: Valid scale ===')
