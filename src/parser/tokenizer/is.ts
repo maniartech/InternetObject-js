@@ -134,3 +134,41 @@ export const getSymbolTokenType = (char: string): string => {
       default: return TokenType.UNKNOWN;
   }
 }
+
+/**
+ * Check if the given character is a terminator at the character level.
+ * Used during tokenization to identify structural boundaries.
+ * @param {string} char - The character to check.
+ * @returns {boolean} True if the character is a terminator.
+ */
+export const isCharTerminator = (char: string): boolean => {
+  return char === Symbols.CURLY_OPEN ||
+         char === Symbols.CURLY_CLOSE ||
+         char === Symbols.BRACKET_OPEN ||
+         char === Symbols.BRACKET_CLOSE ||
+         char === Symbols.COLON ||
+         char === Symbols.COMMA ||
+         char === Symbols.TILDE ||
+         char === Symbols.DOUBLE_QUOTE ||
+         char === Symbols.SINGLE_QUOTE ||
+         char === Symbols.HASH;  // # starts a comment
+}
+
+/**
+ * Check if the given token type is a terminator (structural boundary character).
+ * Terminators are used for error recovery, parsing boundaries, and token validation.
+ * Note: String quotes (", ') are terminators at the character level (see isCharTerminator)
+ * but not at the token level since they're consumed into STRING tokens.
+ * @param {string} tokenType - The token type to check.
+ * @returns {boolean} True if the token type is a terminator.
+ */
+export const isTerminator = (tokenType: string): boolean => {
+  return tokenType === TokenType.COLLECTION_START ||  // ~ - collection item boundary
+         tokenType === TokenType.SECTION_SEP ||        // --- - section boundary
+         tokenType === TokenType.COMMA ||              // , - element delimiter
+         tokenType === TokenType.COLON ||              // : - key-value separator
+         tokenType === TokenType.BRACKET_OPEN ||       // [ - array start
+         tokenType === TokenType.BRACKET_CLOSE ||      // ] - array end
+         tokenType === TokenType.CURLY_OPEN ||         // { - object start
+         tokenType === TokenType.CURLY_CLOSE;          // } - object end
+}

@@ -139,8 +139,8 @@ function parseDefs(doc: Document, cols: CollectionNode): void {
   for (let i = 0; i < cols.children.length; i++) {
     const child = cols.children[i];
 
-    // If child is null then skip
-    if (child === null) {
+    // If child is null or undefined then skip
+    if (!child) {
       continue;
     }
 
@@ -151,21 +151,24 @@ function parseDefs(doc: Document, cols: CollectionNode): void {
     }
 
     // Must be an object node
-    if (child instanceof ObjectNode === false) {
+    if (!(child instanceof ObjectNode)) {
       assertNever("Invalid definition, must be object");
     }
 
+    // Type assertion after instance check - TypeScript now knows child is ObjectNode
+    const objectNode = child as ObjectNode;
+
     // Must not be null
-    if (child.children[0] === null) {
+    if (objectNode.children[0] === null) {
       assertNever("Invalid definition");
     }
 
     // Must have only one child
-    if (child.children.length !== 1) {
-      // throw new InternetObjectError(ErrorCodes.invalidDefinition, child.children?.[1], child.children?[1])
+    if (objectNode.children.length !== 1) {
+      // throw new InternetObjectError(ErrorCodes.invalidDefinition, objectNode.children?.[1], objectNode.children?[1])
     }
 
-    const memberNode = (child.children[0] as MemberNode)
+    const memberNode = (objectNode.children[0] as MemberNode)
 
     // Must have a key
     if (!memberNode.key) {
@@ -198,7 +201,7 @@ function parseDefs(doc: Document, cols: CollectionNode): void {
       continue;
     }
 
-    let value: Node = (child.children[0] as MemberNode).value;
+    let value: Node = (objectNode.children[0] as MemberNode).value;
     defs.push(key, value.toValue(doc.header.definitions || undefined));
   }
 

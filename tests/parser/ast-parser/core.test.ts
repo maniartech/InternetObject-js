@@ -249,7 +249,13 @@ describe("AST Parser - Core Functionality", () => {
       const tokens = tokenizer.tokenize();
       const astParser = new ASTParser(tokens);
 
-      expect(() => astParser.parse()).toThrow();
+      // Parser does error recovery for duplicate sections (auto-renames to users_2)
+      // So it doesn't throw, but collects an error
+      const docNode = astParser.parse();
+      const errors = docNode.getErrors();
+
+      expect(errors.length).toBeGreaterThan(0);
+      expect(errors.some((e: Error) => e.message.includes('Duplicate section name'))).toBe(true);
     });
   });
 

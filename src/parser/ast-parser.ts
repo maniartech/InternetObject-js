@@ -5,6 +5,7 @@ import { tokenSpanRange } from '../errors/error-range-utils';
 import Symbols          from './tokenizer/symbols';
 import TokenType        from './tokenizer/token-types';
 import Token            from './tokenizer/tokens';
+import { isTerminator } from './tokenizer/is';
 import ArrayNode        from './nodes/array';
 import CollectionNode   from './nodes/collections';
 import DocumentNode     from './nodes/document';
@@ -309,6 +310,28 @@ class ASTParser {
     }
   }
 
+  /**
+   * Skips tokens to the next synchronization point after an error.
+   * Synchronization points are terminator tokens (structural boundaries).
+   * This enables error recovery by finding a safe place to resume parsing.
+   */
+  private skipToNextSyncPoint(): void {
+    while (this.peek()) {
+      const token = this.peek();
+      if (!token) break;
+
+      // Check if we've reached a terminator token (structural boundary at token level)
+      // Note: We check token.type (e.g., "COMMA", "COLON") not raw characters
+      // because we're in the parser working with tokens, not the tokenizer working with chars.
+      // Use isTerminator() for token types, not isCharTerminator() for characters.
+      if (isTerminator(token.type)) {
+        break; // Found a synchronization point, stop here
+      }
+
+      this.advance();
+    }
+  }
+
   private processObject(isCollectionContext: boolean): ObjectNode {
     const obj = this.parseObject(true);
 
@@ -551,6 +574,20 @@ class ASTParser {
         return this.parseArray();
       case TokenType.CURLY_OPEN:
         return this.parseObject(false);
+      case TokenType.ERROR: {
+        // Handle error tokens from tokenizer (e.g., unterminated strings)
+        // The current node becomes invalid, so we create an ErrorNode and skip to next sync point
+        const errorValue = token.value as { __error: true; message: string; originalError: Error };
+        const errorNode = new ErrorNode(errorValue.originalError, token);
+        this.errors.push(errorValue.originalError); // Add to error collection
+        this.advance(); // Move past the error token
+
+        // Skip to next synchronization boundary (collection/section delimiter or comma)
+        // This helps recover from the error and continue parsing the next valid item
+        this.skipToNextSyncPoint();
+
+        return errorNode;
+      }
       default:
         throw new SyntaxError(
           ErrorCodes.unexpectedToken,

@@ -31,6 +31,7 @@ describe('ErrorNode', () => {
 
       expect(result).toEqual({
         __error: true,
+        category: 'runtime',
         message: "Test error message",
         name: "Error",
         position: mockPosition
@@ -43,6 +44,7 @@ describe('ErrorNode', () => {
 
       expect(result).toEqual({
         __error: true,
+        category: 'runtime',
         message: "Test error message",
         name: "Error",
         position: mockPosition,
@@ -57,6 +59,7 @@ describe('ErrorNode', () => {
 
       expect(result).toEqual({
         __error: true,
+        category: 'syntax',
         message: "Custom syntax error",
         name: "SyntaxError",
         position: mockPosition
