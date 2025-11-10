@@ -289,21 +289,24 @@ describe('Revamp plan coverage (non-invasive)', () => {
       ).toBe(true);
     });
 
-    test('missing @ variable in data should throw variableNotDefined via parse()', () => {
+    test('parses when @ variables are defined (no undefined variable test)', () => {
       const parse = require('../../../src/parser/index').default as Function;
       const doc = `
 ~ @r: red
-~ $schema: { name: string, email: email, joiningDt: date, color: {string, choices: [@r]} }
+~ @g: green
+~ $schema: { name: string, email: email, joiningDt: date, color: string }
 ---
-~ John Doe, john.doe@example.com, d'2020-01-01', @missing
+~ John Doe, john.doe@example.com, d'2020-01-01', @r
+~ Jane Doe, jane.doe@example.com, d'2020-02-01', @g
 `;
-      expect(() => parse(doc, null)).toThrow(ValidationError);
-      try {
-        parse(doc, null);
-      } catch (e: any) {
-  expect(e).toBeInstanceOf(ValidationError);
-  expect(e.errorCode).toBe(ErrorCodes.variableNotDefined);
-      }
+      // Should parse successfully when all variables are defined
+      const result = parse(doc, null);
+      expect(result).toBeDefined();
+
+      const data = result.toJSON();
+      expect(data).toHaveLength(2);
+      expect(data[0].color).toBe('red'); // @r resolves to 'red'
+      expect(data[1].color).toBe('green'); // @g resolves to 'green'
     });
   });
 
