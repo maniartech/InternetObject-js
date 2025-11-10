@@ -258,6 +258,19 @@ class ASTParser {
       // Remember the position before parsing the item (for fallback)
       const itemStartPos = this.current;
 
+      // Check if the first token of this collection item is an ERROR token
+      // If so, treat the entire item as an ErrorNode
+      const firstToken = this.peek();
+      if (firstToken && firstToken.type === TokenType.ERROR) {
+        const errorValue = firstToken.value as { __error: true; message: string; originalError: Error };
+        const errorNode = new ErrorNode(errorValue.originalError, firstToken);
+        this.errors.push(errorValue.originalError);
+        objects.push(errorNode);
+        this.advance(); // Consume the error token
+        this.skipToNextCollectionItem();
+        continue;
+      }
+
       try {
         // Parse the object and add to the collection
         objects.push(this.processObject(true));

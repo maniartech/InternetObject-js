@@ -2,6 +2,7 @@ import ASTParser        from "../../src/parser/ast-parser";
 import CollectionNode   from "../../src/parser/nodes/collections";
 import DocumentNode     from "../../src/parser/nodes/document";
 import ErrorNode        from "../../src/parser/nodes/error";
+import MemberNode       from "../../src/parser/nodes/members";
 import ObjectNode       from "../../src/parser/nodes/objects";
 import SectionNode      from "../../src/parser/nodes/section";
 import Tokenizer        from "../../src/parser/tokenizer";
@@ -227,6 +228,8 @@ describe("Collection Error Recovery", () => {
     expect(collection.children[0] instanceof ObjectNode).toBe(true);
     expect(collection.children[1] instanceof ErrorNode).toBe(true);
     expect(collection.children[2] instanceof ErrorNode).toBe(true);
+
+    // Unclosed string at EOF: parser detects ERROR token and creates ErrorNode at collection level
     expect(collection.children[3] instanceof ErrorNode).toBe(true);
   });
 
