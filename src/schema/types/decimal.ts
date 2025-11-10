@@ -41,12 +41,20 @@ class DecimalDef implements TypeDef {
     let { value, changed } = doCommonTypeCheck(memberDef, valueNode, node, defs)
     if (changed) return value
 
+    // Type check: reject regular numbers, only accept Decimal instances
+    if (typeof value === 'number') {
+      throwError(
+        ErrorCodes.invalidType,
+        memberDef.path!,
+        `Expected decimal value (with 'm' suffix), got number`,
+        node
+      )
+    }
+
     value = this.validate(memberDef, value, node)
 
     return value
-  }
-
-  stringify(value: any, memberDef: MemberDef): string {
+  }  stringify(value: any, memberDef: MemberDef): string {
     return value.toString()
   }
 

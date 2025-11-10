@@ -26,11 +26,27 @@ export const NUMBER_MAP = NUMBER_TYPES.reduce((acc, type) => {
  * Helper function for throwing validation errors
  */
 export function throwError(code: string, memberPath: string, value: any, node?: Node) {
-  throw new ValidationError(
-    code,
-    `The '${memberPath}' must be within the specified range, Currently it is ${value}.`,
-    node
-  )
+  // Generate appropriate error message based on error code
+  let message: string;
+
+  switch (code) {
+    case ErrorCodes.invalidType:
+      message = `The '${memberPath}' has an invalid type. ${value}`;
+      break;
+    case ErrorCodes.invalidRange:
+      message = `The '${memberPath}' must be within the specified range, Currently it is ${value}.`;
+      break;
+    case ErrorCodes.invalidScale:
+      message = `The '${memberPath}' has an invalid scale. ${value}`;
+      break;
+    case ErrorCodes.invalidPrecision:
+      message = `The '${memberPath}' has an invalid precision. ${value}`;
+      break;
+    default:
+      message = `The '${memberPath}' validation failed. ${value}`;
+  }
+
+  throw new ValidationError(code, message, node);
 }
 
 /**

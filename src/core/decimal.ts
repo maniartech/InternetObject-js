@@ -116,8 +116,21 @@ class Decimal {
 
                 const integerPart = match[1];
                 const fractionalPart = match[2] || '';
-                precision = integerPart.length + fractionalPart.length;
+
+                // Calculate precision using significant digits rules:
+                // Leading zeros in the integer part are not counted as significant
+                // For values like "0.12345", only count the fractional part (5 digits)
+                // For values like "123.45", count all digits (5 digits)
+                const trimmedInteger = integerPart.replace(/^0+/, ''); // Remove leading zeros
+                const significantIntegerDigits = trimmedInteger.length || 0;
+
+                precision = significantIntegerDigits + fractionalPart.length;
                 scale = fractionalPart.length;
+
+                // Ensure precision is at least 1 (even for value "0")
+                if (precision === 0) {
+                    precision = 1;
+                }
             }
             return [precision, scale];
         }

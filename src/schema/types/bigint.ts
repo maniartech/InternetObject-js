@@ -33,6 +33,7 @@ class BigIntDef implements TypeDef {
 
   parse(node: Node, memberDef: MemberDef, defs?: Definitions): bigint {
     const valueNode = defs?.getV(node) || node
+    const rawValue = typeof (valueNode as any)?.toValue === 'function' ? (valueNode as any).toValue(defs) : valueNode
     let { value, changed } = doCommonTypeCheck(memberDef, valueNode, node, defs)
     if (changed) return value
 

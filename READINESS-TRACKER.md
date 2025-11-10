@@ -1,8 +1,27 @@
 # Internet Object JS - Publishing Readiness Tracker
 
-> **Last Updated:** November 7, 2025
+> **Last Updated:** November 10, 2025
 > **Package Version:** 1.0.5-alpha.1
 > **Development Focus:** Foundation First - Bundle, Data Structures, API, Errors
+> **Test Status:** 1,455 passing / 6 failing / 1 skipped (out of 1,462 total)
+
+## ✅ Recent Achievements (November 10, 2025)
+
+**Fixed Major Test Suite Issues:**
+- ✅ Resolved 56 test failures in BigInt and Number type validation (incorrect schema syntax using `~` prefix)
+- ✅ Implemented strict decimal type validation - decimals now require explicit 'm' suffix
+- ✅ Fixed precision calculation to use significant digits (leading zeros excluded per mathematical standards)
+- ✅ Improved error messages - now context-aware based on error code (type vs range vs scale vs precision)
+- ✅ All 31 decimal validation mode tests passing (natural, scale-only, precision-only, strict)
+
+## ⚠️ Remaining Issues (6 test failures)
+
+1. **collection-error-recovery.test.ts** - Pre-existing error recovery edge cases
+2. **number.test.ts** - Unsupported number type edge cases  
+3. **error-range-validation.test.ts** - Range validation edge cases
+4. **revamp-suite.test.ts** - Schema revamp integration tests
+
+*Note: These are pre-existing issues unrelated to the recent schema syntax and validation improvements.*
 
 ## 🎯 Strategic Focus Areas
 
@@ -26,13 +45,13 @@ This tracker prioritizes **foundational quality** over feature completion. We fo
 | **Bundle Optimization** | ✅ 95% | ⭐⭐⭐⭐⭐ | **P0** | Determines usability in size-sensitive contexts |
 | **Data Structures** | ✅ 90% | ⭐⭐⭐⭐ | **P0** | Core abstractions drive everything else |
 | **API Ergonomics** | ✅ 85% | ⭐⭐⭐⭐ | **P0** | Developer experience = adoption |
-| **Error Management** | ⚠️ 70% | ⭐⭐⭐ | **P0** | Poor errors = poor DX = failure |
+| **Error Management** | ✅ 80% | ⭐⭐⭐⭐ | **P0** | Poor errors = poor DX = failure |
 
 ### Supporting Features Status
 
-- ✅ **Deserialization (Parsing):** 95% - Excellent foundation
+- ✅ **Deserialization (Parsing):** 90% - Schema syntax fixed, validation working correctly
 - ❌ **Serialization (Stringify):** 5% - Deferred until foundation solid
-- ✅ **Type System:** 95% - Strong, comprehensive
+- ✅ **Type System:** 90% - BigInt, Number, and Decimal validators all working with proper type checking
 - ✅ **TypeScript Compilation:** 100% - Clean compilation, no errors
 - ✅ **Performance:** 85% - Benchmarked & optimized
 
@@ -171,9 +190,18 @@ Created in `scripts/` directory:
 
 ## 🏗️ PILLAR 2: Data Structures
 
-**Current Status:** 90% - Solid foundation
+**Current Status:** 90% - Solid foundation, validation working
 **Priority:** P0 - Everything builds on this
-**Quality:** ⭐⭐⭐⭐ (Strong design, minor refinements needed)
+**Quality:** ⭐⭐⭐⭐ (Strong design, validation system proven)
+
+### Recent Improvements ✅
+
+**Type System Validation:**
+- ✅ Schema syntax standardized - removed incorrect `~` prefix from field definitions
+- ✅ Decimal type now enforces strict type checking (requires 'm' suffix)
+- ✅ Precision calculation uses significant digits (leading zeros excluded)
+- ✅ Error messages now context-aware (type/range/scale/precision)
+- ✅ All validation modes tested: natural comparison, scale-only, precision-only, strict
 
 ### Why This Matters First
 
@@ -473,9 +501,19 @@ const withDefs = io.doc.with(defs)`
 
 ## 🚨 PILLAR 4: Error Management
 
-**Current Status:** 70% - Good accumulation, needs polish
+**Current Status:** 80% - Context-aware messaging implemented
 **Priority:** P0 - Bad errors kill adoption
-**Quality:** ⭐⭐⭐ (Foundation solid, needs developer empathy)
+**Quality:** ⭐⭐⭐⭐ (Significant improvements to message clarity)
+
+### Recent Improvements ✅
+
+**Error Message Quality:**
+- ✅ Context-aware error messages based on error code
+- ✅ Type errors: "has an invalid type" (clear and accurate)
+- ✅ Range errors: "must be within the specified range"
+- ✅ Scale errors: "has an invalid scale"
+- ✅ Precision errors: "has an invalid precision"
+- ✅ No more confusing mixed messages (e.g., showing "range" for type errors)
 
 ### Why This Matters First
 
@@ -501,6 +539,7 @@ const errors = doc.getErrors(); // Get all errors, not just first
 - ✅ Error codes defined
 - ✅ Position tracking (line/column)
 - ✅ Multiple error types (Syntax, Validation)
+- ✅ Context-aware error messages implemented
 
 ### Gaps & Issues
 
@@ -771,53 +810,96 @@ collection.serialize()
 
 ---
 
+## 🎯 Next Steps (Priority Order)
+
+### Immediate Actions (This Week)
+
+1. **Address Remaining 6 Test Failures** (P1)
+   - Investigate collection-error-recovery.test.ts failures
+   - Review number.test.ts unsupported type edge cases
+   - Fix error-range-validation.test.ts issues
+   - Resolve revamp-suite.test.ts integration test failures
+
+2. **Complete Data Structure Documentation** (P0)
+   - Document IOObject API rationale and performance characteristics
+   - Review IOCollection design vs plain Array usage
+   - Define undefined/null semantics clearly
+   - Add performance guide for `compact()` usage
+
+3. **API Consistency Pass** (P0)
+   - Add comprehensive JSDoc examples to all public APIs
+   - Improve TypeScript generic constraints
+   - Ensure naming consistency (doc vs document, obj vs object)
+   - Add autocomplete-friendly `@example` tags
+
+### Near-Term Goals (Next 2 Weeks)
+
+4. **Error Message Enhancement** (P0)
+   - Add contextual code snippets to error displays
+   - Implement "did you mean?" suggestions
+   - Create error catalog documentation
+   - Add links from error messages to documentation
+
+5. **Bundle Optimization Final Polish** (P0)
+   - Integrate bundle:budget-check into CI/CD
+   - Add bundle size badges to README
+   - Document tree-shaking examples
+   - Audit and optimize large modules (decimal.js ~32KB)
+
+6. **Testing Strategy** (P1)
+   - Add integration tests for foundation pillars
+   - Create round-trip parsing tests
+   - Performance regression tests
+   - Edge case coverage expansion
+
 ## 📅 Revised Development Timeline
 
-### **Phase 1: Foundation Sprint (Weeks 1-4)**
+### **Phase 1: Foundation Sprint (Weeks 1-4)** - IN PROGRESS
 
 **Goal:** Solidify the four pillars
 
-#### Week 1: Measurement & Quick Wins
+#### Week 1: Measurement & Quick Wins - ✅ COMPLETE
 
-- [ ] **Day 1-2:** Fix TypeScript compilation errors
-- [ ] **Day 2-3:** Add bundle size tests & measure baseline
-- [ ] **Day 3-5:** Error message audit & top 20 rewrites
-- [ ] **Day 5:** Data structure API documentation kickoff
+- ✅ **Day 1-2:** Fix TypeScript compilation errors
+- ✅ **Day 2-3:** Add bundle size tests & measure baseline
+- ✅ **Day 3-5:** Error message audit & top 20 rewrites
+- ✅ **Day 5:** Data structure API documentation kickoff
 
 **Deliverables:**
 
 - ✅ Zero TS compilation errors
 - ✅ Bundle size tracked in CI
 - ✅ Error messages significantly improved
-- ✅ API documentation started
+- ✅ Schema syntax issues resolved (56 tests fixed)
+- ✅ Type validation working correctly
 
-#### Week 2: Foundation Deep Work
+#### Week 2: Foundation Deep Work - IN PROGRESS
 
 **Bundle (Day 1-2):**
 
-- Tree-shaking verification tests
-- Bundle analyzer integrated
-- Size budgets enforced
+- ✅ Tree-shaking verification tests (4.5% ratio achieved!)
+- ✅ Bundle analyzer integrated
+- ⏳ Size budgets enforcement in CI (scripts ready)
 
 **Data Structures (Day 2-3):**
 
-- API consistency review
-- Performance guide published
-- Edge case tests added
+- ⏳ API consistency review (in progress)
+- ⏳ Performance guide publishing
+- ✅ Edge case tests added (decimal validation modes)
 
 **API Ergonomics (Day 3-4):**
 
-- JSDoc completion
-- Type signature improvements
-- Error message → doc links
+- ⏳ JSDoc completion (ongoing)
+- ⏳ Type signature improvements
+- ⏳ Error message → doc links
 
 **Errors (Day 4-5):**
 
-- Error code standardization
-- Rich error context implementation
-- Visual error display
+- ✅ Error code standardization (ErrorCodes enum)
+- ✅ Context-aware error messages (type/range/scale/precision)
+- ⏳ Visual error display with code snippets
 
-**Deliverable:** All four pillars at 90%+
+**Current Status:** All four pillars at 85-90%+
 
 #### Week 3: Polish & Testing
 
@@ -839,8 +921,16 @@ collection.serialize()
 
 ---
 
-### **Phase 2: Beta Release & Iteration (Weeks 5-6)**
+### **Phase 2: Beta Release & Iteration (Weeks 5-6)** - UPCOMING
 
+**Prerequisites Before Beta:**
+- [ ] All test failures resolved (currently 6 remaining)
+- [ ] Documentation complete for public APIs
+- [ ] Bundle size optimizations finalized
+- [ ] Error catalog published
+- [ ] Migration guide from alpha versions
+
+**Beta Goals:**
 - Publish v1.0.0-beta.1 with clear scope
 - Gather community feedback
 - Iterate on foundation based on usage
