@@ -17,7 +17,7 @@
 ## ⚠️ Remaining Issues (6 test failures)
 
 1. **collection-error-recovery.test.ts** - Pre-existing error recovery edge cases
-2. **number.test.ts** - Unsupported number type edge cases  
+2. **number.test.ts** - Unsupported number type edge cases
 3. **error-range-validation.test.ts** - Range validation edge cases
 4. **revamp-suite.test.ts** - Schema revamp integration tests
 

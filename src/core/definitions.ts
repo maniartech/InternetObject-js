@@ -84,7 +84,8 @@ class IODefinitions {
   public getV(k: any): any {
     let key: string = "";
 
-    if ((k || {}).type === TokenType.STRING) {
+    // Check if k is a TokenNode (can have lowercase 'string' or uppercase 'STRING' type)
+    if ((k || {}).type === TokenType.STRING || (k || {}).type === 'string') {
       key = k.value;
     } else if (typeof k === 'string') {
       key = k;

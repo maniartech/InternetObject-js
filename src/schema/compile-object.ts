@@ -392,7 +392,7 @@ export function getMemberDef(memberDef:MemberNode, path:string, defs?:Definition
 
     if (TypedefRegistry.isRegisteredType(type) === false) {
       throw new SyntaxError(ErrorCodes.invalidType,
-        `The specified value '${type}' is not a valid type.`, node);
+        `The type '${type}' is not supported.`, node);
     }
 
     return {
