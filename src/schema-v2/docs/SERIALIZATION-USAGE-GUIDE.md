@@ -3,6 +3,13 @@
 > **Comprehensive guide for converting between IO strings, JavaScript objects, and streaming data**
 > **Status:** Design Phase
 > **Created:** November 10, 2025
+>
+> **Related Documents:**
+> - [SERIALIZATION-ARCHITECTURE.md](./SERIALIZATION-ARCHITECTURE.md) - Low-level implementation details and class hierarchies
+> - [SCHEMA-REVAMP-PROPOSAL.md](./SCHEMA-REVAMP-PROPOSAL.md) - Schema system architecture and TypeSchema design
+>
+> **Document Purpose:**
+> This guide provides **high-level usage patterns**, **real-world examples**, and **API documentation** for serialization and deserialization. For **implementation architecture**, see SERIALIZATION-ARCHITECTURE.md.
 
 ---
 
@@ -313,8 +320,7 @@ const ioString = doc.toIO();  // More explicit
 const ioString = doc.toIO({
   validate: true,  // Re-validates during serialization
   pretty: true,
-  includeSchema: true,
-  includeDefinitions: true  // Include all definitions
+  includeDefinitions: true  // Include all definitions (schemas, vars, metadata)
 });
 ```**Serialization (Option B - Direct Stringify):**
 ```typescript
@@ -329,7 +335,7 @@ const ioString = io.stringify(person, {
   schema: mySchema,
   pretty: true,
   indent: 2,
-  includeSchema: true  // Include schema in output
+  includeDefinitions: true  // Include schema and metadata in output
 });
 ```
 
@@ -629,18 +635,17 @@ doc.definitions
 **Scenario:** Multi-section document with different data types
 
 ```typescript
-// Create document with multiple sections
-const doc = new IODocument();
+// Create document with multiple sections and definitions
+const doc = new IODocument(new IODefinitions()
+  .addSchema('$person', personSchema)
+  .addSchema('$product', productSchema)
+  .addSchema('$order', orderSchema)
+);
 
-// Define schemas
-doc.addDefinition('$person', personSchema);
-doc.addDefinition('$product', productSchema);
-doc.addDefinition('$order', orderSchema);
-
-// Create sections
-doc.createSection('people', { schema: personSchema });
-doc.createSection('products', { schema: productSchema });
-doc.createSection('orders', { schema: orderSchema });
+// Create sections (schemas are referenced by name from definitions)
+doc.createSection('people', '$person');
+doc.createSection('products', '$product');
+doc.createSection('orders', '$order');
 
 // Load data into specific sections
 doc.sections['people'].load(peopleArray);
@@ -766,7 +771,8 @@ doc.loadSection('comments', commentsArray); // Uses $comment schema
 1. CREATE NEW DOCUMENT
    ┌──────────────┐
    │ IODocument   │
-   │ .load(data)  │◄─── data + optional { schema, metadata }
+   │ .load(data)  │◄─── data + optional schema
+   │ .loadWithDefs│◄─── data + IODefinitions
    └──────────────┘
 
 2. LOAD INTO EXISTING DOCUMENT
@@ -1005,7 +1011,7 @@ const doc = IODocument.load(employees, {
 
 // Export to IO file
 const ioString = doc.toIO({
-  includeSchema: true,  // Include schema for self-describing data
+  includeDefinitions: true,  // Include schema for self-describing data
   pretty: true
 });
 
@@ -1216,7 +1222,7 @@ import { IOStreamSerializer } from 'internet-object';
 // Create stream serializer
 const serializer = new IOStreamSerializer({
   schema: employeeSchema,
-  includeSchema: true,
+  includeDefinitions: true,
   bufferSize: 1000  // Buffer 1000 records before writing
 });
 
@@ -1406,8 +1412,8 @@ new IOStreamParser({ schema, chunkSize })        // Stream large files
 ```typescript
 // Load from objects (create new document)
 IODocument.load(data);                           // Load object/array
-IODocument.load(data, { schema });               // With schema validation
-IODocument.load(data, { metadata, schema });     // With metadata & validation
+IODocument.load(data, schema);                   // With schema validation
+IODocument.loadWithDefs(data, definitions);      // With full definitions (vars, schemas, metadata)
 
 // Load into existing document
 doc.load(data);                                  // Append to main section

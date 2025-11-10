@@ -3,6 +3,13 @@
 > **Date:** November 10, 2025
 > **Status:** Proposal Phase
 > **Context:** After successfully revamping `core`, `parser`, and `errors` packages, schema system is next
+>
+> **Related Documents:**
+> - [SERIALIZATION-ARCHITECTURE.md](./SERIALIZATION-ARCHITECTURE.md) - Low-level serialization implementation
+> - [SERIALIZATION-USAGE-GUIDE.md](./SERIALIZATION-USAGE-GUIDE.md) - High-level serialization usage patterns
+>
+> **Document Purpose:**
+> This document proposes the **V2 schema system architecture**, including TypeSchema design, compilation strategy, validation patterns, and migration from V1. It focuses on the type system and validation layer that underlies both parsing and serialization.
 
 ---
 

@@ -3,6 +3,13 @@
 > **Status:** Design Phase
 > **Created:** November 10, 2025
 > **Foundation Status:** ✅ All tests passing (1,461/1,462), ready for serialization
+>
+> **Related Documents:**
+> - [SERIALIZATION-USAGE-GUIDE.md](./SERIALIZATION-USAGE-GUIDE.md) - High-level usage patterns and real-world examples
+> - [SCHEMA-REVAMP-PROPOSAL.md](./SCHEMA-REVAMP-PROPOSAL.md) - Schema system architecture and TypeSchema design
+>
+> **Document Purpose:**
+> This document describes the **low-level implementation architecture** for serialization, including class hierarchies, serialization flow, type formatters, and implementation phases. For **usage patterns** and **API examples**, see SERIALIZATION-USAGE-GUIDE.md.
 
 ## 🎯 Design Philosophy
 
@@ -33,7 +40,15 @@ const doc = io.doc`
 
 // Load from plain objects (NEW - symmetrical with io.doc)
 const doc = IODocument.load(data);  // From plain object/array
+const doc = IODocument.load(data, schema);  // With schema validation
 const doc = io.doc.load(data);      // Alternative facade API
+
+// Load with definitions (variables, schemas, metadata)
+const doc = IODocument.loadWithDefs(data, new IODefinitions()
+  .addVar('@varName', value)
+  .addSchema('$schemaName', schema)
+  .addMeta('metaKey', metaValue)
+);
 
 // Serialization API (symmetrical)
 const ioString = io.stringify(doc);
@@ -48,7 +63,7 @@ const ioString = io.stringify(doc, schema);
 // Alternative: Method on document
 const ioString = doc.toString();
 const ioString = doc.toIO(); // More explicit
-const ioString = doc.toIO({ schema }); // With validation
+const ioString = doc.toIO({ validate: true, pretty: true }); // With options
 ```
 
 **Pros:**
@@ -75,16 +90,22 @@ const doc = io.doc.load(data);      // From plain object/array
 const obj = io.object.load(data);   // From plain object
 const defs = io.defs.load(schema);  // From schema object
 
+// Load with definitions
+const doc = io.doc.loadWithDefs(data, new IODefinitions()
+  .addSchema('$user', userSchema)
+  .addMeta('created', new Date())
+);
+
 // Serialization (mirror structure)
 const ioString = io.doc.stringify(data);
 const objString = io.object.stringify(data);
 const defsString = io.defs.stringify(schema);
 
-// With schema validation
+// With options
 const ioString = io.doc.stringify(data, {
-  schema: defs,  // Validates against schema during serialization
   pretty: true,
-  indent: 2
+  indent: 2,
+  includeDefinitions: true
 });
 ```
 
@@ -141,6 +162,13 @@ const str2 = serializer.serialize(data2);
 io.stringify(doc);
 doc.toString();
 
+// Load with definitions
+const doc = IODocument.loadWithDefs(data, new IODefinitions()
+  .addSchema('$type', schema)
+  .addVar('@var', value)
+  .addMeta('key', value)
+);
+
 // Namespace for tree-shaking
 io.doc.stringify(data);
 io.object.stringify(obj);
@@ -154,7 +182,7 @@ io.serializer()
 
 // Instance methods for convenience
 doc.toIO();
-doc.toIO({ pretty: true });
+doc.toIO({ pretty: true, includeDefinitions: true });
 collection.toIO();
 ```
 
@@ -284,23 +312,27 @@ class IOSection {
 // Serialization options
 interface SerializationOptions {
   // Output formatting
-  pretty?: boolean;
-  indent?: number;
-  lineWidth?: number;
+  pretty?: boolean;        // Pretty print with indentation
+  indent?: number;         // Spaces per indent level (default: 2)
+  lineWidth?: number;      // Max line width for wrapping
+  compact?: boolean;       // Minimize whitespace
 
-  // Schema handling
-  schema?: Definitions;
+  // Schema & definitions handling
+  schema?: Schema;         // Validate against schema during serialization
   validate?: boolean;      // Validate before serializing
   strict?: boolean;        // Fail on schema violations
+  includeDefinitions?: boolean; // Include definitions (schemas, vars, metadata) in output
 
   // Field control
   includeTypes?: boolean;  // Include type annotations
   excludeFields?: string[];
   includeFields?: string[];
+  includeComments?: boolean; // Preserve comments from parsed doc
 
   // Custom behavior
   formatters?: FormatterMap;
   encoding?: 'utf8' | 'ascii';
+  preserveWhitespace?: boolean; // Keep original whitespace
 
   // Error handling
   onError?: (error: SerializationError) => void;
@@ -321,6 +353,53 @@ interface SerializationResult {
     objects: number;
     size: number;
   };
+}
+
+// IODefinitions - Builder for document definitions
+class IODefinitions {
+  private variables: Map<string, any> = new Map();
+  private schemas: Map<string, Schema> = new Map();
+  private metadata: Map<string, any> = new Map();
+
+  // Add variable (@varName)
+  addVar(name: string, value: any): this {
+    this.variables.set(name, value);
+    return this;
+  }
+
+  // Add schema definition ($schemaName)
+  addSchema(name: string, schema: Schema): this {
+    this.schemas.set(name, schema);
+    return this;
+  }
+
+  // Add metadata (~metaKey)
+  addMeta(key: string, value: any): this {
+    this.metadata.set(key, value);
+    return this;
+  }
+
+  // Query methods
+  hasSchemas(): boolean {
+    return this.schemas.size > 0;
+  }
+
+  getDefaultSchema(): Schema | undefined {
+    // Return first schema or schema named '$default'
+    return this.schemas.get('$default') || this.schemas.values().next().value;
+  }
+
+  getSchema(name: string): Schema | undefined {
+    return this.schemas.get(name);
+  }
+
+  getVariable(name: string): any {
+    return this.variables.get(name);
+  }
+
+  getMeta(key: string): any {
+    return this.metadata.get(key);
+  }
 }
 
 // Error handling
@@ -432,15 +511,33 @@ interface Serializable {
 // Existing classes implement Serializable
 class IODocument implements Serializable {
   // Load from plain objects (symmetrical with io.doc`...`)
-  static load(data: any, schema?: Definitions): IODocument {
-    // 1. Validate against schema if provided
+  static load(data: any, schema?: Schema): IODocument {
+    // Simple load - data only or with schema
     if (schema) {
       validateData(data, schema);
     }
-
-    // 2. Convert plain data to IODocument structure
-    // This mirrors io.doc but for plain objects
     return new IODocument(/* converted data */);
+  }
+
+  // Load with definitions (variables, schemas, metadata)
+  static loadWithDefs(data: any, definitions: IODefinitions): IODocument {
+    // 1. Create document with definitions
+    const doc = new IODocument(definitions);
+
+    // 2. Validate against schemas in definitions (if any)
+    if (definitions.hasSchemas()) {
+      validateData(data, definitions.getDefaultSchema());
+    }
+
+    // 3. Load data
+    doc.load(data);
+
+    return doc;
+  }
+
+  // Constructor can accept definitions
+  constructor(definitions?: IODefinitions) {
+    this.definitions = definitions || new IODefinitions();
   }
 
   toIO(options?: SerializationOptions): string {
@@ -831,10 +928,15 @@ DocumentSerializer.serialize(doc)
 
 **Implementation Order:** Bottom-up (build leaf nodes first, then compose upward)
 
-#### Day 1-2: Foundation & Type Formatters (Leaf Level)
+#### Day 1-2: Foundation & Core Classes
 - [ ] Create serializer module structure
+- [ ] **IODefinitions class** - Builder for document definitions
+  - [ ] addVar(name, value) - Add variables
+  - [ ] addSchema(name, schema) - Add schema definitions
+  - [ ] addMeta(key, value) - Add metadata
+  - [ ] Query methods (getSchema, getVariable, getMeta)
 - [ ] Implement BaseSerializer abstract class
-- [ ] Add SerializationOptions type
+- [ ] Add SerializationOptions type (with includeDefinitions)
 - [ ] Add SerializationError class
 - [ ] Set up basic tests
 
@@ -871,18 +973,35 @@ DocumentSerializer.serialize(doc)
   - [ ] Section separators (---)
   - [ ] Orchestrate entire document
 
-#### Day 5: Integration
+#### Day 5: Integration & Load API
+- [ ] **IODocument.load() family**
+  - [ ] IODocument.load(data) - Simple load
+  - [ ] IODocument.load(data, schema) - With schema validation
+  - [ ] IODocument.loadWithDefs(data, definitions) - With IODefinitions
 - [ ] Add methods to IODocument, IOCollection, IOObject
+  - [ ] doc.toIO() - Serialize document
+  - [ ] collection.toIO() - Serialize collection
+  - [ ] object.toIO() - Serialize object
 - [ ] Add io.stringify() facade
 - [ ] Add io.doc.stringify(), io.object.stringify()
 - [ ] Write integration tests
 
 **Success Criteria:**
 ```typescript
-// Must work
-const doc = io.doc`name, age\n---\nAlice, 30`;
-const output = io.stringify(doc);
-expect(output).toBe("name, age\n---\nAlice, 30");
+// Must work - Simple load
+const doc = IODocument.load({ name: 'Alice', age: 30 });
+const output = doc.toIO();
+expect(output).toContain("Alice, 30");
+
+// With definitions
+const doc2 = IODocument.loadWithDefs({ name: 'Bob', age: 25 },
+  new IODefinitions()
+    .addSchema('$person', personSchema)
+    .addMeta('created', new Date())
+);
+const output2 = doc2.toIO({ includeDefinitions: true });
+expect(output2).toContain("$person");
+expect(output2).toContain("created");
 
 // Round-trip
 const parsed = io.doc(output);
@@ -1073,6 +1192,15 @@ describe('Performance', () => {
 // IODocument.load() - Load from plain objects/arrays
 const doc = IODocument.load(data);           // Basic load
 const doc = IODocument.load(data, schema);   // With validation
+
+// IODocument.loadWithDefs() - Load with definitions
+const doc = IODocument.loadWithDefs(data, new IODefinitions()
+  .addVar('@varName', value)
+  .addSchema('$schemaName', schema)
+  .addMeta('metaKey', metaValue)
+);
+
+// Facade API
 const doc = io.doc.load(data, schema);       // Facade API
 
 // IOCollection.load() - Load from arrays
@@ -1089,8 +1217,9 @@ const obj = IOObject.load(objectData, schema);
 ```typescript
 // toIO() instance methods (all classes)
 doc.toIO();                     // Basic serialization
-doc.toIO({ schema });           // With validation
+doc.toIO({ validate: true });   // With validation
 doc.toIO({ pretty: true });     // Pretty print
+doc.toIO({ includeDefinitions: true }); // Include schemas, vars, metadata
 
 // Facade API
 io.stringify(doc);              // Simple
@@ -1256,15 +1385,6 @@ console.log(output);
 ```typescript
 // Complex data structure with multiple types
 const libraryData = {
-  // Schema definitions section
-  schemas: [
-    { name: '$library', def: { name: 'string', address: 'string' } },
-    { name: '$book', def: { title: 'string', author: 'string', isbn: 'number', available: 'bool' } },
-    { name: '$borrower', def: { userId: 'string', dueDate: 'date' } },
-    { name: '$user', def: { userId: 'string', name: 'string', membershipType: 'string' } }
-  ],
-
-  // Data sections
   library: {
     name: 'Bookville Library',
     address: '123 Library St, Bookville'
@@ -1281,9 +1401,27 @@ const libraryData = {
   ]
 };
 
-// Load and serialize to IO format
-const doc = IODocument.load(libraryData);
-const ioString = doc.toIO();
+// Define schemas using IODefinitions builder
+const librarySchema = io.defs`$library: {name: string, address: string}`;
+const bookSchema = io.defs`$book: {title: string, author: string, isbn: number, available: bool}`;
+const borrowerSchema = io.defs`$borrower: {userId: string, dueDate: date}`;
+const userSchema = io.defs`$user: {userId: string, name: string, membershipType: string}`;
+
+// Create document with definitions
+const doc = new IODocument(new IODefinitions()
+  .addSchema('$library', librarySchema)
+  .addSchema('$book', bookSchema)
+  .addSchema('$borrower', borrowerSchema)
+  .addSchema('$user', userSchema)
+);
+
+// Add sections with data
+doc.addSection('library', libraryData.library, '$library');
+doc.addSection('books', libraryData.books, '$book');
+doc.addSection('subscribers', libraryData.subscribers, '$user');
+
+// Serialize to IO format
+const ioString = doc.toIO({ includeDefinitions: true });
 
 console.log(ioString);
 // Output:
