@@ -43,7 +43,23 @@ This tracker prioritizes **foundational quality** over feature completion. We fo
 
 ---
 
-## 📊 Foundation Health Dashboard
+## �️ Engineering Standards & Alignment
+
+All development across this repository follows the same objectives and standard patterns to ensure quality and predictability. These guardrails are the single policy source that PRs are reviewed against.
+
+- **Guiding Source (Schema Revamp):** See `src/schema-v2/SCHEMA-REVAMP-TRACKER.md` → “Engineering Principles & Guardrails” and “Phase DoD”. Those rules apply project‑wide.
+- **Core Principles:** Do Not Overengineer, KISS, SRP, DRY, explicit configs, deterministic/pure functions where possible.
+- **Error Handling:** Standardized error codes, templated messages, precise locations, aggregate user errors; throw only on invariants.
+- **Performance Budgets:** Benchmarks tracked in CI; no >10% regression allowed without explicit waiver and follow‑up task.
+- **Testing Policy:** Unit + integration + regression + performance; coverage Lines ≥ 90%, Branches ≥ 85% for public modules.
+- **Code Quality:** Strict TypeScript, ESLint/Prettier clean, no new runtime deps without justification, JSDoc for all public APIs.
+- **Docs:** Runnable examples in JSDoc; migration and troubleshooting kept current.
+
+“Readiness” gates in this file assume those standards are met. If a gate passes but standards fail, mark the gate as FAIL and remediate first.
+
+---
+
+## �📊 Foundation Health Dashboard
 
 ### Quick Status
 
