@@ -194,24 +194,25 @@ validate(null) // ✗ NULL_NOT_ALLOWED
 ### IO Syntax Examples
 
 ```
-~ UserSchema
-# Simple boolean (required, non-null)
-active: bool
+~ $userSchema: {
+  # Simple boolean (required, non-null)
+  active: bool,
 
-# Optional boolean
-verified?: bool
-# OR
-verified: { bool, optional: true }
+  # Optional boolean
+  verified?: bool,
+  # OR
+  verified: { bool, optional: true },
 
-# Nullable boolean
-status*: bool
-# OR
-status: { bool, null: true }
+  # Nullable boolean
+  status*: bool,
+  # OR
+  status: { bool, null: true },
 
-# Optional and nullable with default
-agreed?*: { bool, default: false }
-
-~ UserData : UserSchema
+  # Optional and nullable with default
+  agreed?*: { bool, default: false }
+}
+---
+~ : userSchema
 active: T
 verified: ~
 status: N

@@ -58,6 +58,9 @@ All implementation MUST adhere to these non-negotiable standards. They act as au
 If any budget exceeded → mark task blocked, optimize before proceeding downstream.
 
 ### Error Handling Standards
+
+**MANDATORY:** Follow comprehensive guidelines in `docs/errors/ERROR-HANDLING-GUIDELINES.md`
+
 | Aspect | Rule |
 |--------|------|
 | Codes | Stable, namespaced (`SCHEMA_TYPE_INVALID`, `VALIDATION_RANGE_EXCEEDED`) |
@@ -66,6 +69,7 @@ If any budget exceeded → mark task blocked, optimize before proceeding downstr
 | Aggregation | All validation errors returned together; parsing continues where safe |
 | Throwing | Reserved for programmer errors (invariant violations), NEVER for user data issues |
 | Docs Link | Each public error exposes `docRef?: string` for future linking |
+| Quality | Every error must pass 8-point checklist (see ERROR-HANDLING-GUIDELINES.md) |
 
 ### Testing Policy
 | Layer | Mandatory Tests |
@@ -1487,6 +1491,9 @@ Schema V2 and Serialization work in parallel with clear interfaces:
 - **SCHEMA-REVAMP-PROPOSAL.md** - Architecture and type system design
 - **SERIALIZATION-ARCHITECTURE.md** - Serialization implementation details
 - **SERIALIZATION-USAGE-GUIDE.md** - Usage patterns and examples
+
+### Standards & Guidelines (docs/errors/)
+- **ERROR-HANDLING-GUIDELINES.md** - MANDATORY error handling standards (8-point checklist, message templates, top 20 prioritized errors)
 
 ### Other Trackers
 - **READINESS-TRACKER.md** - Overall library publishing readiness

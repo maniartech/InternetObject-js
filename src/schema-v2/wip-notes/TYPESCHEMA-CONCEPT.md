@@ -84,6 +84,24 @@ optional    : { bool,   optional: true, "null": false },
 - **In TypeSchema**: `optional: true` = field can be omitted from user's schema
 - **In User Schema**: `?` suffix = data value can be undefined, `*` = data value can be null
 
+**Positional vs Named Syntax:**
+Internet Object supports flexible field matching, similar to how data validation works:
+
+- **Positional (recommended)**: First 3 positions have conventional meaning
+  ```io
+  age: {number, 20, min: 25}
+        ↑      ↑   ↑
+        type   default  named params
+  ```
+
+- **Named (also valid)**: All fields can be explicitly named in any order
+  ```io
+  age: {default: 20, type: number, min: 25}  ← Valid!
+  age: {min: 25, type: number, default: 20}  ← Also valid!
+  ```
+
+- **Position matters only when keys are omitted**: Just like data validation, when keys are not provided, fields are matched by position. When keys are provided, they're matched by name regardless of order.
+
 **Code Implementation (V1):**
 ```typescript
 const schema = new Schema(
@@ -121,17 +139,47 @@ Expands to (applying defaults from StringTypeSchema):
 name: { string, optional: false, "null": false, format: auto, escapeLines: true }
 ```
 
-### Extended Form (MemberDef Object)
-User provides specific configuration:
+### Extended Form - Positional (Recommended)
+First 3 positions: type, default, choices. Other fields must be named:
 
 ```io
-name: { string, minLen: 3, maxLen: 50 }
+age*: {number, 20, min: 25, max: 100}
+      ↑      ↑   ↑
+      type   default  named parameters
 ```
 
 **Phase 1 Validation:**
-- ✅ `minLen` exists in StringTypeSchema
-- ✅ `maxLen` exists in StringTypeSchema
-- ✅ Values are valid (numbers >= 0)
+- ✅ Position 1: `number` is valid type
+- ✅ Position 2: `20` is valid default value
+- ✅ `min` exists in NumberTypeSchema
+- ✅ `max` exists in NumberTypeSchema
+- ✅ Values are valid (numbers)
+
+### Extended Form - Named (Also Valid)
+All fields can be explicitly named in any order:
+
+```io
+age*: {default: 20, min: 25, type: number, max: 100}
+```
+
+**Phase 1 Validation:**
+- ✅ `type` field found by name: `number` is valid
+- ✅ `default` field found by name: `20` is valid
+- ✅ `min` exists in NumberTypeSchema
+- ✅ `max` exists in NumberTypeSchema
+
+### Mixed Form
+Positional first, then named:
+
+```io
+status: {string, active, [active, inactive, pending]}
+        ↑       ↑        ↑
+        type    default  choices (position 3)
+
+name: {string, "John", minLen: 3, maxLen: 50}
+       ↑       ↑       ↑
+       type    default named parameters
+```
 
 ---
 
@@ -278,12 +326,13 @@ function validateMemberDef(userConfig: MemberDef, typeSchema: TypeSchemaAST): Va
 ### Phase 2: Type-Specific TypeSchemas
 - [x] StringTypeSchema (documented in 01-string-type.md)
 - [x] NumberTypeSchema (documented in 02-number-type.md)
-- [ ] BooleanTypeSchema
-- [ ] DatetimeTypeSchema
-- [ ] DecimalTypeSchema
-- [ ] BigintTypeSchema
-- [ ] ArrayTypeSchema
-- [ ] ObjectTypeSchema
+- [x] BooleanTypeSchema (documented in 03-boolean-type.md)
+- [x] DatetimeTypeSchema (documented in 04-datetime-type.md)
+- [x] DecimalTypeSchema (documented in 05-decimal-type.md)
+- [x] BigintTypeSchema (documented in 06-bigint-type.md)
+- [x] ArrayTypeSchema (documented in 07-array-type.md)
+- [x] ObjectTypeSchema (documented in 08-object-type.md)
+- [x] AnyTypeSchema (documented in 09-any-type.md)
 
 ### Phase 3: Validation Integration
 - [ ] Compile-time validation (Phase 1)
@@ -362,6 +411,36 @@ email: email
 ~ UserProfile
 email: { email, optional: false, "null": false, format: auto, escapeLines: true }
 ```
+
+### Example 5: Positional vs Named Syntax
+
+**Positional (recommended):**
+```io
+~ Product
+price: {number, 0, min: 0, max: 99999}
+stock: {int, 0, [0, 10, 50, 100]}
+```
+
+**Named (also valid):**
+```io
+~ Product
+price: {min: 0, type: number, default: 0, max: 99999}
+stock: {choices: [0, 10, 50, 100], default: 0, type: int}
+```
+
+**Both are equivalent and valid!** The parser matches fields by position when keys are omitted, or by name when keys are provided.
+
+### Example 6: Mixed Syntax
+
+**User writes:**
+```io
+~ UserProfile
+age: {number, 18, min: 0, max: 120}           ← Positional + named
+status: {type: string, default: active}       ← All named
+role: {string, guest, [guest, user, admin]}   ← All positional
+```
+
+All three forms are valid and will be correctly validated against their respective TypeSchemas.
 
 ---
 

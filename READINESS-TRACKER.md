@@ -30,6 +30,14 @@
 - **Skipped:** 1
 - **Success Rate:** 99.93%
 
+**Testing Quality Standards Established:**
+- ✅ Comprehensive testing guidelines documented (see § Testing Strategy & Quality Gates)
+- ✅ Mandatory test layers defined: Unit, Integration, Property, Regression, Performance
+- ✅ Coverage requirements: Lines ≥ 90%, Branches ≥ 85%
+- ✅ Test quality standards: Deterministic, isolated, focused, fast, maintainable
+- ✅ Performance budgets integrated: < 50µs validate, < 1ms object, < 10ms compile
+- ✅ CI quality gates defined: Zero flaky tests, no >10% regressions
+
 ## 🎯 Strategic Focus Areas
 
 This tracker prioritizes **foundational quality** over feature completion. We focus on four pillars that will guide all other development:
@@ -49,9 +57,9 @@ All development across this repository follows the same objectives and standard 
 
 - **Guiding Source (Schema Revamp):** See `src/schema-v2/SCHEMA-REVAMP-TRACKER.md` → “Engineering Principles & Guardrails” and “Phase DoD”. Those rules apply project‑wide.
 - **Core Principles:** Do Not Overengineer, KISS, SRP, DRY, explicit configs, deterministic/pure functions where possible.
-- **Error Handling:** Standardized error codes, templated messages, precise locations, aggregate user errors; throw only on invariants.
+- **Error Handling:** Standardized error codes, templated messages, precise locations, aggregate user errors; throw only on invariants. **MANDATORY:** Follow `docs/errors/ERROR-HANDLING-GUIDELINES.md`.
 - **Performance Budgets:** Benchmarks tracked in CI; no >10% regression allowed without explicit waiver and follow‑up task.
-- **Testing Policy:** Unit + integration + regression + performance; coverage Lines ≥ 90%, Branches ≥ 85% for public modules.
+- **Testing Policy:** **MANDATORY** comprehensive testing standards (see § Testing Strategy & Quality Gates below). Unit + integration + regression + performance + property tests; coverage Lines ≥ 90%, Branches ≥ 85% for public modules. Zero flaky tests. Performance budgets enforced.
 - **Code Quality:** Strict TypeScript, ESLint/Prettier clean, no new runtime deps without justification, JSDoc for all public APIs.
 - **Docs:** Runnable examples in JSDoc; migration and troubleshooting kept current.
 
@@ -815,20 +823,214 @@ collection.serialize()
 
 ---
 
-### Testing Strategy
+### Testing Strategy & Quality Gates
 
-**Current:** 1,298 tests passing, good unit coverage
-**Gap:** Integration tests missing
-**Priority:** P1 - After foundation improvements
+**Current:** 1,461 tests passing (99.93% success rate), excellent unit coverage
+**Status:** Strong foundation - expanding to comprehensive integration & property testing
+**Priority:** P0 - MANDATORY before phase transitions
 
-**Action Items:**
+#### Testing Policy (MANDATORY)
 
-- [ ] Add integration tests for foundation pillars
-- [ ] Bundle size tests (Pillar 1)
-- [ ] Data structure consistency tests (Pillar 2)
-- [ ] API usability tests (Pillar 3)
-- [ ] Error message quality tests (Pillar 4)
-- [ ] Round-trip tests (when serialization added)
+**Aligned with:** `src/schema-v2/SCHEMA-REVAMP-TRACKER.md` → "Testing Policy"
+
+| Test Layer | Requirements | Coverage Target | When Required |
+|------------|-------------|-----------------|---------------|
+| **Unit Tests** | Each public method: happy path + 2 edge cases minimum | Lines ≥ 90%, Branches ≥ 85% | Every new feature/fix |
+| **Property Tests** | Pure functions (e.g., number normalization, type validation) – fuzz 100+ random inputs | N/A (validates correctness) | All pure functions |
+| **Integration Tests** | End-to-end flows: parse → validate → serialize → parse round-trip | Critical paths covered | Before each phase completion |
+| **Regression Tests** | Every fixed bug must add a test reproducing the prior failure | 100% of bug fixes | Every bug fix PR |
+| **Performance Tests** | Benchmarks tracked in CI; fail build if >10% regression vs baseline | Performance budgets met | Weekly + before releases |
+
+#### Test Quality Standards
+
+**All tests must:**
+1. ✅ **Be deterministic** - No flaky tests, no random failures, no timing dependencies
+2. ✅ **Be isolated** - Each test runs independently, no shared mutable state
+3. ✅ **Be focused** - One logical assertion per test, clear failure messages
+4. ✅ **Be maintainable** - Clear naming (`describe("FeatureName", () => it("should behavior when condition")`)
+5. ✅ **Be fast** - Unit tests < 10ms each, integration tests < 100ms each
+6. ✅ **Document edge cases** - Comments explain why non-obvious cases are tested
+7. ✅ **Use fixtures** - Reusable test data in dedicated files/helpers
+8. ✅ **Assert specifically** - Avoid `toBeTruthy()`, use `toBe(expected)` with exact values
+
+#### Coverage Requirements
+
+**Minimum Coverage (Enforced in CI):**
+- Lines: ≥ 90%
+- Branches: ≥ 85%
+- Functions: ≥ 90%
+- Statements: ≥ 90%
+
+**Excluded from coverage:**
+- Generated code (parsers, lexers)
+- Debug/logging utilities
+- Type-only files (`.d.ts`)
+- Test utilities themselves
+
+**Coverage Quality Over Quantity:**
+- 80% meaningful coverage > 100% shallow coverage
+- Focus on critical paths, error handling, edge cases
+- Avoid coverage-chasing tests (tests that only increase numbers without validating behavior)
+
+#### Integration Test Requirements
+
+**Foundation Pillars Integration Tests (MANDATORY before phase completion):**
+
+1. **Bundle Optimization Tests**
+   - [ ] Minimal import tree-shaking verification (< 5KB target)
+   - [ ] Full facade import size validation (< 25KB target)
+   - [ ] Dead code elimination verified
+   - [ ] Size regression detection automated
+
+2. **Data Structure Tests**
+   - [ ] IOObject: get/set consistency, order preservation, iteration correctness
+   - [ ] IOCollection: push/toJSON consistency, array parity
+   - [ ] Cross-structure compatibility (IOObject → IOCollection conversions)
+   - [ ] Memory leak detection (large dataset stress tests)
+   - [ ] Performance benchmarks (O(1) vs O(n) operations validated)
+
+3. **API Ergonomics Tests**
+   - [ ] Template literal parsing end-to-end
+   - [ ] Facade pattern (`io.doc`, `io.defs`) full workflows
+   - [ ] Chaining (`.with(defs)`) correctness
+   - [ ] TypeScript type inference validation (type tests with `tsd`)
+   - [ ] Error message quality (automated readability checks)
+
+4. **Error Management Tests**
+   - [ ] Error accumulation (multiple errors collected correctly)
+   - [ ] Error position accuracy (line/column/offset verification)
+   - [ ] Error recovery (parsing continues after errors)
+   - [ ] Error code uniqueness (no duplicate codes)
+   - [ ] Error message template adherence (8-point checklist validation)
+
+#### Property-Based Testing
+
+**Required for all pure functions:**
+- Number/Decimal/BigInt validation logic
+- Type checking and coercion
+- String normalization and escaping
+- Collection operations (map, filter, reduce)
+
+**Property test generators:**
+```typescript
+// Example: Number validation should handle all valid numeric strings
+fc.assert(
+  fc.property(fc.double(), (num) => {
+    const result = validateNumber(num.toString());
+    expect(result.valid).toBe(true);
+  })
+);
+```
+
+**Minimum fuzz iterations:** 100 inputs per property test
+
+#### Performance Test Requirements
+
+**Benchmarks tracked for:**
+- Base type validate(): < 50µs (microseconds)
+- 100-field object validation: < 1ms
+- Schema compile (100 fields): < 10ms
+- Memory per compiled schema: < 5KB
+- IODefinitions builder (10 calls): < 0.2ms
+- Round-trip serialize+parse: < 2ms
+
+**CI Integration:**
+- Performance tests run on every PR
+- Fail build if >10% regression vs baseline
+- Report performance improvements in PR comments
+- Track historical performance trends
+
+#### Test Organization
+
+**Directory structure:**
+```
+test/
+├── unit/              # Fast, isolated unit tests
+│   ├── types/         # Type validation tests
+│   ├── parser/        # Parser unit tests
+│   └── data-structures/ # IOObject, IOCollection tests
+├── integration/       # End-to-end integration tests
+│   ├── foundation/    # Foundation pillar tests
+│   ├── round-trip/    # Parse → serialize → parse
+│   └── real-world/    # Realistic usage scenarios
+├── performance/       # Benchmark tests
+│   ├── benchmarks/    # Performance measurements
+│   └── stress/        # Large dataset tests
+├── property/          # Property-based tests
+│   └── generators/    # Test data generators
+└── fixtures/          # Shared test data
+    ├── valid/         # Valid IO examples
+    ├── invalid/       # Invalid IO examples
+    └── edge-cases/    # Edge case examples
+```
+
+#### Quality Gates (Testing)
+
+**Before moving to next phase, ALL must be ✅:**
+
+1. ✅ **Test Success Rate:** ≥ 99.5% (currently 99.93% - excellent!)
+2. ✅ **Coverage Targets Met:** Lines ≥ 90%, Branches ≥ 85%
+3. ✅ **Zero Flaky Tests:** All tests deterministic and reliable
+4. ✅ **Performance Budgets Met:** No regressions > 10%
+5. ✅ **Integration Tests Pass:** All foundation pillars tested end-to-end
+6. ✅ **Property Tests Added:** All pure functions fuzz-tested
+7. ✅ **Regression Tests Complete:** All historical bugs have tests
+8. ✅ **CI Pipeline Green:** All test suites pass in CI environment
+
+**Blocking Issues (Cannot proceed if ANY are ❌):**
+- ❌ Flaky tests exist
+- ❌ Coverage below thresholds
+- ❌ Performance regressions unaddressed
+- ❌ Critical paths untested
+- ❌ Test failures ignored or skipped
+
+#### Action Items
+
+**Phase 1: Foundation Testing (Week 1-2) - IN PROGRESS**
+
+- [x] Achieve 99%+ test pass rate (DONE: 99.93%)
+- [x] Unit test coverage for all type validators (DONE)
+- [ ] Add property tests for pure functions (number, decimal, bigint validation)
+- [ ] Create integration test suite for foundation pillars
+- [ ] Set up performance benchmark baseline tracking
+- [ ] Document test organization and conventions
+
+**Phase 2: Integration & Performance (Week 2-3)**
+
+- [ ] Bundle size integration tests (tree-shaking verification)
+- [ ] Data structure stress tests (large datasets, memory leaks)
+- [ ] API ergonomics end-to-end tests (template literals, chaining)
+- [ ] Error management integration tests (error accumulation, recovery)
+- [ ] Performance regression tests in CI
+- [ ] Round-trip tests (parse → validate → serialize → parse)
+
+**Phase 3: Advanced Testing (Week 3-4)**
+
+- [ ] Property-based testing for all pure functions
+- [ ] Fuzz testing for parser (malformed inputs, edge cases)
+- [ ] Cross-browser compatibility tests (if applicable)
+- [ ] TypeScript type tests (using `tsd` or similar)
+- [ ] Error message quality automated validation
+- [ ] Real-world usage scenario tests
+
+**Phase 4: CI/CD Integration (Week 4)**
+
+- [ ] Performance benchmarks in CI with baseline tracking
+- [ ] Coverage reports in PR comments
+- [ ] Test result summaries in PR comments
+- [ ] Automated quality gate checks
+- [ ] Flaky test detection and alerting
+
+#### Success Criteria
+
+- ✅ 99.5%+ test success rate maintained
+- ✅ 90%+ line coverage, 85%+ branch coverage
+- ✅ All foundation pillars have integration tests
+- ✅ Performance budgets tracked and enforced
+- ✅ Zero flaky tests
+- ✅ CI pipeline catches regressions automatically
+- ✅ Test documentation complete and accessible
+- ✅ Team confident in test suite reliability
 
 ---
 
@@ -1059,6 +1261,15 @@ Each phase requires these quality gates:
 5. ⏳ Error messages tested with real users (context-aware messages implemented)
 6. ✅ **No critical bugs** - All 1,461 tests passing!
 7. ⏳ Community feedback positive (beta phase)
+8. ✅ **Testing standards met** - See § Testing Strategy & Quality Gates (99.93% pass rate, comprehensive coverage)
+
+**Testing Quality Gates (MANDATORY):**
+- ✅ Test success rate ≥ 99.5% (achieved: 99.93%)
+- ⏳ Coverage: Lines ≥ 90%, Branches ≥ 85% (in progress)
+- ✅ Zero flaky tests
+- ⏳ Integration tests for all four foundation pillars (in progress)
+- ⏳ Performance benchmarks tracked with no >10% regressions (baseline being established)
+- ⏳ Property tests added for all pure functions (planned)
 
 **Status: 85% Complete - Ready for Beta Preparation Phase**
 
@@ -1069,6 +1280,10 @@ Each phase requires these quality gates:
 - ❌ APIs inconsistent or confusing
 - ❌ Error messages unhelpful
 - ❌ Documentation incomplete
+- ❌ **Test coverage below thresholds (90%/85%)**
+- ❌ **Flaky tests exist**
+- ❌ **Performance regressions unaddressed**
+- ❌ **Critical integration tests missing**
 
 ---
 
