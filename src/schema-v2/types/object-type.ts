@@ -95,7 +95,11 @@ export class ObjectTypeSchema implements TypeSchema<ObjectConfig, Record<string,
   private config: ObjectConfig;
 
   constructor(config: ObjectConfig = {}) {
-    this.config = config;
+    // Default open to true (allow all defined members)
+    this.config = {
+      ...config,
+      open: config.open !== undefined ? config.open : true
+    };
   }
 
   /**
@@ -123,13 +127,21 @@ export class ObjectTypeSchema implements TypeSchema<ObjectConfig, Record<string,
    * ```
    */
   parse(node: Node, config: ObjectConfig, defs?: Definitions): Record<string, any> {
+    // Merge provided config with instance config (instance config takes precedence for structure)
+    const mergedConfig: ObjectConfig = {
+      ...config,
+      defs: this.config.defs || config.defs,
+      names: this.config.names || config.names,
+      open: this.config.open !== undefined ? this.config.open : config.open
+    };
+
     // Resolve variable references first
     const resolvedNode = defs?.getV(node) || node;
 
     // Handle common validation (undefined/null/choices)
     const commonResult = doCommonValidation(
       resolvedNode === node ? resolvedNode : (resolvedNode as any).value,
-      config,
+      mergedConfig,
       node,
       defs
     );
@@ -149,8 +161,8 @@ export class ObjectTypeSchema implements TypeSchema<ObjectConfig, Record<string,
 
     const result: Record<string, any> = {};
     const processedNames = new Set<string>();
-    const memberDefs = config.defs || {};
-    const orderedNames = config.names || [];
+    const memberDefs = mergedConfig.defs || {};
+    const orderedNames = mergedConfig.names || [];
 
     // Phase 1: Process positional members (schema order)
     let positionalIndex = 0;
@@ -171,7 +183,7 @@ export class ObjectTypeSchema implements TypeSchema<ObjectConfig, Record<string,
         // Positional member
         if (positionalIndex >= orderedNames.length) {
           // No more schema members, check if open schema
-          if (!config.open) {
+          if (!mergedConfig.open) {
             throw new IOValidationError(
               ErrorCodes.additionalValuesNotAllowed,
               `Additional positional values not allowed`,
@@ -180,7 +192,7 @@ export class ObjectTypeSchema implements TypeSchema<ObjectConfig, Record<string,
           }
 
           // Process as additional property
-          const additionalConfig = typeof config.open === 'object' ? config.open : { type: 'any' };
+          const additionalConfig = typeof mergedConfig.open === 'object' ? mergedConfig.open : { type: 'any' };
           try {
             const value = this.processMember(memberNode, additionalConfig, defs);
             result[positionalIndex] = value;
@@ -237,7 +249,7 @@ export class ObjectTypeSchema implements TypeSchema<ObjectConfig, Record<string,
 
         if (!memberConfig) {
           // Unknown member - check if open schema
-          if (!config.open) {
+          if (!mergedConfig.open) {
             throw new IOValidationError(
               ErrorCodes.unknownMember,
               `Unknown member '${keyValue}'`,
@@ -246,7 +258,7 @@ export class ObjectTypeSchema implements TypeSchema<ObjectConfig, Record<string,
           }
 
           // Process as additional property
-          const additionalConfig = typeof config.open === 'object' ? config.open : { type: 'any' };
+          const additionalConfig = typeof mergedConfig.open === 'object' ? mergedConfig.open : { type: 'any' };
           try {
             const value = this.processMember(memberNode, additionalConfig, defs);
             if (value !== undefined) {
@@ -297,7 +309,7 @@ export class ObjectTypeSchema implements TypeSchema<ObjectConfig, Record<string,
       }
     }
 
-    return this.validate(result, config, node, defs);
+    return this.validate(result, mergedConfig, node, defs);
   }
 
   /**
