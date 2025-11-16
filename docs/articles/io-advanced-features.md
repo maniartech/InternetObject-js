@@ -419,10 +419,10 @@ JSON documents carry no self-describing metadata. Context must be provided exter
 The same data with context:
 
 ```ruby
-@version: 2.1
-@api_endpoint: /api/v2/users
-@generated: 2024-01-15T10:30:00Z
-@timezone: UTC
+~ version: 2.1
+~ api_endpoint: /api/v2/users
+~ generated: 2024-01-15T10:30:00Z
+~ timezone: UTC
 @page: 1
 @page_size: 50
 @total_count: 2
