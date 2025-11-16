@@ -23,7 +23,7 @@ name: string, age: number, active: bool  # Basic user fields
 
 ### Block Comments
 
-Block comments use `#` at the start of each line:
+Internet object does not have a dedicated block comment syntax. You can however create block comments by prefixing each line with `#`:
 
 ```ruby
 #
@@ -46,34 +46,6 @@ tags: [string]
 ~ Batman, 35, T, {Wayne Manor, Gotham, NJ}, [detective, wealthy]
 ```
 
-### Why Comments Matter
-
-**Schema Evolution:** Document why certain fields exist or deprecated patterns:
-
-```ruby
-legacy_id: string,  # Deprecated: Use 'id' instead. Removed in v3.0
-id: string,
-name: string
-```
-
-**Business Context:** Explain business rules directly in the data:
-
-```ruby
-price: number,      # Always in USD
-tax_rate: number,   # Percentage (e.g., 8.5 for 8.5%)
-shipping: number    # Free shipping if order > $50
-```
-
-**Team Communication:** Share insights about data quirks:
-
-```ruby
-# NOTE: latitude/longitude may be null for privacy-protected users
-latitude: number?,
-longitude: number?
-```
-
-JSON developers often resort to README files or separate documentation. With Internet Object, the documentation lives alongside the data and schema where it's most useful.
-
 ## String Value Types: Handling Text With Flexibility
 
 Strings are the most common data type, yet JSON offers only one way to represent them. Internet Object provides three distinct string types, each optimized for different use cases.
@@ -93,6 +65,8 @@ name: string, city: string, country: string
 
 **Restrictions:** Cannot contain commas, quotes, or line breaks. Perfect for clean, structured data.
 
+**Note on newlines:** Open strings preserve newlines and line breaks as part of the value.
+
 ### Regular Strings
 
 Quoted strings that support escape sequences and special characters:
@@ -108,6 +82,7 @@ message: string, code: string
 **Ideal for:** Messages with punctuation, paths, code snippets, formatted text.
 
 **Features:**
+- Preserves newlines and line breaks within quoted values
 - Escape sequences: `\n` (newline), `\t` (tab), `\"` (quote), `\\` (backslash)
 - Can contain commas, quotes, and most special characters
 - Single or double quotes supported
@@ -157,10 +132,10 @@ description: string, sql_query: string, json_config: string
 ### String Type Comparison
 
 | Feature | Open Strings | Regular Strings | Raw Strings |
-|---------|-------------|----------------|-------------|
+|---------|--------------|------------------|-------------|
 | Quotes | Not required | Required | Triple backticks |
 | Commas | Not allowed | Allowed | Allowed |
-| Line breaks | Not allowed | Via `\n` | Preserved naturally |
+| Line breaks | Preserved | Preserved | Preserved exactly |
 | Escape sequences | N/A | Supported | Not processed |
 | Best for | Simple text | General purpose | Multi-line content |
 
