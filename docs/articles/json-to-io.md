@@ -76,6 +76,8 @@ The result is a basic form of Internet Object schema. Though this is not the com
 Spiderman, 25, T, {Queens, New York, NY}, [agile, emotional]
 ```
 
+**Note:** We've kept the curly braces for the nested object and square brackets for the array to maintain structure. This is essential, open objects (objects without surrounding curly braces) are valid only as root values. We'll explore this further in future articles. Arrays always require square brackets; there is no concept of open arrays.
+
 ## Step 3: Combining Schema and Data
 
 You can use schema and data independently (as defined above) or combine them using the data separator `---`:
@@ -110,7 +112,7 @@ name, age, active, address: {street, city, state}, tags
 
 Now we have a collection of three objects defined with a single schema! Let's compare JSON and Internet Object for a collection of superhero data.
 
-**JSON Collection (628 bytes):**
+**JSON Collection (662 bytes):**
 
 ```json
 [
@@ -150,7 +152,7 @@ Now we have a collection of three objects defined with a single schema! Let's co
 ]
 ```
 
-**Internet Object Collection (273 bytes):**
+**Internet Object Collection (258 bytes):**
 
 ```ruby
 name, age, active, address: {street, city, state}, tags
@@ -173,7 +175,9 @@ Now let's see the dramatic difference:
 **Three Objects (Collection):**
 
 - **JSON**: 628 bytes
-- **Internet Object**: 273 bytes (~**57% smaller!**)
+- **Minimized JSON**: 409 bytes
+- **Internet Object**: 273 bytes (~**61% smaller!**, 40% smaller than minimized JSON)
+
 
 **The advantage grows with more data:**
 
@@ -258,6 +262,12 @@ From this data, Internet Object infers:
 - `tags`: array of strings
 
 However, explicit types are recommended for production use as they provide better validation and prevent unexpected data from being accepted.
+
+## The Document-Oriented Format
+
+By now, you've seen that Internet Object is a document-oriented format. Just as HTML documents have a head and body, Internet Object documents have a header and data section. The header contains the schema and optional metadata, while the data section contains the actual records.
+
+This document structure is fundamental to Internet Object and enables powerful features like schema separation, collections, metadata, variables and definitions. While we'll explore these advanced concepts in the coming articles, it's worth noting that Internet Object supports more advanced document structures beyond the basic header-data pattern—topics.
 
 ## Summary
 
