@@ -48,7 +48,7 @@ tags: [string]
 
 ## String Value Types: Handling Text With Flexibility
 
-Strings are the most common data type, yet JSON offers only one way to represent them. Internet Object provides three distinct string types, each optimized for different use cases.
+Strings are the most common data type. Internet Object provides three distinct string types, each optimized for different use cases.
 
 ### Open Strings
 
@@ -63,7 +63,7 @@ name: string, city: string, country: string
 
 **Ideal for:** Names, cities, simple identifiers, tags, categories.
 
-**Restrictions:** Cannot contain commas, quotes, or line breaks. Perfect for clean, structured data.
+**Restrictions:** Cannot contain commas or quotes. Perfect for clean, structured data.
 
 **Note on newlines:** Open strings preserve newlines and line breaks as part of the value.
 
@@ -89,41 +89,36 @@ message: string, code: string
 
 ### Raw Strings
 
-Multi-line strings that preserve exact formatting, perfect for code blocks, JSON, or formatted text:
+Multi-line strings annotated as `r'...'` or `r"..."` that preserve exact formatting, perfect for code, JSON, or formatted text:
 
 ```ruby
 description: string, sql_query: string, json_config: string
 ---
-~ ```
-  This is a raw string.
+~ r'This is a raw string.
   It preserves:
     - Line breaks
     - Indentation
     - "Quotes" without escaping
-    - Special characters: @#$%^&*
-  ```,
-  ```
-  SELECT users.name, orders.total
+    - Special characters: @#$%^&*',
+  r"SELECT users.name, orders.total
   FROM users
   LEFT JOIN orders ON users.id = orders.user_id
   WHERE orders.created_at > '2024-01-01'
-  ORDER BY orders.total DESC
-  ```,
-  ```
-  {
+  ORDER BY orders.total DESC",
+  r'{
     "api_key": "sk-1234567890",
     "timeout": 30,
     "retry_policy": {
       "max_attempts": 3,
       "backoff": "exponential"
     }
-  }
-  ```
+  }'
 ```
 
-**Ideal for:** SQL queries, JSON configurations, code snippets, formatted documentation, multi-line descriptions.
+**Ideal for:** SQL queries, configurations, Regular Expressions, Code snippets, Formatted documentation etc.
 
 **Features:**
+
 - No escape sequences needed
 - Preserves exact formatting
 - Supports any characters
@@ -133,7 +128,7 @@ description: string, sql_query: string, json_config: string
 
 | Feature | Open Strings | Regular Strings | Raw Strings |
 |---------|--------------|------------------|-------------|
-| Quotes | Not required | Required | Triple backticks |
+| Quotes | Not required | Required | r'...' or r"..." |
 | Commas | Not allowed | Allowed | Allowed |
 | Line breaks | Preserved | Preserved | Preserved exactly |
 | Escape sequences | N/A | Supported | Not processed |
@@ -149,18 +144,13 @@ notes: string
 ---
 ~ john_doe,
   "Full-stack developer specializing in TypeScript, React, and Node.js.",
-  ```
-  function fibonacci(n) {
-    if (n <= 1) return n;
-    return fibonacci(n - 1) + fibonacci(n - 2);
-  }
-  ```,
+  r"function fibonacci(n) {\n  if (n <= 1) return n;\n  return fibonacci(n - 1) + fibonacci(n - 2);\n }",
   "Reminder: Review pull requests by EOD"
 ```
 
 ## Number Types: Precision When It Counts
 
-JSON treats all numbers uniformly, which can lead to precision issues with large integers or financial calculations. Internet Object provides three distinct numeric types for different use cases.
+A single numeric representation can lead to precision issues with large integers or financial calculations. Internet Object provides three distinct numeric types for different use cases.
 
 ### Number Type
 
@@ -177,7 +167,7 @@ price: number, temperature: number, percentage: number
 
 **Precision:** ~15-17 significant digits
 
-**Use cases:** Prices, measurements, percentages, scientific calculations
+**Use cases:** Measurements, percentages, scientific calculations
 
 **Limitation:** May lose precision with very large integers beyond 2^53 - 1 (9,007,199,254,740,991)
 
@@ -188,8 +178,8 @@ Arbitrary-precision integers for handling large whole numbers without precision 
 ```ruby
 transaction_id: bigint, population: bigint, national_debt: bigint
 ---
-~ 9007199254740992, 8045311447, 34000000000000
-~ 9223372036854775807, 1425775850, 28000000000000
+~ 9007199254740992n, 8045311447n, 34000000000000n
+~ 9223372036854775807n, 1425775850n, 28000000000000n
 ```
 
 **Range:** Unlimited (only constrained by memory)
@@ -198,7 +188,7 @@ transaction_id: bigint, population: bigint, national_debt: bigint
 
 **Use cases:** IDs, timestamps, cryptocurrency values, scientific computing, population statistics
 
-**Notation:** Can optionally suffix with `n` for clarity: `9007199254740992n`
+**Notation:** Suffix with `n` (required for BigInt literals): `9007199254740992n`
 
 ### Decimal Type
 
@@ -207,8 +197,8 @@ Arbitrary-precision decimal numbers for financial and monetary calculations:
 ```ruby
 account_balance: decimal, tax_rate: decimal, exchange_rate: decimal
 ---
-~ 1234567.89, 0.0825, 1.18475
-~ 0.000001, 99.999999, 1000000.50
+~ 1234567.89m, 0.0825m, 1.18475m
+~ 0.000001m, 99.999999m, 1000000.50m
 ```
 
 **Precision:** User-defined, no rounding errors in arithmetic
@@ -219,7 +209,7 @@ account_balance: decimal, tax_rate: decimal, exchange_rate: decimal
 
 ```ruby
 # In JavaScript: 0.1 + 0.2 = 0.30000000000004
-# In Internet Object with decimal type: 0.1 + 0.2 = 0.3 (exact)
+# In Internet Object (decimals): 0.1m + 0.2m = 0.3m (exact)
 ```
 
 ### Number Type Comparison
@@ -241,8 +231,8 @@ tax: decimal,
 total: decimal,
 timestamp: bigint
 ---
-~ 1234567890123456789, 1000.00, 82.50, 1082.50, 1705392000000
-~ 1234567890123456790, 2500.50, 206.29, 2706.79, 1705392060000
+~ 1234567890123456789n, 1000.00m, 82.50m, 1082.50m, 1705392000000n
+~ 1234567890123456790n, 2500.50m, 206.29m, 2706.79m, 1705392060000n
 ```
 
 ## Separate Schemas: Reusability and Clarity
@@ -269,7 +259,7 @@ created_at: bigint,        # Unix timestamp
 profile: {
   bio: string,
   avatar_url: string,
-  location: string?        # Optional field
+  location?: string        # Optional field
 },
 tags: [string]
 ```
@@ -280,21 +270,18 @@ Reference the schema in your data file:
 
 ```ruby
 # data/users.io
-
-@schema: schemas/user.io
----
-~ 1001, alice_wonder, alice@example.com, 28, T, 1672531200000,
+~ 1001n, alice_wonder, alice@example.com, 28, T, 1672531200000n,
   {
     "Software engineer passionate about open-source",
-    https://avatar.example.com/alice.jpg,
+    'https://avatar.example.com/alice.jpg',
     San Francisco
   },
   [developer, typescript, react]
 
-~ 1002, bob_builder, bob@example.com, 32, T, 1672617600000,
+~ 1002n, bob_builder, bob@example.com, 32, T, 1672617600000n,
   {
     "Full-stack developer and coffee enthusiast",
-    https://avatar.example.com/bob.jpg,
+    'https://avatar.example.com/bob.jpg',
     Austin
   },
   [developer, java, spring]
@@ -334,19 +321,18 @@ Reference the schema in your data file:
 
 ## Header with Metadata: Context Is Everything
 
-JSON documents exist in isolation - they carry no information about their version, creation time, or intended use. Internet Object solves this with a powerful metadata system built into the document header.
+Internet Object includes a powerful metadata system in the document header, so documents carry information about their version, creation time, and intended use.
 
 ### Basic Metadata
 
 Add contextual information to your documents:
 
 ```ruby
-@version: 2.1
-@created: 2024-01-15T10:30:00Z
-@author: api-service
-@description: User data export for analytics team
-
-name: string, age: number, city: string
+~ version: 2.1
+~ created: "2024-01-15T10:30:00Z"
+~ author: api-service
+~ description: User data export for analytics team
+~ $schema: { name: string, age: number, city: string }
 ---
 ~ Alice, 28, New York
 ~ Bob, 32, Seattle
@@ -354,30 +340,19 @@ name: string, age: number, city: string
 
 ### Practical Example: API Versioning
 
-**JSON response (no version info):**
-
-```json
-{
-  "users": [
-    {"id": 1, "name": "Alice"},
-    {"id": 2, "name": "Bob"}
-  ]
-}
-```
-
-**Internet Object response (with metadata):**
+Response with metadata:
 
 ```ruby
-@version: 2.1
-@api_endpoint: /api/v2/users
-@generated: 2024-01-15T10:30:00Z
-@total_count: 2
-@has_more: false
+~ version: 2.1
+~ api_endpoint: /api/v2/users
+~ generated: '2024-01-15T10:30:00Z'
+~ total_count: 2
+~ has_more: F
 
-id: bigint, name: string
+~ $schema: { id: bigint, name: string }
 ---
-~ 1, Alice
-~ 2, Bob
+~ 1n, Alice
+~ 2n, Bob
 ```
 
 ### Metadata for Data Lineage
@@ -385,18 +360,18 @@ id: bigint, name: string
 Track data provenance and transformations:
 
 ```ruby
-@source: production-db-primary
-@extracted: 2024-01-15T02:00:00Z
-@transformed: 2024-01-15T02:15:00Z
-@format_version: 3.0
-@row_count: 1500
-@checksum: a3f5e9c1b2d4a6e8
+~ source: production-db-primary
+~ extracted: 2024-01-15
+~ transformed: 2024-01-15
+~ format_version: 3.0
+~ row_count: 1500
+~ checksum: a3f5e9c1b2d4a6e8
 
 # User activity data
-user_id: bigint, action: string, timestamp: bigint
+~ $schema: { user_id: bigint, action: string, timestamp: bigint }
 ---
-~ 1001, login, 1705392000000
-~ 1001, page_view, 1705392015000
+~ 1001n, login, 1705392000000n
+~ 1001n, page_view, 1705392015000n
 ```
 
 ### Metadata for Caching
@@ -404,35 +379,15 @@ user_id: bigint, action: string, timestamp: bigint
 Enable intelligent caching strategies:
 
 ```ruby
-@cache_key: users:active:2024-01-15
-@expires: 2024-01-15T11:30:00Z
-@etag: "33a64df551425fcc55e4d42a148795d9f25f89d4"
-@last_modified: 2024-01-15T10:30:00Z
+~ cache_key: 'users:active:2024-01-15'
+~ expires: '2024-01-15T11:30:00Z'
+~ etag: "33a64df551425fcc55e4d42a148795d9f25f89d4"
+~ last_modified: '2024-01-15T10:30:00Z'
 
-id: bigint, name: string, status: string
+~ $schema: { id: number, name: string, status: string }
 ---
 ~ 1, Alice, active
 ~ 2, Bob, active
-```
-
-### Metadata for Data Quality
-
-Document data quality metrics:
-
-```ruby
-@quality_score: 0.98
-@completeness: 0.95
-@validated: 2024-01-15T10:30:00Z
-@validation_rules: schemas/user-validation-v2.json
-@issues_found: 3
-@issues_severity: low
-
-# User records with quality annotations
-id: bigint, name: string, email: string?, phone: string?
----
-~ 1, Alice, alice@example.com, +1-555-0101
-~ 2, Bob, , +1-555-0102          # Missing email
-~ 3, Charlie, charlie@example.com,   # Missing phone
 ```
 
 ## JSON vs Internet Object: The Metadata Gap
@@ -451,6 +406,7 @@ JSON documents carry no self-describing metadata. Context must be provided exter
 ```
 
 **Questions left unanswered:**
+
 - What version of the API produced this?
 - When was this data generated?
 - Is this data complete or paginated?
@@ -481,6 +437,7 @@ id: bigint, name: string, age: number
 ```
 
 **Now we know:**
+
 - API version and endpoint
 - Generation timestamp and timezone
 - Pagination context
@@ -489,17 +446,19 @@ id: bigint, name: string, age: number
 
 ### Real-World Impact
 
-**Scenario: Microservices Architecture**
+#### Microservices Architecture
 
 Service A generates data, passes to Service B, then to Service C:
 
 **With JSON:**
+
 - Service A logs metadata separately
 - Service B must look up context from external sources
 - Service C has no idea about data provenance
 - Debugging requires correlating logs across services
 
 **With Internet Object:**
+
 - Metadata travels with the data
 - Each service can add its own metadata
 - Complete audit trail embedded in the document
@@ -578,12 +537,10 @@ created_at: bigint          # Unix timestamp
   0.00,
   4871.25,
   [Workstation Desktop, Graphics Card RTX 4090],
-  ```
-  Office delivery
+  r"Office delivery
   Requires signature
   Contact: +1-555-0199
-  Business hours only
-  ```,                      # Multi-line delivery instructions
+  Business hours only",                      # Multi-line delivery instructions
   1705284000000
 ```
 
@@ -597,7 +554,7 @@ This article explored the advanced features that make Internet Object production
 - **Separate Schemas**: Reusable schema files for consistency across data files
 - **Metadata**: Built-in contextual information that travels with your data
 
-These features address real-world challenges that JSON cannot solve natively. While JSON requires external systems for documentation, versioning, and context, Internet Object makes these first-class features of the format itself.
+These features address real-world challenges that typical data formats leave to external tooling. Internet Object makes documentation, versioning, and context first-class features of the format itself.
 
 In the next article, we'll explore **schema validation, constraints, and default values** - the features that make Internet Object schemas powerful enough to replace traditional validation libraries.
 
