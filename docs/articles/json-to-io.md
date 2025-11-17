@@ -265,7 +265,7 @@ However, explicit types are recommended for production use as they provide bette
 
 ## The Document-Oriented Format
 
-By now, you've seen that Internet Object is a document-oriented format. Just as HTML documents have a head and body, Internet Object documents have a header and data section. The header contains the schema and optional metadata, while the data section contains the actual records.
+By now, you've seen that Internet Object is a document-oriented format, unlike JSON, which is object/value-oriented. Just as HTML documents are divided into head and body sections, Internet Object documents consist of a header and a data section. The header contains the schema and optional metadata, while the data section contains the actual records.
 
 This document structure is fundamental to Internet Object and enables powerful features like schema separation, collections, metadata, variables and definitions. While we'll explore these advanced concepts in the coming articles, it's worth noting that Internet Object supports more advanced document structures beyond the basic header-data pattern—topics.
 
@@ -280,13 +280,10 @@ This article introduced the fundamentals of Internet Object, including:
 - **Type definitions**: Adding type safety and validation to schemas
 - **Size efficiency**: Significant reduction in data size, especially for collections
 
-Internet Object provides a clean, modern API for parsing and serializing data in JavaScript/TypeScript (and other languages).
-
-Stay tuned for more insights into Internet Object!
+This article covered the fundamental structure and syntax of Internet Object. The upcoming articles in this series will explore more advanced features. So stay tuned for deeper insights into Internet Object's advanced features!
 
 ---
 
 **Try it yourself:** Experiment with Internet Object in the [Interactive Playground](https://playground.internetobject.org)
 
 *Want to learn more? Visit [InternetObject.org](https://internetobject.org) for complete documentation and specifications.*
-
