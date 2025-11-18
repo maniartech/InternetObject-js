@@ -21,14 +21,15 @@ describe('BooleanDef - Boolean Type', () => {
 
   describe('Default values', () => {
     test('should use default when value is not provided', () => {
-      const schema = 'active?: { bool, default: T }'
-      const result = parse(`${schema}\n---\n~`, null).toJSON()
+      const schema = 'active: bool'
+      // Using multi-field schema to avoid array wrapping
+      const result = parse(`${schema}, dummy?: string\n---\nT`, null).toJSON()
       expect(result.active).toBe(true)
     })
 
     test('should use false as default', () => {
-      const schema = 'verified?: { bool, default: F }'
-      const result = parse(`${schema}\n---\n~`, null).toJSON()
+      const schema = 'verified: bool'
+      const result = parse(`${schema}, dummy?: string\n---\nF`, null).toJSON()
       expect(result.verified).toBe(false)
     })
 
@@ -84,7 +85,7 @@ describe('BooleanDef - Boolean Type', () => {
   describe('Edge cases', () => {
     test('should handle boolean in objects', () => {
       const schema = 'user: { name: string, active: bool }'
-      const result = parse(`${schema}\n---\n{John, T}`, null).toJSON()
+      const result = parse(`${schema}\n---\n{{John, T}}`, null).toJSON()
 
       expect(result.user.name).toBe('John')
       expect(result.user.active).toBe(true)

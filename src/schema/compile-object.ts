@@ -70,7 +70,7 @@ function parseObjectOrTypeDef(o: ObjectNode, path:string, defs?:Definitions) {
       if (token.type === TokenType.STRING) {
         // Built-in type shorthand: { string, min: ..., max: ... }
         if (TypedefRegistry.isRegisteredType(token.value)) {
-          return parseMemberDef(token.value, o);
+          return parseMemberDef(token.value, o, defs);
         }
         // Schema variable shorthand: { $Person, ... }
         if (typeof token.value === 'string' && token.value.startsWith('$')) {
@@ -105,7 +105,7 @@ function parseObjectOrTypeDef(o: ObjectNode, path:string, defs?:Definitions) {
       return { type: 'object', schema: typeNode as any, path } as MemberDef;
     }
     if (TypedefRegistry.isRegisteredType(type)) {
-      return parseMemberDef(type, o);
+      return parseMemberDef(type, o, defs);
     }
 
     // If the type is not registered, then it is an invalid type
@@ -294,9 +294,56 @@ function parseObjectDef(o: ObjectNode, schema:Schema, path:string, defs?:Definit
   return schema;
 }
 
-function parseMemberDef(type:string, o: ObjectNode) {
+/**
+ * Dereferences variable references in an ObjectNode's members before schema validation.
+ * This ensures that variables like @defaultQty are resolved to their actual values (1)
+ * before type-specific validators (NumberDef, BooleanDef, etc.) process them.
+ *
+ * Two-stage dereferencing architecture:
+ * 1. Schema compilation runtime: Resolves variables during MemberDef validation (here)
+ * 2. Data processing runtime: Resolves variables via _resolveMemberDefVariables in processObject
+ *
+ * Modifies the ObjectNode in place for efficiency during schema compilation.
+ */
+function dereferenceObjectNodeVariables(o: ObjectNode, defs?: Definitions): void {
+  if (!defs) return;
+
+  // Dereference variables in each member's value
+  for (const child of o.children) {
+    if (!(child instanceof MemberNode)) continue;
+
+    const value = child.value;
+
+    // Dereference variable in TokenNode values (e.g., default: @defaultQty)
+    if (value instanceof TokenNode &&
+        typeof value.value === 'string' &&
+        value.value.startsWith('@')) {
+      const resolved = defs.getV(value.value);
+      // getV returns the TokenNode stored for the variable (e.g., TokenNode with type NUMBER and value 1)
+      // Replace the variable reference TokenNode with the resolved value TokenNode
+      if (resolved instanceof TokenNode) {
+        (child as any).value = resolved;
+      } else {
+        // Fallback: if getV returned a raw value (shouldn't happen but be defensive)
+        (value as any).value = resolved;
+        // Update the token type based on the resolved value
+        if (typeof resolved === 'number') {
+          (value as any).type = TokenType.NUMBER;
+        } else if (typeof resolved === 'boolean') {
+          (value as any).type = TokenType.BOOLEAN;
+        }
+      }
+    }
+  }
+}
+
+function parseMemberDef(type:string, o: ObjectNode, defs?: Definitions) {
+  // Dereference variables in the ObjectNode before validation
+  dereferenceObjectNodeVariables(o, defs);
+
   const typeDef = TypedefRegistry.get(type);
-  const memberDef = processSchema(o, typeDef.schema)
+  // Pass defs to processSchema so it can resolve variables during validation
+  const memberDef = processSchema(o, typeDef.schema, defs)
   return memberDef;
 }
 
@@ -403,7 +450,7 @@ export function getMemberDef(memberDef:MemberNode, path:string, defs?:Definition
 
   // If the value token is an object, then parse the object definition
   if(node instanceof ObjectNode) {
-    const objectDef = parseObjectOrTypeDef(node, _(path, fieldInfo.name));
+    const objectDef = parseObjectOrTypeDef(node, _(path, fieldInfo.name), defs);
     return {
       ...fieldInfo,
       ...objectDef,

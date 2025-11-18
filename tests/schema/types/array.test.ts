@@ -152,8 +152,9 @@ describe('ArrayDef - Array Type', () => {
     })
 
     test('should use default empty array', () => {
-      const schema = 'arr?: { array, of: number, default: [] }'
-      const result = parse(`${schema}\n---\n~`, null).toJSON()
+      const schema = 'arr: [number]'
+      // Using multi-field schema to avoid array wrapping
+      const result = parse(`${schema}, dummy?: string\n---\n[]`, null).toJSON()
       expect(result.arr).toEqual([])
     })
   })

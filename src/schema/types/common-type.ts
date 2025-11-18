@@ -31,7 +31,11 @@ function doCommonTypeCheck(memberDef: MemberDef, value: any, node?: Node, defs?:
 
   // Check for undefined
   if (isUndefined) {
-    if (memberDef.default !== undefined) return { value:_default(memberDef.default), changed: true }
+    if (memberDef.default !== undefined) {
+      // Two-stage dereferencing: defs passed for schema compilation runtime,
+      // but variables already resolved in processObject for data processing runtime
+      return { value:_default(memberDef.default, defs), changed: true }
+    }
     if (memberDef.optional) return { value: undefined, changed: true }
     throw new InternetObjectValidationError(..._valueRequired(memberDef, node, collectionIndex))
   }
@@ -72,17 +76,42 @@ function doCommonTypeCheck(memberDef: MemberDef, value: any, node?: Node, defs?:
   return { value: value, changed: false }
 }
 
-function _default(value: any) {
+/**
+ * Processes default values with two-stage variable dereferencing:
+ * 1. Schema compilation runtime: Resolves variables when validating MemberDef constraints
+ * 2. Data processing runtime: Variables already resolved by _resolveMemberDefVariables in processObject
+ *
+ * Also handles TokenNode unwrapping and string literal conversions (N, T, F).
+ */
+function _default(value: any, defs?: Definitions) {
+  // Unwrap TokenNode and resolve variables if present
+  if (value instanceof TokenNode) {
+    // If it's a variable/schema reference, resolve it (schema compilation runtime)
+    if (typeof value.value === 'string' && value.value.startsWith('@') && defs) {
+      value = defs.getV(value)
+      // Unwrap TokenNode if getV returned one
+      value = (value as any) instanceof TokenNode ? value.value : value
+    } else {
+      value = value.value
+    }
+  }
+
+  // Resolve variable references in plain strings (data processing runtime fallback)
+  if (typeof value === 'string' && value.startsWith('@') && defs) {
+    value = defs.getV(value)
+    // Unwrap TokenNode if getV returned one
+    value = (value as any) instanceof TokenNode ? value.value : value
+  }
+
+  // Convert string literals
   if (typeof value === 'string') {
     if (value === 'N') return null
     if (value === 'T' || value === 'true') return true
     if (value === 'F' || value === 'false') return false
-    return value
   }
-  return value
-}
 
-function _valueRequired(memberDef: MemberDef, node?: Node, collectionIndex?: number): ErrorArgs {
+  return value
+}function _valueRequired(memberDef: MemberDef, node?: Node, collectionIndex?: number): ErrorArgs {
   const msg = `Value is required for ${memberDef.path}` + (collectionIndex !== undefined ? ` at index ${collectionIndex}` : '')
   return [ErrorCodes.valueRequired, msg , node]
 }

@@ -12,6 +12,52 @@ import Schema             from './schema';
 import MemberDef          from './types/memberdef';
 import { processMember }  from './processing/member-processor';
 
+/**
+ * Resolves variable references in memberDef fields like default, min, max, choices.
+ * Variables are strings starting with @ that reference definitions.
+ */
+function _resolveMemberDefVariables(memberDef: MemberDef, defs?: Definitions): MemberDef {
+  if (!memberDef || !defs) return memberDef;
+
+  const resolved = { ...memberDef };
+
+  // Resolve default value if it's a variable reference
+  if (typeof resolved.default === 'string' && resolved.default.startsWith('@')) {
+    resolved.default = defs.getV(resolved.default);
+    // Unwrap TokenNode if needed
+    if (resolved.default instanceof TokenNode) {
+      resolved.default = resolved.default.value;
+    }
+  }
+
+  // Resolve choices if they contain variable references
+  if (Array.isArray(resolved.choices)) {
+    resolved.choices = resolved.choices.map(choice => {
+      if (typeof choice === 'string' && choice.startsWith('@')) {
+        let resolved = defs.getV(choice);
+        return resolved instanceof TokenNode ? resolved.value : resolved;
+      }
+      return choice;
+    });
+  }
+
+  // Resolve min/max if they're variable references
+  if (typeof resolved.min === 'string' && resolved.min.startsWith('@')) {
+    resolved.min = defs.getV(resolved.min);
+    if (resolved.min instanceof TokenNode) {
+      resolved.min = resolved.min.value;
+    }
+  }
+  if (typeof resolved.max === 'string' && resolved.max.startsWith('@')) {
+    resolved.max = defs.getV(resolved.max);
+    if (resolved.max instanceof TokenNode) {
+      resolved.max = resolved.max.value;
+    }
+  }
+
+  return resolved;
+}
+
 export default function processObject(data: ObjectNode, schema: Schema | TokenNode, defs?: Definitions, collectionIndex?: number) {
   if (schema instanceof TokenNode) {
     const schemaName = schema.value as string;
@@ -34,7 +80,7 @@ function _processObject(data: ObjectNode, schema: Schema, defs?: Definitions, co
   for (; i<schema.names.length; i++) {
     let member = data.children[i] as MemberNode;
     let name = schema.names[i];
-    let memberDef = schema.defs[name];
+    let memberDef = _resolveMemberDefVariables(schema.defs[name], defs);
 
     if (member) {
       if (member.key) {
@@ -47,9 +93,15 @@ function _processObject(data: ObjectNode, schema: Schema, defs?: Definitions, co
       const val = processMember(member, memberDef, defs);
       if (val !== undefined) o.set(name, val);
     } else {
-      if (!memberDef.optional) {
+      // Member is missing - check if it's optional or has a default
+      if (!memberDef.optional && memberDef.default === undefined) {
         throw new ValidationError(ErrorCodes.valueRequired, `Expecting a value for ${memberDef.path}.`, data);
       }
+      // Process with undefined to apply defaults
+      processedNames.add(name);
+      const dummyMember = { key: null, value: undefined } as any;
+      const val = processMember(dummyMember, memberDef, defs);
+      if (val !== undefined) o.set(name, val);
     }
   }
 
@@ -80,7 +132,7 @@ function _processObject(data: ObjectNode, schema: Schema, defs?: Definitions, co
     }
 
     let name = member.key.value;
-    let memberDef = schema.defs[name];
+    let memberDef = _resolveMemberDefVariables(schema.defs[name], defs);
 
     if (processedNames.has(name)) {
       throw new SyntaxError(ErrorCodes.duplicateMember, `Member ${name} is already defined.`, member);
@@ -115,7 +167,7 @@ function _processObject(data: ObjectNode, schema: Schema, defs?: Definitions, co
   // It's not an actual member and must not participate in required checks.
   if (name === '*') continue;
 
-    const memberDef = schema.defs[name];
+    const memberDef = _resolveMemberDefVariables(schema.defs[name], defs);
     if (!processedNames.has(name)) {
       const member = data.children.find((m) => (m as any).key?.value === name)
 

@@ -84,6 +84,33 @@ function _processNode(node: Node, memberDef: MemberDef, defs?: Definitions, coll
     }
   })
 
+  // Validate length constraints
+  const arrayLength = array.length
+
+  if (memberDef.len !== undefined && arrayLength !== memberDef.len) {
+    throw new ValidationError(
+      ErrorCodes.invalidLength,
+      `The "${memberDef.path || 'array'}" must have exactly ${memberDef.len} items, but has ${arrayLength}.`,
+      valueNode
+    )
+  }
+
+  if (memberDef.minLen !== undefined && arrayLength < memberDef.minLen) {
+    throw new ValidationError(
+      ErrorCodes.outOfRange,
+      `The "${memberDef.path || 'array'}" must have at least ${memberDef.minLen} items, but has ${arrayLength}.`,
+      valueNode
+    )
+  }
+
+  if (memberDef.maxLen !== undefined && arrayLength > memberDef.maxLen) {
+    throw new ValidationError(
+      ErrorCodes.outOfRange,
+      `The "${memberDef.path || 'array'}" must have at most ${memberDef.maxLen} items, but has ${arrayLength}.`,
+      valueNode
+    )
+  }
+
   return array
 }
 
