@@ -126,23 +126,23 @@ internet-object-js/
   │       └── validation-error-codes.ts     ← (Keep for categories)
   │
   ├── docs/                                ← DOCUMENTATION (reference)
-  │   ├── errors/
-  │   │   ├── README.md                    ← Error system overview
-  │   │   ├── ERROR-CODE-REGISTRY.md       ← **REGISTRY (human-readable)**
-  │   │   │   // Cross-language reference
-  │   │   │   // Status tracking (used/unused)
-  │   │   │   // Change policy
-  │   │   ├── ERROR-HANDLING-GUIDELINES.md ← Writing standards
-  │   │   ├── categories/
-  │   │   │   ├── general.md               ← General errors explained
-  │   │   │   ├── tokenization.md          ← Tokenization errors
-  │   │   │   ├── parsing.md               ← Parsing errors
-  │   │   │   └── validation.md            ← Validation errors
-  │   │   └── codes/                       ← Individual error docs (future)
-  │   │       ├── invalid-type.md
-  │   │       ├── string-not-closed.md
-  │   │       └── ...
-  │   └── ARCHITECTURE-ERROR-HANDLING.md   ← (Existing architecture doc)
+  │   └── errors/
+  │       ├── README.md                    ← Error system overview
+  │       ├── ERROR-CODE-REGISTRY.md       ← **REGISTRY (human-readable)**
+  │       │   // Cross-language reference
+  │       │   // Status tracking (used/unused)
+  │       │   // Change policy
+  │       ├── ERROR-HANDLING-GUIDELINES.md ← Writing standards
+  │       ├── ARCHITECTURE-ERROR-HANDLING.md ← Architecture & patterns
+  │       ├── categories/
+  │       │   ├── general.md               ← General errors explained
+  │       │   ├── tokenization.md          ← Tokenization errors
+  │       │   ├── parsing.md               ← Parsing errors
+  │       │   └── validation.md            ← Validation errors
+  │       └── codes/                       ← Individual error docs (future)
+  │           ├── invalid-type.md
+  │           ├── string-not-closed.md
+  │           └── ...
   │
   ├── tests/
   │   └── errors/                          ← ERROR TESTS
@@ -262,7 +262,7 @@ docs/errors/
 **For Developers:**
 - [Error Code Registry](ERROR-CODE-REGISTRY.md) - Complete list of all codes
 - [Error Handling Guidelines](ERROR-HANDLING-GUIDELINES.md) - How to write errors
-- [Architecture](../ARCHITECTURE-ERROR-HANDLING.md) - System design
+- [Architecture](./ARCHITECTURE-ERROR-HANDLING.md) - System design
 
 **For Users:**
 - [Troubleshooting Guide](#) (future)
@@ -629,7 +629,7 @@ README.md → "Error codes defined in docs.internetobject.org/errors/"
 - `ERROR-CODE-REGISTRY.md` - Complete error code list
 - `ERROR-HANDLING-GUIDELINES.md` - Error message standards
 - `ARCHITECTURE-ERROR-HANDLING.md` - System design
-- `READINESS-TRACKER.md` - Project status
+- `../../READINESS-TRACKER.md` - Project status
 
 ---
 

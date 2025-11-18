@@ -428,6 +428,147 @@ const errorClass = isValidation ? 'error validation-error' : 'error';
 6. **Error Quickfixes**: Suggested fixes for common validation errors
 7. **Multi-level Severity**: Info/Warning/Error within each category
 
+---
+
+## Error Code System & Directory Structure (Implementation Overview)
+
+The error handling architecture is backed by a deliberately structured error code system located in `src/errors/` and mirrored for documentation in `docs/errors/`.
+
+### Source Layout (`src/errors/`)
+
+| File | Purpose |
+|------|---------|
+| `io-error.ts` | Base class: shared code, position range message formatting, stable API (errorCode, fact, positionRange) |
+| `io-syntax-error.ts` | Syntax (tokenization + parsing) subtype – categorizes as `syntax` |
+| `io-validation-error.ts` | Validation subtype – categorizes as `validation` |
+| `general-error-codes.ts` | Cross-cutting error codes (null handling, required values, generic type/value failures) |
+| `tokenization-error-codes.ts` | Character & lexical level problems (string-not-closed, invalid-escape-sequence) |
+| `parsing-error-codes.ts` | Structural / AST construction problems (unexpected-token, expecting-bracket) |
+| `validation-error-codes.ts` | Schema / constraint violations (not-a-string, out-of-range, invalid-pattern, invalid-precision) |
+| `io-error-codes.ts` | Aggregated read-only object combining all category enums for ergonomic imports: `import ErrorCodes from '.../io-error-codes'` |
+| `error-args.ts` | Tuple type `[code, fact, node]` used as a compact factory pattern in common validation helpers |
+| `error-range-utils.ts` | Utilities for precise range construction (single token, span, unclosed construct, toEndOfInput) ensuring consistent positional reporting |
+
+### Documentation Layout (`docs/errors/`)
+
+| Document | Role |
+|----------|------|
+| `ERROR-CODE-REGISTRY.md` | Canonical registry (frozen list) with usage statistics & lifecycle policy |
+| `ERROR-HANDLING-GUIDELINES.md` | Authoritative style & quality standards for crafting messages |
+| `ERROR-INFRASTRUCTURE.md` | Strategic organization & cross-language coordination plan |
+| `categories/*.md` | (Planned) Per-category human explanations |
+| `codes/*.md` | (Planned) Individual deep-dive pages (future public site) |
+
+### Design Rationale
+
+1. **Stability First** – Codes are kebab-case strings (human memorable, diff-friendly, language agnostic).
+2. **Categorical Separation** – Keeps cognitive load low; new contributors immediately see where to add a code.
+3. **Aggregation Layer** – `io-error-codes.ts` allows unified import while preserving semantic grouping.
+4. **Position Precision** – Centralized range helpers avoid ad-hoc line/column handling and keep messages uniform.
+5. **Extensibility** – Adding a code requires: (a) enum insertion in category file (b) registry update (c) message style compliance (d) team approval (see below).
+
+### Category → Error Class → Public Category Mapping
+
+| Internal Enum Source | Thrown As | Public JSON `category` | Notes |
+|----------------------|----------|------------------------|-------|
+| `tokenization-error-codes.ts` | `IOSyntaxError` | `syntax` | Character / lexical boundary issues |
+| `parsing-error-codes.ts` | `IOSyntaxError` | `syntax` | Structural formation issues |
+| `validation-error-codes.ts` | `IOValidationError` | `validation` | Type & constraint violations |
+| `general-error-codes.ts` | Either (`IOSyntaxError` or `IOValidationError`) | Derived | Context-dependent (e.g. `value-required` during validation) |
+
+Runtime (unexpected) errors fallback to `runtime` category unless recognized subclass.
+
+### Selecting the Right Error Code (Decision Rules)
+
+1. **Type Mismatch** – Prefer specific codes (`not-a-string`, `not-a-number`, `not-a-bool`, `not-an-array`) over generic `invalid-type` inside validation logic.
+2. **Constraint Violation** – Use the narrowest applicable code (`invalid-min-length` vs `invalid-length`).
+3. **Structure Formation** – Use parsing codes (e.g., `unexpected-token`, `expecting-bracket`) only during AST phase – NEVER in validation.
+4. **Lexical Issues** – Tokenization codes must originate before AST nodes exist.
+5. **General Codes** – Reserve for cross-cutting semantics: presence (`value-required`), nullability (`null-not-allowed`), or fallback value semantics.
+
+### Position Range Best Practices
+
+| Scenario | Utility | Highlight Strategy |
+|----------|---------|--------------------|
+| Unexpected single token | `singleTokenRange()` | Exact offending token |
+| Unclosed list/object | `unclosedConstructRange()` | From opening delimiter to last known pos |
+| Multi-token schema/member | `tokenSpanRange(start,end)` | Entire construct for clarity |
+| Validation targeting a value | `positionSpanRange(start,end)` | Value span only |
+| EOF after opener | `toEndOfInputRange()` | Complete unterminated region |
+
+### CollectionIndex Integration & Error Envelope
+
+When serializing mixed result collections the system emits uniform error objects. Proposed / emerging canonical shape (see also `../schema/types-revamp/COLLECTION-INDEX-ANALYSIS.md`):
+
+```jsonc
+{
+  "__error": true,
+  "code": "invalid-email",
+  "category": "validation",
+  "message": "Invalid email 'alice@@example.com'. Expected format user@domain.tld",
+  "path": "users[3].email",          // Path with composed indices
+  "collectionIndex": 3,               // Top-level collection item index
+  "position": { "row": 12, "col": 18 },
+  "endPosition": { "row": 12, "col": 39 } // Optional if available
+}
+```
+
+Notes:
+1. `collectionIndex` only refers to the top-level record location inside the processed collection – nested arrays embed their index in `path` instead of another field.
+2. `path` MUST be pre-composed with `[n]` segments for each array nesting level.
+3. `code` aligns with registry; `category` inferred from error instance type.
+4. `position`/`endPosition` align with `error-range-utils` output; if only a start is known omit `endPosition`.
+5. Errors remain first-class items preserving ordering to support partial success workflows.
+
+### Adding a New Error Code (Workflow Summary)
+
+1. Draft use-case & example message → PR description.
+2. Add code to proper category enum (do NOT add directly to aggregate).
+3. Update `ERROR-CODE-REGISTRY.md` (status: proposed) & link issue.
+4. Implement throwing site with high-quality message (style guide compliance).
+5. Add unit test asserting code, message pattern & category.
+6. Team review → on approval mark registry entry STABLE.
+
+### Refactoring Guidance
+
+During ongoing type system enhancements (e.g., `load()`/`serialize()` addition):
+* Replace generic `invalid-type` usages within validation logic with specific type mismatch codes.
+* Ensure `doCommonTypeCheck` throws `value-required` & `null-not-allowed` with passed `collectionIndex` for enriched diagnostics.
+* Path composition updates (array items) should precede enhanced error envelope adoption to avoid churn.
+
+### Cross-Language Consistency
+
+Implementers of other language ports MUST:
+1. Mirror code strings exactly.
+2. Preserve category semantics (tokenization → syntax, validation → validation).
+3. Provide equivalent positional granularity where feasible.
+4. Serialize envelope fields with identical names for tooling interoperability.
+
+---
+
+## Quick Reference Cheat (For Contributors)
+
+| Task | Action |
+|------|--------|
+| Need new code | Propose → enum → registry → tests |
+| Type mismatch string | Throw `not-a-string` (validation layer) |
+| Unterminated array | `IOSyntaxError` + `expecting-bracket` + `unclosedConstructRange()` |
+| Missing required member value | `IOValidationError` + `value-required` |
+| Email format failure | `IOValidationError` + `invalid-email` + single token range |
+| Envelope field origin | Base error + categorization + composed path + collectionIndex |
+
+---
+
+## Future Enhancements (Error System Specific)
+
+1. Single consolidated `ErrorCode` enum exporting JSDoc-rich entries (generate from categories) – optional; maintain current separation for churn control.
+2. Machine-readable JSON registry (`error-codes.schema.json`) enabling docs generation & IDE intellisense.
+3. CLI helper `io explain <code>` rendering markdown from `docs/errors/codes/<code>.md`.
+4. Integration of similarity matching for `invalid-choice` (Levenshtein suggestion pre-computed for small choice sets).
+5. Structured severity layering (info/warn/error) at validation stage for soft constraints.
+6. Optional `causes: []` array in envelope for chained diagnostic context.
+
+
 ## Conclusion
 
 The current implementation achieves:

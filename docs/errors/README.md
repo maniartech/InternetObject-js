@@ -191,9 +191,100 @@ All changes to error codes must be synchronized across:
 - Java implementation (future)
 - Rust implementation (future)
 
+## 🏛️ Architecture Patterns
+
+### Error Accumulation Pattern
+
+InternetObject uses an **error accumulation pattern** to collect all errors in a single pass, rather than stopping at the first error. This provides better developer experience by showing all issues at once.
+
+**Design: Optional Error Collector Parameter**
+
+Functions that perform validation accept an optional `errorCollector?: Error[]` parameter:
+
+```typescript
+function processSchema(
+  data: CollectionNode,
+  schema: Schema | TokenNode,
+  defs?: Definitions,
+  errorCollector?: Error[]  // ← Accumulation pattern
+): Collection<any>
+```
+
+**Why This Pattern?**
+
+1. **Continue-on-Error**: Collect multiple validation errors without stopping
+2. **Separation of Concerns**: Parser errors vs validation errors tracked separately
+3. **Avoid Duplication**: Parser ErrorNodes preserved in collection without re-adding to error array
+4. **Optional Flexibility**: Works standalone (no collector) or integrated (with collector)
+5. **Performance**: Pass by reference, single allocation, no intermediate arrays
+
+**Flow Example:**
+
+```typescript
+// Phase 1: Allocate error array once
+const validationErrors: Error[] = []
+
+// Phase 2: Pass by reference to fill
+processSchema(data, schema, defs, validationErrors)
+
+// Phase 3: Transfer to document
+doc.addErrors(validationErrors)
+
+// Result: doc.getErrors() contains all errors (parser + validation)
+```
+
+**Inside processCollection:**
+
+```typescript
+for (let i = 0; i < data.children.length; i++) {
+  const item = data.children[i]
+
+  if (item instanceof ErrorNode) {
+    // Parser error: Already in doc._errors
+    collection.push(item)  // Just preserve in collection
+  } else {
+    try {
+      collection.push(processObject(item, schema, defs, i))
+    } catch (error) {
+      // Validation error: Add to collector AND create ErrorNode
+      const errorNode = new ErrorNode(error, item.getStartPos(), item.getEndPos())
+      if (errorCollector) {
+        errorCollector.push(error)  // ← Accumulate in doc._errors
+      }
+      collection.push(errorNode)  // ← Preserve in collection
+    }
+  }
+}
+```
+
+**Why Not Alternatives?**
+
+| Alternative | Why Rejected |
+|-------------|--------------|
+| Return `{ collection, errors }` | Breaking API change, loses parser/validation separation |
+| Pass Document instance | Tight coupling, can't use standalone, circular dependencies |
+| Event emitter | Over-engineered for synchronous flow, performance overhead |
+| Throw immediately | User only sees first error (bad DX) |
+| Silent failure | Errors lost, no reporting mechanism |
+
+**Key Benefits:**
+
+- ✅ **Single Pass**: All errors collected during normal processing
+- ✅ **Dual Representation**: Errors exist both inline (ErrorNodes) and centralized (doc._errors)
+- ✅ **Flexible Usage**: Function works standalone or integrated
+- ✅ **No Duplication**: Parser errors not double-counted
+- ✅ **Performance**: Zero-copy pass-by-reference
+
+**Related Documentation:**
+- See [ARCHITECTURE-ERROR-HANDLING.md](./ARCHITECTURE-ERROR-HANDLING.md) for complete flow
+- See "Collection Processing" section for implementation details
+
+---
+
 ## 📖 Further Reading
 
-- [READINESS-TRACKER.md](../READINESS-TRACKER.md) - Overall project status
+- [ARCHITECTURE-ERROR-HANDLING.md](./ARCHITECTURE-ERROR-HANDLING.md) - Complete error handling architecture
+- [READINESS-TRACKER.md](../../READINESS-TRACKER.md) - Overall project status
 - [CONTRIBUTING.md](../../CONTRIBUTING.md) - How to contribute
 - [src/errors/](../../src/errors/) - Implementation code
 
