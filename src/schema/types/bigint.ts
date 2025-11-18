@@ -10,14 +10,15 @@ import { NUMBER_TYPES, NUMBER_MAP, throwError } from './common-number'
 
 const bigintSchema = new Schema(
   "bigint",
-  { type:     { type: "string", optional: false, null: false, choices: NUMBER_TYPES } },
-  { default:  { type: "bigint", optional: true,  null: false  } },
-  { choices:  { type: "array",  optional: true,  null: false, of: { type: "bigint" } } },
-  { min:      { type: "bigint", optional: true,  null: false } },
-  { max:      { type: "bigint", optional: true,  null: false } },
-  { format:   { type: "string", optional: true,  null: false, choices: ["decimal", "hex", "octal", "binary"], default:"decimal" } },
-  { optional: { type: "bool",   optional: true } },
-  { null:     { type: "bool",   optional: true } },
+  { type:       { type: "string", optional: false, null: false, choices: NUMBER_TYPES } },
+  { default:    { type: "bigint", optional: true,  null: false  } },
+  { choices:    { type: "array",  optional: true,  null: false, of: { type: "bigint" } } },
+  { min:        { type: "bigint", optional: true,  null: false } },
+  { max:        { type: "bigint", optional: true,  null: false } },
+  { multipleOf: { type: "bigint", optional: true,  null: false } },
+  { format:     { type: "string", optional: true,  null: false, choices: ["decimal", "hex", "octal", "binary"], default:"decimal" } },
+  { optional:   { type: "bool",   optional: true } },
+  { null:       { type: "bool",   optional: true } },
 )
 
 /**
@@ -71,11 +72,23 @@ class BigIntDef implements TypeDef {
       )
     }
 
-    const { min, max } = memberDef
+    const { min, max, multipleOf } = memberDef
 
     if ((min !== undefined && min !== null && value < min) ||
         (max !== undefined && max !== null && value > max)) {
       throwError(ErrorCodes.invalidRange, memberDef.path!, value, node)
+    }
+
+    // Validate multipleOf constraint
+    if (multipleOf !== undefined && multipleOf !== null) {
+      const remainder = value % BigInt(multipleOf)
+      if (remainder !== 0n) {
+        throw new ValidationError(
+          ErrorCodes.invalidValue,
+          `The value ${value} for '${memberDef.path}' must be a multiple of ${multipleOf}`,
+          node
+        )
+      }
     }
 
     return value

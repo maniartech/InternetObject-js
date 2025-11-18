@@ -17,6 +17,7 @@ const decimalSchema = new Schema(
   { scale:      { type: "number", optional: true, null: false } },
   { min:        { type: "decimal", optional: true,  null: false } },
   { max:        { type: "decimal", optional: true,  null: false } },
+  { multipleOf: { type: "decimal", optional: true,  null: false } },
   { optional:   { type: "bool",   optional: true } },
   { null:       { type: "bool",   optional: true } },
 )
@@ -151,6 +152,32 @@ class DecimalDef implements TypeDef {
 
       if (normalizedVal.compareTo(normalizedMax) > 0) {
         throwError(ErrorCodes.invalidRange, memberDef.path!, value, node)
+      }
+    }
+
+    // Validate multipleOf constraint
+    if (memberDef.multipleOf !== undefined && memberDef.multipleOf !== null) {
+      const multipleOfD: Decimal = Decimal.ensureDecimal(memberDef.multipleOf)
+
+      // For multipleOf check, we need to ensure both values have the same scale
+      const targetScale = Math.max(valD.getScale(), multipleOfD.getScale())
+      const valIntDigits = getIntegerDigits(valD)
+      const multipleIntDigits = getIntegerDigits(multipleOfD)
+      const targetPrecision = Math.max(valIntDigits, multipleIntDigits) + targetScale
+
+      const normalizedVal = valD.convert(targetPrecision, targetScale)
+      const normalizedMultiple = multipleOfD.convert(targetPrecision, targetScale)
+
+      // Check if value is a multiple using modulo operation
+      const remainder = normalizedVal.mod(normalizedMultiple)
+      const zero = new Decimal(0, targetPrecision, targetScale)
+      if (remainder.compareTo(zero) !== 0) {
+        throwError(
+          ErrorCodes.invalidValue,
+          memberDef.path!,
+          `Value must be a multiple of ${multipleOfD}`,
+          node
+        )
       }
     }
 
