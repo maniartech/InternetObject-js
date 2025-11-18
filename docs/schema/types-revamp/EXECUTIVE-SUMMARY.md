@@ -14,7 +14,7 @@
 |------------|---------|----------|----------|
 | **Parse** (Text → JS) | ✅ Implemented | ✅ Enhanced | Core |
 | **Load** (JS → JS) | ❌ Missing | ✅ New | High |
-| **Serialize** (JS → Text) | ⚠️ Partial | ✅ Complete | High |
+| **Stringify** (JS → Text) | ⚠️ Partial | ✅ Complete | High |
 | **Validate** | ❌ Coupled | ✅ Abstracted | Core |
 
 ## Key Problems Solved
@@ -31,8 +31,8 @@
 
 ### Problem 3: Unsafe Serialization
 **Current**: `stringify()` doesn't validate before converting
-**Solution**: Enhanced `serialize()` validates first
-**Impact**: Cannot accidentally serialize invalid data
+**Solution**: Enhanced `stringify()` validates first
+**Impact**: Cannot accidentally stringify invalid data
 
 ### Problem 4: Hard to Extend
 **Current**: Adding new validation requires touching multiple places
@@ -51,13 +51,13 @@ private validateValue(value: string, memberDef: MemberDef): string {
 // Used by all operations
 parse()     → validateValue()
 load()      → validateValue()
-serialize() → validateValue()
+stringify() → validateValue()
 ```
 
 ### 2. SRP (Single Responsibility Principle)
 - `parse()`: Extract from text format
 - `load()`: Validate JS objects
-- `serialize()`: Format to text
+- `stringify()`: Format to text
 - `validateValue()`: Enforce constraints
 
 ### 3. KISS (Keep It Simple, Stupid)
@@ -95,7 +95,7 @@ interface TypeDef {
   load(value: any, memberDef: MemberDef): any
 
   // Enhanced
-  serialize(value: any, memberDef: MemberDef): string
+  stringify(value: any, memberDef: MemberDef): string
 
   // Internal (new pattern)
   private validateValue(value: any, memberDef: MemberDef): any
@@ -122,8 +122,8 @@ interface TypeDef {
 - Support type coercion where appropriate
 - **Risk**: Medium | **Value**: High (new feature)
 
-### Phase 4: Enhance Serialize (Week 6)
-- Add validation to serialize operations
+### Phase 4: Enhance Stringify (Week 6)
+- Add validation to stringify operations
 - Handle edge cases (null, undefined)
 - Update all TypeDefs
 - **Risk**: Low | **Value**: High (safety)
@@ -169,7 +169,7 @@ interface TypeDef {
 ### Target State
 - Parse: ✅ Enhanced
 - Load: ✅ New
-- Serialize: ✅ Complete
+- Stringify: ✅ Complete
 - Validation: ✅ Abstracted (DRY)
 - Test Coverage: >90%
 - Type Safety: ✅ Excellent
@@ -177,15 +177,15 @@ interface TypeDef {
 ## Success Criteria
 
 ### Functional Requirements
-- [ ] All TypeDefs implement `load()` and `serialize()`
+- [ ] All TypeDefs implement `load()` and `stringify()`
 - [ ] Validation is shared across operations
-- [ ] Round-trip consistency (parse → serialize → parse)
+- [ ] Round-trip consistency (parse → stringify → parse)
 - [ ] Error messages include context (path, line, column)
 
 ### Non-Functional Requirements
 - [ ] No performance regression in `parse()` (baseline)
 - [ ] `load()` < 10% slower than `parse()`
-- [ ] `serialize()` with validation < 20% slower than old `stringify()`
+- [ ] `stringify()` with validation < 20% slower than old `stringify()`
 - [ ] Code coverage > 90%
 
 ### Code Quality
@@ -203,7 +203,7 @@ interface TypeDef {
 - Target: >90% coverage
 
 ### Integration Tests
-- Test object processing with load/serialize
+- Test object processing with load/stringify
 - Test round-trip scenarios
 - Test complex nested structures
 - Test error propagation
@@ -211,7 +211,7 @@ interface TypeDef {
 ### Performance Tests
 - Benchmark parse operation (baseline)
 - Benchmark load operation (should be fast)
-- Benchmark serialize operation (should be safe)
+- Benchmark stringify operation (should be safe)
 - Compare with current implementation
 
 ## Risk Assessment
@@ -234,7 +234,7 @@ interface TypeDef {
 ### Adoption Strategy
 1. **Phase 1-2**: Internal refactoring (users unaffected)
 2. **Phase 3**: Introduce `load()` as new feature
-3. **Phase 4**: Enhanced `serialize()` (validates now, might catch bugs)
+3. **Phase 4**: Enhanced `stringify()` (validates now, might catch bugs)
 4. **Phase 5**: Complete API available
 
 ## Documentation Deliverables
@@ -270,8 +270,8 @@ const validated = InternetObject.load(jsObj, personSchema)
 // ✅ Applies defaults
 // ✅ Normalizes values
 
-// Serialize safely
-const ioText = validated.serialize(personSchema)
+// Stringify safely
+const ioText = validated.stringify(personSchema)
 // ✅ Validates before serialization
 // ✅ Proper formatting
 // Result: "John, 30, T"

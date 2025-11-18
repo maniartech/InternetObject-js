@@ -3,9 +3,9 @@
 ## Executive Summary
 
 This document outlines the architectural design for extending the Internet Object type system to support four distinct operations:
-1. **Parse** - Deserialize from IO text format to JavaScript values
-2. **Load** - Deserialize from JavaScript objects to validated JavaScript values
-3. **Serialize** - Convert JavaScript values back to IO text format
+1. **Parse** - Destringify from IO text format to JavaScript values
+2. **Load** - Destringify from JavaScript objects to validated JavaScript values
+3. **Stringify** - Convert JavaScript values back to IO text format
 4. **Validate** - Standalone validation (shared by all operations)
 
 ## Current State Analysis
@@ -38,7 +38,7 @@ Text Input → TokenNode/AST → doCommonTypeCheck() → Type-specific validatio
 
 2. **Don't Repeat Yourself (DRY)**
    - Extract common validation into reusable functions
-   - Share validation between parse, load, and serialize
+   - Share validation between parse, load, and stringify
    - Common type checks remain centralized
 
 3. **Keep It Simple, Stupid (KISS)**
@@ -55,44 +55,24 @@ Text Input → TokenNode/AST → doCommonTypeCheck() → Type-specific validatio
 
 ## New Architecture
 
-### 1. Enhanced TypeDef Interface
+### 1. Simplified TypeDef Interface
 
 ```typescript
 export default interface TypeDef {
-  /**
-   * Returns the type this instance handles
-   */
   get type(): string
-
-  /**
-   * Returns the schema for type validation
-   */
   get schema(): Schema
 
-  /**
-   * Parse: Text (Node/TokenNode) → Validated JS Value
-   * Deserializes from IO text format
-   */
-  parse(node: Node, memberDef: MemberDef, defs?: Definitions, collectionIndex?: number): any
+  /** Parse: Text (Node/TokenNode) → Validated JS Value */
+  parse(node: Node, memberDef: MemberDef, defs?: Definitions): any
 
-  /**
-   * Load: JS Value → Validated JS Value
-   * Validates and normalizes JavaScript objects
-   */
-  load(value: any, memberDef: MemberDef, defs?: Definitions, collectionIndex?: number): any
+  /** Load: JS Value → Validated JS Value */
+  load(value: any, memberDef: MemberDef, defs?: Definitions): any
 
-  /**
-   * Serialize: Validated JS Value → IO Text
-   * Converts to IO text format with validation
-   */
-  serialize(value: any, memberDef: MemberDef, defs?: Definitions): string
-
-  /**
-   * Validate: Validates a JavaScript value (core validation logic)
-   * This is the DRY component - used by load and serialize
-   */
-  validate(value: any, memberDef: MemberDef, defs?: Definitions, collectionIndex?: number): any
+  /** Stringify: Validated JS Value → IO Text */
+  stringify(value: any, memberDef: MemberDef, defs?: Definitions): string
 }
+
+Note: The earlier `collectionIndex` parameter has been removed from these signatures. Positional context for collection items is now applied only at the collection/object processing boundary when constructing error envelopes. This keeps TypeDef implementations purely focused on value normalization and constraint validation.
 ```
 
 ### 2. Validation Flow Architecture
@@ -141,7 +121,7 @@ validateValue() [type-specific validation]
 Return validated value
 ```
 
-#### Serialize Flow (Validated JS → Text)
+#### Stringify Flow (Validated JS → Text)
 ```
 JavaScript Value
    ↓
@@ -156,7 +136,7 @@ Return IO text
 
 ### 4. Refactored Common Type Check
 
-The `doCommonTypeCheck` function needs enhancement to work with both Node and raw values:
+The `doCommonTypeCheck` function works with both Node and raw values and no longer needs any positional index:
 
 ```typescript
 type CommonTypeCheckInput = Node | any
@@ -167,14 +147,13 @@ type CommonTypeCheckResult = {
 
 /**
  * Performs common validations for all operations
- * Works with both Node objects (parse) and raw values (load/serialize)
+ * Works with both Node objects (parse) and raw values (load/stringify)
  */
 function doCommonTypeCheck(
   memberDef: MemberDef,
   input: CommonTypeCheckInput,
-  sourceNode?: Node, // For error reporting
+  sourceNode?: Node,
   defs?: Definitions,
-  collectionIndex?: number,
   equalityComparator?: EqualityComparator
 ): CommonTypeCheckResult
 ```
@@ -185,57 +164,43 @@ Each type extracts its validation logic into a separate method:
 
 ```typescript
 class StringDef implements TypeDef {
-  // PUBLIC API
-
   parse(node: Node, memberDef: MemberDef, defs?: Definitions): string {
     const valueNode = defs?.getV(node) || node
     const { value, handled } = doCommonTypeCheck(memberDef, valueNode, node, defs)
     if (handled) return value
-
-    // Extract value from token
     if (!(valueNode instanceof TokenNode) || valueNode.type !== TokenType.STRING) {
       throw new ValidationError(ErrorCodes.notAString, ...)
     }
-
-    // Validate using shared logic
-    return this.validate(valueNode.value, memberDef, valueNode)
+    return this.validateValue(valueNode.value, memberDef, valueNode)
   }
 
   load(value: any, memberDef: MemberDef, defs?: Definitions): string {
     const { value: checkedValue, handled } = doCommonTypeCheck(memberDef, value, undefined, defs)
     if (handled) return checkedValue
-
-    // Type check and conversion
     if (typeof value !== 'string') {
       throw new ValidationError(ErrorCodes.notAString, ...)
     }
-
-    // Validate using shared logic
-    return this.validate(value, memberDef)
+    return this.validateValue(value, memberDef)
   }
 
-  serialize(value: any, memberDef: MemberDef, defs?: Definitions): string {
+  stringify(value: any, memberDef: MemberDef, defs?: Definitions): string {
     const { value: checkedValue, handled } = doCommonTypeCheck(memberDef, value, undefined, defs)
     if (handled) {
-      // Handle special cases for serialization
       if (checkedValue === null) return 'N'
       if (checkedValue === undefined) return ''
+      if (typeof checkedValue === 'string') return this.formatToIOText(checkedValue, memberDef)
     }
-
-    // Validate before serialization
-    const validatedValue = this.validate(value, memberDef)
-
-    // Format to IO text
+    const validatedValue = this.validateValue(value, memberDef)
     return this.formatToIOText(validatedValue, memberDef)
   }
 
-  // INTERNAL VALIDATION (DRY)
+  // INTERNAL VALIDATION
 
   /**
-   * Core validation logic shared by parse, load, and serialize
+   * Core validation logic shared by parse, load, and stringify
    * Pure function - no side effects except throwing errors
    */
-  private validate(
+  private validateValue(
     value: string,
     memberDef: MemberDef,
     node?: Node // Optional for error reporting
@@ -286,8 +251,8 @@ class StringDef implements TypeDef {
 4. Add comprehensive tests
 
 ### Phase 2: Extract Validation Logic ✅
-1. For each TypeDef, extract validation into private `validate()` method
-2. Update `parse()` to use `validate()`
+1. For each TypeDef, extract validation into private `validateValue()` method
+2. Update `parse()` to use `validateValue()`
 3. Ensure all tests still pass
 4. Add validation-specific unit tests
 
@@ -297,8 +262,8 @@ class StringDef implements TypeDef {
 3. Add type checking and conversion logic
 4. Add comprehensive tests for load functionality
 
-### Phase 4: Enhance Serialize ✅
-1. Update existing `stringify/serialize` methods
+### Phase 4: Enhance Stringify ✅
+1. Update existing `stringify/stringify` methods
 2. Add validation before serialization
 3. Handle edge cases (null, undefined)
 4. Add comprehensive tests
@@ -317,7 +282,7 @@ class StringDef implements TypeDef {
 // Parse errors include node position
 throw new ValidationError(code, message, node)
 
-// Load/Serialize errors include path
+// Load/Stringify errors include path
 throw new ValidationError(code, message, undefined, { path: memberDef.path })
 
 // All errors include memberDef.path for context
@@ -326,7 +291,7 @@ throw new ValidationError(code, message, undefined, { path: memberDef.path })
 ### Error Context
 - **Parse**: Line/column from Node
 - **Load**: Path from memberDef
-- **Serialize**: Path from memberDef
+- **Stringify**: Path from memberDef
 - **Validate**: Path from memberDef
 
 ## Type Conversion Strategy
@@ -398,7 +363,7 @@ describe('StringDef', () => {
     it('should validate choices')
   })
 
-  describe('serialize', () => {
+  describe('stringify', () => {
     it('should format string correctly')
     it('should validate before serialization')
     it('should handle special characters')
@@ -416,8 +381,8 @@ describe('StringDef', () => {
 ### Integration Tests
 ```typescript
 describe('Type System Integration', () => {
-  it('should parse, serialize, and parse again (round-trip)')
-  it('should load JS object, serialize, and parse correctly')
+  it('should parse, stringify, and parse again (round-trip)')
+  it('should load JS object, stringify, and parse correctly')
   it('should handle complex nested structures')
   it('should validate consistently across all operations')
 })
@@ -434,7 +399,7 @@ describe('Type System Integration', () => {
 ### Benchmarking Targets
 - Parse: Current performance maintained
 - Load: < 10% slower than parse
-- Serialize: < 20% slower than current stringify
+- Stringify: < 20% slower than current stringify
 - Validate: < 5% overhead vs inline validation
 
 ## Migration Path
@@ -495,6 +460,6 @@ This architecture provides:
 
 ---
 
-**Document Version**: 1.0
+**Document Version**: 1.1 (collectionIndex removed from TypeDef contract)
 **Date**: November 18, 2025
 **Status**: Pending Review
