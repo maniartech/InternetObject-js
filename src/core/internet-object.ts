@@ -1,11 +1,22 @@
 class IOObject<T = any> implements Iterable<[string | undefined, T]> {
   [key: string]: any;
-  private items: ([string | undefined, T] | undefined)[];
-  private keyMap: Map<string, number>;
+  private items!: ([string | undefined, T] | undefined)[];
+  private keyMap!: Map<string, number>;
 
   constructor(o?: Record<string, T>) {
-    this.items = [];
-    this.keyMap = new Map();
+    // Initialize private properties as non-enumerable to prevent conflicts with user keys
+    Object.defineProperty(this, 'items', {
+      value: [],
+      writable: true,
+      enumerable: false,
+      configurable: false
+    });
+    Object.defineProperty(this, 'keyMap', {
+      value: new Map(),
+      writable: true,
+      enumerable: false,
+      configurable: false
+    });
 
     if (o) {
       for (const [key, value] of Object.entries(o)) {
@@ -30,13 +41,15 @@ class IOObject<T = any> implements Iterable<[string | undefined, T]> {
       this.items.push([key, value]);
       this.keyMap.set(key, index);
     }
-    // Synchronize instance property
-    Object.defineProperty(this, key, {
-      value,
-      writable: true,
-      enumerable: true,
-      configurable: true
-    });
+    // Synchronize instance property (but skip if it's a reserved internal property)
+    if (key !== 'items' && key !== 'keyMap') {
+      Object.defineProperty(this, key, {
+        value,
+        writable: true,
+        enumerable: true,
+        configurable: true
+      });
+    }
     return this;
   }
 

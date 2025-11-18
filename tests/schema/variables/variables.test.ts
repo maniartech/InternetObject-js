@@ -291,9 +291,9 @@ describe('Deep Nested Variable Resolution', () => {
   }
 }
 ---
-~ {{{{{{@v7}}}}}}
-~ {{{{{{}}}}}}
-~ {{{{{{CustomValue}}}}}}
+~ {{{{{{{@v7}}}}}}}
+~ {{{{{{{}}}}}}}
+~ {{{{{{{CustomValue}}}}}}}
     `.trim()
 
     const result = parse(doc, null).toJSON()

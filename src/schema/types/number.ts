@@ -14,14 +14,15 @@ import DecimalDef from './decimal'
 
 const numberSchema = new Schema(
   "number",
-  { type:     { type: "string", optional: false, null: false, choices: NUMBER_TYPES } },
-  { default:  { type: "number", optional: true,  null: false  } },
-  { choices:  { type: "array",  optional: true,  null: false, of: { type: "number" } } },
-  { min:      { type: "number", optional: true,  null: false } },
-  { max:      { type: "number", optional: true,  null: false } },
-  { format:   { type: "string", optional: true, null: false, choices: ["decimal", "hex", "octal", "binary", "scientific"] } },
-  { optional: { type: "bool",   optional: true } },
-  { null:     { type: "bool",   optional: true } },
+  { type:       { type: "string", optional: false, null: false, choices: NUMBER_TYPES } },
+  { default:    { type: "number", optional: true,  null: false  } },
+  { choices:    { type: "array",  optional: true,  null: false, of: { type: "number" } } },
+  { min:        { type: "number", optional: true,  null: false } },
+  { max:        { type: "number", optional: true,  null: false } },
+  { multipleOf: { type: "number", optional: true,  null: false } },
+  { format:     { type: "string", optional: true, null: false, choices: ["decimal", "hex", "octal", "binary", "scientific"] } },
+  { optional:   { type: "bool",   optional: true } },
+  { null:       { type: "bool",   optional: true } },
 )
 
 /**
@@ -116,6 +117,17 @@ class NumberDef implements TypeDef {
 
     if ((effectiveMin !== null && value < effectiveMin) || (effectiveMax !== null && value > effectiveMax)) {
       throwError(ErrorCodes.invalidRange, memberDef.path!, value, node)
+    }
+
+    // Validate multipleOf constraint
+    if (memberDef.multipleOf !== undefined && memberDef.multipleOf !== null) {
+      if (value % memberDef.multipleOf !== 0) {
+        throw new ValidationError(
+          ErrorCodes.invalidValue,
+          `The value ${value} for '${memberDef.path}' must be a multiple of ${memberDef.multipleOf}`,
+          node
+        )
+      }
     }
 
     return value

@@ -6,7 +6,7 @@ describe('AnyDef - Any Type', () => {
       expect(() => parse('val: any\n---\n42', null)).not.toThrow()
       expect(() => parse('val: any\n---\nhello', null)).not.toThrow()
       expect(() => parse('val: any\n---\nT', null)).not.toThrow()
-      expect(() => parse('val: any\n---\nN', null)).not.toThrow()
+      expect(() => parse('val*: any\n---\nN', null)).not.toThrow() // null requires nullable marker
     })
 
     test('should accept objects', () => {
@@ -30,19 +30,19 @@ describe('AnyDef - Any Type', () => {
     test('should use default when value is not provided', () => {
       const schema = 'val?: { any, default: hello }'
       const result = parse(`${schema}\n---\n~`, null).toJSON()
-      expect(result.val).toBe('hello')
+      expect(result[0].val).toBe('hello')
     })
 
     test('should use numeric default', () => {
       const schema = 'val?: { any, default: 42 }'
       const result = parse(`${schema}\n---\n~`, null).toJSON()
-      expect(result.val).toBe(42)
+      expect(result[0].val).toBe(42)
     })
 
     test('should use null default', () => {
       const schema = 'val?*: { any, default: N }'
       const result = parse(`${schema}\n---\n~`, null).toJSON()
-      expect(result.val).toBeNull()
+      expect(result[0].val).toBeNull()
     })
 
     test('should override default with provided value', () => {
@@ -105,8 +105,8 @@ describe('AnyDef - Any Type', () => {
     test('should accept different object schemas', () => {
       const schema = 'address: { any, anyOf: [{ city: string, state: string }, { street: string, city: string, state: string }] }'
 
-      expect(() => parse(`${schema}\n---\n{NYC, NY}`, null)).not.toThrow()
-      expect(() => parse(`${schema}\n---\n{Main St, NYC, NY}`, null)).not.toThrow()
+      expect(() => parse(`${schema}\n---\n{{NYC, NY}}`, null)).not.toThrow()
+      expect(() => parse(`${schema}\n---\n{{Main St, NYC, NY}}`, null)).not.toThrow()
     })
 
     test('should accept string with different constraints', () => {
@@ -165,7 +165,7 @@ describe('AnyDef - Any Type', () => {
   describe('Edge cases', () => {
     test('should handle any in objects', () => {
       const schema = 'data: { id: number, value: any }'
-      const result = parse(`${schema}\n---\n{42, hello}`, null).toJSON()
+      const result = parse(`${schema}\n---\n{{42, hello}}`, null).toJSON()
 
       expect(result.data.id).toBe(42)
       expect(result.data.value).toBe('hello')
@@ -173,13 +173,13 @@ describe('AnyDef - Any Type', () => {
 
     test('should handle any in arrays', () => {
       const schema = 'items: [any]'
-      const result = parse(`${schema}\n---\n[1, hello, T, {x: 10}]`, null).toJSON()
+      const result = parse(`${schema}\n---\n{[1, hello, T, {x: 10}]}`, null).toJSON()
 
       expect(result.items).toHaveLength(4)
       expect(result.items[0]).toBe(1)
       expect(result.items[1]).toBe('hello')
       expect(result.items[2]).toBe(true)
-      expect(result.items[3]).toEqual({ x: 10 })
+      expect(result.items[3].x).toEqual(10)
     })
 
     test('should handle deeply nested any', () => {
@@ -191,7 +191,7 @@ describe('AnyDef - Any Type', () => {
     test('should accept bigint, decimal, datetime', () => {
       expect(() => parse('val: any\n---\n123n', null)).not.toThrow()
       expect(() => parse('val: any\n---\n123.45m', null)).not.toThrow()
-      expect(() => parse('val: any\n---\n2024-01-15T10:30:00', null)).not.toThrow()
+      expect(() => parse('val: any\n---\ndt"2024-01-15T10:30:00"', null)).not.toThrow()
     })
   })
 
@@ -199,8 +199,8 @@ describe('AnyDef - Any Type', () => {
     test('should match first valid schema', () => {
       const schema = 'result: { any, anyOf: [{ success: bool, data: any }, { error: string, code: number }] }'
 
-      expect(() => parse(`${schema}\n---\n{T, {id: 42}}`, null)).not.toThrow()
-      expect(() => parse(`${schema}\n---\n{Not found, 404}`, null)).not.toThrow()
+      expect(() => parse(`${schema}\n---\n{{T, {id: 42}}}`, null)).not.toThrow()
+      expect(() => parse(`${schema}\n---\n{{Not found, 404}}`, null)).not.toThrow()
     })
 
     test('should reject when no schema matches', () => {

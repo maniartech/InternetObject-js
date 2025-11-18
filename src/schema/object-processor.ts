@@ -75,6 +75,21 @@ function _processObject(data: ObjectNode, schema: Schema, defs?: Definitions, co
   let positional = true;
   const processedNames = new Set<string>();
 
+  // Special case: if schema has exactly one field and first data member has a key that doesn't match,
+  // treat the entire data object as the value for that single schema field
+  if (schema.names.length === 1 && data.children.length > 0) {
+    const firstMember = data.children[0] as MemberNode;
+    if (firstMember?.key && firstMember.key.value !== schema.names[0]) {
+      const name = schema.names[0];
+      const memberDef = _resolveMemberDefVariables(schema.defs[name], defs);
+      // Create a synthetic member with the entire data ObjectNode as its value
+      const syntheticMember = { key: null, value: data } as any;
+      const val = processMember(syntheticMember, memberDef, defs);
+      if (val !== undefined) o.set(name, val);
+      return o;
+    }
+  }
+
   // Process positional schema members
   let i=0;
   for (; i<schema.names.length; i++) {

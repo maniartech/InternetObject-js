@@ -16,7 +16,7 @@ const of = { type: "any", __memberdef: true }
 const schema = new Schema(
   "any",
   { type:     { type: "string", optional: false, null: false, choices: ["any"] } },
-  { default:  { type: "any",    optional: true,  null: false } },
+  { default:  { type: "any",    optional: true,  null: true } },
   { choices:  { type: "array",  optional: true,  null: false } },
   { anyOf:    { type: "array",  optional: true,  null: false, of } },
   { isSchema: { type: "bool",   optional: true,  null: false, default: false } },
