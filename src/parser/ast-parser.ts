@@ -403,24 +403,40 @@ class ASTParser {
 
     let index = 0;
     let done = false;
+    let expectingValueAfterComma = true;  // After '{', we're expecting the first value (or empty position)
+
     while (!done) {
       const nextToken = this.peek();
 
+      // DEBUG
+      const DEBUG_PARSE_OBJECT = false; // Set to true to debug
+      if (DEBUG_PARSE_OBJECT && members.length < 3) {
+        const prevToken = this.tokens[this.current - 1];
+        console.log(`  loop: current=${this.current}, next=${nextToken?.type}, prev=${prevToken?.type}, expecting=${expectingValueAfterComma}, members=${members.length}`);
+      }
+
       if (!nextToken || this.match([TokenType.CURLY_CLOSE, TokenType.COLLECTION_START, TokenType.SECTION_SEP])) {
+        // If we were expecting a value after a comma but hit end/close, that position is empty
+        if (expectingValueAfterComma) {
+          const prevToken = this.tokens[this.current - 1];
+          if (prevToken && prevToken.type === TokenType.COMMA) {
+            this.pushUndefinedMember(members, prevToken);
+          }
+        }
         done = true;
         break;
       } else if (nextToken.type === TokenType.COMMA) {
-        // If the next token is a comma(, or new object)
-        // it means that the no value is provided.
-        // Consume the comma and continue.
-        if (this.matchNext([TokenType.COMMA, TokenType.CURLY_CLOSE, TokenType.COLLECTION_START, TokenType.SECTION_SEP])) {
-          this.pushUndefinedMember(members, nextToken);
-        } else if (this.current + 1 === this.tokens.length) {
+        // If we're expecting a value but got a comma, the current position is empty
+        if (expectingValueAfterComma) {
+          // Use the comma token itself for position tracking
           this.pushUndefinedMember(members, nextToken);
         }
+        // Consume the comma and mark that we're now expecting a value
         this.advance();
+        expectingValueAfterComma = true;
         continue;
       } else {
+        // We found a value
         // The member must be preceded by a comma, open bracket, or
         // the beginning of the object. Otherwise it is invalid
         // For example, { a: 1, b: 2 } is valid, but { a: 1 b: 2 } is not
@@ -436,6 +452,7 @@ class ASTParser {
         const member = this.parseMember();
         members.push(member);
         index++;
+        expectingValueAfterComma = false;  // We got the value
       }
     }
 
