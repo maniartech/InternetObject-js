@@ -54,7 +54,20 @@ function doCommonTypeCheck(
 ): CommonTypeCheckResult
 ```
 
-**Analysis**: Current implementation already accepts `value: any`, but internally assumes it might be a Node. This is good - no changes needed here.
+**Analysis**: Current implementation already accepts `value: any` and works for all three operations:
+
+- **parse()**: Passes Node (TokenNode) - extracts value internally via `node.toValue()`
+- **load()**: Passes raw JavaScript value - processes directly
+- **serialize()**: Passes JavaScript value - validates before formatting
+
+The function handles:
+
+- Null/undefined checking (works with Node or raw value)
+- Default value resolution (works with or without defs)
+- Choices validation (uses optional equalityComparator for type-specific comparison)
+- Variable dereferencing (@variables)
+
+**No changes needed** to `doCommonTypeCheck` signature or logic - it's already flexible.
 
 **Action**: Update all callsites to use `handled` instead of `changed`:
 
@@ -66,6 +79,29 @@ if (changed) return value
 // NEW
 const { value, handled } = doCommonTypeCheck(...)
 if (handled) return value
+```
+
+**Usage Pattern Across Operations**:
+
+```typescript
+// In parse() - passes Node
+const { value, handled } = doCommonTypeCheck(memberDef, node, node, defs, collectionIndex)
+if (handled) return value
+// Continue with type checking on node.value...
+
+// In load() - passes raw value, no node
+const { value, handled } = doCommonTypeCheck(memberDef, value, undefined, defs, collectionIndex)
+if (handled) return value
+// Continue with type checking on value...
+
+// In serialize() - passes raw value, no node
+const { value, handled } = doCommonTypeCheck(memberDef, value, undefined, defs)
+if (handled) {
+  // Return formatted representation (N for null, etc.)
+  if (value === null) return 'N'
+  if (value === undefined) return ''
+  // Or continue with serialization of the value
+}
 ```
 
 ### 1.3 Update All TypeDefs
@@ -666,7 +702,7 @@ private formatToIOText(value: number, memberDef: MemberDef): string {
 
 **File**: `src/schema/object-processor.ts`
 
-Add `loadObject()` function similar to `processObject()`:
+Add `loadObject()` and `loadCollection()` functions similar to `processObject()`:
 
 ```typescript
 /**
@@ -675,7 +711,8 @@ Add `loadObject()` function similar to `processObject()`:
 export function loadObject(
   data: any,
   schema: Schema | string,
-  defs?: Definitions
+  defs?: Definitions,
+  collectionIndex?: number
 ): InternetObject {
   // Resolve schema if it's a string reference
   if (typeof schema === 'string') {
@@ -698,30 +735,337 @@ export function loadObject(
     path: schema.name || 'root'
   }
 
-  return (objectTypeDef as any).load(data, memberDef, defs)
+  return (objectTypeDef as any).load(data, memberDef, defs, collectionIndex)
+}
+
+/**
+ * Loads and validates an array of JavaScript objects as a collection
+ */
+export function loadCollection(
+  dataArray: any[],
+  schema: Schema | string,
+  defs?: Definitions,
+  validationErrors?: Error[]
+): any[] {
+  // Resolve schema
+  if (typeof schema === 'string') {
+    const resolvedSchema = defs?.getV(schema)
+    if (!(resolvedSchema instanceof Schema)) {
+      throw new Error(`Schema '${schema}' not found or invalid`)
+    }
+    schema = resolvedSchema
+  }
+
+  const results: any[] = []
+
+  for (let i = 0; i < dataArray.length; i++) {
+    try {
+      const loaded = loadObject(dataArray[i], schema, defs, i)
+      results.push(loaded)
+    } catch (error) {
+      if (validationErrors) {
+        // Error accumulation mode: store error and continue
+        validationErrors.push(error as Error)
+        results.push(error) // Placeholder for error in collection
+      } else {
+        // Fail-fast mode: throw immediately
+        throw error
+      }
+    }
+  }
+
+  return results
 }
 ```
 
+**Important**: Note the `collectionIndex` parameter:
+
+- **parse/load operations**: Pass the item's position in the collection (0, 1, 2, ...)
+- **serialize operations**: Not needed (no collectionIndex in serialize)
+- **Propagation**: Must be passed through all nested TypeDef calls (object → member → nested objects/arrays)
+
 ### 5.2 Update High-Level API
 
-**File**: `src/core/internet-object.ts` (if exists)
+#### 5.2.1 Document-Level Load and Serialize
 
-Add methods:
+**File**: `src/facade.ts`
+
+Add functions for loading JavaScript data into IODocuments and serializing back:
 
 ```typescript
+import parse from './parser'
+import Definitions from './core/definitions'
+import IODocument from './core/document'
+import Schema from './schema/schema'
+
 /**
- * Loads and validates a JavaScript object
+ * Loads JavaScript data (objects/arrays) and validates against schema.
+ * Creates an IODocument from plain JavaScript values.
+ *
+ * @param data - JavaScript data to load (single object, array, or multiple sections)
+ * @param schema - Schema or schema name to validate against
+ * @param defs - Optional definitions for variable resolution and schema lookup
+ * @returns IODocument with validated data
+ * @throws ValidationError if data doesn't conform to schema
+ *
+ * @example
+ * ```typescript
+ * const defs = io.defs`
+ *   $person: { name: string, age: number }
+ * `
+ *
+ * const doc = io.loadDocument(
+ *   { name: 'John', age: 30 },
+ *   '$person',
+ *   defs
+ * )
+ * ```
  */
-static load(data: any, schema: Schema | string, defs?: Definitions): InternetObject {
-  return loadObject(data, schema, defs)
+export function ioLoadDocument(
+  data: any,
+  schema: Schema | string,
+  defs?: Definitions
+): IODocument {
+  // Resolve schema if it's a string reference
+  let resolvedSchema: Schema
+  if (typeof schema === 'string') {
+    const schemaValue = defs?.getV(schema)
+    if (!(schemaValue instanceof Schema)) {
+      throw new Error(`Schema '${schema}' not found or invalid`)
+    }
+    resolvedSchema = schemaValue
+  } else {
+    resolvedSchema = schema
+  }
+
+  // Load the data using ObjectDef.load() or ArrayDef.load()
+  const loadedData = loadObject(data, resolvedSchema, defs)
+
+  // Wrap in IODocument structure
+  const header = new IOHeader(defs || new Definitions())
+  const section = new IOSection(resolvedSchema.name, loadedData, resolvedSchema)
+  const sections = new IOSectionCollection([section])
+
+  return new IODocument(header, sections)
 }
 
 /**
- * Serializes an InternetObject to IO text format
+ * Serializes an IODocument to IO text format.
+ * Validates data during serialization.
+ *
+ * @param document - IODocument to serialize
+ * @param options - Serialization options
+ * @returns IO text representation
+ *
+ * @example
+ * ```typescript
+ * const doc = io.doc`
+ *   ~ name: string, age: number
+ *   ---
+ *   John, 30
+ * `
+ *
+ * const text = io.serializeDocument(doc)
+ * // Output: "~ name: string, age: number\n---\nJohn, 30"
+ * ```
  */
-serialize(schema?: Schema): string {
-  // Implementation
+export function ioSerializeDocument(
+  document: IODocument,
+  options?: { includeHeader?: boolean; format?: 'compact' | 'pretty' }
+): string {
+  const lines: string[] = []
+
+  // Serialize header (definitions and schema)
+  if (options?.includeHeader !== false && document.header) {
+    const headerText = serializeHeader(document.header)
+    if (headerText) {
+      lines.push(headerText)
+    }
+  }
+
+  // Serialize sections
+  if (document.sections) {
+    for (let i = 0; i < document.sections.length; i++) {
+      const section = document.sections.get(i)
+      if (section) {
+        if (lines.length > 0) lines.push('---')
+        lines.push(serializeSection(section, options))
+      }
+    }
+  }
+
+  return lines.join('\n')
 }
+
+/**
+ * Helper: Serializes a section's data
+ */
+function serializeSection(
+  section: IOSection,
+  options?: { format?: 'compact' | 'pretty' }
+): string {
+  const data = section.data
+  const schema = section.schema
+
+  if (!schema) {
+    throw new Error('Cannot serialize section without schema')
+  }
+
+  // Serialize collection or single object
+  if (data instanceof IOCollection) {
+    return serializeCollection(data, schema, options)
+  } else if (data instanceof IOObject) {
+    return serializeObject(data, schema, options)
+  } else {
+    throw new Error('Unsupported section data type')
+  }
+}
+
+/**
+ * Helper: Serializes an IOObject using TypeDef.serialize()
+ */
+function serializeObject(
+  obj: IOObject,
+  schema: Schema,
+  options?: { format?: 'compact' | 'pretty' }
+): string {
+  const objectTypeDef = TypedefRegistry.get('object')
+  if (!objectTypeDef || !('serialize' in objectTypeDef)) {
+    throw new Error('ObjectDef does not support serialize')
+  }
+
+  const memberDef: MemberDef = {
+    type: 'object',
+    schema: schema,
+    path: schema.name || 'root'
+  }
+
+  return (objectTypeDef as any).serialize(obj.toJSON(), memberDef)
+}
+
+/**
+ * Helper: Serializes an IOCollection
+ */
+function serializeCollection(
+  collection: IOCollection,
+  schema: Schema,
+  options?: { format?: 'compact' | 'pretty' }
+): string {
+  const lines: string[] = []
+
+  // Serialize schema header (if not already in document header)
+  const schemaLine = serializeSchemaDefinition(schema)
+  lines.push(schemaLine)
+
+  // Serialize each item
+  for (let i = 0; i < collection.length; i++) {
+    const item = collection.get(i)
+    if (item instanceof IOObject) {
+      const itemText = serializeObject(item, schema, options)
+      lines.push(itemText)
+    }
+  }
+
+  return lines.join('\n')
+}
+```
+
+#### 5.2.2 Export New Functions
+
+**File**: `src/facade.ts`
+
+Update exports:
+
+```typescript
+export {
+  ioDefinitions,
+  ioDocument,
+  ioObject,
+  ioLoadDocument,      // NEW
+  ioSerializeDocument  // NEW
+}
+
+export default {
+  // Template functions
+  doc: ioDocument,
+  object: ioObject,
+  defs: ioDefinitions,
+  document: ioDocument,
+  definitions: ioDefinitions,
+
+  // Load/Serialize functions
+  load: ioLoadDocument,           // NEW
+  loadDocument: ioLoadDocument,   // NEW
+  serialize: ioSerializeDocument, // NEW
+  serializeDocument: ioSerializeDocument, // NEW
+
+  // Core types...
+}
+```
+
+#### 5.2.3 Usage Examples
+
+**Loading JavaScript Data**:
+
+```typescript
+import io from 'internet-object'
+
+// Define schema
+const defs = io.defs`
+  $person: { name: string, age: number, email?: email }
+`
+
+// Load and validate JavaScript data
+const userData = {
+  name: 'Alice',
+  age: 28,
+  email: 'alice@example.com'
+}
+
+const doc = io.loadDocument(userData, '$person', defs)
+
+// Access validated data
+console.log(doc.toJSON())
+// { name: 'Alice', age: 28, email: 'alice@example.com' }
+```
+
+**Serializing IODocument**:
+
+```typescript
+import io from 'internet-object'
+
+// Parse IO text
+const doc = io.doc`
+  ~ name: string, age: number
+  ---
+  Alice, 28
+  Bob, 35
+`
+
+// Serialize back to IO text
+const text = io.serializeDocument(doc)
+console.log(text)
+// Output:
+// ~ name: string, age: number
+// ---
+// Alice, 28
+// Bob, 35
+```
+
+**Round-Trip Validation**:
+
+```typescript
+// Load JS data → IODocument
+const doc1 = io.loadDocument(jsData, schema, defs)
+
+// Serialize → IO text
+const ioText = io.serializeDocument(doc1)
+
+// Parse → IODocument
+const doc2 = io.parse(ioText, defs)
+
+// Should be equivalent
+assert.deepEqual(doc1.toJSON(), doc2.toJSON())
 ```
 
 ### 5.3 Testing Strategy
