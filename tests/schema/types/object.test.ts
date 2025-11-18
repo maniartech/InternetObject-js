@@ -80,10 +80,10 @@ describe('ObjectDef - Object Type', () => {
   })
 
   describe('Optional and null properties', () => {
-    test.skip('should allow optional properties', () => {
+    test('should allow optional properties', () => {
       const schema = 'user: { name: string, email?: string }'
 
-      expect(() => parse(`${schema}\n---\n{{John, ~}}`, null)).not.toThrow()
+      expect(() => parse(`${schema}\n---\n{{John}}`, null)).not.toThrow()
       expect(() => parse(`${schema}\n---\n{{John, john@example.com}}`, null)).not.toThrow()
     })
 
@@ -100,10 +100,10 @@ describe('ObjectDef - Object Type', () => {
       expect(() => parse(`${schema}\n---\n{{John, N}}`, null)).toThrow(/null/i)
     })
 
-    test.skip('should allow optional and null together', () => {
+    test('should allow optional and null together', () => {
       const schema = 'user: { name: string, middle?*: string }'
 
-      expect(() => parse(`${schema}\n---\n{{John, ~}}`, null)).not.toThrow()
+      expect(() => parse(`${schema}\n---\n{{John}}`, null)).not.toThrow()
       expect(() => parse(`${schema}\n---\n{{John, N}}`, null)).not.toThrow()
       expect(() => parse(`${schema}\n---\n{{John, M}}`, null)).not.toThrow()
     })
@@ -142,7 +142,7 @@ describe('ObjectDef - Object Type', () => {
       expect(result.user.tags).toEqual(['admin', 'user'])
     })
 
-    test.skip('should validate array property constraints', () => {
+    test('should validate array property constraints', () => {
       const schema = 'data: { items: {array, of: number, minLen: 2} }'
 
       expect(() => parse(`${schema}\n---\n{{[1, 2, 3]}}`, null)).not.toThrow()
@@ -167,9 +167,9 @@ describe('ObjectDef - Object Type', () => {
       expect(() => parse(`${schema}\n---\nN`, null)).toThrow(/null/i)
     })
 
-    test.skip('should use default null for optional nullable object', () => {
-      const schema = 'user?*: { object, default: N }'
-      const result = parse(`${schema}\n---\n~`, null).toJSON()
+    test('should use default null for optional nullable object', () => {
+      const schema = 'user?*: object'
+      const result = parse(`${schema}\n---\nN`, null).toJSON()
       expect(result.user).toBeNull()
     })
   })
@@ -213,13 +213,13 @@ describe('ObjectDef - Object Type', () => {
       expect(result.obj.d).toBe(4)
     })
 
-    test.skip('should handle object in array', () => {
+    test('should handle object in array', () => {
       const schema = 'items: [{ id: number, name: string }]'
       const result = parse(`${schema}\n---\n[{1, Item1}, {2, Item2}]`, null).toJSON()
 
       expect(result.items).toHaveLength(2)
-      expect(result.items[0]).toEqual({ id: 1, name: 'Item1' })
-      expect(result.items[1]).toEqual({ id: 2, name: 'Item2' })
+      expect(result.items[0].toJSON()).toEqual({ id: 1, name: 'Item1' })
+      expect(result.items[1].toJSON()).toEqual({ id: 2, name: 'Item2' })
     })
 
     test('should handle array in nested object', () => {

@@ -25,6 +25,7 @@ describe('Sample Data - Types', () => {
     expect((result as any).length).toBeGreaterThan(0);
   });
 
+  // TODO: Re-enable after ensuring compileSchema supports this sample's schema format consistently
   test.skip('numbers sample compiles schema and processes doc', () => {
     const sample = require('../../../../io-playground/src/sample-data/types/numbers').default;
 
