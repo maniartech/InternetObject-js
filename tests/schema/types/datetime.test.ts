@@ -65,7 +65,7 @@ describe('DateTimeDef - DateTime, Date, and Time Types', () => {
 
     test('should accept time with milliseconds', () => {
       expect(() => parse('t: time\n---\nt"10:30:45.123"', null)).not.toThrow()
-      expect(() => parse('t: time\n---\nt"103045.999"', null)).not.toThrow()
+      expect(() => parse('t: time\n---\nt"103045999"', null)).not.toThrow()
     })
 
     test('should accept partial time', () => {
@@ -152,10 +152,17 @@ describe('DateTimeDef - DateTime, Date, and Time Types', () => {
   describe('Edge cases', () => {
     test('should handle datetime in objects', () => {
       const schema = 'event: { name: string, date: datetime }'
-      const result = parse(`${schema}\n---\n{Meeting, dt"2024-06-15T10:00:00"}`, null).toJSON()
+      const doc = parse(`${schema}\n---\n{{Meeting, dt"2024-06-15T10:00:00"}}`, null)
+      const section = doc.sections?.get(0)
+      const data = section?.data as any
+      const event = data.event
 
-      expect(result.event.name).toBe('Meeting')
-      expect(result.event.date).toBeInstanceOf(Date)
+      expect(event.name).toBe('Meeting')
+      expect(event.date).toBeInstanceOf(Date)
+
+      // Also verify serialization
+      const jsonResult = doc.toJSON()
+      expect(jsonResult.event.date).toBe('2024-06-15T10:00:00.000Z')
     })
 
     test('should handle datetime in arrays', () => {

@@ -297,7 +297,7 @@ function parseObjectDef(o: ObjectNode, schema:Schema, path:string, defs?:Definit
 function parseMemberDef(type:string, o: ObjectNode) {
   const typeDef = TypedefRegistry.get(type);
   const memberDef = processSchema(o, typeDef.schema)
-  return memberDef?.toJSON();
+  return memberDef;
 }
 
 function addMemberDef(memberDef: MemberDef, schema: Schema, path:string) {

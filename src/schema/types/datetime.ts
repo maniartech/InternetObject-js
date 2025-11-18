@@ -33,7 +33,7 @@ class DateTimeDef implements TypeDef {
 
   parse(node: Node, memberDef: MemberDef, defs?: Definitions): Date {
     const valueNode = defs?.getV(node) || node
-    const { value, changed } = doCommonTypeCheck(memberDef, valueNode, node, defs)
+    const { value, changed } = doCommonTypeCheck(memberDef, valueNode, node, defs, undefined, this.#dateTimeEqualityComparator)
     if (changed) return value
 
     if (valueNode.type !== TokenType.DATETIME) {
@@ -41,7 +41,7 @@ class DateTimeDef implements TypeDef {
     }
 
     // Validate the value
-    this.#validate(value, memberDef, node)
+    this.#validate(value, memberDef, node, defs)
 
     return value
   }
@@ -50,26 +50,60 @@ class DateTimeDef implements TypeDef {
     return dt.dateToIOString(value, this.#type as any)
   }
 
-  #validate(value:Date, memberDef: MemberDef, node: Node) {
+  #normalizeToDate = (v: any, defs?: Definitions): Date | undefined => {
+    if (!v) return undefined
+
+    // Already a Date instance (min/max from schema are already Date objects)
+    if (v instanceof Date) return v
+
+    // Resolve TokenNode to underlying value
+    if (v instanceof TokenNode) {
+      if (v.value instanceof Date) return v.value
+      // Try resolving through definitions
+      if (defs) {
+        const resolved = defs.getV(v)
+        if (resolved instanceof Date) return resolved
+        if (resolved instanceof TokenNode && resolved.value instanceof Date) return resolved.value
+      }
+    }
+
+    // If wrapper exposes toValue(defs)
+    if (typeof v === 'object' && typeof (v as any).toValue === 'function') {
+      const resolved = (v as any).toValue(defs)
+      return this.#normalizeToDate(resolved, defs)
+    }
+
+    return undefined
+  }
+
+  #dateTimeEqualityComparator = (value: any, choice: any): boolean => {
+    const valDate = value instanceof Date ? value : undefined
+    const choiceDate = this.#normalizeToDate(choice)
+
+    if (!valDate || !choiceDate) return false
+    return valDate.getTime() === choiceDate.getTime()
+  }
+
+  #validate(value:Date, memberDef: MemberDef, node: Node, defs?: Definitions) {
     const dateType:any = memberDef.type
 
     if (memberDef.min) {
-      const min = memberDef.min
+      const min = this.#normalizeToDate(memberDef.min, defs)
       if (min && value < min) {
         throw new ValidationError(
           ErrorCodes.outOfRange,
-          `Expecting the value ${memberDef.path ? `for '${memberDef.path}'` : ''} to be greater than or equal to '${dt.dateToSmartString(memberDef.min, dateType)}'`,
+          `Expecting the value ${memberDef.path ? `for '${memberDef.path}'` : ''} to be greater than or equal to '${dt.dateToSmartString(min, dateType)}'`,
           node
         )
       }
     }
 
     if (memberDef.max) {
-      const max = memberDef.max
+      const max = this.#normalizeToDate(memberDef.max, defs)
       if (max && value > max) {
         throw new ValidationError(
           ErrorCodes.outOfRange,
-          `Expecting the value ${memberDef.path ? `for '${memberDef.path}'` : ''} to be less than or equal to '${dt.dateToSmartString(memberDef.max, dateType)}'`,
+          `Expecting the value ${memberDef.path ? `for '${memberDef.path}'` : ''} to be less than or equal to '${dt.dateToSmartString(max, dateType)}'`,
           node
         )
       }
