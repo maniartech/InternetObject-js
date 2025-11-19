@@ -71,7 +71,23 @@ class NumberDef implements TypeDef {
     return value
   }
 
+  /** Load: JS Value → Validated JS Value */
+  load(value: any, memberDef: MemberDef, defs?: Definitions): number | bigint | Decimal {
+    // Delegate to specialized type if available
+    if (this._delegateTypeDef && 'load' in this._delegateTypeDef) {
+      return (this._delegateTypeDef as any).load(value, memberDef, defs)
+    }
+
+    const { value: checkedValue, changed } = doCommonTypeCheck(memberDef, value, undefined, defs)
+    if (changed) return checkedValue
+
+    const validated = this.validateInteger(memberDef, value)
+    return validated
+  }
+
   stringify(value: any, memberDef: MemberDef): string {
+    // Validate before formatting to ensure consistency
+    this.load(value, memberDef)
     // Delegate to specialized type if available
     if (this._delegateTypeDef && 'stringify' in this._delegateTypeDef) {
       return (this._delegateTypeDef as any).stringify(value, memberDef)

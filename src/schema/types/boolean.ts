@@ -25,7 +25,19 @@ export default class BooleanDef implements TypeDef {
     return this.#validate(node, memberDef, defs)
   }
 
-  public strinfigy(value: any): string {
+  // Load: JS Value → Validated JS Value
+  public load(value: any, memberDef: MemberDef, defs?: Definitions): boolean {
+    const { value: checkedValue, changed } = doCommonTypeCheck(memberDef, value)
+    if (changed) return checkedValue
+    if (typeof value !== 'boolean') {
+      throw new ValidationError(ErrorCodes.notABool, `Expecting a boolean value for '${memberDef.path}' but found ${JSON.stringify(value)}.`)
+    }
+    return value
+  }
+
+  // Stringify with validation
+  public stringify(value: any, memberDef: MemberDef): string {
+    this.load(value, memberDef)
     return value.toString()
   }
 

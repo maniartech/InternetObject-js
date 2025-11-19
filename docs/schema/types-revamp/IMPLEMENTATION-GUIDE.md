@@ -1343,9 +1343,9 @@ IODocument → Value Check → Constraint Validate → Format → IO Text
 ```typescript
 // In each TypeDef:
 
-parse(node: Node, memberDef: MemberDef, defs?: Definitions, collectionIndex?: number) {
+parse(node: Node, memberDef: MemberDef, defs?: Definitions) {
   // 1. Common checks (null/undefined/default/choices)
-  const { value, handled } = doCommonTypeCheck(memberDef, node, node, defs, collectionIndex)
+  const { value, handled } = doCommonTypeCheck(memberDef, node, node, defs)
   if (handled) return value
 
   // 2. Type-specific parsing (TokenNode → JS value)
@@ -1355,9 +1355,9 @@ parse(node: Node, memberDef: MemberDef, defs?: Definitions, collectionIndex?: nu
   return this.validateValue(parsedValue, memberDef, node)
 }
 
-load(value: any, memberDef: MemberDef, defs?: Definitions, collectionIndex?: number) {
+load(value: any, memberDef: MemberDef, defs?: Definitions) {
   // 1. Common checks (null/undefined/default/choices)
-  const { value: checkedValue, handled } = doCommonTypeCheck(memberDef, value, undefined, defs, collectionIndex)
+  const { value: checkedValue, handled } = doCommonTypeCheck(memberDef, value, undefined, defs)
   if (handled) return checkedValue
 
   // 2. Type checking (ensure JS value is correct type)
@@ -1367,9 +1367,9 @@ load(value: any, memberDef: MemberDef, defs?: Definitions, collectionIndex?: num
   return this.validateValue(value, memberDef)
 }
 
-stringify(value: any, memberDef: MemberDef, defs?: Definitions, collectionIndex?: number) {
+stringify(value: any, memberDef: MemberDef, defs?: Definitions) {
   // 1. Common checks (null/undefined)
-  const { value: checkedValue, handled } = doCommonTypeCheck(memberDef, value, undefined, defs, collectionIndex)
+  const { value: checkedValue, handled } = doCommonTypeCheck(memberDef, value, undefined, defs)
   if (handled) {
     return this.formatValue(checkedValue, memberDef) // Format null/undefined/defaults
   }

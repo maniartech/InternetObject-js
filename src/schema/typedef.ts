@@ -22,7 +22,13 @@ export default interface TypeDef {
    * Validates and parses the value as per the memberDef and returns the results
    * specifying whether the value adhers to the schema or not!
    */
-  parse(node: Node, memberDef: MemberDef, definitions?: Definitions, collectionIndex?: number): any
+  parse(node: Node, memberDef: MemberDef, definitions?: Definitions): any
+
+  /** Load: JS Value → Validated JS Value (optional until all types adopt) */
+  load?(value: any, memberDef: MemberDef, definitions?: Definitions): any
+
+  /** Stringify: Validated JS Value → IO Text (optional until all types adopt) */
+  stringify?(value: any, memberDef: MemberDef, definitions?: Definitions): string
 
   /**
    * Loads the value as per the memberDef and returns the results

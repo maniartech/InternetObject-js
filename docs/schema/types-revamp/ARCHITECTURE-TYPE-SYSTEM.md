@@ -46,6 +46,11 @@ Text Input → TokenNode/AST → doCommonTypeCheck() → Type-specific validatio
    - Predictable data flow
    - Minimal abstraction layers
 
+4. **Ensure All current tests pass after every iteration**
+   - Incremental changes with continuous testing
+   - None of the existing functionality is broken during refactoring
+   - Comprehensive coverage for parse, load, stringify, and validate operations
+
 ### Design Pattern: Strategy + Template Method
 
 ```typescript

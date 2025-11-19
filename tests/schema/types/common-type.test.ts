@@ -133,7 +133,7 @@ describe('doCommonTypeCheck', () => {
         return val.getTime() === choice.getTime()
       }
 
-      const result = doCommonTypeCheck(memberDef, value, undefined, undefined, undefined, equalityComparator)
+      const result = doCommonTypeCheck(memberDef, value, undefined, undefined, equalityComparator)
       expect(result).toEqual({ value, changed: false })
     })
 
@@ -149,7 +149,7 @@ describe('doCommonTypeCheck', () => {
         return val.getTime() === choice.getTime()
       }
 
-      expect(() => doCommonTypeCheck(memberDef, value, undefined, undefined, undefined, equalityComparator))
+      expect(() => doCommonTypeCheck(memberDef, value, undefined, undefined, equalityComparator))
         .toThrow(/must be/i) // Single choice uses "must be" not "must be one of"
     })
   })

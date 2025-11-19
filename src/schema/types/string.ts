@@ -68,7 +68,35 @@ export default class StringDef implements TypeDef {
     return _process(valueNode, memberDef, defs)
   }
 
+  /** Load: JS Value → Validated JS Value */
+  load(value: any, memberDef: MemberDef, defs?: Definitions): string {
+    const { value: checkedValue, changed } = doCommonTypeCheck(memberDef, value, undefined, defs)
+    if (changed) return checkedValue
+    // Type check
+    if (typeof value !== 'string') {
+      throw new ValidationError(ErrorCodes.notAString, `Expecting a string value for '${memberDef.path}' but found ${JSON.stringify(value)}.`)
+    }
+    // Shared validations
+    _validatePattern(memberDef, value)
+    // Len checks
+    const len = memberDef.len
+    if (len !== undefined && typeof len === 'number' && value.length !== len) {
+      throw new ValidationError(ErrorCodes.invalidLength, `Invalid length for ${memberDef.path}.`)
+    }
+    const maxLen = memberDef.maxLen
+    if (maxLen !== undefined && typeof maxLen === 'number' && value.length > maxLen) {
+      throw new ValidationError(ErrorCodes.invalidMaxLength, `Invalid maxLength for ${memberDef.path}.`)
+    }
+    const minLen = memberDef.minLen
+    if (minLen !== undefined && typeof minLen === 'number' && value.length < minLen) {
+      throw new ValidationError(ErrorCodes.invalidMinLength, `Invalid minLength for ${memberDef.path}.`)
+    }
+    return value
+  }
+
   stringify(value: string, memberDef: MemberDef): string {
+    // Validate before formatting to ensure consistency
+    this.load(value, memberDef)
     const format = memberDef.format || 'auto'
     switch (format) {
       case 'auto':

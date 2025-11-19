@@ -20,12 +20,11 @@ type EqualityComparator = (value: any, choice: any) => boolean
  * @param value The value which needs to be validated
  * @param node The node object, required for tracing line and column when parsing raw internet object code!
  * @param defs Optional definitions for resolving references
- * @param collectionIndex Optional collection index for error messages
  * @param equalityComparator Optional callback for type-specific equality comparison in choices validation
  *
  * @internal
  */
-function doCommonTypeCheck(memberDef: MemberDef, value: any, node?: Node, defs?: Definitions, collectionIndex?: number, equalityComparator?: EqualityComparator): CommonTypeCheckResult {
+function doCommonTypeCheck(memberDef: MemberDef, value: any, node?: Node, defs?: Definitions, equalityComparator?: EqualityComparator): CommonTypeCheckResult {
   const isUndefined = value === undefined || value instanceof TokenNode &&  value.type === TokenType.UNDEFINED
   const isNull = node instanceof TokenNode ? node.value === null : value === null
 
@@ -37,13 +36,13 @@ function doCommonTypeCheck(memberDef: MemberDef, value: any, node?: Node, defs?:
       return { value:_default(memberDef.default, defs), changed: true }
     }
     if (memberDef.optional) return { value: undefined, changed: true }
-    throw new InternetObjectValidationError(..._valueRequired(memberDef, node, collectionIndex))
+    throw new InternetObjectValidationError(..._valueRequired(memberDef, node))
   }
 
   // Check for null
   if (isNull) {
     if (memberDef.null) return { value: null, changed: true }
-    const msg = `Null is not allowed for ${memberDef.path}` + (collectionIndex !== undefined ? ` at index ${collectionIndex}` : '')
+    const msg = `Null is not allowed for ${memberDef.path}`
     throw new InternetObjectValidationError(ErrorCodes.nullNotAllowed, msg, node)
   }
 
@@ -111,8 +110,8 @@ function _default(value: any, defs?: Definitions) {
   }
 
   return value
-}function _valueRequired(memberDef: MemberDef, node?: Node, collectionIndex?: number): ErrorArgs {
-  const msg = `Value is required for ${memberDef.path}` + (collectionIndex !== undefined ? ` at index ${collectionIndex}` : '')
+}function _valueRequired(memberDef: MemberDef, node?: Node): ErrorArgs {
+  const msg = `Value is required for ${memberDef.path}`
   return [ErrorCodes.valueRequired, msg , node]
 }
 

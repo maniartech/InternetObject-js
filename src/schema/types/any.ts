@@ -29,7 +29,7 @@ export default class AnyDef implements TypeDef {
   public  get type(): string  { return 'any' }
   public get schema()         { return schema }
 
-  parse(node: Node, memberDef: MemberDef, defs?: Definitions, collectionIndex?: number): any {
+  parse(node: Node, memberDef: MemberDef, defs?: Definitions): any {
     const valueNode = defs?.getV(node) || node
     const { value, changed } = doCommonTypeCheck(memberDef, valueNode, node, defs)
     if (changed) return value
@@ -56,7 +56,7 @@ export default class AnyDef implements TypeDef {
       }
 
       try {
-        return typeDef.parse(node, def, defs, collectionIndex)
+        return typeDef.parse(node, def, defs)
       } catch (e) {
         errors.push(e)
         continue

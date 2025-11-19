@@ -33,7 +33,7 @@ class DateTimeDef implements TypeDef {
 
   parse(node: Node, memberDef: MemberDef, defs?: Definitions): Date {
     const valueNode = defs?.getV(node) || node
-    const { value, changed } = doCommonTypeCheck(memberDef, valueNode, node, defs, undefined, this.#dateTimeEqualityComparator)
+    const { value, changed } = doCommonTypeCheck(memberDef, valueNode, node, defs, this.#dateTimeEqualityComparator)
     if (changed) return value
 
     if (valueNode.type !== TokenType.DATETIME) {

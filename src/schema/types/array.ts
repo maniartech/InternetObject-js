@@ -26,14 +26,14 @@ class ArrayDef implements TypeDef {
   public get type()   { return 'array' }
   public get schema() { return schema }
 
-  public parse = (valueNode: Node, memberDef: MemberDef, defs?: Definitions, collectionIndex?: number): any => {
-    return _processNode(valueNode, memberDef, defs, collectionIndex)
+  public parse = (valueNode: Node, memberDef: MemberDef, defs?: Definitions): any => {
+    return _processNode(valueNode, memberDef, defs)
   }
 
   public static get types() { return ['array'] }
 }
 
-function _processNode(node: Node, memberDef: MemberDef, defs?: Definitions, collectionIndex?: number) {
+function _processNode(node: Node, memberDef: MemberDef, defs?: Definitions) {
   const valueNode = defs?.getV(node) || node
   const { value, changed } = doCommonTypeCheck(memberDef, valueNode, node, defs)
   if (changed) return value
@@ -122,17 +122,17 @@ function _invlalidChoice(key: string, token: TokenNode, min: number) {
   ]
 }
 
-function _invlalidLength(key: string, token: ArrayNode, length: number, collectionIndex?: number) {
+function _invlalidLength(key: string, token: ArrayNode, length: number) {
   const actualLength = token instanceof ArrayNode ? token.children.length : 0
   return [
     ErrorCodes.invalidLength,
-    `The "${key}" must be ${length}, Currently it is ${actualLength} for collection index ${collectionIndex}.`,
+    `The "${key}" must be ${length}, Currently it is ${actualLength}.`,
     token
   ]
 }
 
 
-function _invlalidMinLength(key: string, token: TokenNode, min: number, collectionIndex?: number) {
+function _invlalidMinLength(key: string, token: TokenNode, min: number) {
   return [
     ErrorCodes.outOfRange,
     `The "${key}" must be greater than or equal to ${min}, Currently it is "${token.value}".`,
@@ -140,7 +140,7 @@ function _invlalidMinLength(key: string, token: TokenNode, min: number, collecti
   ]
 }
 
-function _invlalidMaxLength(key: string, token: TokenNode, max: number, collectionIndex?: number) {
+function _invlalidMaxLength(key: string, token: TokenNode, max: number) {
   return [
     ErrorCodes.outOfRange,
     `The "${key}" must be less than or equal to ${max}, Currently it is "${token.value}".`,
