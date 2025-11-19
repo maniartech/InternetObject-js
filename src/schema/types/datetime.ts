@@ -46,7 +46,25 @@ class DateTimeDef implements TypeDef {
     return value
   }
 
-  public strinfigy(value: Date): string {
+  load(value: any, memberDef: MemberDef, defs?: Definitions): Date {
+    const { value: checkedValue, changed } = doCommonTypeCheck(memberDef, value, undefined, defs, this.#dateTimeEqualityComparator)
+    if (changed) return checkedValue
+
+    // Type validation - must be a Date object
+    if (!(value instanceof Date)) {
+      throw new ValidationError(
+        ErrorCodes.invalidType,
+        `Expecting a Date object for '${memberDef.path}', got ${typeof value}`
+      )
+    }
+
+    // Validate constraints
+    this.#validate(value, memberDef, undefined, defs)
+
+    return value
+  }
+
+  public stringify(value: Date): string {
     return dt.dateToIOString(value, this.#type as any)
   }
 
@@ -84,7 +102,7 @@ class DateTimeDef implements TypeDef {
     return valDate.getTime() === choiceDate.getTime()
   }
 
-  #validate(value:Date, memberDef: MemberDef, node: Node, defs?: Definitions) {
+  #validate(value:Date, memberDef: MemberDef, node?: Node, defs?: Definitions) {
     const dateType:any = memberDef.type
 
     if (memberDef.min) {

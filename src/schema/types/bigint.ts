@@ -43,7 +43,17 @@ class BigIntDef implements TypeDef {
     return value
   }
 
+  load(value: any, memberDef: MemberDef, defs?: Definitions): bigint {
+    const { value: checkedValue, changed } = doCommonTypeCheck(memberDef, value)
+    if (changed) return checkedValue
+
+    return this.validate(memberDef, value)
+  }
+
   stringify(value: any, memberDef: MemberDef): string {
+    // Validate before stringifying
+    this.validate(memberDef, value)
+
     if (memberDef.format === 'hex') { return value.toString(16) }
     if (memberDef.format === 'octal') { return value.toString(8) }
     if (memberDef.format === 'binary') { return value.toString(2) }

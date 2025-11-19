@@ -55,7 +55,19 @@ class DecimalDef implements TypeDef {
     value = this.validate(memberDef, value, node)
 
     return value
-  }  stringify(value: any, memberDef: MemberDef): string {
+  }
+
+  load(value: any, memberDef: MemberDef, defs?: Definitions): Decimal {
+    const { value: checkedValue, changed } = doCommonTypeCheck(memberDef, value)
+    if (changed) return checkedValue
+
+    return this.validate(memberDef, value)
+  }
+
+  stringify(value: any, memberDef: MemberDef): string {
+    // Validate before stringifying
+    this.validate(memberDef, value)
+
     return value.toString()
   }
 
