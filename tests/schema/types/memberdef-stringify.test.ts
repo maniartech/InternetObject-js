@@ -438,4 +438,211 @@ describe('stringifyMemberDef', () => {
       expect(stringifyMemberDef(memberDef, true)).toBe('{email, maxLen:100}')
     })
   })
+
+  describe('Open schemas and wildcard properties', () => {
+    it('should handle open schema marker *', () => {
+      const memberDef: MemberDef = {
+        type: 'any',
+        name: '*'
+      }
+      // Open schema without type constraint should return empty (any type)
+      expect(stringifyMemberDef(memberDef, true)).toBe('')
+    })
+
+    it('should handle * with string type constraint', () => {
+      const memberDef: MemberDef = {
+        type: 'string',
+        name: '*'
+      }
+      expect(stringifyMemberDef(memberDef, true)).toBe('string')
+    })
+
+    it('should handle * with complex type and constraints', () => {
+      const memberDef: MemberDef = {
+        type: 'string',
+        name: '*',
+        minLen: 5,
+        maxLen: 100
+      }
+      expect(stringifyMemberDef(memberDef, true)).toBe('{string, minLen:5, maxLen:100}')
+    })
+
+    it('should handle * with nested object schema', () => {
+      const nestedSchema = new Schema(
+        'address',
+        { name: { type: 'string' } },
+        { age: { type: 'number' } }
+      )
+
+      const memberDef: MemberDef = {
+        type: 'object',
+        name: '*',
+        schema: nestedSchema
+      }
+
+      expect(stringifyMemberDef(memberDef, true)).toBe('{name, age}')
+    })
+  })
+
+  describe('AnyOf type (union types)', () => {
+    it('should handle anyOf with multiple types', () => {
+      const memberDef: MemberDef = {
+        type: 'anyOf',
+        anyOf: ['string', 'number']
+      }
+      // Currently serializes anyOf as a constraint property
+      // TODO: Consider special union syntax like 'string | number'
+      expect(stringifyMemberDef(memberDef, true)).toBe('{anyOf, anyOf:["string", "number"]}')
+    })
+
+    it('should handle anyOf with constraints', () => {
+      const memberDef: MemberDef = {
+        type: 'anyOf',
+        anyOf: [
+          { type: 'string', minLen: 3 },
+          { type: 'number', min: 0 }
+        ]
+      }
+      // Currently serializes anyOf array as JSON
+      expect(stringifyMemberDef(memberDef, true)).toBe('{anyOf, anyOf:[{"type":"string","minLen":3}, {"type":"number","min":0}]}')
+    })
+  })
+
+  describe('Deeply nested structures', () => {
+    it('should handle deeply nested object with constraints at multiple levels', () => {
+      const stateSchema = new Schema(
+        'state',
+        { name: { type: 'string', len: 2 } }
+      )
+
+      const addressSchema = new Schema(
+        'address',
+        { address: { type: 'string' } },
+        { state: { type: 'object', schema: stateSchema } }
+      )
+
+      const personSchema = new Schema(
+        'person',
+        { name: { type: 'string' } },
+        { age: { type: 'number', optional: true, min: 25 } },
+        { address: { type: 'object', schema: addressSchema } }
+      )
+
+      const memberDef: MemberDef = {
+        type: 'object',
+        schema: personSchema
+      }
+
+      // Should show nested structure with optional markers
+      expect(stringifyMemberDef(memberDef, true)).toBe('{name, age?, address}')
+    })
+
+    it('should handle 3-level nesting with mixed optional fields', () => {
+      const level3Schema = new Schema(
+        'level3',
+        { deep: { type: 'string' } }
+      )
+
+      const level2Schema = new Schema(
+        'level2',
+        { mid: { type: 'string', optional: true } },
+        { nested: { type: 'object', schema: level3Schema } }
+      )
+
+      const level1Schema = new Schema(
+        'level1',
+        { top: { type: 'string' } },
+        { child: { type: 'object', schema: level2Schema, optional: true } }
+      )
+
+      const memberDef: MemberDef = {
+        type: 'object',
+        schema: level1Schema
+      }
+
+      expect(stringifyMemberDef(memberDef, true)).toBe('{top, child?}')
+    })
+  })
+
+  describe('Complex real-world scenarios', () => {
+    it('should handle user profile with multiple constraint types', () => {
+      const memberDef: MemberDef = {
+        type: 'string',
+        minLen: 3,
+        maxLen: 50,
+        pattern: '^[a-zA-Z0-9_]+$',
+        default: 'anonymous'
+      }
+      expect(stringifyMemberDef(memberDef, true)).toBe('{string, minLen:3, maxLen:50, pattern:"^[a-zA-Z0-9_]+$", default:"anonymous"}')
+    })
+
+    it('should handle price field with decimal constraints', () => {
+      const memberDef: MemberDef = {
+        type: 'decimal',
+        precision: 10,
+        scale: 2,
+        min: 0
+      }
+      expect(stringifyMemberDef(memberDef, true)).toBe('{decimal, precision:10, scale:2, min:0}')
+    })
+
+    it('should handle enum-like choices with default', () => {
+      const memberDef: MemberDef = {
+        type: 'string',
+        choices: ['active', 'inactive', 'pending'],
+        default: 'pending'
+      }
+      expect(stringifyMemberDef(memberDef, true)).toBe('{string, choices:["active", "inactive", "pending"], default:"pending"}')
+    })
+
+    it('should handle array with length constraints', () => {
+      const memberDef: MemberDef = {
+        type: 'array',
+        minLen: 1,
+        maxLen: 10
+      }
+      expect(stringifyMemberDef(memberDef, true)).toBe('{array, minLen:1, maxLen:10}')
+    })
+
+    it('should handle phone number with pattern and format', () => {
+      const memberDef: MemberDef = {
+        type: 'string',
+        pattern: '^\\+?[1-9]\\d{1,14}$',
+        len: 10
+      }
+      // Pattern is serialized as-is without additional escaping
+      expect(stringifyMemberDef(memberDef, true)).toBe('{string, pattern:"^\\+?[1-9]\\d{1,14}$", len:10}')
+    })
+  })
+
+  describe('Edge cases with nullable and optional combinations', () => {
+    it('should handle optional and nullable together (represented in field name)', () => {
+      const memberDef: MemberDef = {
+        type: 'number',
+        optional: true,
+        null: true
+      }
+      // optional and null are not shown in bracket notation (they go on field name as ?*)
+      expect(stringifyMemberDef(memberDef, true)).toBe('number')
+    })
+
+    it('should handle nullable with constraints', () => {
+      const memberDef: MemberDef = {
+        type: 'string',
+        null: true,
+        minLen: 5
+      }
+      // null modifier goes on field name, only minLen in brackets
+      expect(stringifyMemberDef(memberDef, true)).toBe('{string, minLen:5}')
+    })
+
+    it('should handle optional with choices', () => {
+      const memberDef: MemberDef = {
+        type: 'string',
+        optional: true,
+        choices: ['small', 'medium', 'large']
+      }
+      expect(stringifyMemberDef(memberDef, true)).toBe('{string, choices:["small", "medium", "large"]}')
+    })
+  })
 })
