@@ -33,12 +33,10 @@ export function stringifyMemberDef(memberDef: MemberDef, includeTypes: boolean):
     return ''
   }
 
-  // Get the TypeDef for this type to see if it has special stringification rules
-  const typeDef = TypedefRegistry.get(memberDef.type)
-
   // Check if there are constraints (properties beyond the standard MemberDef ones)
+  // Note: 'default' and 'choices' are constraints that should be included in output
   const standardProps = [
-    'type', 'optional', 'null', 'path', 'default', 'choices', 'name', 'schema',
+    'type', 'optional', 'null', 'path', 'name', 'schema',
     // Type-specific internal properties that shouldn't be serialized
     're', '__memberdef', 'of' // 'of' is handled specially for arrays
   ]

@@ -180,15 +180,20 @@ function stringifySchema(schema: any, options: StringifyOptions): string {
     // Build field definition starting with the name
     let fieldDef = name;
 
+    // Add optional marker (?) if the field is optional
+    if (memberDef.optional) {
+      fieldDef += '?';
+    }
+
+    // Add null marker (*) if the field is nullable
+    if (memberDef.null) {
+      fieldDef += '*';
+    }
+
     // Delegate to stringifyMemberDef for type annotation
     const typeAnnotation = stringifyMemberDef(memberDef, includeTypes);
     if (typeAnnotation) {
       fieldDef += `: ${typeAnnotation}`;
-    } else if (!includeTypes || !memberDef.type || memberDef.type === 'any') {
-      // Check for optional marker when no type annotation
-      if (memberDef.optional) {
-        fieldDef += '?';
-      }
     }
 
     parts.push(fieldDef);
