@@ -103,20 +103,31 @@ function _processObject(data: ObjectNode, schema: Schema, defs?: Definitions, co
         break;
       }
 
-      processedNames.add(name);
-
       const val = processMember(member, memberDef, defs);
-      if (val !== undefined) o.set(name, val);
+      // Only mark as processed if we actually obtained a value (or a default was applied)
+      if (val !== undefined) {
+        processedNames.add(name);
+        o.set(name, val);
+      } else {
+        // If optional and no default, allow later keyed assignment without triggering duplicate-member
+        if (!memberDef.optional && memberDef.default === undefined) {
+          // Required but undefined value – throw
+          throw new ValidationError(ErrorCodes.valueRequired, `Expecting a value for ${memberDef.path}.`, data);
+        }
+        // Optional missing: skip adding to processedNames now so a later keyed value may fill it.
+      }
     } else {
-      // Member is missing - check if it's optional or has a default
+      // Member node entirely missing
       if (!memberDef.optional && memberDef.default === undefined) {
         throw new ValidationError(ErrorCodes.valueRequired, `Expecting a value for ${memberDef.path}.`, data);
       }
-      // Process with undefined to apply defaults
-      processedNames.add(name);
       const dummyMember = { key: null, value: undefined } as any;
       const val = processMember(dummyMember, memberDef, defs);
-      if (val !== undefined) o.set(name, val);
+      if (val !== undefined) {
+        processedNames.add(name);
+        o.set(name, val);
+      }
+      // If val is undefined and optional with no default, deliberately do not mark processedNames
     }
   }
 

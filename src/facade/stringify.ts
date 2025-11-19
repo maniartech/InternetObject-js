@@ -5,6 +5,8 @@ import Document from '../core/document';
 import Schema from '../schema/schema';
 import MemberDef from '../schema/types/memberdef';
 import TypedefRegistry from '../schema/typedef-registry';
+import { quoteExtraPropertyString } from '../utils/string-formatter';
+import { IO_MARKERS } from './serialization-constants';
 
 /**
  * Stringify options for controlling output format
@@ -105,8 +107,8 @@ export function stringify(
  */
 function stringifyAnyValue(val: any, defs?: Definitions): string {
   // Handle primitives first
-  if (val === null) return 'N';
-  if (val === undefined) return 'N';
+  if (val === null) return IO_MARKERS.NULL;
+  if (val === undefined) return IO_MARKERS.NULL;
 
   // Handle boolean
   if (typeof val === 'boolean') {
@@ -114,7 +116,7 @@ function stringifyAnyValue(val: any, defs?: Definitions): string {
     if (boolDef && 'stringify' in boolDef && typeof boolDef.stringify === 'function') {
       return boolDef.stringify(val, { type: 'bool', path: '', optional: false, null: false } as any);
     }
-    return val ? 'T' : 'F';
+    return val ? IO_MARKERS.TRUE : IO_MARKERS.FALSE;
   }
 
   // Handle number
@@ -195,47 +197,70 @@ function stringifyObject(
   const parts: string[] = [];
   const indent = options?.indent;
   const includeTypes = options?.includeTypes ?? false;
-
-  // Iterate over object members
-  for (const [key, val] of obj.entries()) {
-    if (!key) continue;  // Skip undefined keys
-
-    const memberDef: MemberDef | undefined = resolvedSchema?.defs[key];
-
-    if (memberDef) {
-      // Use typedef to stringify
-      const typeDef = TypedefRegistry.get(memberDef.type);
-      if (typeDef && 'stringify' in typeDef && typeDef.stringify) {
-        // For strings without explicit format, use 'open' format for bare strings
-        const effectiveMemberDef = { ...memberDef };
-        if (memberDef.type === 'string' && !memberDef.format) {
-          effectiveMemberDef.format = 'open';
-        }
-        const strValue = typeDef.stringify(val, effectiveMemberDef, defs);
-        if (includeTypes) {
-          parts.push(`${key}: ${strValue}`);
+  if (resolvedSchema) {
+    // First output members in schema order regardless of insertion order.
+    const handled = new Set<string>();
+    for (const name of resolvedSchema.names) {
+      const memberDef: MemberDef | undefined = resolvedSchema.defs[name];
+      const hasValue = obj.has(name);
+      if (hasValue) {
+        const val = obj.get(name);
+        const typeDef = memberDef ? TypedefRegistry.get(memberDef.type) : undefined;
+        let strValue: string;
+        if (memberDef && typeDef && 'stringify' in typeDef && typeof typeDef.stringify === 'function') {
+          const effectiveMemberDef = { ...memberDef };
+          if (memberDef.type === 'string' && !memberDef.format) {
+            effectiveMemberDef.format = 'open';
+          }
+          strValue = (typeDef.stringify as any)(val, effectiveMemberDef, defs);
+        } else if (memberDef && (memberDef.type === 'any' || memberDef.type === 'object')) {
+          strValue = stringifyAnyValue(val, defs);
         } else {
-          parts.push(strValue);
+          strValue = stringifyAnyValue(val, defs);
         }
-      } else if (memberDef.type === 'any' || memberDef.type === 'object') {
-        // Handle 'any' and 'object' types by inferring from JS type
-        const strValue = stringifyAnyValue(val, defs);
         if (includeTypes) {
-          parts.push(`${key}: ${strValue}`);
+          parts.push(`${name}: ${strValue}`);
         } else {
           parts.push(strValue);
         }
       } else {
-        // Fallback - infer from JS type
-        const strValue = stringifyAnyValue(val, defs);
-        if (includeTypes) {
-          parts.push(`${key}: ${strValue}`);
-        } else {
-          parts.push(strValue);
+        // Missing optional member with no default: preserve positional placeholder by emitting empty slot when includeTypes is false.
+        if (!includeTypes) {
+          const md = memberDef as any;
+          if (md?.optional && md?.default === undefined) {
+            parts.push('');
+          }
         }
       }
-    } else {
-      // No schema - infer from JS type
+      handled.add(name);
+    }
+    // Append any additional properties (wildcard or open schema extras) in original insertion order after core schema fields.
+    for (const [key, val] of obj.entries()) {
+      if (!key) continue;
+      if (handled.has(key)) continue; // already output
+      const memberDef: MemberDef | undefined = resolvedSchema.defs[key];
+      // For extras there is typically no memberDef (unless explicit definition outside names array)
+      const typeDef = memberDef ? TypedefRegistry.get(memberDef.type) : undefined;
+      let strValue: string;
+      if (memberDef && typeDef && 'stringify' in typeDef && typeof typeDef.stringify === 'function') {
+        const effectiveMemberDef = { ...memberDef };
+        if (memberDef.type === 'string' && !memberDef.format) {
+          effectiveMemberDef.format = 'open';
+        }
+        strValue = (typeDef.stringify as any)(val, effectiveMemberDef, defs);
+      } else if (typeof val === 'string') {
+        // Quote extra string properties using regular string format
+        strValue = quoteExtraPropertyString(val);
+      } else {
+        strValue = stringifyAnyValue(val, defs);
+      }
+      // Extras should retain key label even when includeTypes is false (desired output for wildcard properties)
+      parts.push(`${key}: ${strValue}`);
+    }
+  } else {
+    // No schema: fall back to insertion order
+    for (const [key, val] of obj.entries()) {
+      if (!key) continue;
       const strValue = stringifyAnyValue(val, defs);
       if (includeTypes) {
         parts.push(`${key}: ${strValue}`);

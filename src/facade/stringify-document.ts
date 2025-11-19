@@ -8,6 +8,8 @@ import MemberDef from '../schema/types/memberdef';
 import { stringifyMemberDef } from '../schema/types/memberdef-stringify';
 import { stringify } from './stringify';
 import { StringifyOptions } from './stringify';
+import { quoteHeaderString } from '../utils/string-formatter';
+import { IO_MARKERS, RESERVED_SECTION_NAMES, WILDCARD_KEY } from './serialization-constants';
 
 /**
  * Options for stringifying documents
@@ -103,7 +105,8 @@ export function stringifyDocument(
     }
   }
   if (includeHeader && doc.header && doc.header.schema && !hasNonSchemaDefinitions) {
-    const schemaText = stringifySchema(doc.header.schema, options);
+    // Force type annotations in schema line even if includeTypes false for data rows
+    const schemaText = stringifySchema(doc.header.schema, { ...options, includeTypes: true });
     if (schemaText) {
       parts.push(schemaText);
     }
@@ -129,8 +132,8 @@ export function stringifyDocument(
       // Note: Don't output schema reference for default schema ($schema) - it's implicit from header
       const isDefaultSchema = section.schemaName === '$schema' || section.schemaName === 'schema';
       const hasNamedSchema = section.schemaName && !isDefaultSchema;
-      // Treat "unnamed" as no name (parser default for anonymous sections)
-      const hasRealName = section.name && section.name !== 'unnamed';
+      // Treat reserved names as no name (parser defaults)
+      const hasRealName = section.name && !RESERVED_SECTION_NAMES.has(section.name);
 
       if (includeSectionNames && hasRealName) {
         if (hasNamedSchema) {
@@ -154,7 +157,8 @@ export function stringifyDocument(
       }
 
       // Stringify section data
-      const sectionText = stringifySection(section, doc.header.definitions, options);
+      // Always suppress type annotations inside data rows (positional output), regardless of includeTypes
+      const sectionText = stringifySection(section, doc.header.definitions, { ...options, includeTypes: false });
       if (sectionText) {
         parts.push(sectionText);
       }
@@ -197,6 +201,17 @@ function stringifySchema(schema: any, options: StringifyOptions): string {
     }
 
     parts.push(fieldDef);
+  }
+
+  // Append wildcard open schema definition if present
+  if (schema.defs && schema.defs[WILDCARD_KEY]) {
+    const openDef: MemberDef = schema.defs[WILDCARD_KEY];
+    let wildcard = WILDCARD_KEY;
+    const typeAnnotation = stringifyMemberDef(openDef, includeTypes);
+    if (typeAnnotation) {
+      wildcard += `:${typeAnnotation}`;
+    }
+    parts.push(wildcard);
   }
 
   return parts.join(', ');
@@ -286,26 +301,11 @@ function stringifyValue(value: any): string {
 // Decide if a string needs quoting to avoid being parsed as another type
 // Removed ambiguity heuristic; all JS strings are quoted for fidelity.
 
-function quoteString(str: string): string {
-  // Use string typedef auto formatting for escaping logic
-  const typeDef = TypedefRegistry.get('string');
-  if (typeDef && 'stringify' in typeDef && typeof typeDef.stringify === 'function') {
-    const pseudoMember: MemberDef = {
-      type: 'string', path: 'header', optional: true, null: false, choices: undefined,
-      format: 'regular', escapeLines: false, encloser: '"'
-    } as any; // minimal fields required by load/stringify
-    try {
-      return typeDef.stringify(str, pseudoMember);
-    } catch {
-      // Fallback if validation fails
-    }
-  }
-  return '"' + str.replace(/"/g, '\\"') + '"';
-}
+// Removed: quoteString now imported from string-formatter utility
 
 function headerValueToIO(key: string, value: any): string {
   if (typeof value === 'string') {
-    return quoteString(value); // Always quote to preserve string type on round-trip
+    return quoteHeaderString(value); // Always quote to preserve string type on round-trip
   }
   return stringifyValue(value);
 }

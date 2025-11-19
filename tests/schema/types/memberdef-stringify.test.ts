@@ -40,6 +40,58 @@ describe('stringifyMemberDef', () => {
     })
   })
 
+  describe('Array type with element types', () => {
+    it('should format array with simple string element type', () => {
+      const memberDef: MemberDef = { type: 'array', of: 'string' }
+      expect(stringifyMemberDef(memberDef, true)).toBe('[string]')
+    })
+
+    it('should format array with simple number element type', () => {
+      const memberDef: MemberDef = { type: 'array', of: 'number' }
+      expect(stringifyMemberDef(memberDef, true)).toBe('[number]')
+    })
+
+    it('should format array with element type having constraints', () => {
+      const memberDef: MemberDef = {
+        type: 'array',
+        of: { type: 'number', min: 0, max: 100 } as MemberDef
+      }
+      expect(stringifyMemberDef(memberDef, true)).toBe('[{number, min:0, max:100}]')
+    })
+
+    it('should format array with nested object element type', () => {
+      const schema = {
+        names: ['street', 'city'],
+        defs: {
+          street: { type: 'string', path: 'street', optional: false, null: false } as MemberDef,
+          city: { type: 'string', path: 'city', optional: false, null: false } as MemberDef
+        }
+      }
+
+      const memberDef: MemberDef = {
+        type: 'array',
+        path: 'addresses',
+        optional: false,
+        null: false,
+        of: { type: 'object', schema, path: '', optional: false, null: false } as MemberDef
+      }
+      expect(stringifyMemberDef(memberDef, true)).toBe('[{street, city}]')
+    })
+
+    it('should format array of arrays (nested arrays)', () => {
+      const memberDef: MemberDef = {
+        type: 'array',
+        of: { type: 'array', of: 'number' } as MemberDef
+      }
+      expect(stringifyMemberDef(memberDef, true)).toBe('[[number]]')
+    })
+
+    it('should format array without element type as generic array', () => {
+      const memberDef: MemberDef = { type: 'array' }
+      expect(stringifyMemberDef(memberDef, true)).toBe('array')
+    })
+  })
+
   describe('Number type with constraints', () => {
     it('should use bracket notation with min constraint', () => {
       const memberDef: MemberDef = { type: 'number', min: 20 }
@@ -136,13 +188,16 @@ describe('stringifyMemberDef', () => {
       expect(stringifyMemberDef(memberDef, true)).toBe('{array, maxLen:10}')
     })
 
-    it('should handle array with of property (TODO: needs proper implementation)', () => {
+    it('should handle array with of property', () => {
       const memberDef: MemberDef = {
         type: 'array',
-        of: { type: 'number' }
+        path: 'numbers',
+        optional: false,
+        null: false,
+        of: { type: 'number', path: '', optional: false, null: false } as MemberDef
       }
-      // Currently returns just 'array' - needs enhancement
-      expect(stringifyMemberDef(memberDef, true)).toBe('array')
+      // Now properly implements element type serialization
+      expect(stringifyMemberDef(memberDef, true)).toBe('[number]')
     })
   })
 

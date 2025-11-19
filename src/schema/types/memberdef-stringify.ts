@@ -1,103 +1,239 @@
-import MemberDef from './memberdef'
-import TypedefRegistry from '../typedef-registry'
+import MemberDef from './memberdef';
+import { STANDARD_MEMBERDEF_PROPS, IO_MARKERS } from '../../facade/serialization-constants';
 
 /**
  * Stringifies a MemberDef into its schema definition format.
- * This function knows how to render a MemberDef with its type and constraints.
  *
  * @param memberDef The MemberDef to stringify
  * @param includeTypes Whether to include type annotations
  * @returns The stringified schema definition for this member
+ *
+ * @example
+ * ```typescript
+ * // Simple type
+ * stringifyMemberDef({ type: 'string', path: 'name' }, true)
+ * // → "string"
+ *
+ * // With constraints
+ * stringifyMemberDef({ type: 'number', min: 0, max: 100 }, true)
+ * // → "{number, min:0, max:100}"
+ *
+ * // Nested object
+ * stringifyMemberDef({
+ *   type: 'object',
+ *   schema: { names: ['street', 'city'], defs: {...} }
+ * }, true)
+ * // → "{street, city}"
+ * ```
  */
 export function stringifyMemberDef(memberDef: MemberDef, includeTypes: boolean): string {
-  // Handle nested objects first (they have special syntax)
+  // Handle nested objects (special syntax)
   if (memberDef.type === 'object' && memberDef.schema) {
-    // Nested object: {field1, field2, ...}
-    const nestedFields: string[] = []
-    const nestedSchema = memberDef.schema
-    if (nestedSchema.names) {
-      for (const nestedName of nestedSchema.names) {
-        const nestedMember = nestedSchema.defs[nestedName]
-        let nestedField = nestedName
-        if (nestedMember && nestedMember.optional) {
-          nestedField += '?'
-        }
-        nestedFields.push(nestedField)
-      }
-    }
-    return `{${nestedFields.join(', ')}}`
+    return formatNestedSchema(memberDef.schema);
   }
 
-  // Don't include type annotation if not requested or if type is 'any'
+  // Skip type annotation if not requested or if type is 'any'
   if (!includeTypes || !memberDef.type || memberDef.type === 'any') {
-    return ''
-  }
-
-  // Check if there are constraints (properties beyond the standard MemberDef ones)
-  // Note: 'default' and 'choices' are constraints that should be included in output
-  const standardProps = [
-    'type', 'optional', 'null', 'path', 'name', 'schema',
-    // Type-specific internal properties that shouldn't be serialized
-    're', '__memberdef', 'of' // 'of' is handled specially for arrays
-  ]
-
-  const constraintProps: string[] = []
-
-  for (const key in memberDef) {
-    if (!standardProps.includes(key) && memberDef[key] !== undefined) {
-      constraintProps.push(key)
-    }
+    return '';
   }
 
   // Special handling for array type with 'of' property
   if (memberDef.type === 'array' && memberDef.of) {
-    // Arrays are more complex - handle them specially
-    return stringifyArrayMemberDef(memberDef)
+    return stringifyArrayMemberDef(memberDef);
   }
 
-  // Add type annotation with or without constraints
+  // Detect constraint properties
+  const constraintProps = detectConstraintProperties(memberDef);
+
+  // Format with or without constraints
   if (constraintProps.length > 0) {
-    // Has constraints: output as {type, constraint1:value1, constraint2:value2, ...}
-    const constraintParts = [memberDef.type]
-    for (const prop of constraintProps) {
-      const value = memberDef[prop]
-      // Format the value appropriately
-      const formattedValue = formatConstraintValue(value)
-      constraintParts.push(`${prop}:${formattedValue}`)
-    }
-    return `{${constraintParts.join(', ')}}`
+    return formatTypeWithConstraints(memberDef.type, memberDef, constraintProps);
   } else {
-    // No constraints: simple type annotation
-    return memberDef.type
+    return memberDef.type;
   }
 }
 
 /**
- * Special handling for array type MemberDefs
+ * Formats a nested object schema into {field1, field2, ...} notation.
+ * Applies SRP by isolating nested schema formatting logic.
+ *
+ * @param schema The nested schema to format
+ * @returns Formatted nested object string
+ */
+function formatNestedSchema(schema: any): string {
+  const nestedFields: string[] = [];
+
+  if (schema.names) {
+    for (const nestedName of schema.names) {
+      const nestedMember = schema.defs[nestedName];
+      let nestedField = nestedName;
+
+      if (nestedMember?.optional) {
+        nestedField += IO_MARKERS.OPTIONAL;
+      }
+      if (nestedMember?.null) {
+        nestedField += IO_MARKERS.NULLABLE;
+      }
+
+      nestedFields.push(nestedField);
+    }
+  }
+
+  return `{${nestedFields.join(', ')}}`;
+}
+
+/**
+ * Detects which MemberDef properties are constraints (non-standard properties).
+ * Applies SRP by isolating constraint detection logic.
+ *
+ * @param memberDef The MemberDef to analyze
+ * @returns Array of constraint property names
+ */
+function detectConstraintProperties(memberDef: MemberDef): string[] {
+  const constraintProps: string[] = [];
+
+  for (const key in memberDef) {
+    if (!STANDARD_MEMBERDEF_PROPS.has(key) && memberDef[key] !== undefined) {
+      constraintProps.push(key);
+    }
+  }
+
+  return constraintProps;
+}
+
+/**
+ * Formats a type with its constraints in bracket notation.
+ *
+ * @param type The base type name
+ * @param memberDef The full MemberDef containing constraint values
+ * @param constraintProps Array of constraint property names
+ * @returns Formatted string: {type, key1:value1, key2:value2, ...}
+ */
+function formatTypeWithConstraints(
+  type: string,
+  memberDef: MemberDef,
+  constraintProps: string[]
+): string {
+  const parts = [type];
+
+  for (const prop of constraintProps) {
+    const value = memberDef[prop];
+    const formattedValue = formatConstraintValue(value);
+    parts.push(`${prop}:${formattedValue}`);
+  }
+
+  return `{${parts.join(', ')}}`;
+}
+
+/**
+ * Special handling for array type MemberDefs.
+ *
+ * @param memberDef The array MemberDef with 'of' property
+ * @returns Formatted array type string
+ *
+ * @example
+ * ```typescript
+ * // Simple element type
+ * stringifyArrayMemberDef({ type: 'array', of: 'string' })
+ * // → "[string]"
+ *
+ * // Complex element type with constraints
+ * stringifyArrayMemberDef({
+ *   type: 'array',
+ *   of: { type: 'number', min: 0, max: 100 }
+ * })
+ * // → "[{number, min:0, max:100}]"
+ *
+ * // Nested object element type
+ * stringifyArrayMemberDef({
+ *   type: 'array',
+ *   of: { type: 'object', schema: { names: ['name', 'age'], defs: {...} } }
+ * })
+ * // → "[{name, age}]"
+ * ```
  */
 function stringifyArrayMemberDef(memberDef: MemberDef): string {
-  // TODO: Implement proper array stringification with 'of' type
-  // For now, just return 'array'
-  return memberDef.type
+  const ofType = memberDef.of;
+
+  // No element type specified
+  if (!ofType) {
+    return memberDef.type; // Just 'array'
+  }
+
+  // Simple string element type
+  if (typeof ofType === 'string') {
+    return `[${ofType}]`;
+  }
+
+  // Complex element type (MemberDef object)
+  if (typeof ofType === 'object' && ofType.type) {
+    const elementMemberDef = ofType as MemberDef;
+
+    // Nested object with schema
+    if (elementMemberDef.type === 'object' && elementMemberDef.schema) {
+      const nestedFormat = formatNestedSchema(elementMemberDef.schema);
+      return `[${nestedFormat}]`;
+    }
+
+    // Nested array (array of arrays)
+    if (elementMemberDef.type === 'array' && elementMemberDef.of) {
+      const nestedArrayFormat = stringifyArrayMemberDef(elementMemberDef);
+      return `[${nestedArrayFormat}]`;
+    }
+
+    // Element type with constraints
+    const constraintProps = detectConstraintProperties(elementMemberDef);
+    if (constraintProps.length > 0) {
+      const formatted = formatTypeWithConstraints(
+        elementMemberDef.type,
+        elementMemberDef,
+        constraintProps
+      );
+      return `[${formatted}]`;
+    }
+
+    // Simple element type without constraints
+    return `[${elementMemberDef.type}]`;
+  }
+
+  // Fallback: generic array
+  return memberDef.type;
 }
 
 /**
- * Formats a constraint value for output in schema definition
+ * Formats a constraint value for output in schema definition.
+ * Handles primitives, arrays, and nested objects recursively.
+ *
+ * @param value The constraint value to format
+ * @returns Formatted string representation
  */
-function formatConstraintValue(value: any): string {
-  if (value === null) return 'null'
-  if (value === undefined) return 'undefined'
-  if (typeof value === 'string') return `"${value}"`
-  if (typeof value === 'boolean') return value ? 'T' : 'F'
-  if (typeof value === 'number') return String(value)
-  if (Array.isArray(value)) {
-    // Format array constraints like choices: [val1, val2, ...]
-    const formatted = value.map(v => formatConstraintValue(v))
-    return `[${formatted.join(', ')}]`
+export function formatConstraintValue(value: any): string {
+  if (value === null) return 'null';
+  if (value === undefined) return 'undefined';
+
+  if (typeof value === 'string') {
+    // Escape quotes in string values
+    return `"${value.replace(/"/g, '\\"')}"`;
   }
+
+  if (typeof value === 'boolean') {
+    return value ? IO_MARKERS.TRUE : IO_MARKERS.FALSE;
+  }
+
+  if (typeof value === 'number') {
+    return String(value);
+  }
+
+  if (Array.isArray(value)) {
+    const formatted = value.map(v => formatConstraintValue(v));
+    return `[${formatted.join(', ')}]`;
+  }
+
   if (typeof value === 'object') {
     // For complex objects, use JSON representation
-    return JSON.stringify(value)
+    // Future enhancement: recursive MemberDef formatting
+    return JSON.stringify(value);
   }
-  return String(value)
+
+  return String(value);
 }

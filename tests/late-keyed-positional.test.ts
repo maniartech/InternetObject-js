@@ -1,6 +1,20 @@
 import { parse, stringify } from '../src/index';
 
-describe('Trial Debug Playground', () => {
+describe('Late keyed optional members normalization', () => {
+  it('normalizes multiple late keyed optional members into positional order', () => {
+    const input = `
+      name: string, age?: number, gender?: string, isActive: bool, colors?: [string]
+      ---
+      ~ John,,, T, age: 30, colors: [red, blue]`;
+
+    const doc = parse(input, null);
+    const out = stringify(doc, undefined, undefined, { includeTypes: true });
+
+    // colors now properly shows element type: [string]
+    const expected = `name: string, age?: number, gender?: string, isActive: bool, colors?: [string]\n---\n~ John, 30, , T, [red, blue]`;
+
+    expect(out.trim()).toBe(expected.trim());
+  });
 
   it('reorders late keyed optional member into positional slot', () => {
 
