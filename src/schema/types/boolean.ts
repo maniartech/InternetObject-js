@@ -38,7 +38,7 @@ export default class BooleanDef implements TypeDef {
   // Stringify with validation
   public stringify(value: any, memberDef: MemberDef): string {
     this.load(value, memberDef)
-    return value.toString()
+    return value ? 'T' : 'F'
   }
 
   #validate(node: Node, memberDef: MemberDef, defs?: Definitions): any {

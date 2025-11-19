@@ -235,7 +235,7 @@ describe('Document Load/Stringify', () => {
   });
 
   describe('stringifyDocument', () => {
-    it('stringifies document with single section', () => {
+    it('stringifies document with single section and parses back correctly', () => {
       const schema = compileSchema('User', '{ name: string, age: number }');
       const data: DocumentData = {
         data: [
@@ -247,13 +247,19 @@ describe('Document Load/Stringify', () => {
       const doc = loadDocument(data, { defaultSchema: schema });
       const text = stringifyDocument(doc);
 
-      expect(text).toContain('Alice');
-      expect(text).toContain('Bob');
-      expect(text).toContain('28');
-      expect(text).toContain('35');
+      // Parse back using external schema definition
+      const defs = new Definitions();
+      defs.set('$User', schema);
+      const parsed = require('../../src/parser').default(text, defs);
+
+      expect(parsed.sections?.length).toBe(1);
+      const section = parsed.sections?.get(0);
+      const col = section?.data as Collection<InternetObject>;
+      expect(col.getAt(0).get('name')).toBe('Alice');
+      expect(col.getAt(1).get('age')).toBe(35);
     });
 
-    it('stringifies document with header definitions', () => {
+    it('stringifies document with header definitions and parses them back', () => {
       const schema = compileSchema('User', '{ name: string }');
       const data: DocumentData = {
         header: {
@@ -268,13 +274,14 @@ describe('Document Load/Stringify', () => {
       const doc = loadDocument(data, { defaultSchema: schema });
       const text = stringifyDocument(doc);
 
-      expect(text).toContain('appName');
-      expect(text).toContain('MyApp');
-      expect(text).toContain('version');
-      expect(text).toContain('---');  // Header separator
+      const defs = new Definitions();
+      defs.set('$User', schema);
+      const parsed = require('../../src/parser').default(text, defs);
+      expect(parsed.header.definitions.get('appName')).toBe('MyApp');
+      expect(parsed.header.definitions.get('version')).toBe('1.0');
     });
 
-    it('stringifies document without header when includeHeader is false', () => {
+    it('stringifies document without header when includeHeader is false and parses back', () => {
       const schema = compileSchema('User', '{ name: string }');
       const data: DocumentData = {
         header: {
@@ -286,11 +293,16 @@ describe('Document Load/Stringify', () => {
       const doc = loadDocument(data, { defaultSchema: schema });
       const text = stringifyDocument(doc, { includeHeader: false });
 
-      expect(text).not.toContain('appName');
-      expect(text).toContain('Alice');
+      const defs = new Definitions();
+      defs.set('$User', schema);
+      const parsed = require('../../src/parser').default(text, defs);
+      expect(parsed.header.definitions.get('appName')).toBeUndefined();
+      const section = parsed.sections?.get(0);
+      const obj = section?.data as InternetObject;
+      expect(obj.get('name')).toBe('Alice');
     });
 
-    it('stringifies document with multiple named sections', () => {
+    it('stringifies document with multiple named sections and parses back', () => {
       const userSchema = compileSchema('User', '{ name: string }');
       const data: DocumentData = {
         sections: {
@@ -308,13 +320,18 @@ describe('Document Load/Stringify', () => {
 
       const text = stringifyDocument(doc);
 
-      expect(text).toContain('# users');
-      expect(text).toContain('# admins');
-      expect(text).toContain('Alice');
-      expect(text).toContain('Admin');
+      const defs = new Definitions();
+      defs.set('$User', userSchema);
+      const parsed = require('../../src/parser').default(text, defs);
+
+      expect(parsed.sections?.length).toBe(2);
+      const users = parsed.sections?.get('users');
+      const admins = parsed.sections?.get('admins');
+      expect((users?.data as Collection<InternetObject>).getAt(0).get('name')).toBe('Alice');
+      expect((admins?.data as Collection<InternetObject>).getAt(0).get('name')).toBe('Admin');
     });
 
-    it('filters sections when sectionsFilter is provided', () => {
+    it('filters sections when sectionsFilter is provided and parses back', () => {
       const schema = compileSchema('Item', '{ id: number }');
       const data: DocumentData = {
         sections: {
@@ -329,30 +346,17 @@ describe('Document Load/Stringify', () => {
         sectionsFilter: ['items1', 'items3']
       });
 
-      expect(text).toContain('# items1');
-      expect(text).not.toContain('# items2');
-      expect(text).toContain('# items3');
+      const defs = new Definitions();
+      defs.set('$Item', schema);
+      const parsed = require('../../src/parser').default(text, defs);
+      expect(parsed.sections?.get('items1')).toBeTruthy();
+      expect(parsed.sections?.get('items2')).toBeUndefined();
+      expect(parsed.sections?.get('items3')).toBeTruthy();
     });
 
-    it('uses custom separators', () => {
-      const schema = compileSchema('User', '{ name: string }');
-      const data: DocumentData = {
-        header: {
-          definitions: { app: 'Test' }
-        },
-        data: { name: 'Alice' }
-      };
+    // Removed: custom separators are not supported by IO format
 
-      const doc = loadDocument(data, { defaultSchema: schema });
-      const text = stringifyDocument(doc, {
-        headerSeparator: '===',
-        sectionSeparator: '***'
-      });
-
-      expect(text).toContain('===');
-    });
-
-    it('supports pretty printing', () => {
+    it('supports pretty printing and remains parseable', () => {
       const schema = compileSchema('User', '{ name: string, age: number }');
       const data: DocumentData = {
         data: { name: 'Alice', age: 28 }
@@ -361,8 +365,12 @@ describe('Document Load/Stringify', () => {
       const doc = loadDocument(data, { defaultSchema: schema });
       const text = stringifyDocument(doc, { indent: 2 });
 
-      // Should have line breaks for pretty printing
-      expect(text).toContain('\n');
+      const defs = new Definitions();
+      defs.set('$User', schema);
+      const parsed = require('../../src/parser').default(text, defs);
+      const section = parsed.sections?.get(0);
+      const obj = section?.data as InternetObject;
+      expect(obj.get('name')).toBe('Alice');
     });
   });
 

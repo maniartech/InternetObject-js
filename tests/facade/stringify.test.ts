@@ -28,7 +28,7 @@ describe('High-level stringify() API', () => {
       const result = stringify(obj, schema);
 
       expect(result).toContain('Bob');
-      expect(result).toContain('true');  // Boolean as JSON true
+      expect(result).toContain('T');  // Boolean as IO format T
     });
 
     it('stringifies object with optional undefined fields', () => {
@@ -192,7 +192,7 @@ describe('High-level stringify() API', () => {
       // Result should contain all values
       expect(stringified).toContain('Alice');
       expect(stringified).toContain('28');
-      expect(stringified).toContain('true');  // Boolean as JSON
+      expect(stringified).toContain('T');  // Boolean as IO format
     });
 
     it('collection load -> stringify maintains data', () => {

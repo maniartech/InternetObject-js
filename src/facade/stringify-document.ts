@@ -3,6 +3,9 @@ import Definitions from '../core/definitions';
 import InternetObject from '../core/internet-object';
 import Collection from '../core/collection';
 import Section from '../core/section';
+import TypedefRegistry from '../schema/typedef-registry';
+import MemberDef from '../schema/types/memberdef';
+import { stringifyMemberDef } from '../schema/types/memberdef-stringify';
 import { stringify } from './stringify';
 import { StringifyOptions } from './stringify';
 
@@ -17,22 +20,10 @@ export interface StringifyDocumentOptions extends StringifyOptions {
   includeHeader?: boolean;
 
   /**
-   * Include section names/separators
+   * Include section names after '---' (e.g., '--- users')
    * Default: true
    */
   includeSectionNames?: boolean;
-
-  /**
-   * Section separator string
-   * Default: '---'
-   */
-  sectionSeparator?: string;
-
-  /**
-   * Header separator string
-   * Default: '---'
-   */
-  headerSeparator?: string;
 
   /**
    * Include only specific sections (by name)
@@ -43,10 +34,9 @@ export interface StringifyDocumentOptions extends StringifyOptions {
   /**
    * Format for definitions in header
    * - 'io': Internet Object format (~ key: value)
-   * - 'json': JSON format
    * Default: 'io'
    */
-  definitionsFormat?: 'io' | 'json';
+  definitionsFormat?: 'io';
 }
 
 /**
@@ -90,16 +80,32 @@ export function stringifyDocument(
   const parts: string[] = [];
   const includeHeader = options.includeHeader ?? true;
   const includeSectionNames = options.includeSectionNames ?? true;
-  const sectionSeparator = options.sectionSeparator ?? '---';
-  const headerSeparator = options.headerSeparator ?? '---';
   const defFormat = options.definitionsFormat ?? 'io';
 
-  // Stringify header if requested and has content
+  // Stringify header definitions if requested and has content
   if (includeHeader && doc.header) {
     const headerText = stringifyHeader(doc.header, defFormat, options);
     if (headerText) {
       parts.push(headerText);
-      parts.push(headerSeparator);
+    }
+  }
+
+  // Output schema if present, includeHeader is true, AND there are no NON-SCHEMA definitions
+  // (If there are user definitions, the schema conflicts with ~ definition format)
+  let hasNonSchemaDefinitions = false;
+  if (doc.header.definitions) {
+    for (let i = 0; i < doc.header.definitions.length; i++) {
+      const def = doc.header.definitions.at(i);
+      if (!def.value.isSchema) {
+        hasNonSchemaDefinitions = true;
+        break;
+      }
+    }
+  }
+  if (includeHeader && doc.header && doc.header.schema && !hasNonSchemaDefinitions) {
+    const schemaText = stringifySchema(doc.header.schema, options);
+    if (schemaText) {
+      parts.push(schemaText);
     }
   }
 
@@ -119,20 +125,38 @@ export function stringifyDocument(
         }
       }
 
-      // Add section name if named and requested
-      if (includeSectionNames && section.name) {
-        parts.push(`# ${section.name}`);
+      // Add section separator with optional name and schema
+      // Note: Don't output schema reference for default schema ($schema) - it's implicit from header
+      const isDefaultSchema = section.schemaName === '$schema' || section.schemaName === 'schema';
+      const hasNamedSchema = section.schemaName && !isDefaultSchema;
+      // Treat "unnamed" as no name (parser default for anonymous sections)
+      const hasRealName = section.name && section.name !== 'unnamed';
+
+      if (includeSectionNames && hasRealName) {
+        if (hasNamedSchema) {
+          // Include schema reference if section has a named schema
+          // Schema name might already start with $ - don't duplicate it
+          const schemaRef = section.schemaName!.startsWith('$') ? section.schemaName : `$${section.schemaName}`;
+          parts.push(`--- ${section.name}: ${schemaRef}`);
+        } else {
+          parts.push(`--- ${section.name}`);
+        }
+      } else if (hasNamedSchema) {
+        // No section name but has named schema - output schema only
+        const schemaRef = section.schemaName!.startsWith('$') ? section.schemaName : `$${section.schemaName}`;
+        parts.push(`--- ${schemaRef}`);
+      } else if (hasRealName) {
+        // Has name but no schema - output just ---
+        parts.push('---');
+      } else {
+        // No real name - output bare section separator
+        parts.push('---');
       }
 
       // Stringify section data
       const sectionText = stringifySection(section, doc.header.definitions, options);
       if (sectionText) {
         parts.push(sectionText);
-      }
-
-      // Add section separator between sections (but not after the last one)
-      if (i < sectionCount - 1) {
-        parts.push('');  // Empty line between sections
       }
     }
   }
@@ -141,11 +165,44 @@ export function stringifyDocument(
 }
 
 /**
+ * Stringify a schema to IO format
+ */
+function stringifySchema(schema: any, options: StringifyOptions): string {
+  if (!schema || !schema.names || schema.names.length === 0) return '';
+
+  const includeTypes = options.includeTypes ?? false;
+  const parts: string[] = [];
+
+  for (const name of schema.names) {
+    const memberDef: MemberDef = schema.defs[name];
+    if (!memberDef) continue;
+
+    // Build field definition starting with the name
+    let fieldDef = name;
+
+    // Delegate to stringifyMemberDef for type annotation
+    const typeAnnotation = stringifyMemberDef(memberDef, includeTypes);
+    if (typeAnnotation) {
+      fieldDef += `: ${typeAnnotation}`;
+    } else if (!includeTypes || !memberDef.type || memberDef.type === 'any') {
+      // Check for optional marker when no type annotation
+      if (memberDef.optional) {
+        fieldDef += '?';
+      }
+    }
+
+    parts.push(fieldDef);
+  }
+
+  return parts.join(', ');
+}
+
+/**
  * Stringify document header with definitions
  */
 function stringifyHeader(
   header: any,
-  format: 'io' | 'json',
+  format: 'io',
   options: StringifyOptions
 ): string {
   if (!header.definitions) return '';
@@ -155,26 +212,17 @@ function stringifyHeader(
 
   // Iterate through definitions
   for (const [key, defValue] of defs.entries()) {
-    // Skip schemas and variables in header output (they're internal)
-    if (defValue.isSchema || defValue.isVariable) {
+    // Skip schemas in header output (no schema stringifier yet)
+    if (defValue.isSchema) {
       continue;
     }
 
-    if (format === 'io') {
-      // IO format: ~ key: value
-      const value = stringifyValue(defValue.value, options);
-      defParts.push(`~ ${key}: ${value}`);
-    } else {
-      // JSON format: "key": value
-      defParts.push(`"${key}": ${JSON.stringify(defValue.value)}`);
-    }
+    // IO format: ~ key: value (variables and regular keys)
+    const value = headerValueToIO(key, defValue.value);
+    defParts.push(`~ ${key}: ${value}`);
   }
 
   if (defParts.length === 0) return '';
-
-  if (format === 'json') {
-    return '{' + defParts.join(', ') + '}';
-  }
 
   return defParts.join(', ');
 }
@@ -195,23 +243,66 @@ function stringifySection(
   const schemaName = section.schemaName;
   const schema = schemaName ? defs.getV(schemaName) : defs.defaultSchema;
 
-  // Use main stringify function
+  // Collections should be serialized using IO '~' items for parser compatibility
+  if (data instanceof Collection) {
+    const lines: string[] = [];
+    for (const item of data) {
+      if (options.skipErrors && item && typeof item === 'object' && (item as any).__error === true) {
+        continue;
+      }
+      if (item instanceof InternetObject) {
+        const line = stringify(item, schema, defs, options);
+        lines.push(`~ ${line}`);
+      } else {
+        // Fallback for non-IO items
+        lines.push(`~ ${JSON.stringify(item)}`);
+      }
+    }
+    return lines.join('\n');
+  }
+
+  // Single object/value: use main stringify
   return stringify(data, schema, defs, options);
 }
 
 /**
  * Helper to stringify a value
  */
-function stringifyValue(value: any, options: StringifyOptions): string {
+function stringifyValue(value: any): string {
   if (value === null) return 'null';
   if (value === undefined) return 'undefined';
-  if (typeof value === 'string') return value;
+  if (typeof value === 'string') return value; // raw string (quoting handled upstream if needed)
   if (typeof value === 'number') return String(value);
   if (typeof value === 'boolean') return value ? 'T' : 'F';
   if (value instanceof Date) return value.toISOString();
-
-  // For complex objects, use JSON
   return JSON.stringify(value);
+}
+
+// Decide if a string needs quoting to avoid being parsed as another type
+// Removed ambiguity heuristic; all JS strings are quoted for fidelity.
+
+function quoteString(str: string): string {
+  // Use string typedef auto formatting for escaping logic
+  const typeDef = TypedefRegistry.get('string');
+  if (typeDef && 'stringify' in typeDef && typeof typeDef.stringify === 'function') {
+    const pseudoMember: MemberDef = {
+      type: 'string', path: 'header', optional: true, null: false, choices: undefined,
+      format: 'regular', escapeLines: false, encloser: '"'
+    } as any; // minimal fields required by load/stringify
+    try {
+      return typeDef.stringify(str, pseudoMember);
+    } catch {
+      // Fallback if validation fails
+    }
+  }
+  return '"' + str.replace(/"/g, '\\"') + '"';
+}
+
+function headerValueToIO(key: string, value: any): string {
+  if (typeof value === 'string') {
+    return quoteString(value); // Always quote to preserve string type on round-trip
+  }
+  return stringifyValue(value);
 }
 
 /**

@@ -359,8 +359,8 @@ const io = stringifyDocument(doc, {
 
 // Output:
 // $User: name: string, age: number
-// 
-// 
+//
+//
 // Alice, 28
 // ---
 // Bob, 35
@@ -617,7 +617,7 @@ try {
   const doc = loadDocument(data, {
     strict: true  // Throw on first error
   });
-  
+
   // Only executes if no errors
   console.log('Document loaded successfully');
 } catch (error) {
@@ -660,7 +660,7 @@ sectionErrors.forEach((errors, section) => {
 
 ## Test Coverage
 
-**File**: `tests/facade/document.test.ts`  
+**File**: `tests/facade/document.test.ts`
 **Tests**: 23 tests, all passing
 
 ### Test Categories
@@ -733,14 +733,14 @@ sectionErrors.forEach((errors, section) => {
 
 The document-level APIs provide comprehensive functionality for:
 
-✅ **Complete Document Structure**: Header (definitions + schema) + Sections  
-✅ **Flexible Schema Resolution**: Multiple sources and priority  
-✅ **Error Handling**: Strict and non-strict modes  
-✅ **Multiple Sections**: Named/unnamed with per-section schemas  
-✅ **Formatting Options**: Custom separators, filtering, indentation  
-✅ **Round-Trip Integrity**: Load → modify → stringify workflows  
-✅ **External Integration**: Plain object conversion for APIs  
+✅ **Complete Document Structure**: Header (definitions + schema) + Sections
+✅ **Flexible Schema Resolution**: Multiple sources and priority
+✅ **Error Handling**: Strict and non-strict modes
+✅ **Multiple Sections**: Named/unnamed with per-section schemas
+✅ **Formatting Options**: Custom separators, filtering, indentation
+✅ **Round-Trip Integrity**: Load → modify → stringify workflows
+✅ **External Integration**: Plain object conversion for APIs
 
-**Test Coverage**: 23 tests, all passing  
-**Lines of Code**: ~400 lines across 2 main files  
+**Test Coverage**: 23 tests, all passing
+**Lines of Code**: ~400 lines across 2 main files
 **Integration**: Seamless with existing load/stringify APIs

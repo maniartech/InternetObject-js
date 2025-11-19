@@ -1,6 +1,7 @@
 import Definitions from '../core/definitions';
 import InternetObject from '../core/internet-object';
 import Collection from '../core/collection';
+import Document from '../core/document';
 import Schema from '../schema/schema';
 import MemberDef from '../schema/types/memberdef';
 import TypedefRegistry from '../schema/typedef-registry';
@@ -29,12 +30,12 @@ export interface StringifyOptions {
 }
 
 /**
- * Serialize an InternetObject or Collection to Internet Object text format.
+ * Serialize an InternetObject, Collection, or Document to Internet Object text format.
  *
  * This is the high-level API for converting validated data back to IO format.
  * Uses TypeDef.stringify() methods to serialize each field according to type rules.
  *
- * @param value - InternetObject or Collection to serialize
+ * @param value - InternetObject, Collection, or Document to serialize
  * @param schema - Optional schema for type information (uses value's schema if available)
  * @param defs - Optional definitions for variable resolution
  * @param options - Optional formatting options
@@ -48,6 +49,11 @@ export interface StringifyOptions {
  * obj.set('age', 28);
  * const text = stringify(obj, '{ name: string, age: number }');
  * // Output: "Alice, 28"
+ *
+ * // Stringify a document
+ * const doc = parse(ioText, null);
+ * const text = stringify(doc);
+ * // Output: Full IO document with headers and sections
  *
  * // Stringify with pretty printing
  * const text = stringify(obj, schema, undefined, { indent: 2 });
@@ -68,11 +74,18 @@ export interface StringifyOptions {
  * ```
  */
 export function stringify(
-  value: InternetObject | Collection<InternetObject> | any,
+  value: InternetObject | Collection<InternetObject> | Document | any,
   schema?: string | Schema,
   defs?: Definitions,
   options?: StringifyOptions
 ): string {
+  // Handle Document (IODocument) - delegate to stringifyDocument
+  // Import here to avoid circular dependency
+  if (value instanceof Document) {
+    const { stringifyDocument } = require('./stringify-document');
+    return stringifyDocument(value, options);
+  }
+
   // Handle Collection
   if (value instanceof Collection) {
     return stringifyCollection(value, schema, defs, options);
@@ -85,6 +98,86 @@ export function stringify(
 
   // Handle plain values
   return JSON.stringify(value);
+}
+
+/**
+ * Stringify a value of 'any' type by inferring from its JavaScript type
+ */
+function stringifyAnyValue(val: any, defs?: Definitions): string {
+  // Handle primitives first
+  if (val === null) return 'N';
+  if (val === undefined) return 'N';
+
+  // Handle boolean
+  if (typeof val === 'boolean') {
+    const boolDef = TypedefRegistry.get('bool');
+    if (boolDef && 'stringify' in boolDef && typeof boolDef.stringify === 'function') {
+      return boolDef.stringify(val, { type: 'bool', path: '', optional: false, null: false } as any);
+    }
+    return val ? 'T' : 'F';
+  }
+
+  // Handle number
+  if (typeof val === 'number') {
+    return String(val);
+  }
+
+  // Handle string - use open format for bare strings
+  if (typeof val === 'string') {
+    const stringDef = TypedefRegistry.get('string');
+    if (stringDef && 'stringify' in stringDef && typeof stringDef.stringify === 'function') {
+      const memberDef: MemberDef = {
+        type: 'string',
+        path: '',
+        optional: false,
+        null: false,
+        format: 'open',  // Use open format for bare strings
+        escapeLines: false,
+        encloser: '"'
+      } as any;
+      return stringDef.stringify(val, memberDef);
+    }
+    return val;
+  }
+
+  // Handle Date - check if it's date-only or datetime
+  if (val instanceof Date) {
+    const dateDef = TypedefRegistry.get('date');
+    if (dateDef && 'stringify' in dateDef && typeof dateDef.stringify === 'function') {
+      return (dateDef.stringify as any)(val);
+    }
+    // Fallback: format as date-only d"YYYY-MM-DD"
+    const year = val.getFullYear();
+    const month = String(val.getMonth() + 1).padStart(2, '0');
+    const day = String(val.getDate()).padStart(2, '0');
+    return `d"${year}-${month}-${day}"`;
+  }
+
+  // Handle array
+  if (Array.isArray(val)) {
+    const items = val.map(item => stringifyAnyValue(item, defs));
+    return `[${items.join(', ')}]`;
+  }
+
+  // Handle object (including InternetObject)
+  if (val instanceof InternetObject) {
+    const objContent = stringifyObject(val, undefined, defs, {});
+    return `{${objContent}}`;  // Wrap in braces
+  }
+
+  // Handle plain object - output values only in order, like {val1, val2, val3}
+  if (typeof val === 'object') {
+    const items: string[] = [];
+    for (const k in val) {
+      if (val.hasOwnProperty(k)) {
+        items.push(stringifyAnyValue(val[k], defs));
+      }
+    }
+    return `{${items.join(', ')}}`;
+  }
+
+  // Fallback
+  return JSON.stringify(val);
 }
 
 /**
@@ -113,26 +206,41 @@ function stringifyObject(
       // Use typedef to stringify
       const typeDef = TypedefRegistry.get(memberDef.type);
       if (typeDef && 'stringify' in typeDef && typeDef.stringify) {
-        const strValue = typeDef.stringify(val, memberDef, defs);
+        // For strings without explicit format, use 'open' format for bare strings
+        const effectiveMemberDef = { ...memberDef };
+        if (memberDef.type === 'string' && !memberDef.format) {
+          effectiveMemberDef.format = 'open';
+        }
+        const strValue = typeDef.stringify(val, effectiveMemberDef, defs);
+        if (includeTypes) {
+          parts.push(`${key}: ${strValue}`);
+        } else {
+          parts.push(strValue);
+        }
+      } else if (memberDef.type === 'any' || memberDef.type === 'object') {
+        // Handle 'any' and 'object' types by inferring from JS type
+        const strValue = stringifyAnyValue(val, defs);
         if (includeTypes) {
           parts.push(`${key}: ${strValue}`);
         } else {
           parts.push(strValue);
         }
       } else {
-        // Fallback to JSON stringify
+        // Fallback - infer from JS type
+        const strValue = stringifyAnyValue(val, defs);
         if (includeTypes) {
-          parts.push(`${key}: ${JSON.stringify(val)}`);
+          parts.push(`${key}: ${strValue}`);
         } else {
-          parts.push(JSON.stringify(val));
+          parts.push(strValue);
         }
       }
     } else {
-      // No schema - use JSON stringify
+      // No schema - infer from JS type
+      const strValue = stringifyAnyValue(val, defs);
       if (includeTypes) {
-        parts.push(`${key}: ${JSON.stringify(val)}`);
+        parts.push(`${key}: ${strValue}`);
       } else {
-        parts.push(JSON.stringify(val));
+        parts.push(strValue);
       }
     }
   }

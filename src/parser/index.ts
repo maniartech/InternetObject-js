@@ -115,7 +115,8 @@ function parseDataWithSchema(docNode: DocumentNode, doc: Document): void {
       : doc.header.schema;
 
     if (!schema) {
-      parseData(docNode, doc);
+      // No schema for this section, just parse without validation
+      doc.sections?.push(new Section(sectionNode.child?.toValue(doc.header.definitions || undefined), sectionNode.name));
       continue;
     }
 

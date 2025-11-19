@@ -77,7 +77,7 @@ describe('load() and stringify() - basic types', () => {
     test('type validation', () => {
       const memberDef: any = { type: 'bool', path: 'ok' }
       expect(() => bool.load('true' as any, memberDef)).toThrow(/boolean/i)
-      expect(bool.stringify(false, memberDef)).toBe('false')
+      expect(bool.stringify(false, memberDef)).toBe('F')  // IO format: F for false
     })
   })
 })
