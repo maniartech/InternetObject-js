@@ -65,6 +65,19 @@ class IODefinitions {
   }
 
   /**
+   * Checks if there are any definitions beyond just the default $schema.
+   * Used to determine serialization format:
+   * - false: Output bare schema line (schema-only mode)
+   * - true: Output ~ definitions format (has variables, metadata, or multiple schemas)
+   * @returns True if there are any definitions other than a single $schema, false otherwise
+   */
+  public get defaultSchemaOnly(): boolean {
+    const keys = Object.keys(this._definitions);
+
+    return keys.length === 1 && keys[0] === "$schema"
+  }
+
+  /**
    * Gets a definition value by key, regardless of whether it's a variable, schema, or regular definition.
    * @param key The definition key
    * @returns The value associated with the key, or undefined if not found

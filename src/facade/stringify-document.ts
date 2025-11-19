@@ -84,31 +84,29 @@ export function stringifyDocument(
   const includeSectionNames = options.includeSectionNames ?? true;
   const defFormat = options.definitionsFormat ?? 'io';
 
-  // Stringify header definitions if requested and has content
+  // Stringify header (includes definitions, schemas, variables)
   if (includeHeader && doc.header) {
-    const headerText = stringifyHeader(doc.header, defFormat, options);
-    if (headerText) {
-      parts.push(headerText);
-    }
-  }
+    // Check if we're in schema-only mode (just $schema, no other definitions)
+    const isSchemaOnlyMode = doc.header.definitions?.defaultSchemaOnly ?? false;
 
-  // Output schema if present, includeHeader is true, AND there are no NON-SCHEMA definitions
-  // (If there are user definitions, the schema conflicts with ~ definition format)
-  let hasNonSchemaDefinitions = false;
-  if (doc.header.definitions) {
-    for (let i = 0; i < doc.header.definitions.length; i++) {
-      const def = doc.header.definitions.at(i);
-      if (!def.value.isSchema) {
-        hasNonSchemaDefinitions = true;
-        break;
+    if (isSchemaOnlyMode && doc.header.schema) {
+      // Schema-only mode: output bare schema line (backward compatible)
+      const schemaText = stringifySchema(doc.header.schema, { ...options, includeTypes: true });
+      if (schemaText) {
+        parts.push(schemaText);
       }
-    }
-  }
-  if (includeHeader && doc.header && doc.header.schema && !hasNonSchemaDefinitions) {
-    // Force type annotations in schema line even if includeTypes false for data rows
-    const schemaText = stringifySchema(doc.header.schema, { ...options, includeTypes: true });
-    if (schemaText) {
-      parts.push(schemaText);
+    } else if (doc.header.definitions && doc.header.definitions.length > 0) {
+      // Definitions mode: output all definitions (schemas, variables, metadata) in ~ format
+      const headerText = stringifyHeader(doc.header, defFormat, options);
+      if (headerText) {
+        parts.push(headerText);
+      }
+    } else if (doc.header.schema) {
+      // No definitions but has schema: output bare schema line
+      const schemaText = stringifySchema(doc.header.schema, { ...options, includeTypes: true });
+      if (schemaText) {
+        parts.push(schemaText);
+      }
     }
   }
 
@@ -230,16 +228,28 @@ function stringifyHeader(
   const defs = header.definitions;
   const defParts: string[] = [];
 
-  // Iterate through definitions
+  // Iterate through all definitions: schemas, variables, and metadata
   for (const [key, defValue] of defs.entries()) {
-    // Skip schemas in header output (no schema stringifier yet)
+    let formattedValue: string;
+
+    // Schema definitions: Format as ~ $schema: {name, age, address}
     if (defValue.isSchema) {
-      continue;
+      const schemaValue = defValue.value;
+      // Use stringifySchema to format the schema structure
+      const schemaText = stringifySchema(schemaValue, { ...options, includeTypes: true });
+      formattedValue = schemaText ? `{${schemaText}}` : '{}';
+    }
+    // Variables and regular definitions: Format as ~ key: value
+    else {
+      let value = defValue.value;
+      // If value is a TokenNode, extract its actual value
+      if (value && typeof value === 'object' && 'value' in value && 'type' in value) {
+        value = value.value;
+      }
+      formattedValue = headerValueToIO(key, value);
     }
 
-    // IO format: ~ key: value (variables and regular keys)
-    const value = headerValueToIO(key, defValue.value);
-    defParts.push(`~ ${key}: ${value}`);
+    defParts.push(`~ ${key}: ${formattedValue}`);
   }
 
   if (defParts.length === 0) return '';
