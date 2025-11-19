@@ -40,4 +40,51 @@ describe('Schema validation in collections', () => {
     const call = () => num.parse(27 as any, { type: 'number', min: 30, path: 'age' } as any, undefined);
     expect(call).toThrow();
   });
+
+  it('includes collectionIndex in error envelopes for invalid items', () => {
+    const doc = parse(input, null);
+    const json: any = doc.toJSON();
+    const dataOut = json && json.data ? json.data : json;
+    expect(Array.isArray(dataOut)).toBe(true);
+    const arr = dataOut as any[];
+    const errorItem = arr.find(x => x && x.__error === true);
+    expect(errorItem).toBeTruthy();
+    // The first record (index 0) has age 27 < min 30
+    expect(errorItem.collectionIndex).toBe(0);
+  });
+
+  it('preserves order and attaches collectionIndex for mixed success/failure including syntax errors', () => {
+    const mixed = `name, age:{number, min:30}\n---\n~ John, 25\n~ Jane, 35\n~ Bob, {invalid\n~ Alice, 45\n`;
+    const doc = parse(mixed, null);
+    const json: any = doc.toJSON();
+    const dataOut = json && json.data ? json.data : json;
+    expect(Array.isArray(dataOut)).toBe(true);
+    const arr = dataOut as any[];
+    // Expect 4 items in the same order
+    expect(arr.length).toBe(4);
+
+    // Index 0: validation error (age 25 < 30)
+    const item0 = arr[0];
+    expect(item0 && item0.__error).toBe(true);
+    expect(item0.collectionIndex).toBe(0);
+    expect(item0.category).toBe('validation');
+
+    // Index 1: valid
+    const item1 = arr[1];
+    expect(item1 && item1.__error).toBeUndefined();
+    expect(item1.name).toBe('Jane');
+    expect(item1.age).toBe(35);
+
+    // Index 2: parser error (unclosed object)
+    const item2 = arr[2];
+    expect(item2 && item2.__error).toBe(true);
+    expect(item2.collectionIndex).toBe(2);
+    expect(item2.category).toBe('syntax');
+
+    // Index 3: valid
+    const item3 = arr[3];
+    expect(item3 && item3.__error).toBeUndefined();
+    expect(item3.name).toBe('Alice');
+    expect(item3.age).toBe(45);
+  });
 });

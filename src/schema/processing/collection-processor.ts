@@ -33,6 +33,10 @@ export default function processCollection(
       // Push ErrorNode directly; IOCollection.toJSON handles toValue()
       // which serializes error details with positions.
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      // Also annotate the underlying error with collectionIndex for consistency
+      try {
+        (item as any).error.collectionIndex = i;
+      } catch {}
       collection.push(item as unknown as any);
     } else {
       try {
@@ -40,6 +44,8 @@ export default function processCollection(
       } catch (error) {
         // Validation error occurred - convert to ErrorNode and collect the error
         if (error instanceof Error) {
+          // Attach boundary context for downstream serializers/UI
+          (error as any).collectionIndex = i;
           const errorNode = new ErrorNode(
             error,
             (item as ObjectNode).getStartPos(),

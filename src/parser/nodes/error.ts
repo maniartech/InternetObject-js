@@ -50,7 +50,7 @@ class ErrorNode implements Node {
    * Includes error category for UI styling.
    */
   toValue(defs?: Definitions): any {
-    return {
+    const base: any = {
       __error: true,
       category: this.getErrorCategory(),
       message: this.error.message,
@@ -58,6 +58,12 @@ class ErrorNode implements Node {
       position: this.position,
       ...(this.endPosition && { endPosition: this.endPosition })
     };
+    // Include collectionIndex if the original error carries it (boundary context)
+    const anyErr: any = this.error as any;
+    if (anyErr && anyErr.collectionIndex !== undefined) {
+      base.collectionIndex = anyErr.collectionIndex;
+    }
+    return base;
   }
 
   /**

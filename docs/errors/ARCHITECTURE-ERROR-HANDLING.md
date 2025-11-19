@@ -162,15 +162,19 @@ function processCollection(
 
     if (item instanceof ErrorNode) {
       // Parser error - preserve in collection (already in doc._errors)
+      // Also annotate underlying error with the top-level collection index
+      (item as any).error.collectionIndex = i;
       collection.push(item as unknown as any);
     } else {
       try {
         collection.push(processObject(item, resolvedSchema, defs, i));
       } catch (error) {
-        // Validation error - create ErrorNode and collect error
-        const errorNode = new ErrorNode(error, item.getStartPos(), item.getEndPos());
+        // Validation error - annotate with top-level collection index
+        (error as any).collectionIndex = i;
+        // Create ErrorNode and collect error
+        const errorNode = new ErrorNode(error as Error, item.getStartPos(), item.getEndPos());
         if (errorCollector) {
-          errorCollector.push(error);
+          errorCollector.push(error as Error);
         }
         collection.push(errorNode as unknown as any);
       }
@@ -498,7 +502,7 @@ Runtime (unexpected) errors fallback to `runtime` category unless recognized sub
 
 ### CollectionIndex Integration & Error Envelope
 
-When serializing mixed result collections the system emits uniform error objects. Proposed / emerging canonical shape (see also `../schema/types-revamp/COLLECTION-INDEX-ANALYSIS.md`):
+When serializing mixed result collections the system emits uniform error objects. Canonical shape:
 
 ```jsonc
 {
@@ -507,18 +511,50 @@ When serializing mixed result collections the system emits uniform error objects
   "category": "validation",
   "message": "Invalid email 'alice@@example.com'. Expected format user@domain.tld",
   "path": "users[3].email",          // Path with composed indices
-  "collectionIndex": 3,               // Top-level collection item index
+  "collectionIndex": 3,               // Top-level collection item index (0-based)
   "position": { "row": 12, "col": 18 },
   "endPosition": { "row": 12, "col": 39 } // Optional if available
 }
 ```
 
-Notes:
+**Implementation Details:**
 1. `collectionIndex` only refers to the top-level record location inside the processed collection – nested arrays embed their index in `path` instead of another field.
 2. `path` MUST be pre-composed with `[n]` segments for each array nesting level.
 3. `code` aligns with registry; `category` inferred from error instance type.
 4. `position`/`endPosition` align with `error-range-utils` output; if only a start is known omit `endPosition`.
 5. Errors remain first-class items preserving ordering to support partial success workflows.
+6. **Multi-Section Behavior**: `collectionIndex` is reset to 0 for each section in the document. Each section maintains its own independent collection with 0-based indexing.
+
+**Multi-Section Example:**
+
+Given a document with multiple named sections:
+```
+schema
+--- collection1
+~ item0  // collectionIndex: 0
+~ item1  // collectionIndex: 1
+--- collection2
+~ item0  // collectionIndex: 0 (reset)
+~ item1  // collectionIndex: 1
+```
+
+Both syntax and validation errors include `collectionIndex`:
+- **Syntax errors** (from parser): Annotated at collection boundary before being added to the collection.
+- **Validation errors** (from schema validator): Annotated at collection boundary when caught during processing.
+
+The serialized output preserves section structure:
+```jsonc
+{
+  "collection1": [
+    { "data": "..." },           // Index 0
+    { "__error": true, "collectionIndex": 1, "category": "syntax", ... }
+  ],
+  "collection2": [
+    { "__error": true, "collectionIndex": 0, "category": "validation", ... },
+    { "data": "..." }            // Index 1
+  ]
+}
+```
 
 ### Adding a New Error Code (Workflow Summary)
 
@@ -533,7 +569,7 @@ Notes:
 
 During ongoing type system enhancements (e.g., `load()`/`serialize()` addition):
 * Replace generic `invalid-type` usages within validation logic with specific type mismatch codes.
-* Ensure `doCommonTypeCheck` throws `value-required` & `null-not-allowed` with passed `collectionIndex` for enriched diagnostics.
+* Attach `collectionIndex` only at the collection boundary when wrapping/propagating errors; do not pass it through TypeDef signatures.
 * Path composition updates (array items) should precede enhanced error envelope adoption to avoid churn.
 
 ### Cross-Language Consistency
