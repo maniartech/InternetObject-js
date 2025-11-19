@@ -278,6 +278,7 @@ describe('Document Load/Stringify', () => {
       defs.set('$User', schema);
       const parsed = require('../../src/parser').default(text, defs);
       expect(parsed.header.definitions.get('appName')).toBe('MyApp');
+      // Note: '1.0' string serializes as "1.0" (quoted) to preserve type, which parses back as string "1.0"
       expect(parsed.header.definitions.get('version')).toBe('1.0');
     });
 

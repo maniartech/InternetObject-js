@@ -11,7 +11,7 @@ import { STRING_ENCLOSERS } from '../facade/serialization-constants';
 /**
  * String format types supported by Internet Object
  */
-export type StringFormat = 'open' | 'regular' | 'raw' | 'multiline';
+export type StringFormat = 'auto' | 'open' | 'regular' | 'raw' | 'multiline';
 
 /**
  * Quotes a string value using the appropriate format and encloser.
@@ -174,5 +174,5 @@ export function quoteHeaderString(str: string): string {
  * @returns Quoted string for extra properties
  */
 export function quoteExtraPropertyString(str: string): string {
-  return quoteString(str, 'regular', STRING_ENCLOSERS.REGULAR);
+  return quoteString(str, 'auto', STRING_ENCLOSERS.REGULAR);
 }

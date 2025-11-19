@@ -8,7 +8,6 @@ import MemberDef from '../schema/types/memberdef';
 import { stringifyMemberDef } from '../schema/types/memberdef-stringify';
 import { stringify } from './stringify';
 import { StringifyOptions } from './stringify';
-import { quoteHeaderString } from '../utils/string-formatter';
 import { IO_MARKERS, RESERVED_SECTION_NAMES, WILDCARD_KEY } from './serialization-constants';
 
 /**
@@ -246,7 +245,7 @@ function stringifyHeader(
       if (value && typeof value === 'object' && 'value' in value && 'type' in value) {
         value = value.value;
       }
-      formattedValue = headerValueToIO(key, value);
+      formattedValue = stringifyHeaderValue(value);
     }
 
     defParts.push(`~ ${key}: ${formattedValue}`);
@@ -254,7 +253,7 @@ function stringifyHeader(
 
   if (defParts.length === 0) return '';
 
-  return defParts.join(', ');
+  return defParts.join('\n');
 }
 
 /**
@@ -296,28 +295,87 @@ function stringifySection(
 }
 
 /**
- * Helper to stringify a value
+ * Infer the Internet Object type from a JavaScript value.
+ * Maps JS types to IO type names for TypedefRegistry lookup.
+ * Only handles JSON-compatible types plus Date.
+ *
+ * @throws Error for non-serializable types (bigint, symbol, function, etc.)
  */
-function stringifyValue(value: any): string {
-  if (value === null) return 'null';
-  if (value === undefined) return 'undefined';
-  if (typeof value === 'string') return value; // raw string (quoting handled upstream if needed)
-  if (typeof value === 'number') return String(value);
-  if (typeof value === 'boolean') return value ? 'T' : 'F';
-  if (value instanceof Date) return value.toISOString();
-  return JSON.stringify(value);
+function inferIOType(value: any): string {
+  // null/undefined
+  if (value === null || value === undefined) {
+    throw new Error(`Cannot serialize null/undefined values in header definitions`);
+  }
+
+  // JSON primitive types
+  if (typeof value === 'boolean') return 'bool';
+  if (typeof value === 'number') {
+    if (!Number.isFinite(value)) {
+      throw new Error(`Cannot serialize non-finite number: ${value}`);
+    }
+    return 'number';
+  }
+  if (typeof value === 'string') return 'string';
+
+  // Date/DateTime (IO extension to JSON)
+  if (value instanceof Date) return 'date';
+
+  // JSON array
+  if (Array.isArray(value)) return 'array';
+
+  // JSON object (plain objects only)
+  if (typeof value === 'object' && value.constructor === Object) return 'object';
+
+  // Non-serializable types
+  const type = typeof value;
+  if (type === 'bigint' || type === 'symbol' || type === 'function') {
+    throw new Error(`Cannot serialize type '${type}' in header definitions`);
+  }
+
+  // Unknown object types (class instances, etc.)
+  throw new Error(`Cannot serialize non-plain object of type '${value.constructor?.name || 'Unknown'}' in header definitions`);
 }
 
-// Decide if a string needs quoting to avoid being parsed as another type
-// Removed ambiguity heuristic; all JS strings are quoted for fidelity.
-
-// Removed: quoteString now imported from string-formatter utility
-
-function headerValueToIO(key: string, value: any): string {
-  if (typeof value === 'string') {
-    return quoteHeaderString(value); // Always quote to preserve string type on round-trip
+/**
+ * Stringify a header definition value using the type system.
+ * Infers the IO type and delegates to the appropriate TypeDef.stringify().
+ *
+ * @throws Error for non-serializable types or unregistered types
+ */
+function stringifyHeaderValue(value: any): string {
+  // Handle null/undefined - these are not allowed in header definitions
+  // Use empty string or default value if needed
+  if (value === null || value === undefined) {
+    throw new Error(`Header definition values cannot be null or undefined`);
   }
-  return stringifyValue(value);
+
+  // Infer the IO type from the JS value (throws for non-serializable types)
+  const ioType = inferIOType(value);
+
+  // Check if type is registered and get the TypeDef
+  if (!TypedefRegistry.isRegisteredType(ioType)) {
+    throw new Error(`Type '${ioType}' is not registered in TypedefRegistry`);
+  }
+
+  const typeDef = TypedefRegistry.get(ioType);
+
+  if (!typeDef || !('stringify' in typeDef) || typeof typeDef.stringify !== 'function') {
+    throw new Error(`TypeDef for '${ioType}' does not have a stringify method`);
+  }
+
+  // Create a minimal MemberDef for the TypeDef.stringify() call
+  const memberDef: MemberDef = {
+    type: ioType,
+    path: '',
+    optional: false,
+    null: false,
+    // Use auto format for strings - will quote when needed to preserve type
+    format: ioType === 'string' ? 'auto' : undefined,
+    escapeLines: false,
+    encloser: '"'
+  } as any;
+
+  return (typeDef.stringify as any)(value, memberDef);
 }
 
 /**
