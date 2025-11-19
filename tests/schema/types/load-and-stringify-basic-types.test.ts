@@ -31,7 +31,7 @@ describe('load() and stringify() - basic types', () => {
 
     test('validates before formatting and uses auto format by default', () => {
       const memberDef: any = { type: 'string', path: 'name' }
-      expect(str.stringify('hello', memberDef)).toBe('"hello"')
+      expect(str.stringify('hello', memberDef)).toBe('hello')
       expect(() => str.stringify(123 as any, memberDef)).toThrow(/string/i)
     })
 

@@ -1,9 +1,9 @@
-const reStructuralChars = /(?<structural>[\{\}\[\]\:\,\#\"\'\\\\~])/gm;
-const escapeChars = /(?<escape>[\n\r\t])/gm;
-const reNewLine = /(?<newlines>(\r\n?)|\n)/gm;
+const reStructuralChars = /(?<structural>[\{\}\[\]\:\,\#\"\'\\\\~])/;
+const escapeChars = /(?<escape>[\n\r\t])/;
+const reNewLine = /(?<newlines>(\r\n?)|\n)/g;
 
 export const toOpenString = (str: string, escapeLines: boolean) => {
-  str = str.replace(reStructuralChars, '\\$1');
+  str = str.replace(new RegExp(reStructuralChars, 'g'), '\\$1');
 
   if (escapeLines) {
     str = str.replace(reNewLine, '\\n');
@@ -13,17 +13,17 @@ export const toOpenString = (str: string, escapeLines: boolean) => {
 }
 
 export const toRegularString = (str: string, escapeLines: boolean, encloser: string='"') => {
-  str = str.replace(escapeChars, '\\$1');
+  str = str.replace(new RegExp(escapeChars, 'g'), '\\$1');
 
   if (escapeLines) {
     str = str.replace(reNewLine, '\\n');
   }
 
-  return `${encloser}${str.replace(encloser, `\\${encloser}`)}${encloser}`;
+  return `${encloser}${str.replace(new RegExp(encloser, 'g'), `\\${encloser}`)}${encloser}`;
 }
 
 export const toRawString = (str: string, encloser: string='"') => {
-  return `r${encloser}${str.replace(encloser, encloser + encloser)}${encloser}`;
+  return `r${encloser}${str.replace(new RegExp(encloser, 'g'), encloser + encloser)}${encloser}`;
 }
 
 // Regex for IO numbers (JSON compatible + Inf/NaN)
@@ -38,7 +38,8 @@ const ambiguousValues = new Set([
   'null', 'N',
   'true', 'T',
   'false', 'F',
-  'Inf', '+Inf', '-Inf', 'NaN'
+  'Inf', '+Inf', '-Inf', 'NaN',
+  'undefined'
 ]);
 
 function isAmbiguous(str: string): boolean {

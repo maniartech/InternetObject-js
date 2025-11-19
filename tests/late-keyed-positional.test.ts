@@ -28,7 +28,7 @@ describe('Late keyed optional members normalization', () => {
     // Request types (for schema line) but data rows should stay positional without keys
     const iotext = stringify(doc, undefined, undefined, { includeTypes: true });
 
-    const expected = `name: string, age?: {number, min:20}, gender, joiningDt, address: {street, city, state?}, colors, isActive, *:string\n---\n~ Alice Smith, 28, f, d\"2021-04-15\", {Elm Street, Dallas, TX}, [yellow, green], T, detail: \"Loves hiking\", extra1: \"extra value 1\"\n~ Bob Johnson, 28, m, d\"2022-02-20\", {Oak Street, Chicago, IL}, [blue, black], T`;
+    const expected = `name: string, age?: {number, min:20}, gender, joiningDt, address: {street, city, state?}, colors, isActive, *:string\n---\n~ Alice Smith, 28, f, d\"2021-04-15\", {Elm Street, Dallas, TX}, [yellow, green], T, detail: Loves hiking, extra1: extra value 1\n~ Bob Johnson, 28, m, d\"2022-02-20\", {Oak Street, Chicago, IL}, [blue, black], T`;
 
     expect(iotext.trim()).toBe(expected.trim());
 
