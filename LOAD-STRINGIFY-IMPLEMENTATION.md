@@ -2,7 +2,7 @@
 
 ## Overview
 
-Successfully implemented complete `load()` and `stringify()` APIs for the Internet Object (IO) library, enabling seamless validation of external JavaScript data and serialization of IO objects.
+Successfully implemented complete `load()`, `stringify()`, `loadDocument()`, and `stringifyDocument()` APIs for the Internet Object (IO) library, enabling seamless validation of external JavaScript data and serialization of IO objects at both data and document levels.
 
 ## Implementation Details
 
@@ -101,9 +101,9 @@ export { loadObject, loadCollection } from './schema/load-processor';
 ## Test Coverage
 
 ### Summary
-- **Total Test Suites**: 106 (all passing)
-- **Total Tests**: 1,820 (1,804 passed, 16 skipped)
-- **New Tests**: 72 tests across 3 files
+- **Total Test Suites**: 107 (all passing)
+- **Total Tests**: 1,840 (1,824 passed, 16 skipped)
+- **New Tests**: 95 tests across 6 files
 
 ### Breakdown
 1. **load-processor.test.ts**: 38 tests (23 passed, 15 skipped)
@@ -127,11 +127,29 @@ export { loadObject, loadCollection } from './schema/load-processor';
    - Advanced types
    - Formatting options
    - Round-trip validation
+
+  4. **advanced-types.test.ts**: 31 tests (all passed)
+    - BigInt load/stringify
+    - Decimal load/stringify
+    - DateTime load/stringify
+    - Type-specific validation
+
+  5. **document.test.ts**: 23 tests (all passed)
+    - Single/multiple sections
+    - Header definitions integration
+    - Schema resolution
+    - Error handling (strict/non-strict)
+    - stringifyDocument with options
+    - documentToObject conversion
+    - Round-trip integrity
+
+  **Note**: For complete documentation on document-level APIs, see **[DOCUMENT-API.md](./DOCUMENT-API.md)**.
    - Error object handling
 
 ## Usage Examples
 
 ### Loading External Data
+
 ```typescript
 import { load } from 'internet-object';
 
@@ -256,7 +274,7 @@ These are schema compilation issues, not load/stringify issues. The underlying l
 
 ## Conclusion
 
-The load/stringify implementation provides a complete, well-tested API for:
+The load/stringify implementation provides a complete, well-tested API for data-level operations:
 - ✅ Validating external JavaScript data against IO schemas
 - ✅ Serializing IO objects back to text format
 - ✅ Round-trip data integrity (load → stringify)
@@ -265,6 +283,8 @@ The load/stringify implementation provides a complete, well-tested API for:
 - ✅ Collection processing with error resilience
 - ✅ Flexible formatting options
 
-**Test Coverage**: 106 suites, 1,820 tests, 0 failures
-**New Code**: ~600 lines across 3 main files
-**New Tests**: 72 tests validating all functionality
+For document-level operations (header + sections), see **[DOCUMENT-API.md](./DOCUMENT-API.md)**.
+
+**Test Coverage**: 107 suites, 1,840 tests, 0 failures
+**New Code**: ~1,000 lines across 5 main files
+**New Tests**: 95 tests validating all functionality

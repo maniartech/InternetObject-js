@@ -208,3 +208,9 @@ For a comprehensive understanding of Internet Object, refer to the official spec
 **ISC License:**
 
 © 2018-2025 ManiarTech® - All rights reserved.
+
+## 📚 Documentation
+
+- **[LOAD-STRINGIFY-IMPLEMENTATION.md](./LOAD-STRINGIFY-IMPLEMENTATION.md)** - Complete guide for `load()` and `stringify()` APIs
+- **[DOCUMENT-API.md](./DOCUMENT-API.md)** - Comprehensive documentation for `loadDocument()` and `stringifyDocument()` APIs
+- **[docs/decimal.md](./docs/decimal.md)** - Decimal design, semantics, and usage

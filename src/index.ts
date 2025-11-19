@@ -33,6 +33,8 @@ export { default as parseDefinitions                } from './parser/parse-defs'
 export { load                                       } from './facade/load';
 export { stringify                                  } from './facade/stringify';
 export { loadObject, loadCollection                 } from './schema/load-processor';
+export { loadDocument                               } from './facade/load-document';
+export { stringifyDocument, documentToObject        } from './facade/stringify-document';
 
 // Main tag functions (also tree-shakable)
 export { ioDefinitions, ioDocument, ioObject } from './facade';
