@@ -21,6 +21,6 @@ export default function parseDefinitions(
   //   source = "~ $schema: " + source
   // }
 
-  const doc = parse(source, externalDefs, options)
+  const doc = parse(source, externalDefs, undefined, options)
   return doc.header.definitions
 }

@@ -22,7 +22,45 @@ import Node from './nodes/nodes';
 import ErrorNode from './nodes/error';
 
 
-export default function parse(source: string, externalDefs: Definitions | null, o: ParserOptions = {}): Document {
+export default function parse(source: string, options?: ParserOptions): Document;
+export default function parse(source: string, defs?: Definitions | null, options?: ParserOptions): Document;
+export default function parse(source: string, defs?: Definitions | Schema | string | null, errorCollector?: Error[], options?: ParserOptions): Document;
+export default function parse(
+  source: string,
+  defs?: Definitions | Schema | string | null | ParserOptions,
+  errorCollector?: Error[] | ParserOptions,
+  options?: ParserOptions
+): Document {
+  let externalDefs: Definitions | null = null;
+  let schema: Schema | string | null = null;
+  let o: ParserOptions = options || new ParserOptions();
+
+  // Argument shifting for backward compatibility
+  // If 2nd arg is ParserOptions (legacy call: parse(source, options))
+  if (defs && !(defs instanceof Definitions) && typeof defs === 'object' && 'continueOnError' in defs) {
+    o = defs as ParserOptions;
+    externalDefs = null;
+  }
+  // If 2nd arg is Definitions (legacy call: parse(source, defs, options))
+  else if (defs instanceof Definitions) {
+    externalDefs = defs;
+    // If 3rd arg is ParserOptions
+    if (errorCollector && !Array.isArray(errorCollector) && typeof errorCollector === 'object') {
+      o = errorCollector as ParserOptions;
+      errorCollector = undefined;
+    }
+  }
+  // If 2nd arg is Schema or string (new call: parse(source, schema, ...))
+  else if (defs instanceof Schema || typeof defs === 'string') {
+    schema = defs;
+  }
+
+  // If 3rd arg is ParserOptions (legacy call: parse(source, defs, options))
+  if (errorCollector && !Array.isArray(errorCollector) && typeof errorCollector === 'object') {
+    o = errorCollector as ParserOptions;
+    errorCollector = undefined;
+  }
+
   // Tokenize the source
   const tokenizer = new Tokenizer(source);
   const tokens = tokenizer.tokenize();
@@ -77,12 +115,28 @@ export default function parse(source: string, externalDefs: Definitions | null, 
       }
     }
 
-    parseDataWithSchema(docNode, doc);
+    parseDataWithSchema(docNode, doc, errorCollector);
   } else {
     if (externalDefs) {
       doc.header.definitions.merge(externalDefs, false);
     }
-    parseDataWithSchema(docNode, doc);
+    // If explicit schema provided, use it as default schema
+    if (schema) {
+      if (schema instanceof Schema) {
+        doc.header.schema = schema;
+      } else if (typeof schema === 'string') {
+        // If schema is string, it might be a reference in definitions or IO text
+        // Since we are in parse, we can't easily compile IO text without recursion or duplication
+        // But if it's a reference, we can look it up
+        if (doc.header.definitions) {
+          const resolved = doc.header.definitions.getV(schema);
+          if (resolved instanceof Schema) {
+            doc.header.schema = resolved;
+          }
+        }
+      }
+    }
+    parseDataWithSchema(docNode, doc, errorCollector);
   }
   return doc;
 }
@@ -94,7 +148,7 @@ function parseData(docNode: DocumentNode, doc: Document) {
   }
 }
 
-function parseDataWithSchema(docNode: DocumentNode, doc: Document): void {
+function parseDataWithSchema(docNode: DocumentNode, doc: Document, errorCollector?: Error[]): void {
   const sectionsLen = docNode.children.length;
 
   // Early return if no sections
@@ -103,7 +157,7 @@ function parseDataWithSchema(docNode: DocumentNode, doc: Document): void {
   }
 
   // Create error collector for validation errors
-  const validationErrors: Error[] = [];
+  const validationErrors: Error[] = errorCollector || [];
 
   for (let i = 0; i < sectionsLen; i++) {
     const sectionNode = docNode.children[i];

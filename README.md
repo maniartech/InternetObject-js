@@ -9,13 +9,130 @@ See also:
 - Decimal design, semantics, and usage: `docs/decimal.md`.
 - Performance harness: `yarn perf` (parser) and `yarn perf:decimal` (Decimal operations).
 
-## 🚧 Work In Progress - API MAY CHANGE
+## 📦 Installation
 
-### Example Usage
+```bash
+npm install internet-object
+# or
+yarn add internet-object
+```
 
-The example below illustrates the usage of Internet Object for parsing a basic internet object document. Please be aware that the API is still in development and has not been officially released. This is purely for demonstration purposes.
+## 🚀 Quick Start
 
-#### Parsing strings into documents
+Internet Object is a schema-first data format. You can load plain JavaScript objects and validate them against a schema, or parse Internet Object strings.
+
+### Loading and Validating Data
+
+Use `io.load()` to validate JavaScript objects against a schema.
+
+```ts
+import io from 'internet-object';
+
+// 1. Define a schema (inline or separate)
+const schema = '{ name: string, age: number, email?: string }';
+
+// 2. Load and validate data
+const data = {
+  name: 'Alice',
+  age: 30,
+  email: 'alice@example.com'
+};
+
+const user = io.load(data, schema);
+console.log(user.get('name')); // 'Alice'
+```
+
+### Parsing IO Strings
+
+Use `io.parse()` to parse Internet Object formatted strings.
+
+```ts
+const ioString = `
+  name, age
+  ---
+  Alice, 30
+  Bob, 25
+`;
+
+const doc = io.parse(ioString);
+console.log(doc.toJSON());
+```
+
+### Stringifying Data
+
+Use `io.stringify()` to convert data back to Internet Object format.
+
+```ts
+const data = { name: 'Alice', age: 30 };
+const ioString = io.stringify(data);
+// Output:
+// name, age
+// ---
+// Alice, 30
+```
+
+## 📚 API Reference
+
+### `io.load(data, defs?, errorCollector?, options?)`
+
+Loads and validates JavaScript data (objects or arrays) against a schema.
+
+- **data**: The JavaScript object or array to load.
+- **defs**: The schema definition. Can be:
+  - A `Schema` object.
+  - A `Definitions` object.
+  - A `string` (IO text schema or schema name).
+- **errorCollector**: An optional array to collect validation errors (useful for collections).
+- **options**: Load options.
+
+### `io.stringify(value, defs?, errorCollector?, options?)`
+
+Serializes JavaScript data to Internet Object format.
+
+### `io.parse(source, defs?, errorCollector?, options?)`
+
+Parses an Internet Object string into a Document.
+
+## 🏗️ Core Structural Classes
+
+The `load` and `parse` methods return instances of core structural classes. You can import these classes for type checking or advanced manipulation.
+
+```ts
+import {
+  IODocument,
+  IOObject,
+  IOCollection,
+  IODefinitions,
+  IOSection,
+  IOHeader
+} from 'internet-object';
+
+// Or access them via the default export
+// import io from 'internet-object';
+// const doc = new io.IODocument(...);
+```
+
+### `IODocument`
+Represents a full Internet Object document, including header, definitions, and data sections.
+- Returned by `io.parse()`.
+
+### `IOObject`
+Represents a single Internet Object record.
+- Returned by `io.load()` (when loading a single object).
+
+### `IOCollection`
+Represents a collection of Internet Object records.
+- Returned by `io.load()` (when loading an array).
+
+### `IODefinitions`
+Manages schema definitions and variables.
+- Returned by `io.defs`.
+
+## 📝 Template Literals API
+
+Internet Object also provides a set of template literal tags for a more declarative approach.
+
+### Parsing strings into documents
 
 ```ts
 import io from 'internet-object';
@@ -24,8 +141,8 @@ import io from 'internet-object';
 const doc = io.doc`
   name, age, email
   ---
-  Alice, 30, alice@example.com
-  Bob, 25, bob@example.com
+  ~ Alice, 30, alice@example.com
+  ~ Bob, 25, bob@example.com
 `;
 
 console.log(doc.toJSON());
@@ -35,114 +152,36 @@ console.log(doc.toJSON());
 // ]
 ```
 
-#### Parsing with separate definitions
+### Working with Definitions and Errors
+
+You can provide external definitions and an error collector using the `.with()` modifier.
 
 ```ts
-import io from 'internet-object';
-
-// Define reusable schema
-const userSchema = io.defs`
-  name: string,
-  age: number,
-  email: string
+// Create definitions
+const defs = io.defs`
+  ~ $address: { street: string, city: string, state: string, zip: string }
+  ~ $employee: { name: string, age: number, address: $address }
 `;
 
-// Parse with external schema
-const users = io.doc.with(userSchema)`
-  Alice, 30, alice@example.com
-  Bob, 25, bob@example.com
-`;
-```
+// Create an error collector
+const errors = [];
 
-#### Working with documents
-
-```ts
-import io from 'internet-object';
-
-// Create a document using template literals
-const doc = io.doc`
-  name, age, gender, color, address: { street, city, state, zip }
+// Use definitions and error collector in document parsing
+const doc = io.doc.with(defs, errors)`
+  ~ $schema: { name, age, color: { string, choices: $colors } }
   ---
-  John Doe, 25, M, green, { 123 Main St, Anytown, CA, 12345 }
-  Jane Doe, 30, F, blue, { 456 Main St, Anytown, CA, 12345 }
+  ~ Alice, 30, red
+  ~ Bob, 25, purple  // Invalid color
 `;
+
+if (errors.length > 0) {
+  console.error("Validation errors:", errors);
+}
 
 console.log(doc.toJSON());
 ```
 
-#### Building Objects
-
-In Internet Object, there are multiple ways to create and work with data. Here are the modern approaches using the updated API:
-
-```ts
-import io, { ioObject, ioDocument, ioDefinitions } from 'internet-object';
-
-// Using template literals for single objects
-const person = ioObject`
-  name, age, gender, color, address: { street, city, state, zip }
-  ---
-  John Doe, 25, M, green, { 123 Main St, Anytown, CA, 12345 }
-`;
-
-// Using the facade API (recommended)
-const doc = io.doc`
-  name, age, gender, color, address: { street, city, state, zip }
-  ---
-  John Doe, 25, M, green, { 123 Main St, Anytown, CA, 12345 }
-  Jane Doe, 30, F, blue, { 456 Main St, Anytown, CA, 12345 }
-`;
-
-// Define reusable schema
-const personSchema = io.defs`
-  name: string,
-  age: number,
-  gender: { string, choices: [M, F] },
-  color: string,
-  address: {
-    street: string,
-    city: string,
-    state: string,
-    zip: string
-  }
-`;
-
-// Use schema with data
-const validatedDoc = io.doc.with(personSchema)`
-  John Doe, 25, M, green, { 123 Main St, Anytown, CA, 12345 }
-  Jane Doe, 30, F, blue, { 456 Main St, Anytown, CA, 12345 }
-`;
-```
-
-#### Working with Definitions and Validation
-
-Define schemas and variables for reuse and validation:
-
-```ts
-// Create definitions with variables and schema
-const defs = io.defs`
-  ~ colors: [red, green, blue, yellow]
-  ~ $address: { street: string, city: string, state: string, zip: string }
-  ~ $person: {
-      name: string,
-      age: number,
-      gender: { string, choices: [M, F] },
-      color: { string, choices: $colors },
-      address: $address
-    }
-`;
-
-// Use definitions in document parsing
-if (defs) {
-  const doc = io.doc.with(defs)`
-    John Doe, 25, M, green, { 123 Main St, Anytown, CA, 12345 }
-    Jane Doe, 30, F, blue, { 456 Main St, Anytown, CA, 12345 }
-  `;
-
-  console.log(doc.toJSON());
-}
-```
-
-#### Core Parsing Interfaces
+### Core Parsing Interfaces
 
 For advanced use cases, you can access the underlying parsing components:
 
@@ -183,7 +222,7 @@ const doc = ast.toDocument();
     - [x] DateTime
     - [x] Date
     - [x] Time
-  - [x] Binary Data
+  - [x] Base64 Binary Data
 - [x] IOCollections
 - [x] IODefinitions
 - [ ] Serialization (WIP)

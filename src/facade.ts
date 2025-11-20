@@ -1,4 +1,3 @@
-
 import IOCollection           from './core/collection';
 import Decimal                from './core/decimal';
 import IODefinitions          from './core/definitions';
@@ -14,10 +13,18 @@ import IOSyntaxError          from './errors/io-syntax-error';
 import IOValidationError      from './errors/io-validation-error';
 import Schema                 from './schema/schema';
 import { ioDefinitions, ioDocument, ioObject } from './template-funcs';
+import parse                  from './parser/index';
+import { load }               from './facade/load';
+import { stringify }          from './facade/stringify';
 
 
 // Short aliases
 const io = {
+  // Facade methods
+  parse,
+  load,
+  stringify,
+
   // Short aliases for template functions
   doc:    ioDocument,
   object: ioObject,

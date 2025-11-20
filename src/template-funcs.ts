@@ -5,6 +5,7 @@ import ASTParser from './parser/ast-parser';
 import parse            from './parser/index';
 import parseDefinitions from './parser/parse-defs';
 import Tokenizer from './parser/tokenizer';
+import Schema from './schema/schema';
 
 /**
  * Parses a string (template literal) as an Internet Object document and returns a Document instance.
@@ -39,16 +40,17 @@ export function ioDocument(strings: TemplateStringsArray, ...args: any[]): Docum
  *     ~ Bob, 40
  *   `;
  *
- * @param {Definitions} defs - External definitions (variables, schema).
+ * @param {Definitions | Schema | string | null} defs - External definitions (variables, schema).
+ * @param {Error[]} [errorCollector] - Optional array to collect validation errors.
  * @returns {function(TemplateStringsArray, ...any[]): Document} A tag function for parsing with definitions.
  */
-ioDocument.with = (defs: Definitions): (strings: TemplateStringsArray, ...args: any[]) => Document => {
+ioDocument.with = (defs: Definitions | Schema | string | null, errorCollector?: Error[]): (strings: TemplateStringsArray, ...args: any[]) => Document => {
   return (strings: TemplateStringsArray, ...args: any[]) => {
     const input = strings.reduce((acc, str, i) => {
       return acc + str + (args[i] === undefined ? '' : args[i]);
     }, '');
 
-    return parse(input, defs);
+    return parse(input, defs, errorCollector);
   }
 }
 
@@ -87,16 +89,17 @@ export function ioObject(strings: TemplateStringsArray, ...args: any[]): Interne
  *    ~ @foo: 123
  *  `;
  *  const obj = ioObject.with(defs)`Alice, 30`;
- * @param {Definitions} defs - External definitions (variables, schema).
+ * @param {Definitions | Schema | string | null} defs - External definitions (variables, schema).
+ * @param {Error[]} [errorCollector] - Optional array to collect validation errors.
  * @return {function(TemplateStringsArray, ...any[]): any} A tag function for parsing with definitions.
  */
-ioObject.with = (defs: Definitions): (strings: TemplateStringsArray, ...args: any[]) => InternetObject | null => {
+ioObject.with = (defs: Definitions | Schema | string | null, errorCollector?: Error[]): (strings: TemplateStringsArray, ...args: any[]) => InternetObject | null => {
   return (strings: TemplateStringsArray, ...args: any[]) => {
     const input = strings.reduce((acc, str, i) => {
       return acc + str + (args[i] === undefined ? '' : args[i]);
     }, '');
 
-    return parse(input, defs).toJSON();
+    return parse(input, defs, errorCollector).toJSON();
   }
 }
 

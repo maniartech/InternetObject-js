@@ -75,27 +75,71 @@ export interface StringifyOptions {
  * // Skips items that are error objects
  * ```
  */
+export function stringify(value: any, schema?: string | Schema, defs?: Definitions, options?: StringifyOptions): string;
+export function stringify(value: any, defs?: Definitions | Schema | string, errorCollector?: Error[], options?: StringifyOptions): string;
 export function stringify(
   value: InternetObject | Collection<InternetObject> | Document | any,
-  schema?: string | Schema,
-  defs?: Definitions,
+  defs?: Definitions | Schema | string,
+  errorCollector?: Error[] | Definitions,
   options?: StringifyOptions
 ): string {
   // Handle Document (IODocument) - delegate to stringifyDocument
   // Import here to avoid circular dependency
   if (value instanceof Document) {
     const { stringifyDocument } = require('./stringify-document');
-    return stringifyDocument(value, options);
+    // If options is passed as 4th arg, use it.
+    // If options is passed as 3rd arg (legacy), handle it below?
+    // Document stringify usually takes (doc, options).
+    // If we call stringify(doc, options), then defs=options.
+    let docOptions: StringifyOptions | undefined;
+    if (defs && typeof defs === 'object' && !Array.isArray(defs) && !(defs instanceof Schema) && !(defs instanceof Definitions)) {
+      docOptions = defs as StringifyOptions;
+    } else if (options) {
+      docOptions = options;
+    }
+    return stringifyDocument(value, docOptions);
+  }
+
+  let schema: Schema | string | undefined;
+  let definitions: Definitions | undefined;
+  let opts: StringifyOptions | undefined = options;
+
+  // Argument shifting for backward compatibility
+  // stringify(value, schema, defs, options)
+  if (defs instanceof Schema || typeof defs === 'string') {
+    schema = defs;
+    if (errorCollector instanceof Definitions) {
+      definitions = errorCollector;
+      // If 4th arg is options, use it
+      if (options) {
+        opts = options;
+      }
+    } else if (errorCollector && typeof errorCollector === 'object' && !Array.isArray(errorCollector)) {
+      // stringify(value, schema, options)
+      opts = errorCollector as StringifyOptions;
+    }
+  } else if (defs instanceof Definitions) {
+    definitions = defs;
+    if (defs.defaultSchema) {
+      schema = defs.defaultSchema;
+    }
+
+    if (errorCollector && typeof errorCollector === 'object' && !Array.isArray(errorCollector)) {
+       opts = errorCollector as StringifyOptions;
+    }
+  } else if (defs && typeof defs === 'object' && !Array.isArray(defs)) {
+    // stringify(value, options)
+    opts = defs as StringifyOptions;
   }
 
   // Handle Collection
   if (value instanceof Collection) {
-    return stringifyCollection(value, schema, defs, options);
+    return stringifyCollection(value, schema, definitions, opts);
   }
 
   // Handle InternetObject
   if (value instanceof InternetObject) {
-    return stringifyObject(value, schema, defs, options);
+    return stringifyObject(value, schema, definitions, opts);
   }
 
   // Handle plain values
