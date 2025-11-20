@@ -255,6 +255,9 @@ export function loadCollection(
           errorCollector.push(error);
         }
 
+        // Add to collection's internal error list
+        collection.errors.push(error);
+
         // Create error object to maintain collection structure
         // This allows downstream code to know which items failed
         const errorObj = {

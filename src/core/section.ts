@@ -1,4 +1,3 @@
-
 import IOCollection from "./collection";
 import IOObject from "./internet-object";
 
@@ -23,6 +22,13 @@ class IOSection<T = any> {
 
   public get data(): IOCollection<T> | IOObject<T> | null {
     return this._data;
+  }
+
+  public get errors(): Error[] {
+    if (this._data instanceof IOCollection || this._data instanceof IOObject) {
+      return this._data.errors;
+    }
+    return [];
   }
 
   public toJSON(options?: { skipErrors?: boolean }): any {

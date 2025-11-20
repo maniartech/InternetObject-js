@@ -156,9 +156,6 @@ function parseDataWithSchema(docNode: DocumentNode, doc: Document, errorCollecto
     return;
   }
 
-  // Create error collector for validation errors
-  const validationErrors: Error[] = errorCollector || [];
-
   for (let i = 0; i < sectionsLen; i++) {
     const sectionNode = docNode.children[i];
     const schemaName = sectionNode.schemaName;
@@ -174,13 +171,8 @@ function parseDataWithSchema(docNode: DocumentNode, doc: Document, errorCollecto
       continue;
     }
 
-    const result = processSchema(sectionNode.child, schema, doc.header.definitions || undefined, validationErrors);
+    const result = processSchema(sectionNode.child, schema, doc.header.definitions || undefined, errorCollector);
     doc.sections?.push(new Section(result, sectionNode.name, schemaName));
-  }
-
-  // Append validation errors to document (parser errors are already there from constructor)
-  if (validationErrors.length > 0) {
-    doc.addErrors(validationErrors);
   }
 }
 

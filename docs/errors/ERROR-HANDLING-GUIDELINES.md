@@ -411,19 +411,24 @@ throw this.createUnclosedConstructError(
 );
 ```
 
-### Pattern 5: Error Accumulation (Phase 2)
+### Pattern 5: Embedded Error Aggregation
 
 ```typescript
-// Instead of throwing, accumulate for better diagnostics
-const error = new IOSyntaxError(
+// Instead of throwing, accumulate in the collection
+const error = new IOValidationError(
   ErrorCodes.duplicateMember,
   `Duplicate section name '${name}'. Each section must have a unique name within the document.`,
   nameToken,
   false
 );
-this.errors.push(error); // Collect, don't throw
 
-// Continue with error recovery (e.g., auto-rename)
+// 1. Push to collection's error list (for programmatic access)
+collection.errors.push(error);
+
+// 2. Push ErrorNode to collection (for serialization/visualization)
+collection.push(new ErrorNode(error, ...));
+
+// Continue processing...
 ```
 
 ---
@@ -488,66 +493,6 @@ Before committing error message changes:
 
 ---
 
-## 📖 Error Catalog (To Be Created)
-
-**Location:** `docs/errors/` (future work)
-
-Each error code should have:
-
-1. **Code:** `string-not-closed`
-2. **Category:** Tokenization
-3. **Description:** String literal was not closed with matching quote
-4. **Common causes:**
-   - Forgot closing quote
-   - Used wrong quote type (mismatched ' and ")
-   - Newline in string without multiline syntax
-5. **Examples:**
-   - ❌ Bad: `"hello`
-   - ✅ Good: `"hello"`
-6. **Related errors:** `invalid-escape-sequence`
-7. **Learn more:** Link to string documentation
-
----
-
-## 🎯 Priority Order for Error Message Improvements
-
-### Phase 1: High-Impact Errors (Week 1)
-**Top 20 most common errors** based on test failures and user reports:
-
-1. `unexpected-token` (Parser) - Most common, very generic currently
-2. `expecting-bracket` (Parser) - Arrays and objects
-3. `string-not-closed` (Tokenizer) - Beginners struggle with this
-4. `not-a-number` (Validation) - Type confusion
-5. `out-of-range` (Validation) - Needs better range display
-6. `invalid-key` (Parser) - Object key rules unclear
-7. `not-a-string` (Validation) - Type confusion
-8. `invalid-pattern` (Validation) - Regex errors confusing
-9. `invalid-choice` (Validation) - Should suggest closest match
-10. `duplicate-member` (Validation) - Object key uniqueness
-11. `invalid-length` (Validation) - String length constraints
-12. `invalid-escape-sequence` (Tokenizer) - Escape rules unclear
-13. `not-an-array` (Validation) - Type confusion
-14. `invalid-email` (Validation) - Pattern explanation needed
-15. `invalid-url` (Validation) - Pattern explanation needed
-16. `not-a-bool` (Validation) - Type confusion
-17. `not-an-integer` (Validation) - Int vs float distinction
-18. `invalid-datetime` (Tokenizer) - ISO 8601 format unclear
-19. `additional-values-not-allowed` (Validation) - Schema strictness
-20. `unknown-member` (Validation) - Schema member mismatch
-
-### Phase 2: Complete Coverage (Week 2)
-- All remaining tokenization errors
-- All remaining parsing errors
-- All remaining validation errors
-
-### Phase 3: Polish (Week 3)
-- Add contextual examples to complex errors
-- Implement "did you mean?" suggestions
-- Add visual indicators (arrows, highlights)
-- Create error catalog documentation
-
----
-
 ## 💡 Examples: Before & After
 
 ### Example 1: Unterminated String
@@ -564,9 +509,10 @@ Error: string-not-closed
 Unterminated string literal. Expected closing quote '"' before end of input.
 
   2 |   name, age
-  3 |   "Alice, 30
-        ^
-  4 | ---
+  3 |   ---
+  4 |   "Alice, 30
+    |    ^
+
 
 String literals in Internet Object must be closed with a matching quote.
 
@@ -637,111 +583,23 @@ Learn more: https://docs.internetobject.org/errors/expecting-bracket
 
 ---
 
-## 🚀 Action Plan
+## 📖 Error Catalog
 
-### Week 1: Foundation
-- [ ] Review and approve these guidelines
-- [ ] Set up error message templates in code
-- [ ] Create helper functions for common patterns
-- [ ] Fix top 10 highest-impact errors
+The complete list of error codes is maintained in the **[Error Code Registry](./ERROR-CODE-REGISTRY.md)**.
 
-### Week 2: Coverage
-- [ ] Fix all tokenization error messages
-- [ ] Fix all parsing error messages
-- [ ] Fix all validation error messages
-- [ ] Add tests for error message quality
-
-### Week 3: Polish
-- [ ] Add contextual snippets to complex errors
-- [ ] Implement "did you mean?" for close matches
-- [ ] Create error catalog documentation
-- [ ] User testing with real developers
-
----
-
-## 📊 Success Metrics
-
-### Quantitative
-- **Error self-service rate:** >90% of users can fix errors without external help
-- **Support questions about errors:** Reduce by 80%
-- **Time to fix errors:** Average <2 minutes (measured in user testing)
-- **Error message quality score:** >4.5/5 in user surveys
-
-### Qualitative
-- Developers say "helpful" not "confusing"
-- Beginners can understand and fix errors
-- Error messages cited as positive in reviews
-- Reduced frustration in user feedback
+Please refer to that document for:
+- The official list of all error codes
+- Correct spelling and categorization
+- Usage status (Active/Deprecated)
 
 ---
 
 ## 🔗 Related Documents
 
-- `READINESS-TRACKER.md` - Overall project readiness
+- [**Error Code Registry**](./ERROR-CODE-REGISTRY.md) - The single source of truth for error codes
+- [**Architecture**](./ARCHITECTURE-ERROR-HANDLING.md) - How errors are processed internally
 - `src/errors/` - Error class implementations
-- `docs/errors/` - Error catalog (to be created)
 - `tests/errors/` - Error message tests
-
----
-
-## 📝 Appendix: Complete Error Code Reference
-
-### Tokenization Layer
-```typescript
-enum TokenizationErrorCodes {
-  stringNotClosed = 'string-not-closed',
-  invalidEscapeSequence = 'invalid-escape-sequence',
-  unsupportedAnnotation = 'unsupported-annotation',
-  invalidDateTime = 'invalid-datetime'
-}
-```
-
-### Parsing Layer
-```typescript
-enum ParsingErrorCodes {
-  unexpectedToken = 'unexpected-token',
-  expectingBracket = 'expecting-bracket',
-  unexpectedPositionalMember = 'unexpected-positional-member',
-  invalidKey = 'invalid-key',
-  invalidSchema = 'invalid-schema',
-  schemaNotFound = 'schema-not-found',
-  schemaMissing = 'schema-missing',
-  emptyMemberDef = 'empty-memberdef',
-  invalidDefinition = 'invalid-definition',
-  invalidMemberDef = 'invalid-memberdef',
-  invalidSchemaName = 'invalid-schema-name',
-  variableNotDefined = 'variable-not-defined',
-  schemaNotDefined = 'schema-not-defined'
-}
-```
-
-### Validation Layer
-```typescript
-enum ValidationErrorCodes {
-  invalidObject = 'invalid-object',
-  unknownMember = 'unknown-member',
-  duplicateMember = 'duplicate-member',
-  additionalValuesNotAllowed = 'additional-values-not-allowed',
-  invalidArray = 'invalid-array',
-  notAnArray = 'not-an-array',
-  notAString = 'not-a-string',
-  invalidEmail = 'invalid-email',
-  invalidUrl = 'invalid-url',
-  invalidLength = 'invalid-length',
-  invalidMinLength = 'invalid-min-length',
-  invalidMaxLength = 'invalid-max-length',
-  invalidPattern = 'invalid-pattern',
-  unsupportedNumberType = 'unsupported-number-type',
-  notANumber = 'not-a-number',
-  notAnInteger = 'not-an-integer',
-  outOfRange = 'out-of-range',
-  invalidRange = 'invalid-range',
-  invalidScale = 'invalid-scale',
-  invalidPrecision = 'invalid-precision',
-  notABool = 'not-a-bool',
-  invalidChoice = 'invalid-choice'
-}
-```
 
 ---
 

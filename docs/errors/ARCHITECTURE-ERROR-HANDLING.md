@@ -13,11 +13,12 @@ This document describes the error handling architecture implemented in the Inter
 ### 2. **Error Resilience**
 - **Continue on Error**: Both parser and validator continue processing after errors
 - **Multiple Errors**: Collect all errors in a single pass (better DX)
-- **ErrorNode Pattern**: Errors are preserved as first-class nodes in the AST/data structure
+- **Embedded Errors**: Errors are embedded directly in the data structure (Collection/Object) where they occurred
+- **Recursive Aggregation**: Document errors are dynamically aggregated from the tree
 
 ### 3. **Performance Optimization**
 - **Single Pass**: Errors collected during normal processing (no extra traversals)
-- **Pre-allocation**: Collections pre-sized when length is known
+- **No Duplication**: Errors are stored once in the leaf nodes and aggregated on demand
 - **Schema Reuse**: Schema resolved once per collection, not per item
 - **Defensive Copying**: getErrors() returns a copy to prevent external mutation
 
@@ -44,23 +45,23 @@ This document describes the error handling architecture implemented in the Inter
 ┌─────────────────────────────────────────────────────────────┐
 │ 3. SCHEMA PROCESSING & VALIDATION PHASE                      │
 │    For each section:                                         │
-│      - processSchema(data, schema, defs, validationErrors)  │
+│      - processSchema(data, schema, defs)                    │
 │      - Collection: processObject for each item               │
 │      - Catch validation errors → create ErrorNode           │
-│      - Append error to validationErrors array                │
+│      - Push error to collection.errors array                │
 │                                                              │
 │    Errors: Validation errors (type mismatch, range, etc)    │
-│    Output: ErrorNodes in collection + errors in array       │
+│    Output: ErrorNodes in collection + errors in collection  │
 └──────────────────────┬──────────────────────────────────────┘
                        │
                        ▼
 ┌─────────────────────────────────────────────────────────────┐
-│ 4. ERROR AGGREGATION                                         │
-│    doc.addErrors(validationErrors)                           │
+│ 4. RECURSIVE ERROR AGGREGATION                               │
+│    doc.errors (getter)                                       │
 │                                                              │
-│    Result: doc._errors contains ALL errors:                 │
-│      - Parser errors (from construction)                     │
-│      - Validation errors (from schema processing)           │
+│    Result: Aggregates errors dynamically:                   │
+│      - Header errors                                         │
+│      - Section errors (which aggregate Collection errors)    │
 └──────────────────────┬──────────────────────────────────────┘
                        │
                        ▼
@@ -72,7 +73,7 @@ This document describes the error handling architecture implemented in the Inter
 │    - ErrorNodes serialized as error info objects:            │
 │      { __error: true, message, position, ... }              │
 │                                                              │
-│    doc.getErrors()                                           │
+│    doc.errors                                                │
 │    - Returns all errors for IDE/tooling diagnostics          │
 └─────────────────────────────────────────────────────────────┘
 ```
@@ -123,27 +124,38 @@ class ErrorNode implements Node {
 
 ```typescript
 class IODocument {
-  private _errors: Error[] = [];
+  // No internal _errors array anymore!
 
-  constructor(header, sections, errors: Error[] = []) {
-    this._errors = errors; // Parser errors
+  constructor(header, sections) {
+    // ...
   }
 
-  public addErrors(errors: Error[]): void {
-    this._errors.push(...errors); // Validation errors
-  }
-
-  public getErrors(): ReadonlyArray<Error> {
-    return [...this._errors]; // Defensive copy
+  public get errors(): Error[] {
+    // Recursively aggregate errors from the tree
+    const headerErrors = this.header ? this.header.errors : [];
+    const sectionErrors = this.sections.flatMap(section => section.errors);
+    return [...headerErrors, ...sectionErrors];
   }
 }
 ```
 
 **Key Design Decisions**:
-1. **Constructor receives parser errors**: Errors from AST phase
-2. **addErrors() for validation errors**: Called by parser after schema processing
-3. **ReadonlyArray return**: Prevents external mutation
-4. **Defensive copy**: Caller can't modify internal state
+1. **Recursive Aggregation**: Errors are computed on-demand from the tree structure
+2. **Single Source of Truth**: Errors live in the nodes (Collections/Objects) where they occurred
+3. **No Synchronization**: No need to sync an external error array with the document state
+4. **Defensive Copying**: Returns a new array to prevent mutation of the source
+
+**Reasoning for Recursive Aggregation**:
+
+The previous architecture relied on maintaining a separate `_errors` array in the Document, which required synchronization whenever the document structure changed (e.g., adding/removing sections). This led to:
+1.  **State Duplication**: Errors existed in both the AST nodes and the document's error list.
+2.  **Synchronization Complexity**: Modifying the document required manually updating the error list.
+3.  **Stale Data Risks**: The error list could become out of sync with the actual data.
+
+By moving to a recursive getter pattern:
+-   **Truth is Local**: The `Collection` or `Object` knows about its own errors.
+-   **Aggregation is Dynamic**: `doc.errors` always reflects the current state of the tree.
+-   **Simplified Mutation**: Adding a section automatically includes its errors in the document-level report without extra code.
 
 ### Collection Processing
 
@@ -151,8 +163,7 @@ class IODocument {
 function processCollection(
   data: CollectionNode,
   schema: Schema | TokenNode,
-  defs?: Definitions,
-  errorCollector?: Error[]  // Optional error aggregation
+  defs?: Definitions
 ): Collection<any> {
   const resolvedSchema = SchemaResolver.resolve(schema, defs);
   const collection = new Collection<InternetObject>();
@@ -161,22 +172,17 @@ function processCollection(
     const item = data.children[i];
 
     if (item instanceof ErrorNode) {
-      // Parser error - preserve in collection (already in doc._errors)
-      // Also annotate underlying error with the top-level collection index
-      (item as any).error.collectionIndex = i;
-      collection.push(item as unknown as any);
+      // Parser error - preserve in collection
+      collection.push(item);
     } else {
       try {
         collection.push(processObject(item, resolvedSchema, defs, i));
       } catch (error) {
-        // Validation error - annotate with top-level collection index
-        (error as any).collectionIndex = i;
-        // Create ErrorNode and collect error
-        const errorNode = new ErrorNode(error as Error, item.getStartPos(), item.getEndPos());
-        if (errorCollector) {
-          errorCollector.push(error as Error);
-        }
-        collection.push(errorNode as unknown as any);
+        // Validation error - wrap in ErrorNode
+        const errorNode = new ErrorNode(error, item.getStartPos(), item.getEndPos());
+        // Add to collection's internal error list
+        collection.errors.push(error);
+        collection.push(errorNode);
       }
     }
   }
@@ -186,10 +192,10 @@ function processCollection(
 ```
 
 **Key Points**:
-1. **Parser ErrorNodes**: Preserved but NOT added to errorCollector (avoid duplicates)
-2. **Validation Errors**: Caught, wrapped in ErrorNode, AND added to errorCollector
-3. **Schema Resolution**: Done once per collection (performance)
-4. **Optional errorCollector**: Supports both standalone and integrated usage
+1. **Embedded Errors**: Validation errors are pushed to `collection.errors`
+2. **ErrorNodes**: Still created and pushed to the collection for serialization/visualization
+3. **No External Collector**: The function is self-contained
+4. **Schema Resolution**: Done once per collection (performance)
 
 ## Error Flow Example
 
@@ -424,13 +430,11 @@ const errorClass = isValidation ? 'error validation-error' : 'error';
 
 ## Potential Improvements (Future)
 
-1. **~~Error Codes~~**: ✅ Already implemented via errorCode property
-2. **~~Error Severity~~**: ✅ Implemented via error categorization (syntax/validation/runtime)
-3. **Error Recovery**: Smarter recovery strategies for common errors
-4. **Async Validation**: Support for async validators (API calls, etc.)
-5. **Error Filtering**: Built-in filters for error types/severity in UI
-6. **Error Quickfixes**: Suggested fixes for common validation errors
-7. **Multi-level Severity**: Info/Warning/Error within each category
+1. **Error Recovery**: Smarter recovery strategies for common errors
+2. **Async Validation**: Support for async validators (API calls, etc.)
+3. **Error Filtering**: Built-in filters for error types/severity in UI
+4. **Error Quickfixes**: Suggested fixes for common validation errors
+5. **Multi-level Severity**: Info/Warning/Error within each category
 
 ---
 

@@ -8,6 +8,7 @@ import IOObject from "./internet-object";
  */
 class IOCollection<T = IOObject> {
   private _items: T[];
+  public errors: Error[] = [];
 
   /**
    * Constructs a new IOCollection instance.

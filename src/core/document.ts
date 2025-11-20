@@ -7,12 +7,12 @@ import IOCollection from "./collection";
 class IODocument {
   private _header: IOHeader;
   private _sections: IOSectionCollection | null;
-  private _errors: Error[] = []; // Accumulated errors during parsing
+  private _ownErrors: Error[] = []; // Accumulated errors during parsing
 
   constructor(header: IOHeader, sections: IOSectionCollection | null, errors: Error[] = []) {
     this._header = header;
     this._sections = sections;
-    this._errors = errors;
+    this._ownErrors = errors;
   }
 
   public get header(): IOHeader {
@@ -29,8 +29,24 @@ class IODocument {
    *
    * @returns A defensive copy of the errors array to prevent external mutation
    */
+  public get errors(): Error[] {
+    const aggregatedErrors = [...this._ownErrors];
+    if (this._sections) {
+      for (const section of this._sections) {
+        aggregatedErrors.push(...section.errors);
+      }
+    }
+    return aggregatedErrors;
+  }
+
+  /**
+   * Returns all errors accumulated during parsing and validation.
+   * This enables IDEs and tools to show all diagnostics in one pass.
+   *
+   * @returns A defensive copy of the errors array to prevent external mutation
+   */
   public getErrors(): ReadonlyArray<Error> {
-    return [...this._errors];
+    return this.errors;
   }
 
   /**
@@ -42,7 +58,7 @@ class IODocument {
    */
   public addErrors(errors: Error[]): void {
     if (errors.length > 0) {
-      this._errors.push(...errors);
+      this._ownErrors.push(...errors);
     }
   }
 

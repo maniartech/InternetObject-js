@@ -55,6 +55,8 @@ export default function processCollection(
           if (errorCollector) {
             errorCollector.push(error);
           }
+          // Add to collection's own errors
+          collection.errors.push(error);
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           collection.push(errorNode as unknown as any);
         } else {

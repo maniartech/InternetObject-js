@@ -2,6 +2,7 @@ class IOObject<T = any> implements Iterable<[string | undefined, T]> {
   [key: string]: any;
   private items!: ([string | undefined, T] | undefined)[];
   private keyMap!: Map<string, number>;
+  public errors: Error[] = [];
 
   constructor(o?: Record<string, T>) {
     // Initialize private properties as non-enumerable to prevent conflicts with user keys
@@ -13,6 +14,12 @@ class IOObject<T = any> implements Iterable<[string | undefined, T]> {
     });
     Object.defineProperty(this, 'keyMap', {
       value: new Map(),
+      writable: true,
+      enumerable: false,
+      configurable: false
+    });
+    Object.defineProperty(this, 'errors', {
+      value: [],
       writable: true,
       enumerable: false,
       configurable: false
