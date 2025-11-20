@@ -2,7 +2,6 @@
 import IOHeader from "./header";
 import IOSection from "./section";
 import IOSectionCollection from "./section-collection";
-import IOCollection from "./collection";
 
 class IODocument {
   private _header: IOHeader;
