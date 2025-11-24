@@ -81,43 +81,134 @@ Spiderman, 25
 ```
 
 ### Type Constraints
+
 You can go further by adding constraints to your types. This is done by wrapping the type and its options in curly braces.
 
 ```ruby
-password: {string, minLen: 10}, age: {number, min: 0, max: 120}
+password: {string, minLen: 10, pattern: '^[a-zA-Z0-9]+$'},
+age: {number, min: 0, max: 120},
+role: {string, choices: ["admin", "user", "guest"]}
 ```
 
-Now, the parser will automatically validate that the password is at least 10 characters long and the age is within a valid range.
+Now, the parser will automatically validate that:
+
+* `password` is at least 10 characters long and matches the alphanumeric pattern.
+* `age` is between 0 and 120.
+* `role` is one of the specified values.
 
 ### Nullable and Optional Fields
+
 Internet Object uses simple canonical markers to define nullability and optionality:
 
-*   **`?` (Optional):** The field can be omitted entirely.
-*   **`*` (Nullable):** The field can be set to `null`.
+* **`?` (Optional):** The field can be omitted entirely.
+* **`*` (Nullable):** The field can be set to `null`.
 
 ```ruby
 name: string, email?: string, phone*: string
 ```
 
 In this example:
-*   `name` is required.
-*   `email` is optional (can be missing).
-*   `phone` is nullable (can be `null` or a string).
+
+* `name` is required.
+* `email` is optional (can be missing).
+* `phone` is nullable (can be `null` or a string).
 
 ## The Type Gallery
 
-Internet Object supports a rich set of types to cover modern application needs:
+Internet Object supports a rich set of types to cover modern application needs. Let's explore them in detail.
 
-*   **Bool**: Boolean values (`T` or `F`, `true` or `false`).
-*   **String**: Textual data. Supports patterns, length constraints, and formats (email, url).
-*   **Number**: Numeric values (integers and floats).
-*   **BigInt**: For numbers larger than $2^{53}-1$, ensuring precision for large identifiers or financial calculations.
-*   **Decimal**: High-precision fixed-point numbers, perfect for monetary values where floating-point errors are unacceptable.
-*   **DateTime**: Native support for dates and times (ISO 8601).
-*   **Base64**: Efficient handling of binary data encoded as text.
-*   **Object**: Nested structures.
-*   **Array**: Lists of values.
-*   **Any**: The flexible fallback for dynamic data.
+### 1. String
+
+Strings in Internet Object are versatile and come in three flavors to handle different text scenarios efficiently.
+
+* **Open String**: The simplest form. No quotes required! It ends at a structural character (like `,` or `}`) or a new line. Perfect for simple text.
+
+    ```ruby
+    name: John Doe
+    ```
+
+* **Regular String**: Enclosed in double quotes (`"`). Supports standard escape sequences (like `\n`, `\t`, `\uXXXX`). Use this when your text contains special characters or delimiters.
+
+    ```ruby
+    message: "Hello, \"World\"!\nWelcome."
+    ```
+
+* **Raw String**: Prefixed with `r` and enclosed in single (`'`) or double (`"`) quotes. It ignores most escape sequences, making it ideal for regular expressions or file paths.
+
+    ```ruby
+    path: r'C:\Users\Admin\Documents'
+    regex: r'\d{3}-\d{2}-\d{4}'
+    ```
+
+### 2. Number Types
+
+Internet Object provides three distinct numeric types to ensure precision where it matters.
+
+* **Number**: Standard 64-bit floating-point numbers (IEEE 754). Suitable for general calculations.
+  * Supports scientific notation: `1.5e10`
+  * Supports special values: `NaN` (Not a Number) and `Inf` (Infinity).
+  * Supports non-decimal formats (integers only):
+    * Hexadecimal: `0xFF`
+    * Octal: `0o777`
+    * Binary: `0b1010`
+
+* **Decimal**: Fixed-precision numbers, suffixed with `m`. Crucial for financial calculations where floating-point errors are unacceptable.
+
+    ```ruby
+    price: 19.99m
+    ```
+
+* **BigInt**: Arbitrary-precision integers, suffixed with `n`. Use this for numbers larger than $2^{53}-1$.
+
+    ```ruby
+    id: 9007199254740991n
+    ```
+
+### 3. Date and Time
+
+Native support for temporal data using ISO 8601 formats, prefixed to indicate the type.
+
+* **Date (`d`)**: Represents a calendar date.
+
+    ```ruby
+    birthday: d'2025-01-01'
+    ```
+
+* **Time (`t`)**: Represents a time of day.
+
+    ```ruby
+    alarm: t'07:30:00'
+    ```
+
+* **DateTime (`dt`)**: Represents a specific point in time, optionally with timezone.
+
+    ```ruby
+    meeting: dt'2025-01-01T14:00:00Z'
+    ```
+
+### 4. Base64
+
+Efficiently handle binary data encoded as text. Prefixed with `b`.
+
+```ruby
+avatar: b'SGVsbG8gV29ybGQ='
+```
+
+### 5. Boolean
+
+Represents logical values.
+
+* True: `T`, `true`
+* False: `F`, `false`
+
+### 6. Object & Array
+
+* **Object**: Nested structures enclosed in `{}`.
+* **Array**: Lists of values enclosed in `[]`.
+
+### 7. Any
+
+The flexible fallback. If no type is specified, `any` is assumed, allowing any valid Internet Object value.
 
 ## Summary
 
