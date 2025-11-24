@@ -261,7 +261,7 @@ Arrays are enclosed in square brackets `[]`. They are ordered lists of values an
 ```ruby
 tags: ["hero", "avenger", "spider-verse"]
 matrix: [[1, 2], [3, 4]]
-    ```
+```
 
 #### Array Constraints
 
