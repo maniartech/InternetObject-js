@@ -1,4 +1,4 @@
-# From JSON to Internet Object: Types and Structure (Part 2)
+# From JSON to Internet Object: Object Structure and Other Types (Part 2)
 
 > Mastering the flexibility of Internet Object with comments, mixed data definitions, and a powerful type system.
 
@@ -55,11 +55,32 @@ Spiderman, 25, active: T, city: New York
 
 **The Golden Rule:** Once you switch to key-value pairs, you cannot go back to sequential values for that object. The parser needs to know exactly which field you are referring to, so after the first named field, all subsequent fields must also be named.
 
+## Object Structure: Open vs. Closed
+
+Internet Object distinguishes between "Open" and "Closed" objects based on where they appear.
+
+* **Open Objects**: The top-level object (the root) can be defined without curly braces `{}`. This is what makes the format look so clean.
+
+    ```ruby
+    Spiderman, 25
+    ```
+
+* **Closed Objects**: Any nested object (a child of another object or array) *must* be enclosed in curly braces `{}`.
+
+    ```ruby
+    name, age, address: {street, city, coordinates: {lat, lon }}
+    ---
+    Spiderman, 25, { "123 Main St", "New York", {40.7128, -74.0060 }}
+    ```
+
+In the example above, the `address` and its nested `coordinates` are properly enclosed in braces, while the root object (the person) is open.
+
 ## The Power of Types
 
 In JSON, everything is loosely typed. In Internet Object, you have a powerful type system at your disposal.
 
 ### Default Type: Any
+
 If you don't specify a type in your schema, Internet Object defaults to `any`. This allows for maximum flexibility but less validation.
 
 ```ruby
@@ -72,6 +93,7 @@ data
 ```
 
 ### Explicit Types
+
 To enforce structure, you can define types explicitly.
 
 ```ruby
@@ -82,7 +104,7 @@ Spiderman, 25
 
 ### Type Constraints
 
-You can go further by adding constraints to your types. This is done by wrapping the type and its options in curly braces.
+You can go further by adding constraints to your types. This is done by wrapping the type and its options in curly braces `{}`.
 
 ```ruby
 password: {string, minLen: 10, pattern: '^[a-zA-Z0-9]+$'},
@@ -95,6 +117,8 @@ Now, the parser will automatically validate that:
 * `password` is at least 10 characters long and matches the alphanumeric pattern.
 * `age` is between 0 and 120.
 * `role` is one of the specified values.
+
+> **Note:** This article covers the most common constraints. You might need to refer to the official specification and documentation (available soon) for a complete list of all available constraints for every type.
 
 ### Nullable and Optional Fields
 
@@ -127,7 +151,7 @@ Strings in Internet Object are versatile and come in three flavors to handle dif
     name: John Doe
     ```
 
-* **Regular String**: Enclosed in double quotes (`"`). Supports standard escape sequences (like `\n`, `\t`, `\uXXXX`). Use this when your text contains special characters or delimiters.
+* **Regular String**: Enclosed in double quotes (`"`). Supports standard escape sequences (like `\n`, `\t`, `\uXXXX`) and two-digit hex codes (`\xXX`). Use this when your text contains special characters or delimiters.
 
     ```ruby
     message: "Hello, \"World\"!\nWelcome."
@@ -139,6 +163,16 @@ Strings in Internet Object are versatile and come in three flavors to handle dif
     path: r'C:\Users\Admin\Documents'
     regex: r'\d{3}-\d{2}-\d{4}'
     ```
+
+#### String Constraints
+
+* **`minLen`, `maxLen`, `len`**: Validate string length.
+* **`pattern`**: Validate against a regular expression.
+* **`choices`**: Restrict to a specific list of values.
+
+```ruby
+username: {string, minLen: 3, maxLen: 20, pattern: r'^[a-z0-9_]+$'}
+```
 
 ### 2. Number Types
 
@@ -164,6 +198,16 @@ Internet Object provides three distinct numeric types to ensure precision where 
     id: 9007199254740991n
     ```
 
+#### Number Constraints
+
+* **`min`, `max`**: Range validation.
+* **`multipleOf`**: Step validation.
+* **`choices`**: Allowed values.
+
+```ruby
+age: {number, min: 0, max: 120}
+```
+
 ### 3. Date and Time
 
 Native support for temporal data using ISO 8601 formats, prefixed to indicate the type.
@@ -186,6 +230,15 @@ Native support for temporal data using ISO 8601 formats, prefixed to indicate th
     meeting: dt'2025-01-01T14:00:00Z'
     ```
 
+#### Date Constraints
+
+* **`min`, `max`**: Validate date ranges.
+
+```ruby
+# Must be born after 2000
+birthday: {date, min: d'2000-01-01'}
+```
+
 ### 4. Base64
 
 Efficiently handle binary data encoded as text. Prefixed with `b`.
@@ -201,10 +254,23 @@ Represents logical values.
 * True: `T`, `true`
 * False: `F`, `false`
 
-### 6. Object & Array
+### 6. Array
 
-* **Object**: Nested structures enclosed in `{}`.
-* **Array**: Lists of values enclosed in `[]`.
+Arrays are enclosed in square brackets `[]`. They are ordered lists of values and can contain any type of data, including other arrays or objects.
+
+```ruby
+tags: ["hero", "avenger", "spider-verse"]
+matrix: [[1, 2], [3, 4]]
+    ```
+
+#### Array Constraints
+
+* **`minLen`, `maxLen`, `len`**: Validate the number of items in the array.
+
+```ruby
+# Array must have exactly 3 items
+coordinates: {array, len: 3}
+```
 
 ### 7. Any
 
@@ -214,4 +280,4 @@ The flexible fallback. If no type is specified, `any` is assumed, allowing any v
 
 Internet Object isn't just about saving bytes; it's about expressing data more clearly and safely. With comments, you can document your intent. With mixed data definitions, you can balance brevity and readability. And with a robust type system, you can ensure data integrity right at the parsing level.
 
-In the next part of this series, we will explore **Metadata** and how it allows you to attach additional information to your documents without cluttering the data itself.
+In the next part of this series, we will explore other structural aspects of the Internet Object format and how it allows you to attach additional information to your documents without cluttering the data itself.
