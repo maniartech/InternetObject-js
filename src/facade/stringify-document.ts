@@ -234,9 +234,22 @@ function stringifyHeader(
     // Schema definitions: Format as ~ $schema: {name, age, address}
     if (defValue.isSchema) {
       const schemaValue = defValue.value;
-      // Use stringifySchema to format the schema structure
-      const schemaText = stringifySchema(schemaValue, { ...options, includeTypes: true });
-      formattedValue = schemaText ? `{${schemaText}}` : '{}';
+
+      // Handle schema alias (e.g., $user: $employee) - value is a TokenNode reference
+      if (schemaValue && typeof schemaValue === 'object' && 'value' in schemaValue && 'type' in schemaValue) {
+        // It's a TokenNode - check if it's a schema reference
+        if (typeof schemaValue.value === 'string' && schemaValue.value.startsWith('$')) {
+          formattedValue = schemaValue.value; // Output as $employee
+        } else {
+          // Non-reference TokenNode - try to stringify
+          const schemaText = stringifySchema(schemaValue, { ...options, includeTypes: true });
+          formattedValue = schemaText ? `{${schemaText}}` : '{}';
+        }
+      } else {
+        // It's a Schema instance - use stringifySchema to format the schema structure
+        const schemaText = stringifySchema(schemaValue, { ...options, includeTypes: true });
+        formattedValue = schemaText ? `{${schemaText}}` : '{}';
+      }
     }
     // Variables and regular definitions: Format as ~ key: value
     else {

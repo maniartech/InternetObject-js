@@ -1,5 +1,6 @@
 import MemberDef from './memberdef';
 import { STANDARD_MEMBERDEF_PROPS, IO_MARKERS } from '../../facade/serialization-constants';
+import TokenNode from '../../parser/nodes/tokens';
 
 /**
  * Stringifies a MemberDef into its schema definition format.
@@ -18,12 +19,19 @@ import { STANDARD_MEMBERDEF_PROPS, IO_MARKERS } from '../../facade/serialization
  * stringifyMemberDef({ type: 'number', min: 0, max: 100 }, true)
  * // → "{number, min:0, max:100}"
  *
- * // Nested object
+ * // Nested object (includes type annotations for reconstruction)
  * stringifyMemberDef({
  *   type: 'object',
  *   schema: { names: ['street', 'city'], defs: {...} }
  * }, true)
- * // → "{street, city}"
+ * // → "{street: string, city: string}"
+ *
+ * // Schema variable reference
+ * stringifyMemberDef({
+ *   type: 'object',
+ *   schema: new TokenNode('$address', {...})
+ * }, true)
+ * // → "$address"
  * ```
  */
 export function stringifyMemberDef(memberDef: MemberDef, includeTypes: boolean): string {
@@ -57,10 +65,26 @@ export function stringifyMemberDef(memberDef: MemberDef, includeTypes: boolean):
  * Formats a nested object schema into {field1, field2, ...} notation.
  * Applies SRP by isolating nested schema formatting logic.
  *
- * @param schema The nested schema to format
- * @returns Formatted nested object string
+ * Handles both:
+ * - Schema instances: formats as {field1, field2, ...}
+ * - Schema variable references (TokenNode with $name): outputs as $name
+ *
+ * @param schema The nested schema to format (Schema instance or TokenNode reference)
+ * @returns Formatted nested object string or schema variable reference
  */
 function formatNestedSchema(schema: any): string {
+  // Handle schema variable reference (e.g., $employee, $address)
+  if (schema instanceof TokenNode) {
+    if (typeof schema.value === 'string' && schema.value.startsWith('$')) {
+      return schema.value; // Return the reference as-is: $employee
+    }
+  }
+
+  // Handle string reference directly
+  if (typeof schema === 'string' && schema.startsWith('$')) {
+    return schema;
+  }
+
   const nestedFields: string[] = [];
 
   if (schema.names) {
@@ -73,6 +97,12 @@ function formatNestedSchema(schema: any): string {
       }
       if (nestedMember?.null) {
         nestedField += IO_MARKERS.NULLABLE;
+      }
+
+      // Add type annotation for nested member if it has constraints or is object/array
+      const typeAnnotation = stringifyMemberDef(nestedMember, true);
+      if (typeAnnotation) {
+        nestedField += `: ${typeAnnotation}`;
       }
 
       nestedFields.push(nestedField);
@@ -149,7 +179,7 @@ function formatTypeWithConstraints(
  *   type: 'array',
  *   of: { type: 'object', schema: { names: ['name', 'age'], defs: {...} } }
  * })
- * // → "[{name, age}]"
+ * // → "[{name: string, age: number}]"
  * ```
  */
 function stringifyArrayMemberDef(memberDef: MemberDef): string {

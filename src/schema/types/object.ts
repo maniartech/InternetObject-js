@@ -90,7 +90,8 @@ class ObjectDef implements TypeDef {
       )
     }
 
-    const schema = memberDef.schema
+    // Resolve schema - it might be a Schema instance or a variable reference (TokenNode)
+    const schema = this._resolveSchema(memberDef.schema, defs)
     return this._stringifyObject(value, schema, memberDef.path || '', defs)
   }
 
@@ -254,6 +255,36 @@ class ObjectDef implements TypeDef {
     }
 
     return `{${parts.join(', ')}}`
+  }
+
+  /**
+   * Resolves a schema reference - handles both Schema instances and variable references
+   */
+  private _resolveSchema(schema: Schema | TokenNode | string | undefined, defs?: Definitions): Schema | undefined {
+    if (!schema) return undefined
+
+    // Already a Schema instance
+    if (schema instanceof Schema) return schema
+
+    // TokenNode with variable reference (e.g., $employee)
+    if (schema instanceof TokenNode) {
+      if (typeof schema.value === 'string' && schema.value.startsWith('$') && defs) {
+        const resolved = defs.getV(schema.value)
+        if (resolved instanceof Schema) return resolved
+        // Recursively resolve if it's another reference
+        return this._resolveSchema(resolved, defs)
+      }
+      return undefined
+    }
+
+    // String variable reference
+    if (typeof schema === 'string' && schema.startsWith('$') && defs) {
+      const resolved = defs.getV(schema)
+      if (resolved instanceof Schema) return resolved
+      return this._resolveSchema(resolved, defs)
+    }
+
+    return undefined
   }
 
   /**

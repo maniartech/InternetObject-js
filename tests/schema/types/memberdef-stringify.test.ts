@@ -75,7 +75,8 @@ describe('stringifyMemberDef', () => {
         null: false,
         of: { type: 'object', schema, path: '', optional: false, null: false } as MemberDef
       }
-      expect(stringifyMemberDef(memberDef, true)).toBe('[{street, city}]')
+      // Nested object element includes type annotations for reconstruction
+      expect(stringifyMemberDef(memberDef, true)).toBe('[{street: string, city: string}]')
     })
 
     it('should format array of arrays (nested arrays)', () => {
@@ -267,7 +268,8 @@ describe('stringifyMemberDef', () => {
         schema: nestedSchema
       }
 
-      expect(stringifyMemberDef(memberDef, true)).toBe('{street, city, zip}')
+      // Nested objects include type annotations for full schema reconstruction
+      expect(stringifyMemberDef(memberDef, true)).toBe('{street: string, city: string, zip: string}')
     })
 
     it('should format nested object with optional fields', () => {
@@ -283,7 +285,8 @@ describe('stringifyMemberDef', () => {
         schema: nestedSchema
       }
 
-      expect(stringifyMemberDef(memberDef, true)).toBe('{street, city, state?}')
+      // Optional fields marked with ? and include type annotations
+      expect(stringifyMemberDef(memberDef, true)).toBe('{street: string, city: string, state?: string}')
     })
 
     it('should format nested object regardless of includeTypes flag', () => {
@@ -298,8 +301,8 @@ describe('stringifyMemberDef', () => {
         schema: nestedSchema
       }
 
-      // Nested objects always show their structure
-      expect(stringifyMemberDef(memberDef, false)).toBe('{street, city}')
+      // Nested objects always show their structure with types for reconstruction
+      expect(stringifyMemberDef(memberDef, false)).toBe('{street: string, city: string}')
     })
   })
 
@@ -535,7 +538,8 @@ describe('stringifyMemberDef', () => {
         schema: nestedSchema
       }
 
-      expect(stringifyMemberDef(memberDef, true)).toBe('{name, age}')
+      // Wildcard member with nested schema includes types
+      expect(stringifyMemberDef(memberDef, true)).toBe('{name: string, age: number}')
     })
   })
 
@@ -588,8 +592,10 @@ describe('stringifyMemberDef', () => {
         schema: personSchema
       }
 
-      // Should show nested structure with optional markers
-      expect(stringifyMemberDef(memberDef, true)).toBe('{name, age?, address}')
+      // Nested structures include full type info with optional markers and constraints
+      expect(stringifyMemberDef(memberDef, true)).toBe(
+        '{name: string, age?: {number, min:25}, address: {address: string, state: {name: {string, len:2}}}}'
+      )
     })
 
     it('should handle 3-level nesting with mixed optional fields', () => {
@@ -615,7 +621,10 @@ describe('stringifyMemberDef', () => {
         schema: level1Schema
       }
 
-      expect(stringifyMemberDef(memberDef, true)).toBe('{top, child?}')
+      // Full recursive output with types and optional markers
+      expect(stringifyMemberDef(memberDef, true)).toBe(
+        '{top: string, child?: {mid?: string, nested: {deep: string}}}'
+      )
     })
   })
 
