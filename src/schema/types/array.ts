@@ -30,6 +30,122 @@ class ArrayDef implements TypeDef {
     return _processNode(valueNode, memberDef, defs)
   }
 
+  /**
+   * Load: Validates a JavaScript array against the schema
+   */
+  public load = (value: any, memberDef: MemberDef, defs?: Definitions): any[] => {
+    const { value: checkedValue, changed } = doCommonTypeCheck(memberDef, value, undefined, defs)
+    if (changed) return checkedValue
+
+    // Type check
+    if (!Array.isArray(value)) {
+      throw new ValidationError(
+        ErrorCodes.notAnArray,
+        `Expecting an array value for '${memberDef.path}' but found ${typeof value}`
+      )
+    }
+
+    // Determine the TypeDef for array items
+    let typeDef: TypeDef | undefined
+    let arrayMemberDef: MemberDef = { type: 'any' }
+
+    if (memberDef.of instanceof Schema) {
+      typeDef = TypedefRegistry.get('object')
+      arrayMemberDef.schema = memberDef.of
+      arrayMemberDef.path = memberDef.path
+    } else if (memberDef.of?.type) {
+      typeDef = TypedefRegistry.get(memberDef.of.type)
+      if (!typeDef) {
+        throw new ValidationError(
+          ErrorCodes.invalidType,
+          `Invalid type definition '${memberDef.of.type}'`
+        )
+      }
+      arrayMemberDef = { ...memberDef.of }
+      arrayMemberDef.path = memberDef.path
+    } else {
+      typeDef = TypedefRegistry.get('any')
+    }
+
+    // Load each item using the TypeDef.load() method
+    const result: any[] = []
+    for (let i = 0; i < value.length; i++) {
+      const item = value[i]
+      const itemPath = `${memberDef.path || 'array'}[${i}]`
+      const itemMemberDef = { ...arrayMemberDef, path: itemPath }
+
+      if (typeDef && 'load' in typeDef && typeof typeDef.load === 'function') {
+        result.push(typeDef.load(item, itemMemberDef, defs))
+      } else if (typeDef) {
+        // Fallback: no load method, just push the value
+        result.push(item)
+      } else {
+        result.push(item)
+      }
+    }
+
+    // Validate length constraints
+    _validateLength(result, memberDef)
+
+    return result
+  }
+
+  /**
+   * Stringify: Converts a JavaScript array to IO text format
+   */
+  public stringify = (value: any, memberDef: MemberDef, defs?: Definitions): string => {
+    const { value: checkedValue, changed } = doCommonTypeCheck(memberDef, value, undefined, defs)
+    if (changed) {
+      if (checkedValue === null) return 'N'
+      if (checkedValue === undefined) return ''
+      value = checkedValue
+    }
+
+    // Type check
+    if (!Array.isArray(value)) {
+      throw new ValidationError(
+        ErrorCodes.notAnArray,
+        `Expecting an array value for '${memberDef.path}' but found ${typeof value}`
+      )
+    }
+
+    // Validate length constraints before stringifying
+    _validateLength(value, memberDef)
+
+    // Determine the TypeDef for array items
+    let typeDef: TypeDef | undefined
+    let arrayMemberDef: MemberDef = { type: 'any' }
+
+    if (memberDef.of instanceof Schema) {
+      typeDef = TypedefRegistry.get('object')
+      arrayMemberDef.schema = memberDef.of
+      arrayMemberDef.path = memberDef.path
+    } else if (memberDef.of?.type) {
+      typeDef = TypedefRegistry.get(memberDef.of.type)
+      arrayMemberDef = { ...memberDef.of }
+      arrayMemberDef.path = memberDef.path
+    } else {
+      typeDef = TypedefRegistry.get('any')
+    }
+
+    // Stringify each item
+    const parts: string[] = []
+    for (let i = 0; i < value.length; i++) {
+      const item = value[i]
+      const itemPath = `${memberDef.path || 'array'}[${i}]`
+      const itemMemberDef = { ...arrayMemberDef, path: itemPath }
+
+      if (typeDef && 'stringify' in typeDef && typeof typeDef.stringify === 'function') {
+        parts.push(typeDef.stringify(item, itemMemberDef, defs))
+      } else {
+        // Fallback: use JSON.stringify for items without stringify method
+        parts.push(item === null ? 'N' : JSON.stringify(item))
+      }
+    }
+
+    return `[${parts.join(', ')}]`
+  }
+
   public static get types() { return ['array'] }
 }
 
@@ -85,13 +201,22 @@ function _processNode(node: Node, memberDef: MemberDef, defs?: Definitions) {
   })
 
   // Validate length constraints
+  _validateLength(array, memberDef, valueNode)
+
+  return array
+}
+
+/**
+ * Validates array length constraints
+ */
+function _validateLength(array: any[], memberDef: MemberDef, node?: Node): void {
   const arrayLength = array.length
 
   if (memberDef.len !== undefined && arrayLength !== memberDef.len) {
     throw new ValidationError(
       ErrorCodes.invalidLength,
       `The "${memberDef.path || 'array'}" must have exactly ${memberDef.len} items, but has ${arrayLength}.`,
-      valueNode
+      node
     )
   }
 
@@ -99,7 +224,7 @@ function _processNode(node: Node, memberDef: MemberDef, defs?: Definitions) {
     throw new ValidationError(
       ErrorCodes.outOfRange,
       `The "${memberDef.path || 'array'}" must have at least ${memberDef.minLen} items, but has ${arrayLength}.`,
-      valueNode
+      node
     )
   }
 
@@ -107,11 +232,9 @@ function _processNode(node: Node, memberDef: MemberDef, defs?: Definitions) {
     throw new ValidationError(
       ErrorCodes.outOfRange,
       `The "${memberDef.path || 'array'}" must have at most ${memberDef.maxLen} items, but has ${arrayLength}.`,
-      valueNode
+      node
     )
   }
-
-  return array
 }
 
 function _invlalidChoice(key: string, token: TokenNode, min: number) {
