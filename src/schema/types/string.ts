@@ -100,6 +100,8 @@ export default class StringDef implements TypeDef {
     const format = memberDef.format || 'auto'
     switch (format) {
       case 'auto':
+        // Smart quoting: only quote when value looks like number, bool, null, date
+        // to ensure round-trip safety. Otherwise use open string for cleaner output.
         return strings.toAutoString(value, memberDef.escapeLines, memberDef.encloser)
 
       case 'open':

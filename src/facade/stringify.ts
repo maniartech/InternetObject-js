@@ -168,7 +168,7 @@ function stringifyAnyValue(val: any, defs?: Definitions): string {
     return String(val);
   }
 
-  // Handle string - use open format for bare strings
+  // Handle string - use auto format for smart quoting
   if (typeof val === 'string') {
     const stringDef = TypedefRegistry.get('string');
     if (stringDef && 'stringify' in stringDef && typeof stringDef.stringify === 'function') {
@@ -177,7 +177,7 @@ function stringifyAnyValue(val: any, defs?: Definitions): string {
         path: '',
         optional: false,
         null: false,
-        format: 'open',  // Use open format for bare strings
+        format: 'auto',  // Use auto format for smart quoting (quotes ambiguous values like numbers, bools)
         escapeLines: false,
         encloser: '"'
       } as any;
@@ -254,7 +254,7 @@ function stringifyObject(
         if (memberDef && typeDef && 'stringify' in typeDef && typeof typeDef.stringify === 'function') {
           const effectiveMemberDef = { ...memberDef };
           if (memberDef.type === 'string' && !memberDef.format) {
-            effectiveMemberDef.format = 'open';
+            effectiveMemberDef.format = 'auto';  // Use auto for smart quoting (quotes numbers, bools, etc.)
           }
           strValue = (typeDef.stringify as any)(val, effectiveMemberDef, defs);
         } else if (memberDef && (memberDef.type === 'any' || memberDef.type === 'object')) {
@@ -289,7 +289,7 @@ function stringifyObject(
       if (memberDef && typeDef && 'stringify' in typeDef && typeof typeDef.stringify === 'function') {
         const effectiveMemberDef = { ...memberDef };
         if (memberDef.type === 'string' && !memberDef.format) {
-          effectiveMemberDef.format = 'open';
+          effectiveMemberDef.format = 'auto';  // Use auto for smart quoting (quotes numbers, bools, etc.)
         }
         strValue = (typeDef.stringify as any)(val, effectiveMemberDef, defs);
       } else if (typeof val === 'string') {
