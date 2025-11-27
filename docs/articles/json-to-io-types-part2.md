@@ -1,10 +1,10 @@
-# From JSON to Internet Object: Object Structure and Other Types (Part 2)
+# From JSON to Internet Object: Comments, Object Structure and Types (Part 2)
 
-> Mastering the flexibility of Internet Object with comments, mixed data definitions, and a powerful type system.
+> Mastering the flexibility of Internet Object with comments, object definitions (positional, keyed & mixed),, and a powerful type system.
 
 In [Part 1](./json-to-io-introduction-part1.md), we explored how Internet Object (IO) dramatically reduces data size and improves readability by separating schema from data. We saw how a simple superhero collection could be shrunk by over 60% compared to JSON.
 
-But efficiency is just the beginning. In this second part, we'll dive into the features that make Internet Object not just smaller, but smarter: its flexible data definition styles, rich commenting system, and robust type system.
+But efficiency is just the beginning. In this second part, we'll dive into the features that make Internet Object not just smaller, but smarter: its flexible object structure, rich commenting system, and robust type system that gives you control without sacrificing simplicity.
 
 ## Comments: Documenting Your Data
 
@@ -22,9 +22,9 @@ Spiderman, 25, T  # Inline comments work too!
 
 This simple feature makes configuration files and complex data structures much easier to maintain and understand.
 
-## Flexible Data Definition
+## Flexible Object Structure
 
-Internet Object offers three ways to define your data, giving you the best of both the CSV and JSON worlds.
+Internet Object offers three ways to define your object, giving you the best of both the CSV and JSON worlds.
 
 ### 1. Sequential (Positional)
 This is the most compact form, similar to CSV. Values are mapped to the schema based on their order.
@@ -55,7 +55,7 @@ Spiderman, 25, active: T, city: New York
 
 **The Golden Rule:** Once you switch to key-value pairs, you cannot go back to sequential values for that object. The parser needs to know exactly which field you are referring to, so after the first named field, all subsequent fields must also be named.
 
-## Object Structure: Open vs. Closed
+### Open vs. Closed
 
 Internet Object distinguishes between "Open" and "Closed" objects based on where they appear.
 
