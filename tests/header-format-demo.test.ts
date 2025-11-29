@@ -15,7 +15,7 @@ describe('Header Definitions Format Demo', () => {
 Alice, 28, alice@example.com
 `;
     const doc = parse(io, null) as Document;
-    const serialized = stringify(doc);
+    const serialized = stringify(doc, undefined, undefined, { includeTypes: true });
 
     // Each definition on its own line
     // Note: Strings use open format (no quotes) unless they contain special characters
@@ -39,7 +39,7 @@ Alice, 28, alice@example.com
 ---
 `;
     const doc = parse(io, null) as Document;
-    const serialized = stringify(doc);
+    const serialized = stringify(doc, undefined, undefined, { includeTypes: true });
 
     // Verify each definition is on its own line
     const lines = serialized.split('\n').filter(l => l.trim());

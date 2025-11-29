@@ -18,7 +18,7 @@ describe('Header Definitions Serialization', () => {
 ---
 `;
       const doc = parse(io, null) as Document;
-      const serialized = stringify(doc);
+      const serialized = stringify(doc, undefined, undefined, { includeTypes: true });
       const doc2 = parse(serialized, null) as Document;
 
       // Verify definitions structure
@@ -34,7 +34,7 @@ describe('Header Definitions Serialization', () => {
 ---
 `;
       const doc = parse(io, null) as Document;
-      const serialized = stringify(doc);
+      const serialized = stringify(doc, undefined, undefined, { includeTypes: true });
       const doc2 = parse(serialized, null) as Document;
 
       // Verify definitions structure
@@ -51,7 +51,7 @@ describe('Header Definitions Serialization', () => {
 ---
 `;
       const doc = parse(io, null) as Document;
-      const serialized = stringify(doc);
+      const serialized = stringify(doc, undefined, undefined, { includeTypes: true });
       const doc2 = parse(serialized, null) as Document;
 
       // When only $schema exists, outputs as bare schema line
@@ -71,7 +71,7 @@ describe('Header Definitions Serialization', () => {
 ---
 `;
       const doc = parse(io, null) as Document;
-      const serialized = stringify(doc);
+      const serialized = stringify(doc, undefined, undefined, { includeTypes: true });
       const doc2 = parse(serialized, null) as Document;
 
       // Verify definitions structure
@@ -95,7 +95,7 @@ describe('Header Definitions Serialization', () => {
 ---
 `;
       const doc = parse(io, null) as Document;
-      const serialized = stringify(doc);
+      const serialized = stringify(doc, undefined, undefined, { includeTypes: true });
       const doc2 = parse(serialized, null) as Document;
 
       // Verify definitions structure
@@ -120,7 +120,7 @@ describe('Header Definitions Serialization', () => {
 ---
 `;
       const doc = parse(io, null) as Document;
-      const serialized = stringify(doc);
+      const serialized = stringify(doc, undefined, undefined, { includeTypes: true });
       const doc2 = parse(serialized, null) as Document;
 
       // Verify definitions structure
@@ -139,7 +139,7 @@ describe('Header Definitions Serialization', () => {
 ---
 `;
       const doc = parse(io, null) as Document;
-      const serialized = stringify(doc);
+      const serialized = stringify(doc, undefined, undefined, { includeTypes: true });
       const doc2 = parse(serialized, null) as Document;
 
       // Verify definitions structure
@@ -162,7 +162,7 @@ describe('Header Definitions Serialization', () => {
 ~ 2, Bob, bob@example.com
 `;
       const doc = parse(io, null) as Document;
-      const serialized = stringify(doc);
+      const serialized = stringify(doc, undefined, undefined, { includeTypes: true });
       const doc2 = parse(serialized, null) as Document;
 
       // Verify definitions structure
@@ -194,7 +194,7 @@ describe('Header Definitions Serialization', () => {
 ~ Charlie, T
 `;
       const doc = parse(io, null) as Document;
-      const serialized = stringify(doc);
+      const serialized = stringify(doc, undefined, undefined, { includeTypes: true });
       const doc2 = parse(serialized, null) as Document;
 
       // Verify definitions structure
@@ -229,7 +229,7 @@ describe('Header Definitions Serialization', () => {
 ~ 2, Bob, {456 Oak Ave, Seattle}
 `;
       const doc = parse(io, null) as Document;
-      const serialized = stringify(doc);
+      const serialized = stringify(doc, undefined, undefined, { includeTypes: true });
       const doc2 = parse(serialized, null) as Document;
 
       // Verify definitions structure
@@ -268,7 +268,7 @@ describe('Header Definitions Serialization', () => {
 ---
 `;
       const doc = parse(io, null) as Document;
-      const serialized = stringify(doc);
+      const serialized = stringify(doc, undefined, undefined, { includeTypes: true });
       const doc2 = parse(serialized, null) as Document;
 
       // Verify definitions order is preserved
@@ -289,7 +289,7 @@ describe('Header Definitions Serialization', () => {
 ---
 `;
       const doc = parse(io, null) as Document;
-      const serialized = stringify(doc);
+      const serialized = stringify(doc, undefined, undefined, { includeTypes: true });
       const doc2 = parse(serialized, null) as Document;
 
       // Verify schema structure with optional marker
@@ -304,7 +304,7 @@ describe('Header Definitions Serialization', () => {
 ---
 `;
       const doc = parse(io, null) as Document;
-      const serialized = stringify(doc);
+      const serialized = stringify(doc, undefined, undefined, { includeTypes: true });
       const doc2 = parse(serialized, null) as Document;
 
       // Verify schema structure with nullable marker
@@ -319,7 +319,7 @@ describe('Header Definitions Serialization', () => {
 ---
 `;
       const doc = parse(io, null) as Document;
-      const serialized = stringify(doc);
+      const serialized = stringify(doc, undefined, undefined, { includeTypes: true });
       const doc2 = parse(serialized, null) as Document;
 
       // Verify schema structure with both markers
@@ -339,7 +339,7 @@ describe('Header Definitions Serialization', () => {
 ---
 `;
       const doc = parse(io, null) as Document;
-      const serialized = stringify(doc);
+      const serialized = stringify(doc, undefined, undefined, { includeTypes: true });
       const doc2 = parse(serialized, null) as Document;
 
       // Verify nested schema structure
@@ -358,7 +358,7 @@ describe('Header Definitions Serialization', () => {
 ---
 `;
       const doc = parse(io, null) as Document;
-      const serialized = stringify(doc);
+      const serialized = stringify(doc, undefined, undefined, { includeTypes: true });
       const doc2 = parse(serialized, null) as Document;
 
       // Verify deeply nested schema structure
@@ -377,7 +377,7 @@ describe('Header Definitions Serialization', () => {
 ---
 `;
       const doc = parse(io, null) as Document;
-      const serialized = stringify(doc);
+      const serialized = stringify(doc, undefined, undefined, { includeTypes: true });
       const doc2 = parse(serialized, null) as Document;
 
       // Verify empty schema is preserved
@@ -395,7 +395,7 @@ describe('Header Definitions Serialization', () => {
 ---
 `;
       const doc = parse(io, null) as Document;
-      const serialized = stringify(doc);
+      const serialized = stringify(doc, undefined, undefined, { includeTypes: true });
       const doc2 = parse(serialized, null) as Document;
 
       // Verify special characters are preserved
@@ -412,7 +412,7 @@ describe('Header Definitions Serialization', () => {
 ---
 `;
       const doc = parse(io, null) as Document;
-      const serialized = stringify(doc);
+      const serialized = stringify(doc, undefined, undefined, { includeTypes: true });
       const doc2 = parse(serialized, null) as Document;
 
       // Verify all definitions are preserved
@@ -434,7 +434,7 @@ describe('Header Definitions Serialization', () => {
 ~ Bob, bob@test.com, {Oak Ave, LA}
 `;
       const doc1 = parse(io, null) as Document;
-      const serialized = stringify(doc1);
+      const serialized = stringify(doc1, undefined, undefined, { includeTypes: true });
       const doc2 = parse(serialized, null) as Document;
 
       // Compare original and round-tripped documents
@@ -463,7 +463,7 @@ describe('Header Definitions Serialization', () => {
 ~ 3, Charlie, T
 `;
       const doc1 = parse(io, null) as Document;
-      const serialized = stringify(doc1);
+      const serialized = stringify(doc1, undefined, undefined, { includeTypes: true });
       const doc2 = parse(serialized, null) as Document;
 
       // Compare definitions
@@ -499,7 +499,7 @@ describe('Header Definitions Serialization', () => {
 ~ 3, Charlie, charlie@example.com, {Pine Rd, Austin}
 `;
       const doc1 = parse(io, null) as Document;
-      const serialized = stringify(doc1);
+      const serialized = stringify(doc1, undefined, undefined, { includeTypes: true });
       const doc2 = parse(serialized, null) as Document;
 
       // Compare all definitions
