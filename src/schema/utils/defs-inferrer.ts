@@ -91,7 +91,15 @@ function inferSchemaFromObjectWithDefs(
 }
 
 /**
- * Infers a merged schema from multiple objects (for arrays of objects)
+ * Infers a merged schema from multiple objects (for arrays of objects).
+ * 
+ * Implements multi-pass inference rules:
+ * - Rule 1: Null on first encounter → type: any, null: true
+ * - Rule 2: New key in later iterations → optional: true
+ * - Rule 3: New key with null value → optional: true, null: true
+ * - Rule 4: Missing key in later iterations → optional: true
+ * - Rule 5: Type mismatch → type: any
+ * - Rule 6: Null in later iteration → null: true
  */
 function inferSchemaFromObjectsWithDefs(
   objects: Record<string, any>[],
@@ -101,37 +109,96 @@ function inferSchemaFromObjectsWithDefs(
 ): Schema {
   const memberDefs: Map<string, MemberDef> = new Map();
   const memberOrder: string[] = [];
+  const seenInIteration: Map<string, number> = new Map(); // Track which iteration first saw each key
 
-  for (const obj of objects) {
+  // Collect all nested objects for each key (for recursive multi-pass)
+  const nestedObjectsPerKey: Map<string, Record<string, any>[]> = new Map();
+
+  for (let i = 0; i < objects.length; i++) {
+    const obj = objects[i];
+    const keysInThisObject = new Set(Object.keys(obj));
+
+    // Process each key in current object
     for (const [key, value] of Object.entries(obj)) {
-      if (!memberDefs.has(key)) {
-        memberDefs.set(key, inferMemberDefWithDefs(value, key, defs, registry));
-        memberOrder.push(key);
-      } else {
-        const existingDef = memberDefs.get(key)!;
-        const newDef = inferMemberDefWithDefs(value, key, defs, registry);
-
-        // If types differ, use 'any'
-        if (existingDef.type !== newDef.type) {
-          existingDef.type = 'any';
+      // Collect nested objects for recursive multi-pass
+      if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
+        if (!nestedObjectsPerKey.has(key)) {
+          nestedObjectsPerKey.set(key, []);
         }
+        nestedObjectsPerKey.get(key)!.push(value);
+      }
 
-        // Merge nested schema references if both are objects
-        if (existingDef.type === 'object' && newDef.type === 'object') {
-          // If new one has a schema ref and existing doesn't, use the new one
-          if (newDef.schemaRef && !existingDef.schemaRef) {
-            existingDef.schemaRef = newDef.schemaRef;
+      if (!memberDefs.has(key)) {
+        // First time seeing this key
+        const memberDef = inferMemberDefWithDefs(value, key, defs, registry);
+        
+        // Rule 2 & 3: New key in later iteration → optional
+        if (i > 0) {
+          memberDef.optional = true;
+        }
+        
+        memberDefs.set(key, memberDef);
+        memberOrder.push(key);
+        seenInIteration.set(key, i);
+      } else {
+        // Key already exists - merge/update
+        const existingDef = memberDefs.get(key)!;
+        
+        // Rule 6: Null in later iteration → add nullable
+        if (value === null) {
+          existingDef.null = true;
+          // Don't change type to 'any' just because later value is null
+        } else {
+          const newDef = inferMemberDefWithDefs(value, key, defs, registry);
+
+          // Rule 5: Type mismatch → any
+          if (existingDef.type !== newDef.type && existingDef.type !== 'any') {
+            // Only change to 'any' if it's a real type mismatch (not null)
+            if (!(existingDef.null && newDef.type !== 'any')) {
+              existingDef.type = 'any';
+            }
+          }
+
+          // Merge nested schema references if both are objects
+          if (existingDef.type === 'object' && newDef.type === 'object') {
+            if (newDef.schemaRef && !existingDef.schemaRef) {
+              existingDef.schemaRef = newDef.schemaRef;
+            }
           }
         }
       }
     }
+
+    // Rule 4: Mark keys missing in this object as optional
+    for (const [key, def] of memberDefs) {
+      if (!keysInThisObject.has(key) && seenInIteration.get(key)! < i) {
+        def.optional = true;
+      }
+    }
   }
 
-  // Mark members as optional if they don't appear in all objects
-  for (const [key, def] of memberDefs) {
-    const appearsInAll = objects.every(obj => key in obj);
-    if (!appearsInAll) {
-      def.optional = true;
+  // Handle nested objects with multi-pass inference (recursive)
+  for (const [key, nestedObjects] of nestedObjectsPerKey) {
+    if (nestedObjects.length > 1) {
+      // Re-infer the nested schema using multi-pass for collected objects
+      const schemaName = `$${key}`;
+      
+      // Remove existing schema if it was single-object inferred
+      // and re-infer with full multi-pass
+      const existingDef = memberDefs.get(key);
+      if (existingDef?.schemaRef && !registry.has(schemaName + '_multipass')) {
+        // Create new schema from all nested objects
+        const multiPassSchema = inferSchemaFromObjectsWithDefs(
+          nestedObjects, 
+          schemaName, 
+          defs, 
+          registry
+        );
+        
+        // Update the registry and definitions
+        registry.set(schemaName, multiPassSchema);
+        defs.set(schemaName, multiPassSchema);
+      }
     }
   }
 
