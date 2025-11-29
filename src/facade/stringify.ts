@@ -29,6 +29,12 @@ export interface StringifyOptions {
    * Default: false (values only)
    */
   includeTypes?: boolean;
+
+  /**
+   * Include header section with definitions (for Document only)
+   * Default: false (data only)
+   */
+  includeHeader?: boolean;
 }
 
 /**
@@ -91,12 +97,23 @@ export function stringify(
     // If options is passed as 3rd arg (legacy), handle it below?
     // Document stringify usually takes (doc, options).
     // If we call stringify(doc, options), then defs=options.
-    let docOptions: StringifyOptions | undefined;
+    let docOptions: any;
     if (defs && typeof defs === 'object' && !Array.isArray(defs) && !(defs instanceof Schema) && !(defs instanceof Definitions)) {
       docOptions = defs as StringifyOptions;
     } else if (options) {
       docOptions = options;
     }
+
+    // Default behavior: if includeHeader is not specified, use includeTypes to determine
+    // - includeHeader: true explicitly includes header
+    // - includeTypes: true also includes header (backward compatibility)
+    // - Otherwise, default to false (data only)
+    if (!docOptions) {
+      docOptions = { includeHeader: false };
+    } else if (docOptions.includeHeader === undefined) {
+      docOptions = { ...docOptions, includeHeader: docOptions.includeTypes ?? false };
+    }
+
     return stringifyDocument(value, docOptions);
   }
 

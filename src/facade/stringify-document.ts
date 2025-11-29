@@ -132,6 +132,10 @@ export function stringifyDocument(
       // Treat reserved names as no name (parser defaults)
       const hasRealName = section.name && !RESERVED_SECTION_NAMES.has(section.name);
 
+      // Determine if we need a section separator
+      // Skip --- when: no header, single section, no real name, no named schema
+      const needsSeparator = includeHeader || sectionCount > 1 || hasRealName || hasNamedSchema;
+
       if (includeSectionNames && hasRealName) {
         if (hasNamedSchema) {
           // Include schema reference if section has a named schema
@@ -145,13 +149,11 @@ export function stringifyDocument(
         // No section name but has named schema - output schema only
         const schemaRef = section.schemaName!.startsWith('$') ? section.schemaName : `$${section.schemaName}`;
         parts.push(`--- ${schemaRef}`);
-      } else if (hasRealName) {
-        // Has name but no schema - output just ---
-        parts.push('---');
-      } else {
-        // No real name - output bare section separator
+      } else if (needsSeparator) {
+        // Output bare section separator only if needed
         parts.push('---');
       }
+      // else: skip separator entirely for data-only single section
 
       // Stringify section data
       // Always suppress type annotations inside data rows (positional output), regardless of includeTypes

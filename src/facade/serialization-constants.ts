@@ -15,6 +15,7 @@ export const STANDARD_MEMBERDEF_PROPS = new Set([
   'path',
   'name',
   'schema',
+  'schemaRef',    // Schema reference for nested types
   // Type-specific internal properties
   're',          // Compiled regex for pattern validation
   '__memberdef', // Internal marker
