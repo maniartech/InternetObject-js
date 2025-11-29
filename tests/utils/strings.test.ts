@@ -36,11 +36,15 @@ describe('String Utilities', () => {
       expect(toAutoString('2021-01-01T12:00:00Z', false)).toBe('"2021-01-01T12:00:00Z"');
     });
 
-    it('should quote values with structural characters', () => {
-      // Current implementation prefers open string with escapes for structural characters
-      expect(toAutoString('hello, world', false)).toBe('hello\\, world');
+    it('should quote strings with commas for readability', () => {
+      // Commas are quoted instead of escaped for better readability
+      expect(toAutoString('hello, world', false)).toBe('"hello, world"');
+      expect(toAutoString('[1,2]', false)).toBe('"[1,2]"');
+    });
+
+    it('should escape other structural characters as open string', () => {
+      // Other structural characters like : { } [ ] are escaped in open strings
       expect(toAutoString('key:value', false)).toBe('key\\:value');
-      expect(toAutoString('[1,2]', false)).toBe('\\[1\\,2\\]');
       expect(toAutoString('{a:1}', false)).toBe('\\{a\\:1\\}');
     });
 
@@ -55,8 +59,8 @@ describe('String Utilities', () => {
   });
 
   describe('toOpenString', () => {
-    it('should escape structural characters', () => {
-      expect(toOpenString('hello, world', false)).toBe('hello\\, world');
+    it('should escape structural characters except comma', () => {
+      expect(toOpenString('hello, world', false)).toBe('hello, world'); // comma is NOT escaped
       expect(toOpenString('key:value', false)).toBe('key\\:value');
     });
   });

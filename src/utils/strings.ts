@@ -1,4 +1,5 @@
-const reStructuralChars = /(?<structural>[\{\}\[\]\:\,\#\"\'\\\\~])/;
+const reStructuralChars = /(?<structural>[\{\}\[\]\:\#\"\'\\\\~])/;
+const reRequiresQuoting = /[\,]/;  // Characters that require quoting, not escaping
 const escapeChars = /(?<escape>[\n\r\t])/;
 const reNewLine = /(?<newlines>(\r\n?)|\n)/g;
 
@@ -55,6 +56,11 @@ function isAmbiguous(str: string): boolean {
 export const toAutoString = (str: string, escapeLines: boolean, encloser: string='"') => {
   // If it looks like a number, bool, null, or date, quote it to preserve type
   if (isAmbiguous(str)) {
+    return toRegularString(str, escapeLines, encloser);
+  }
+
+  // If the string contains comma, it MUST be quoted (not escaped) to avoid parsing issues
+  if (reRequiresQuoting.test(str)) {
     return toRegularString(str, escapeLines, encloser);
   }
 

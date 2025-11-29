@@ -29,7 +29,7 @@ const schema = new Schema(
   { len:              { type: "number", optional: true,  null: false, min: 0 } },
   { minLen:           { type: "number", optional: true,  null: false, min: 0 } },
   { maxLen:           { type: "number", optional: true,  null: false, min: 0 } },
-  { format:           { type: "string", optional: true, null: false, choices: ["auto", "open", "regular", "raw"], default:"auto" } },
+  { format:           { type: "string", optional: true, null: false, choices: ["auto", "regular", "raw"], default:"auto" } },
   { escapeLines:      { type: "bool",   optional: true, null: false, default: false } },
   { encloser :        { type: "string", optional: true, null: false, choices: ['"', "'"], default: '"' } },
   { optional:         { type: "bool",   optional: true } },
@@ -100,18 +100,21 @@ export default class StringDef implements TypeDef {
     const format = memberDef.format || 'auto'
     switch (format) {
       case 'auto':
-        // Smart quoting: only quote when value looks like number, bool, null, date
-        // to ensure round-trip safety. Otherwise use open string for cleaner output.
+        // Smart output: tries unquoted first, quotes when needed (ambiguous values,
+        // commas), uses raw for strings with many escape chars. Never breaks round-trip.
         return strings.toAutoString(value, memberDef.escapeLines, memberDef.encloser)
 
-      case 'open':
-        return strings.toOpenString(value, memberDef.escapeLines)
-
       case 'regular':
+        // Always quoted: "value"
         return strings.toRegularString(value, memberDef.escapeLines, memberDef.encloser)
 
-      default:
+      case 'raw':
+        // Always raw: r"value"
         return strings.toRawString(value, memberDef.encloser)
+
+      default:
+        // Fallback to auto for any unknown format
+        return strings.toAutoString(value, memberDef.escapeLines, memberDef.encloser)
     }
   }
 }
