@@ -30,11 +30,12 @@ export { default as IOValidationError               } from './errors/io-validati
 export { default as Schema                          } from './schema/schema';
 export { default as parse                           } from './parser/index';
 export { default as parseDefinitions                } from './parser/parse-defs';
-export { load                                       } from './facade/load';
+export { load, loadDoc, LoadOptions, LoadDocOptions } from './facade/load';
 export { stringify                                  } from './facade/stringify';
 export { loadObject, loadCollection                 } from './schema/load-processor';
 export { loadDocument                               } from './facade/load-document';
 export { stringifyDocument, documentToObject        } from './facade/stringify-document';
+export { inferDefs, InferredDefs                    } from './schema/utils/defs-inferrer';
 
 // Main tag functions (also tree-shakable)
 export { ioDefinitions, ioDocument, ioObject } from './facade';
