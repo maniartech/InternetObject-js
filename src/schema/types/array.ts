@@ -124,6 +124,12 @@ class ArrayDef implements TypeDef {
       typeDef = TypedefRegistry.get(memberDef.of.type)
       arrayMemberDef = { ...memberDef.of }
       arrayMemberDef.path = memberDef.path
+    } else if (memberDef.schemaRef && defs) {
+      // Array has a schemaRef for its items (e.g., books: [$book])
+      typeDef = TypedefRegistry.get('object')
+      arrayMemberDef.type = 'object'
+      arrayMemberDef.schemaRef = memberDef.schemaRef
+      arrayMemberDef.path = memberDef.path
     } else {
       typeDef = TypedefRegistry.get('any')
     }

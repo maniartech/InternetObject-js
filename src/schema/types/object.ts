@@ -90,8 +90,14 @@ class ObjectDef implements TypeDef {
       )
     }
 
-    // Resolve schema - it might be a Schema instance or a variable reference (TokenNode)
-    const schema = this._resolveSchema(memberDef.schema, defs)
+    // Resolve schema - it might be a Schema instance, a variable reference (TokenNode), or schemaRef string
+    let schema = this._resolveSchema(memberDef.schema, defs)
+
+    // If no schema from memberDef.schema, check schemaRef
+    if (!schema && memberDef.schemaRef && defs) {
+      schema = this._resolveSchema(memberDef.schemaRef, defs)
+    }
+
     return this._stringifyObject(value, schema, memberDef.path || '', defs)
   }
 
@@ -188,22 +194,23 @@ class ObjectDef implements TypeDef {
 
         const typeDef = TypedefRegistry.get(memberDef.type)
         if (typeDef && 'stringify' in typeDef && typeof typeDef.stringify === 'function') {
-          // Use open format for strings by default (like positional values)
-          const effectiveMemberDef = { ...memberDef }
-          if (memberDef.type === 'string' && !memberDef.format) {
-            effectiveMemberDef.format = 'open'
-          }
-          parts.push(typeDef.stringify(value, effectiveMemberDef, defs))
+          // Use auto format (default) - it safely handles all cases
+          parts.push(typeDef.stringify(value, memberDef, defs))
         } else {
           // Fallback
           if (value === null) {
             parts.push('N')
           } else if (value === undefined) {
-            parts.push('')
+            parts.push('')  // Empty placeholder for positional format
           } else {
             parts.push(JSON.stringify(value))
           }
         }
+      }
+
+      // Trim trailing empty values (missing optional fields at the end)
+      while (parts.length > 0 && parts[parts.length - 1] === '') {
+        parts.pop()
       }
 
       // Handle additional properties for open schemas

@@ -32,10 +32,27 @@ import TokenNode from '../../parser/nodes/tokens';
  *   schema: new TokenNode('$address', {...})
  * }, true)
  * // → "$address"
+ *
+ * // Schema reference via schemaRef
+ * stringifyMemberDef({
+ *   type: 'object',
+ *   schemaRef: '$address'
+ * }, true)
+ * // → "$address"
  * ```
  */
 export function stringifyMemberDef(memberDef: MemberDef, includeTypes: boolean): string {
-  // Handle nested objects (special syntax)
+  // Handle array with schema reference - output as [$schemaRef]
+  if (memberDef.type === 'array' && memberDef.schemaRef) {
+    return `[${memberDef.schemaRef}]`;
+  }
+
+  // Handle object schema reference (schemaRef property)
+  if (memberDef.schemaRef) {
+    return memberDef.schemaRef;
+  }
+
+  // Handle nested objects with embedded schema
   if (memberDef.type === 'object' && memberDef.schema) {
     return formatNestedSchema(memberDef.schema);
   }
