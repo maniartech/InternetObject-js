@@ -149,7 +149,7 @@ const data = {
 Strings starting with `~`, `:`, `{`, `}`, `[`, `]`, or `,` need escaping or quoting:
 
 ```typescript
-const data = { 
+const data = {
   path: "~/home/user",      // ~ is escaped: \~/home/user
   time: "10:30",            // : is escaped: 10\:30
   json: "{key: value}",     // { and : are escaped
@@ -167,7 +167,7 @@ const data = {
 In the **data section**, these are treated as regular string characters and output unquoted:
 
 ```typescript
-const data = { 
+const data = {
   tag: "@mention",      // Outputs: @mention (unquoted)
   price: "$100"         // Outputs: $100 (unquoted)
 };
