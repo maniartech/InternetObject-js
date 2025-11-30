@@ -5,6 +5,259 @@ import { stringify, parse } from '../../../src/index';
 
 describe('Definition Inference (inferDefs)', () => {
 
+  /**
+   * BUG REPRODUCTION: Dynamic-keyed objects create separate schemas instead of merging
+   *
+   * SCENARIO: When JSON has objects with dynamic keys like:
+   *   { "QID1": {...}, "QID2": {...} }  or  { "1": {...}, "2": {...} }
+   *
+   * CURRENT BEHAVIOR: The inferrer creates SEPARATE schemas for each key:
+   *   $QID1, $QID2, $1, $2, etc.
+   *
+   * EXPECTED BEHAVIOR: Should recognize these as instances of the SAME type and:
+   *   1. Merge them into a single schema (e.g., $question, $choice)
+   *   2. Apply multi-pass inference to detect optional/nullable fields
+   *
+   * IMPACT: Causes "value-required" errors when loading data where some
+   * dynamic-keyed objects are missing fields that others have.
+   */
+  describe('BUG REPRODUCTION: Dynamic Key Objects', () => {
+
+    it('REPRODUCTION: shows current behavior - separate schemas per dynamic key', () => {
+      // Simplified version of the Qualtrics survey JSON
+      const data = {
+        choices: {
+          '1': { recode: '0', description: 'Zero' },
+          '2': { recode: '1' }  // description is MISSING
+        }
+      };
+
+      const { definitions } = inferDefs(data);
+
+      // Log what schemas were created
+      console.log('Schemas created for dynamic keys:', definitions.keys);
+
+      // CURRENT: creates $1 and $2 as separate schemas
+      // EXPECTED: should create single $choice schema with description?: optional
+    });
+
+    it('REPRODUCTION: Arrays merge correctly, but Objects with dynamic keys do not', () => {
+      // ARRAYS work correctly - items are merged into single schema
+      const arrayData = {
+        items: [
+          { name: 'First', extra: 'has extra' },
+          { name: 'Second' }  // extra is missing
+        ]
+      };
+      const arrayResult = inferDefs(arrayData);
+      console.log('Array approach - schemas:', arrayResult.definitions.keys);
+
+      const itemSchemaFromArray = arrayResult.definitions.get('$item');
+      console.log('Array: $item exists:', !!itemSchemaFromArray);
+      if (itemSchemaFromArray) {
+        console.log('Array: $item.extra optional:', itemSchemaFromArray.defs['extra']?.optional);
+      }
+
+      // OBJECTS with dynamic keys do NOT work - each key becomes separate schema
+      const objectData = {
+        items: {
+          'key1': { name: 'First', extra: 'has extra' },
+          'key2': { name: 'Second' }  // extra is missing
+        }
+      };
+      const objectResult = inferDefs(objectData);
+      console.log('Object approach - schemas:', objectResult.definitions.keys);
+
+      // This shows the bug - no unified schema, instead $key1 and $key2
+      const itemSchemaFromObject = objectResult.definitions.get('$item');
+      console.log('Object: $item exists:', !!itemSchemaFromObject);
+    });
+
+    it('REPRODUCTION: Real-world Qualtrics survey structure that fails', () => {
+      // This structure causes "value-required" error on loadInferred
+      const surveyData = {
+        result: {
+          questions: {
+            QID1: {
+              questionName: 'Q1',
+              choices: {
+                '1': { recode: '0', description: '0' },
+                '2': { recode: '1', description: '1' }
+              }
+            },
+            QID3: {
+              questionName: 'Q3',
+              choices: {
+                '1': { recode: '0' },  // NO description - this causes the error!
+                '2': { recode: '1', description: '1' }
+              }
+            }
+          }
+        }
+      };
+
+      const { definitions } = inferDefs(surveyData);
+      console.log('Survey schemas created:', definitions.keys);
+
+      // ERROR PATH:
+      // 1. First choice encountered: QID1.choices.1 → creates $1 schema: {recode, description}
+      // 2. Later: QID3.choices.1 is expected to match existing $1 schema
+      // 3. But QID3.choices.1 is MISSING 'description'
+      // 4. loadInferred fails: "value-required" for description
+      //
+      // DESIRED PATH:
+      // 1. Recognize all choices.* values are same "type"
+      // 2. Merge into single $choice schema
+      // 3. Multi-pass detects 'description' is optional
+      // 4. Result: $choice: {recode: string, description?: string}
+    });
+  });
+
+  describe('Dynamic Key Objects with Varying Structures', () => {
+    it('marks fields as optional when dynamic-keyed objects have different structures', () => {
+      // This is a real-world case from Qualtrics API where choices is an object
+      // with numeric keys "1", "2", etc. and each choice may have different fields
+      const data = {
+        questions: {
+          QID1: {
+            questionName: 'Q1',
+            choices: {
+              '1': { recode: '0', description: '0' },
+              '2': { recode: '1', description: '1' }
+            }
+          },
+          QID3: {
+            questionName: 'Q3',
+            choices: {
+              '1': { recode: '0' },  // description is MISSING here
+              '2': { recode: '1', description: '1' }
+            }
+          }
+        }
+      };
+
+      const { definitions } = inferDefs(data);
+
+      // The choice schema should mark 'description' as optional since it's missing in QID3.choices.1
+      // This requires multi-pass inference across all instances of the same schema structure
+      const choiceSchema = definitions.get('$choice');
+
+      // If $choice doesn't exist, check what schema name was generated
+      if (!choiceSchema) {
+        // Log available definitions for debugging
+        const availableSchemas = definitions.keys;
+        console.log('Available schemas:', availableSchemas);
+      }
+
+      // The key insight: when we have object values (not arrays), we need to
+      // apply multi-pass across ALL object values to detect optional fields
+      expect(choiceSchema).toBeDefined();
+      expect(choiceSchema!.defs['description']?.optional).toBe(true);
+    });
+
+    it('handles survey-like structure with questions having varying choice structures', () => {
+      // Simplified version of the Qualtrics survey JSON structure
+      const surveyData = {
+        result: {
+          id: 'QID',
+          name: 'Test Survey',
+          questions: {
+            QID1: {
+              questionType: { type: 'MC' },
+              questionText: 'Question 1',
+              questionName: 'Q1',
+              choices: {
+                '1': { recode: '0', description: '0' },
+                '2': { recode: '1', description: '1' }
+              }
+            },
+            QID2: {
+              questionType: { type: 'TE', selector: 'ML', subSelector: null },
+              questionText: 'Question 2',
+              questionName: 'Q2'
+              // No choices - text entry question
+            },
+            QID3: {
+              questionType: { type: 'MC', selector: 'SAHR', subSelector: 'TX' },
+              questionText: 'Question 3',
+              questionName: 'Q3',
+              choices: {
+                '1': { recode: '0' },  // No description!
+                '2': { recode: '1', description: '1' }
+              }
+            }
+          }
+        }
+      };
+
+      const { definitions, rootSchema } = inferDefs(surveyData);
+
+      // Question schema should mark 'choices' as optional (QID2 doesn't have it)
+      const questionSchema = definitions.get('$question');
+      expect(questionSchema).toBeDefined();
+      expect(questionSchema!.defs['choices']?.optional).toBe(true);
+
+      // QuestionType schema should mark selector and subSelector as optional
+      const questionTypeSchema = definitions.get('$questionType');
+      expect(questionTypeSchema).toBeDefined();
+      expect(questionTypeSchema!.defs['selector']?.optional).toBe(true);
+      expect(questionTypeSchema!.defs['subSelector']?.optional).toBe(true);
+
+      // Choice schema should mark 'description' as optional
+      const choiceSchema = definitions.get('$choice');
+      if (choiceSchema) {
+        expect(choiceSchema.defs['description']?.optional).toBe(true);
+      }
+    });
+
+    it('handles objects with numeric string keys as dynamic collections', () => {
+      // When an object has keys like "1", "2", "3", it should be treated
+      // similar to an array for schema inference purposes
+      const data = {
+        items: {
+          '1': { name: 'First', value: 10, extra: 'has extra' },
+          '2': { name: 'Second', value: 20 },  // extra is missing
+          '3': { name: 'Third', value: null, extra: 'also has' }  // value is null
+        }
+      };
+
+      const { definitions } = inferDefs(data);
+
+      const itemSchema = definitions.get('$item');
+      expect(itemSchema).toBeDefined();
+      expect(itemSchema!.defs['extra']?.optional).toBe(true);  // Missing in item 2
+      expect(itemSchema!.defs['value']?.null).toBe(true);  // Null in item 3
+    });
+
+    it('applies multi-pass inference across nested dynamic-key objects', () => {
+      // Nested structure where inner objects have varying fields
+      const data = {
+        categories: {
+          'cat1': {
+            name: 'Category 1',
+            products: {
+              'p1': { sku: 'SKU1', price: 10, discount: 2 },
+              'p2': { sku: 'SKU2', price: 20 }  // discount missing
+            }
+          },
+          'cat2': {
+            name: 'Category 2',
+            products: {
+              'p3': { sku: 'SKU3', price: 30, discount: null }  // discount is null
+            }
+          }
+        }
+      };
+
+      const { definitions } = inferDefs(data);
+
+      const productSchema = definitions.get('$product');
+      expect(productSchema).toBeDefined();
+      expect(productSchema!.defs['discount']?.optional).toBe(true);  // Missing in p2
+      expect(productSchema!.defs['discount']?.null).toBe(true);  // Null in p3
+    });
+  });
+
   describe('Basic Type Inference', () => {
     it('infers string type from string value', () => {
       const data = { name: 'Alice' };

@@ -32,6 +32,51 @@ interface InferenceContext {
   resolvedNames: Map<string, string>; // fullPath.join('.') -> resolved schema name
   // Track which schemas need re-merging after collection
   pendingMerge: Set<string>;
+  // Track which property paths have been identified as dynamic collections
+  // This allows us to treat single-item instances consistently
+  dynamicPaths: Set<string>;
+}
+
+/**
+ * Detects if an object has dynamic keys (acts like a collection/map).
+ *
+ * Pattern: An object has dynamic keys if:
+ * 1. All values are non-null objects (not arrays, not primitives)
+ * 2. All objects share at least one common key
+ *
+ * Examples of dynamic keys:
+ * - { "1": {recode:"0"}, "2": {recode:"1"} }  - numeric keys, share "recode"
+ * - { "QID1": {name:"Q1"}, "QID2": {name:"Q2"} }  - ID keys, share "name"
+ *
+ * Examples of static keys (NOT dynamic):
+ * - { name: "John", age: 30 }  - values are primitives
+ * - { user: {name}, settings: {theme} }  - no common keys
+ */
+function isDynamicKeyObject(obj: Record<string, any>): boolean {
+  const keys = Object.keys(obj);
+  if (keys.length < 2) return false;
+
+  const values = keys.map(k => obj[k]);
+
+  // Check 1: All values must be non-null objects (not arrays)
+  const allObjects = values.every(v =>
+    v !== null &&
+    typeof v === 'object' &&
+    !Array.isArray(v)
+  );
+
+  if (!allObjects) return false;
+
+  // Check 2: Find common keys across ALL objects
+  const allValueKeys = values.map(v => new Set(Object.keys(v)));
+  const firstKeys = allValueKeys[0];
+
+  // Find keys that exist in ALL objects
+  const commonKeys = [...firstKeys].filter(key =>
+    allValueKeys.every(keySet => keySet.has(key))
+  );
+
+  return commonKeys.length >= 1;
 }
 
 /**
@@ -58,8 +103,13 @@ export function inferDefs(data: any): InferredDefs {
     schemaRegistry: new Map(),
     schemaInstances: new Map(),
     resolvedNames: new Map(),
-    pendingMerge: new Set()
+    pendingMerge: new Set(),
+    dynamicPaths: new Set()
   };
+
+  // Phase 0: Pre-scan to identify ALL dynamic paths across the entire data structure
+  // This ensures that even single-item siblings are treated as dynamic if any sibling has multiple items
+  preScanDynamicPaths(data, [], ctx);
 
   // Phase 1 & 2: Discovery and Collection
   // First pass to identify schema types and collect all instances with paths
@@ -78,6 +128,66 @@ export function inferDefs(data: any): InferredDefs {
   ctx.definitions.push('$schema', rootSchema, true, false);
 
   return { definitions: ctx.definitions, rootSchema };
+}
+
+/**
+ * Phase 0: Pre-scan to identify all dynamic paths before main collection.
+ * This ensures that all sibling paths are treated consistently - if ANY instance
+ * at a path has dynamic keys, ALL instances at that path will be treated as dynamic.
+ */
+function preScanDynamicPaths(
+  data: any,
+  currentPath: string[],
+  ctx: InferenceContext
+): void {
+  if (data === null || data === undefined) return;
+
+  if (Array.isArray(data)) {
+    // Scan array items
+    for (const item of data) {
+      if (typeof item === 'object' && item !== null && !Array.isArray(item)) {
+        preScanDynamicPaths(item, currentPath, ctx);
+      }
+    }
+    return;
+  }
+
+  if (typeof data === 'object') {
+    for (const [key, value] of Object.entries(data)) {
+      if (value === null || value === undefined) continue;
+
+      const childPath = [...currentPath, key];
+      const pathKey = childPath.join('.');
+
+      if (Array.isArray(value)) {
+        // Scan array items
+        for (const item of value) {
+          if (typeof item === 'object' && item !== null && !Array.isArray(item)) {
+            preScanDynamicPaths(item, childPath, ctx);
+          }
+        }
+      } else if (typeof value === 'object') {
+        // Check if this looks like a dynamic-key object
+        if (isDynamicKeyObject(value)) {
+          ctx.dynamicPaths.add(pathKey);
+        }
+
+        // Recursively scan into the object's values
+        // For dynamic objects, we scan into each value but NOT include the dynamic key in path
+        // Pass childPath (the dynamic object's path) so nested properties have correct paths
+        if (ctx.dynamicPaths.has(pathKey) || isDynamicKeyObject(value)) {
+          for (const childValue of Object.values(value)) {
+            if (typeof childValue === 'object' && childValue !== null && !Array.isArray(childValue)) {
+              preScanDynamicPaths(childValue, childPath, ctx);
+            }
+          }
+        } else {
+          // Regular object - scan with full path
+          preScanDynamicPaths(value, childPath, ctx);
+        }
+      }
+    }
+  }
 }
 
 /**
@@ -143,11 +253,35 @@ function collectNestedInstances(
         collectNestedInstances(item, currentPath, ctx);
       }
     } else if (typeof value === 'object') {
-      // Nested object - collect with key as schema name
-      const nestedBaseName = `$${key}`;
-      addSchemaInstance(nestedBaseName, currentPath, value, ctx);
-      // Recursively collect from nested objects
-      collectNestedInstances(value, currentPath, ctx);
+      // Check if this path is marked as dynamic (from pre-scan phase)
+      // OR if it currently looks like a dynamic-key object
+      const pathKey = currentPath.join('.');
+      const isDynamic = ctx.dynamicPaths.has(pathKey) || isDynamicKeyObject(value);
+
+      if (isDynamic) {
+        // Ensure this path is marked as dynamic
+        ctx.dynamicPaths.add(pathKey);
+
+        // Treat as collection - all values are instances of the same schema
+        const itemBaseName = `$${singularize(key)}`;
+
+        for (const [dynamicKey, dynamicValue] of Object.entries(value)) {
+          if (dynamicValue !== null && typeof dynamicValue === 'object' && !Array.isArray(dynamicValue)) {
+            // Add each dynamic-keyed object as an instance of the singularized schema
+            addSchemaInstance(itemBaseName, currentPath, dynamicValue, ctx);
+            // Recursively collect from nested objects within dynamic values
+            // IMPORTANT: Do NOT include dynamicKey in path - this ensures all nested
+            // objects merge into the same schema regardless of which dynamic key they're under
+            collectNestedInstances(dynamicValue, currentPath, ctx);
+          }
+        }
+      } else {
+        // Regular nested object - collect with key as schema name
+        const nestedBaseName = `$${key}`;
+        addSchemaInstance(nestedBaseName, currentPath, value, ctx);
+        // Recursively collect from nested objects
+        collectNestedInstances(value, currentPath, ctx);
+      }
     }
   }
 }
@@ -178,7 +312,12 @@ function addSchemaInstance(
 /**
  * Phase 3: Resolve schema name conflicts
  * When the same base name appears at different paths with different structures,
- * generate qualified names using parent path components.
+ * instead of creating qualified names, we fall back to plain 'object' type.
+ *
+ * Strategy:
+ * - Same path, varying structures → merge into ONE schema (multi-pass handles optionality)
+ * - Different paths, same structure → share schema name
+ * - Different paths, different structures → mark as conflicted (use plain 'object')
  */
 function resolveSchemaNameConflicts(ctx: InferenceContext): void {
   for (const [baseName, instances] of ctx.schemaInstances) {
@@ -196,37 +335,42 @@ function resolveSchemaNameConflicts(ctx: InferenceContext): void {
 
     if (pathGroups.size === 1) {
       // All instances at same path - no conflict, use base name
+      // Multi-pass merging will handle structural variations (optional fields)
       for (const info of instances) {
         info.resolvedName = baseName;
         ctx.resolvedNames.set(pathKey(info.fullPath, baseName), baseName);
       }
     } else {
-      // Multiple paths - check if structures differ
-      const structuresByPath = new Map<string, Set<string>>();
+      // Multiple paths - check if structures are COMPATIBLE (have common keys)
+      // If they share at least one key, they can merge with optional fields
+      // If they share NO keys, they're truly incompatible → CONFLICT
 
-      for (const [pathSig, groupInstances] of pathGroups) {
-        const structureKeys = new Set<string>();
-        for (const info of groupInstances) {
-          structureKeys.add(getStructureSignature(info.instance));
-        }
-        structuresByPath.set(pathSig, structureKeys);
+      // Collect all key sets from all instances
+      const allKeySets: Set<string>[] = [];
+      for (const info of instances) {
+        allKeySets.push(new Set(Object.keys(info.instance)));
       }
 
-      // Check if all paths have the same structure
-      const allStructures = new Set<string>();
-      for (const structures of structuresByPath.values()) {
-        for (const s of structures) allStructures.add(s);
-      }
+      // Find keys that exist in ALL instances
+      const firstKeys = allKeySets[0];
+      const commonKeys = [...firstKeys].filter(key =>
+        allKeySets.every(keySet => keySet.has(key))
+      );
 
-      if (allStructures.size === 1) {
-        // Same structure at all paths - can share schema name
+      if (commonKeys.length > 0) {
+        // Compatible structures - share at least one key
+        // Multi-pass merging will handle variations (optional fields)
         for (const info of instances) {
           info.resolvedName = baseName;
           ctx.resolvedNames.set(pathKey(info.fullPath, baseName), baseName);
         }
       } else {
-        // Different structures - need qualified names
-        resolveConflictingNames(baseName, pathGroups, ctx);
+        // No common keys at all → truly incompatible structures → CONFLICT
+        // These will fall back to plain 'object' type without schemaRef
+        for (const info of instances) {
+          info.resolvedName = `${baseName}::CONFLICTED`;
+          ctx.resolvedNames.set(pathKey(info.fullPath, baseName), `${baseName}::CONFLICTED`);
+        }
       }
     }
   }
@@ -388,6 +532,11 @@ function mergeAllSchemaInstances(ctx: InferenceContext): void {
   // Build merged schema for each resolved name
   for (const [resolvedName, instances] of resolvedGroups) {
     if (instances.length === 0) continue;
+
+    // Skip conflicted schemas - they won't be referenced anyway
+    if (resolvedName.endsWith('::CONFLICTED')) {
+      continue;
+    }
 
     // Get the representative path for this schema (from first instance)
     const representativePath = instances[0].fullPath;
@@ -553,9 +702,24 @@ function inferMemberDefSimple(
       if (Array.isArray(value)) {
         return inferArrayMemberDefSimple(value, path, fullPath, ctx);
       }
-      // Nested object - look up the resolved name based on the full path
+      // Check if this is a dynamic key object (collection-like)
+      // Also check dynamicPaths for single-item objects that were identified as dynamic
+      // because a sibling has multiple items
+      const fullPathKey = fullPath.join('.');
+      if (isDynamicKeyObject(value) || ctx.dynamicPaths.has(fullPathKey)) {
+        // Dynamic-keyed objects (maps) should NOT have a schemaRef
+        // The schemaRef would describe the VALUE type, not the container itself
+        // When stringifying, the container should be treated as a plain object
+        // and each value will be validated/stringified according to the item schema
+        return { type: 'object', path };
+      }
+      // Regular nested object - look up the resolved name based on the full path
       const baseName = `$${path}`;
       const resolvedName = ctx.resolvedNames.get(pathKey(fullPath, baseName)) || baseName;
+      // If conflicted, fall back to plain object without schemaRef
+      if (resolvedName.endsWith('::CONFLICTED')) {
+        return { type: 'object', path };
+      }
       return { type: 'object', path, schemaRef: resolvedName };
 
     default:
@@ -584,6 +748,10 @@ function inferArrayMemberDefSimple(
   if (hasObjects) {
     const baseName = `$${singularize(path)}`;
     const resolvedName = ctx.resolvedNames.get(pathKey(fullPath, baseName)) || baseName;
+    // If conflicted, fall back to plain array without schemaRef
+    if (resolvedName.endsWith('::CONFLICTED')) {
+      return { type: 'array', path };
+    }
     return { type: 'array', path, schemaRef: resolvedName };
   }
 
@@ -675,10 +843,19 @@ function inferMemberDef(
       if (Array.isArray(value)) {
         return inferArrayMemberDef(value, path, currentPath, ctx);
       }
-      // Nested object - reference the resolved schema name
+      // Check if this is a dynamic key object (collection-like)
+      // Also check dynamicPaths for single-item objects that were identified as dynamic
+      // because a sibling has multiple items
+      // Note: currentPath already includes 'path' at the end (passed from caller)
+      const fullPathKey = currentPath.join('.');
+      if (isDynamicKeyObject(value) || ctx.dynamicPaths.has(fullPathKey)) {
+        // Dynamic-keyed objects (maps) should NOT have a schemaRef
+        // The schemaRef would describe the VALUE type, not the container itself
+        return { type: 'object', path };
+      }
+      // Regular nested object - reference the resolved schema name
       const baseName = `$${path}`;
-      const fullPath = [...currentPath, path];
-      const resolvedName = ctx.resolvedNames.get(pathKey(fullPath, baseName)) || baseName;
+      const resolvedName = ctx.resolvedNames.get(pathKey(currentPath, baseName)) || baseName;
       return { type: 'object', path, schemaRef: resolvedName };
 
     default:
