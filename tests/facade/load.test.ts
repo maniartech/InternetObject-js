@@ -6,6 +6,7 @@ import InternetObject from '../../src/core/internet-object';
 import Collection from '../../src/core/collection';
 import Document from '../../src/core/document';
 import ValidationError from '../../src/errors/io-validation-error';
+import IOError from '../../src/errors/io-error';
 
 /**
  * Helper function to create definitions with a schema
@@ -37,16 +38,14 @@ describe('loadObject() API', () => {
       expect(obj.get('age')).toBe(28);
     });
 
-    it('loads array without schema', () => {
+    it('throws error when passed an array (use loadCollection instead)', () => {
       const data = [
         { name: 'Alice', age: 28 },
         { name: 'Bob', age: 35 }
       ];
-      const result = loadObject(data);
 
-      expect(result).toBeInstanceOf(Collection);
-      expect(result.length).toBe(2);
-      expect((result as Collection<InternetObject>).getAt(0).get('name')).toBe('Alice');
+      expect(() => loadObject(data as any)).toThrow(IOError);
+      expect(() => loadObject(data as any)).toThrow(/loadCollection/);
     });
 
     it('loads nested objects without schema', () => {
@@ -97,16 +96,14 @@ describe('loadObject() API', () => {
       expect(() => loadObject(data, defs)).toThrow(ValidationError);
     });
 
-    it('loads collection using default schema', () => {
+    it('throws error for array (use loadCollection instead)', () => {
       const defs = createDefs('~ $schema: { name: string, age: int }');
       const data = [
         { name: 'Alice', age: 28 },
         { name: 'Bob', age: 35 }
       ];
-      const result = loadObject(data, defs);
 
-      expect(result).toBeInstanceOf(Collection);
-      expect(result.length).toBe(2);
+      expect(() => loadObject(data as any, defs)).toThrow(IOError);
     });
 
     it('handles missing required field', () => {
@@ -177,7 +174,7 @@ describe('loadObject() API', () => {
         .toThrow(/not found/);
     });
 
-    it('collects errors with errorCollector', () => {
+    it('collects errors with errorCollector (use loadCollection for arrays)', () => {
       const defs = createDefs('~ $schema: { name: string, age: int }');
       const data = [
         { name: 'Alice', age: 28 },
@@ -185,7 +182,8 @@ describe('loadObject() API', () => {
         { name: 'Charlie', age: 42 }
       ];
       const errors: Error[] = [];
-      const result = loadObject(data, defs, { errorCollector: errors });
+      // Use loadCollection for arrays, not loadObject
+      const result = loadCollection(data, defs, { errorCollector: errors });
 
       expect(result).toBeInstanceOf(Collection);
       expect(result.length).toBe(3);

@@ -35,9 +35,7 @@ export { loadObject, LoadObjectOptions              } from './facade/load';
 export { loadCollection                             } from './facade/load';
 export { loadInferred, LoadInferredOptions          } from './facade/load-inferred';
 export { stringify                                  } from './facade/stringify';
-export { loadDocument                               } from './facade/load-document';
 export { stringifyDocument, documentToObject        } from './facade/stringify-document';
-export { inferDefs, InferredDefs                    } from './schema/utils/defs-inferrer';
 
 // Main tag functions (also tree-shakable)
 export { ioDefinitions, ioDocument, ioObject } from './facade';

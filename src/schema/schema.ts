@@ -1,3 +1,5 @@
+import IOError from '../errors/io-error'
+import ErrorCodes from '../errors/io-error-codes'
 import MemberDef from "./types/memberdef";
 import { MemberMap } from "./schema-types";
 
@@ -82,7 +84,7 @@ export class SchemaBuilder {
 
   addMember(name: string, def: MemberDef): this {
     if (this.defs[name]) {
-      throw new Error(`Member '${name}' already exists in schema '${this.name}'`);
+      throw new IOError(ErrorCodes.duplicateMember, `Member '${name}' already exists in schema '${this.name}'`);
     }
     this.names.push(name);
     this.defs[name] = { ...def, path: def.path || name };

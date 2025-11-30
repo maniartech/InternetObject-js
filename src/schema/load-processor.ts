@@ -2,6 +2,7 @@ import Collection from '../core/collection';
 import Definitions from '../core/definitions';
 import InternetObject from '../core/internet-object';
 import ErrorCodes from '../errors/io-error-codes';
+import IOError from '../errors/io-error';
 import ValidationError from '../errors/io-validation-error';
 import Schema from './schema';
 import MemberDef from './types/memberdef';
@@ -79,11 +80,11 @@ export function loadObject(
   // Resolve schema if it's a string reference
   if (typeof schema === 'string') {
     if (!defs) {
-      throw new Error(`Schema reference '${schema}' requires definitions`);
+      throw new IOError(ErrorCodes.definitionsRequired, `Schema reference '${schema}' requires definitions`);
     }
     const resolvedSchema = defs.getV(schema);
     if (!(resolvedSchema instanceof Schema)) {
-      throw new Error(`Schema '${schema}' not found or invalid`);
+      throw new IOError(ErrorCodes.schemaNotFound, `Schema '${schema}' not found or invalid`);
     }
     schema = resolvedSchema;
   }
@@ -113,7 +114,7 @@ function _loadObject(data: any, schema: Schema, defs?: Definitions): InternetObj
 
     const typeDef = TypedefRegistry.get(memberDef.type);
     if (!typeDef) {
-      throw new Error(`Type ${memberDef.type} is not registered.`);
+      throw new IOError(ErrorCodes.invalidType, `Type '${memberDef.type}' is not registered.`);
     }
 
     // Use loadObject() method if available
@@ -222,11 +223,11 @@ export function loadCollection(
   // Resolve schema if it's a string reference
   if (typeof schema === 'string') {
     if (!defs) {
-      throw new Error(`Schema reference '${schema}' requires definitions`);
+      throw new IOError(ErrorCodes.definitionsRequired, `Schema reference '${schema}' requires definitions`);
     }
     const resolvedSchema = defs.getV(schema);
     if (!(resolvedSchema instanceof Schema)) {
-      throw new Error(`Schema '${schema}' not found or invalid`);
+      throw new IOError(ErrorCodes.schemaNotFound, `Schema '${schema}' not found or invalid`);
     }
     schema = resolvedSchema;
   }

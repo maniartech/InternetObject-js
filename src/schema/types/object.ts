@@ -1,6 +1,7 @@
 import Definitions          from '../../core/definitions';
 import InternetObject       from '../../core/internet-object';
 import ValidationError      from '../../errors/io-validation-error';
+import IOError              from '../../errors/io-error';
 import ErrorCodes           from '../../errors/io-error-codes';
 import ObjectNode           from '../../parser/nodes/objects'
 import Node                 from '../../parser/nodes/nodes';
@@ -117,7 +118,7 @@ class ObjectDef implements TypeDef {
 
       const typeDef = TypedefRegistry.get(memberDef.type)
       if (!typeDef) {
-        throw new Error(`Type ${memberDef.type} is not registered.`)
+        throw new IOError(ErrorCodes.invalidType, `Type '${memberDef.type}' is not registered.`)
       }
 
       // Use load() method if available

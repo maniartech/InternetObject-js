@@ -245,38 +245,4 @@ function _validateLength(array: any[], memberDef: MemberDef, node?: Node): void 
   }
 }
 
-function _invlalidChoice(key: string, token: TokenNode, min: number) {
-  return [
-    ErrorCodes.outOfRange,
-    `The "${key}" must be greater than or equal to ${min}, Currently it is "${token.value}".`,
-    token
-  ]
-}
-
-function _invlalidLength(key: string, token: ArrayNode, length: number) {
-  const actualLength = token instanceof ArrayNode ? token.children.length : 0
-  return [
-    ErrorCodes.invalidLength,
-    `The "${key}" must be ${length}, Currently it is ${actualLength}.`,
-    token
-  ]
-}
-
-
-function _invlalidMinLength(key: string, token: TokenNode, min: number) {
-  return [
-    ErrorCodes.outOfRange,
-    `The "${key}" must be greater than or equal to ${min}, Currently it is "${token.value}".`,
-    token
-  ]
-}
-
-function _invlalidMaxLength(key: string, token: TokenNode, max: number) {
-  return [
-    ErrorCodes.outOfRange,
-    `The "${key}" must be less than or equal to ${max}, Currently it is "${token.value}".`,
-    token
-  ]
-}
-
 export default ArrayDef

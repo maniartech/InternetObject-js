@@ -5,7 +5,10 @@ enum GeneralErrorCodes {
   invalidType = 'invalid-type',
   invalidValue = 'invalid-value',
   valueRequired = 'value-required',
-  nullNotAllowed = 'null-not-allowed'
+  nullNotAllowed = 'null-not-allowed',
+  definitionsRequired = 'definitions-required',
+  expectedObject = 'expected-object',
+  expectedArray = 'expected-array'
 }
 
 export default GeneralErrorCodes

@@ -1,6 +1,8 @@
 import Definitions from '../../core/definitions';
 import TokenNode from '../../parser/nodes/tokens';
 import Schema from '../schema';
+import IOError from '../../errors/io-error';
+import ErrorCodes from '../../errors/io-error-codes';
 
 export class SchemaResolver {
   static resolve(schema: Schema | TokenNode, defs?: Definitions): Schema {
@@ -10,7 +12,7 @@ export class SchemaResolver {
       const resolved = defs?.getV(schemaName);
       if (!(resolved instanceof Schema)) {
         // Safety net; typically getV would throw for missing/invalid refs
-        throw new Error(`Schema '${schemaName}' not found or invalid`);
+        throw new IOError(ErrorCodes.schemaNotFound, `Schema '${schemaName}' not found or invalid`);
       }
       return resolved;
     }

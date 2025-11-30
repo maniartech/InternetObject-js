@@ -1,6 +1,6 @@
 import { stringify } from '../../src/facade/stringify';
 import { compileSchema } from '../../src/schema';
-import { loadObject } from '../../src/facade/load';
+import { loadObject, loadCollection } from '../../src/facade/load';
 import InternetObject from '../../src/core/internet-object';
 import Collection from '../../src/core/collection';
 import Definitions from '../../src/core/definitions';
@@ -205,15 +205,15 @@ describe('High-level stringify() API', () => {
       expect(stringified).toContain('T');  // Boolean as IO format
     });
 
-    it('collection loadObject -> stringify maintains data', () => {
+    it('collection loadCollection -> stringify maintains data', () => {
       const originalData = [
         { name: 'Alice', age: 28 },
         { name: 'Bob', age: 35 }
       ];
       const defs = createDefsWithSchema('User', '{ name: string, age: number }');
 
-      // Load
-      const loaded = loadObject(originalData, defs) as Collection<InternetObject>;
+      // Load using loadCollection for arrays
+      const loaded = loadCollection(originalData, defs);
       expect(loaded.length).toBe(2);
 
       // Stringify

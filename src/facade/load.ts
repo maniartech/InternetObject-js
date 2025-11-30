@@ -7,6 +7,8 @@ import InternetObject from '../core/internet-object';
 import Collection from '../core/collection';
 import Schema from '../schema/schema';
 import { loadObject as processObject, loadCollection as processCollection } from '../schema/load-processor';
+import IOError from '../errors/io-error';
+import ErrorCodes from '../errors/io-error-codes';
 
 /**
  * Creates an InternetObject from plain data without schema validation.
@@ -90,15 +92,15 @@ export interface LoadObjectOptions {
  * ```
  */
 // Overloads for loadObject
-export function loadObject(data: any): InternetObject | Collection<InternetObject>;
-export function loadObject(data: any, defs: Definitions): InternetObject | Collection<InternetObject>;
-export function loadObject(data: any, options: LoadObjectOptions): InternetObject | Collection<InternetObject>;
-export function loadObject(data: any, defs: Definitions, options: LoadObjectOptions): InternetObject | Collection<InternetObject>;
+export function loadObject(data: object): InternetObject;
+export function loadObject(data: object, defs: Definitions): InternetObject;
+export function loadObject(data: object, options: LoadObjectOptions): InternetObject;
+export function loadObject(data: object, defs: Definitions, options: LoadObjectOptions): InternetObject;
 export function loadObject(
-  data: any,
+  data: object,
   defsOrOptions?: Definitions | LoadObjectOptions,
   options?: LoadObjectOptions
-): InternetObject | Collection<InternetObject> {
+): InternetObject {
   let resolvedSchema: Schema | undefined;
   let definitions: Definitions | undefined;
   let resolvedOptions: LoadObjectOptions | undefined;
@@ -117,29 +119,24 @@ export function loadObject(
     if (resolvedOptions?.schemaName) {
       resolvedSchema = definitions.get(resolvedOptions.schemaName) as Schema | undefined;
       if (!resolvedSchema) {
-        throw new Error(`Schema '${resolvedOptions.schemaName}' not found in definitions.`);
+        throw new IOError(ErrorCodes.schemaNotFound, `Schema '${resolvedOptions.schemaName}' not found in definitions.`);
       }
     } else {
       resolvedSchema = definitions.defaultSchema || undefined;
     }
   }
 
-  // Determine if data is an array (collection) or object
-  // Schema-less mode: if no schema, load without validation
-  if (!resolvedSchema) {
-    // No schema available - load without validation
-    if (Array.isArray(data)) {
-      return createSchemalessCollection(data);
-    } else {
-      return createSchemalessObject(data);
-    }
+  // Validate that data is an object, not an array
+  if (Array.isArray(data)) {
+    throw new IOError(ErrorCodes.expectedObject, `loadObject expects an object, not an array. Use loadCollection for arrays.`);
   }
 
-  if (Array.isArray(data)) {
-    return processCollection(data, resolvedSchema, definitions, resolvedOptions?.errorCollector);
-  } else {
-    return processObject(data, resolvedSchema, definitions);
+  // Schema-less mode: if no schema, load without validation
+  if (!resolvedSchema) {
+    return createSchemalessObject(data);
   }
+
+  return processObject(data, resolvedSchema, definitions);
 }
 
 /**
@@ -190,12 +187,17 @@ export function loadCollection(
     resolvedOptions = defsOrOptions as LoadCollectionOptions;
   }
 
+  // Validate that data is an array
+  if (!Array.isArray(data)) {
+    throw new IOError(ErrorCodes.expectedArray, `loadCollection expects an array. Use loadObject for single objects.`);
+  }
+
   // Resolve schema: by name from options, or default from definitions
   if (definitions) {
     if (resolvedOptions?.schemaName) {
       resolvedSchema = definitions.get(resolvedOptions.schemaName) as Schema | undefined;
       if (!resolvedSchema) {
-        throw new Error(`Schema '${resolvedOptions.schemaName}' not found in definitions.`);
+        throw new IOError(ErrorCodes.schemaNotFound, `Schema '${resolvedOptions.schemaName}' not found in definitions.`);
       }
     } else {
       resolvedSchema = definitions.defaultSchema || undefined;
@@ -295,7 +297,7 @@ export function load(
     if (resolvedOptions?.schemaName) {
       resolvedSchema = definitions.get(resolvedOptions.schemaName) as Schema | undefined;
       if (!resolvedSchema) {
-        throw new Error(`Schema '${resolvedOptions.schemaName}' not found in definitions.`);
+        throw new IOError(ErrorCodes.schemaNotFound, `Schema '${resolvedOptions.schemaName}' not found in definitions.`);
       }
     } else {
       resolvedSchema = definitions.defaultSchema || undefined;

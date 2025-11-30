@@ -2,6 +2,8 @@ import CollectionNode from '../../parser/nodes/collections';
 import ObjectNode from '../../parser/nodes/objects';
 import TokenNode from '../../parser/nodes/tokens';
 import Schema from '../schema';
+import IOError from '../../errors/io-error';
+import ErrorCodes from '../../errors/io-error-codes';
 
 export class ValidationUtils {
   static isValidDataNode(data: unknown): data is ObjectNode | CollectionNode {
@@ -22,7 +24,7 @@ export class ValidationUtils {
         : data === undefined ? 'undefined'
         : hasCtorName === undefined ? 'undefined'
         : hasCtorName || 'unknown';
-      throw new Error(`Invalid data node type: ${typeName}`);
+      throw new IOError(ErrorCodes.invalidType, `Invalid data node type: ${typeName}`);
     }
 
     if (!ValidationUtils.isValidSchema(schema)) {
@@ -31,7 +33,7 @@ export class ValidationUtils {
         : schema === undefined ? 'undefined'
         : hasCtorName === undefined ? 'undefined'
         : hasCtorName || 'unknown';
-      throw new Error(`Invalid schema type: ${typeName}`);
+      throw new IOError(ErrorCodes.invalidSchema, `Invalid schema type: ${typeName}`);
     }
 
     return { data: data as ObjectNode | CollectionNode, schema: schema as Schema | TokenNode };
