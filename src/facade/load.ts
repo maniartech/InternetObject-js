@@ -10,7 +10,7 @@ import { loadObject as processObject, loadCollection } from '../schema/load-proc
 import { compileSchema } from '../schema';
 import { inferDefs } from '../schema/utils/defs-inferrer';
 
-export interface LoadOptions {
+export interface LoadObjectOptions {
   /**
    * When true, infers definitions (schemas) from the input data structure.
    * This allows loading JSON data without explicitly providing a schema.
@@ -33,7 +33,7 @@ export interface LoadOptions {
  *
  * @param data - Plain JavaScript object or array to validate
  * @param schema - Schema definition (IO text, Schema object, or schema name when used with definitions)
- * @param defsOrOptions - Definitions object or LoadOptions
+ * @param defsOrOptions - Definitions object or LoadObjectOptions
  * @param errors - Optional error collector array (deprecated, use Collection.errors instead)
  * @returns Validated InternetObject or Collection
  * @throws ValidationError if data doesn't conform to schema
@@ -64,24 +64,24 @@ export interface LoadOptions {
  * ```
  */
 // Overloads for backward compatibility
-export function loadObject(data: any, schema?: string | Schema | Definitions, options?: LoadOptions): InternetObject | Collection<InternetObject>;
+export function loadObject(data: any, schema?: string | Schema | Definitions, options?: LoadObjectOptions): InternetObject | Collection<InternetObject>;
 export function loadObject(data: any, schemaName: string, definitions: Definitions, errors?: Error[]): InternetObject | Collection<InternetObject>;
 export function loadObject(data: any, schema: string | Schema, defsOrUndefined: undefined, errors: Error[]): InternetObject | Collection<InternetObject>;
 export function loadObject(
   data: any,
   schema?: string | Schema | Definitions,
-  defsOrOptions?: Definitions | LoadOptions,
+  defsOrOptions?: Definitions | LoadObjectOptions,
   errors?: Error[]
 ): InternetObject | Collection<InternetObject> {
   let resolvedSchema: Schema | undefined;
   let definitions: Definitions | undefined;
-  let options: LoadOptions | undefined;
+  let options: LoadObjectOptions | undefined;
 
   // Determine what the third parameter is
   if (defsOrOptions instanceof Definitions) {
     definitions = defsOrOptions;
   } else if (defsOrOptions && typeof defsOrOptions === 'object' && !(defsOrOptions instanceof Definitions)) {
-    options = defsOrOptions as LoadOptions;
+    options = defsOrOptions as LoadObjectOptions;
   }
 
   // Resolve schema from explicit argument

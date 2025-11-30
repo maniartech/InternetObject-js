@@ -30,7 +30,7 @@ export { default as IOValidationError               } from './errors/io-validati
 export { default as Schema                          } from './schema/schema';
 export { default as parse                           } from './parser/index';
 export { default as parseDefinitions                } from './parser/parse-defs';
-export { loadObject, loadDoc, LoadOptions, LoadDocOptions } from './facade/load';
+export { loadObject, loadDoc, LoadObjectOptions, LoadDocOptions } from './facade/load';
 export { stringify                                  } from './facade/stringify';
 export { loadCollection                             } from './schema/load-processor';
 export { loadDocument                               } from './facade/load-document';
