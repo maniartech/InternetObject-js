@@ -8,7 +8,7 @@ describe('Late keyed optional members normalization', () => {
       ~ John,,, T, age: 30, colors: [red, blue]`;
 
     const doc = parse(input, null);
-    const out = stringify(doc, undefined, undefined, { includeTypes: true });
+    const out = stringify(doc, { includeTypes: true });
 
     // colors now properly shows element type: [string]
     const expected = `name: string, age?: number, gender?: string, isActive: bool, colors?: [string]\n---\n~ John, 30, , T, [red, blue]`;
@@ -26,7 +26,7 @@ describe('Late keyed optional members normalization', () => {
 
     const doc = parse(input, null);
     // Request types (for schema line) but data rows should stay positional without keys
-    const iotext = stringify(doc, undefined, undefined, { includeTypes: true });
+    const iotext = stringify(doc, { includeTypes: true });
 
     const expected = `name: string, age?: {number, min:20}, gender, joiningDt, address: {street, city, state?}, colors, isActive, *:string\n---\n~ Alice Smith, 28, f, d\"2021-04-15\", {Elm Street, Dallas, TX}, [yellow, green], T, detail: Loves hiking, extra1: extra value 1\n~ Bob Johnson, 28, m, d\"2022-02-20\", {Oak Street, Chicago, IL}, [blue, black], T`;
 

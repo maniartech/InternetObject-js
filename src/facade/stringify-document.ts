@@ -6,7 +6,7 @@ import Section from '../core/section';
 import TypedefRegistry from '../schema/typedef-registry';
 import MemberDef from '../schema/types/memberdef';
 import { stringifyMemberDef } from '../schema/types/memberdef-stringify';
-import { stringify } from './stringify';
+import { stringify, stringifyObject } from './stringify';
 import { StringifyOptions } from './stringify';
 import { IO_MARKERS, RESERVED_SECTION_NAMES, WILDCARD_KEY } from './serialization-constants';
 
@@ -295,7 +295,7 @@ function stringifySection(
         continue;
       }
       if (item instanceof InternetObject) {
-        const line = stringify(item, schema, defs, options);
+        const line = stringifyObject(item, schema, defs, options);
         lines.push(`~ ${line}`);
       } else {
         // Fallback for non-IO items
@@ -305,8 +305,8 @@ function stringifySection(
     return lines.join('\n');
   }
 
-  // Single object/value: use main stringify
-  return stringify(data, schema, defs, options);
+  // Single object/value: use main stringifyObject
+  return stringifyObject(data, schema, defs, options);
 }
 
 /**

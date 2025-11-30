@@ -6,22 +6,60 @@ import SectionCollection from '../core/section-collection';
 import InternetObject from '../core/internet-object';
 import Collection from '../core/collection';
 import Schema from '../schema/schema';
-import { loadObject as processObject, loadCollection } from '../schema/load-processor';
-import { compileSchema } from '../schema';
-import { inferDefs } from '../schema/utils/defs-inferrer';
+import { loadObject as processObject, loadCollection as processCollection } from '../schema/load-processor';
+
+/**
+ * Creates an InternetObject from plain data without schema validation.
+ * Used for schema-less loading mode.
+ */
+function createSchemalessObject(data: any): InternetObject {
+  if (typeof data !== 'object' || data === null || Array.isArray(data)) {
+    // For non-object values, wrap in IOObject with a value key
+    const obj = new InternetObject();
+    obj.push(data);
+    return obj;
+  }
+  return new InternetObject(data);
+}
+
+/**
+ * Creates a Collection of InternetObjects from plain array data without schema validation.
+ * Used for schema-less loading mode.
+ */
+function createSchemalessCollection(dataArray: any[]): Collection<InternetObject> {
+  const collection = new Collection<InternetObject>();
+  for (const item of dataArray) {
+    collection.push(createSchemalessObject(item));
+  }
+  return collection;
+}
 
 export interface LoadObjectOptions {
   /**
-   * When true, infers definitions (schemas) from the input data structure.
-   * This allows loading JSON data without explicitly providing a schema.
+   * The name of the schema to use from definitions.
+   * If provided, the schema will be looked up by this name in the definitions.
+   * If not provided, uses `defs.defaultSchema` (`$schema`).
    *
-   * The inferred definitions will include:
-   * - `$schema` for the root object (default schema)
-   * - Named schemas like `$borrowedBy`, `$membershipType` for nested objects
-   *
+   * @example
+   * ```typescript
+   * const defs = parseDefinitions('~ $User: { name, age }');
+   * const obj = loadObject(data, defs, { schemaName: '$User' });
+   * ```
+   */
+  schemaName?: string;
+
+  /**
+   * When true, throws on first validation error.
+   * When false (default), continues processing and collects errors.
    * @default false
    */
-  inferDefs?: boolean;
+  strict?: boolean;
+
+  /**
+   * Array to collect validation errors instead of throwing.
+   * Useful for processing collections where some items may be invalid.
+   */
+  errorCollector?: Error[];
 }
 
 /**
@@ -32,109 +70,175 @@ export interface LoadObjectOptions {
  * loadObject() validates plain JavaScript objects.
  *
  * @param data - Plain JavaScript object or array to validate
- * @param schema - Schema definition (IO text, Schema object, or schema name when used with definitions)
- * @param defsOrOptions - Definitions object or LoadObjectOptions
- * @param errors - Optional error collector array (deprecated, use Collection.errors instead)
+ * @param defs - Definitions object containing schemas
+ * @param options - LoadObjectOptions (schemaName, strict, errorCollector)
  * @returns Validated InternetObject or Collection
  * @throws ValidationError if data doesn't conform to schema
  *
  * @example
  * ```typescript
- * // Load a single object with explicit schema
- * const data = { name: 'Alice', age: 28 };
- * const obj = loadObject(data, '{ name: string, age: number }');
- * console.log(obj.get('name')); // 'Alice'
+ * // Schema-less (no validation, just wrap in InternetObject)
+ * const obj = loadObject({ name: 'Alice', age: 28 });
  *
- * // Load a collection
- * const users = [
- *   { name: 'Alice', age: 28 },
- *   { name: 'Bob', age: 35 }
- * ];
- * const collection = loadObject(users, '{ name: string, age: number }');
- * console.log(collection.length); // 2
+ * // Load with definitions (uses $schema as default)
+ * const defs = parseDefinitions('~ $schema: { name: string, age: int }');
+ * const obj = loadObject(data, defs);
  *
- * // Load with schema from definitions
- * const defs = new Definitions();
- * defs.set('User', compileSchema('User', '{ name: string, age: number }'));
- * const obj = loadObject(data, 'User', defs);
- *
- * // Load with inferred definitions (no explicit schema required)
- * const jsonData = { name: 'Alice', age: 28 };
- * const obj = loadObject(jsonData, undefined, { inferDefs: true });
+ * // Load with specific schema name from definitions
+ * const defs = parseDefinitions('~ $User: { name, age }');
+ * const obj = loadObject(data, defs, { schemaName: '$User' });
  * ```
  */
-// Overloads for backward compatibility
-export function loadObject(data: any, schema?: string | Schema | Definitions, options?: LoadObjectOptions): InternetObject | Collection<InternetObject>;
-export function loadObject(data: any, schemaName: string, definitions: Definitions, errors?: Error[]): InternetObject | Collection<InternetObject>;
-export function loadObject(data: any, schema: string | Schema, defsOrUndefined: undefined, errors: Error[]): InternetObject | Collection<InternetObject>;
+// Overloads for loadObject
+export function loadObject(data: any): InternetObject | Collection<InternetObject>;
+export function loadObject(data: any, defs: Definitions): InternetObject | Collection<InternetObject>;
+export function loadObject(data: any, options: LoadObjectOptions): InternetObject | Collection<InternetObject>;
+export function loadObject(data: any, defs: Definitions, options: LoadObjectOptions): InternetObject | Collection<InternetObject>;
 export function loadObject(
   data: any,
-  schema?: string | Schema | Definitions,
   defsOrOptions?: Definitions | LoadObjectOptions,
-  errors?: Error[]
+  options?: LoadObjectOptions
 ): InternetObject | Collection<InternetObject> {
   let resolvedSchema: Schema | undefined;
   let definitions: Definitions | undefined;
-  let options: LoadObjectOptions | undefined;
+  let resolvedOptions: LoadObjectOptions | undefined;
 
-  // Determine what the third parameter is
+  // Parse arguments: handle (data), (data, defs), (data, options), (data, defs, options)
   if (defsOrOptions instanceof Definitions) {
     definitions = defsOrOptions;
-  } else if (defsOrOptions && typeof defsOrOptions === 'object' && !(defsOrOptions instanceof Definitions)) {
-    options = defsOrOptions as LoadObjectOptions;
+    resolvedOptions = options;
+  } else if (defsOrOptions && typeof defsOrOptions === 'object') {
+    // Second param is options
+    resolvedOptions = defsOrOptions as LoadObjectOptions;
   }
 
-  // Resolve schema from explicit argument
-  if (typeof schema === 'string') {
-    // Check if it's a schema reference in definitions
-    if (definitions && definitions.get(schema)) {
-      resolvedSchema = definitions.get(schema) as Schema;
+  // Resolve schema: by name from options, or default from definitions
+  if (definitions) {
+    if (resolvedOptions?.schemaName) {
+      resolvedSchema = definitions.get(resolvedOptions.schemaName) as Schema | undefined;
+      if (!resolvedSchema) {
+        throw new Error(`Schema '${resolvedOptions.schemaName}' not found in definitions.`);
+      }
     } else {
-      // Compile as IO text
-      resolvedSchema = compileSchema('_temp', schema);
+      resolvedSchema = definitions.defaultSchema || undefined;
     }
-  } else if (schema instanceof Schema) {
-    resolvedSchema = schema;
-  } else if (schema instanceof Definitions) {
-    definitions = schema;
-    // If schema is Definitions, try to get default schema
-    resolvedSchema = schema.defaultSchema || undefined;
-  }
-
-  // If inferDefs option is set, infer definitions from data
-  if (!resolvedSchema && options?.inferDefs) {
-    const inferred = inferDefs(data);
-    resolvedSchema = inferred.rootSchema;
-    definitions = inferred.definitions;
-  }
-
-  if (!resolvedSchema) {
-    throw new Error("No schema provided or found in definitions. Use { inferDefs: true } to infer definitions from data.");
   }
 
   // Determine if data is an array (collection) or object
+  // Schema-less mode: if no schema, load without validation
+  if (!resolvedSchema) {
+    // No schema available - load without validation
+    if (Array.isArray(data)) {
+      return createSchemalessCollection(data);
+    } else {
+      return createSchemalessObject(data);
+    }
+  }
+
   if (Array.isArray(data)) {
-    return loadCollection(data, resolvedSchema, definitions, errors);
+    return processCollection(data, resolvedSchema, definitions, resolvedOptions?.errorCollector);
   } else {
     return processObject(data, resolvedSchema, definitions);
   }
 }
 
 /**
- * Options for loadDoc function
+ * Options for loadCollection function (same as LoadOptions)
  */
-export interface LoadDocOptions {
+export type LoadCollectionOptions = LoadOptions;
+
+/**
+ * Load JS array (no Document wrapper).
+ *
+ * @param data - Array of plain JavaScript objects to validate
+ * @param defs - Definitions object containing schemas
+ * @param options - LoadCollectionOptions (schemaName, strict, errorCollector)
+ * @returns Collection of validated InternetObjects
+ *
+ * @example
+ * ```typescript
+ * // Schema-less (no validation)
+ * const col = loadCollection([{ name: 'Alice' }, { name: 'Bob' }]);
+ *
+ * // With definitions (validates each item against $schema)
+ * const col = loadCollection(data, defs);
+ *
+ * // With specific schema from definitions
+ * const col = loadCollection(users, defs, { schemaName: '$User' });
+ * ```
+ */
+// Overloads for loadCollection
+export function loadCollection(data: any[]): Collection<InternetObject>;
+export function loadCollection(data: any[], defs: Definitions): Collection<InternetObject>;
+export function loadCollection(data: any[], options: LoadCollectionOptions): Collection<InternetObject>;
+export function loadCollection(data: any[], defs: Definitions, options: LoadCollectionOptions): Collection<InternetObject>;
+export function loadCollection(
+  data: any[],
+  defsOrOptions?: Definitions | LoadCollectionOptions,
+  options?: LoadCollectionOptions
+): Collection<InternetObject> {
+  let resolvedSchema: Schema | undefined;
+  let definitions: Definitions | undefined;
+  let resolvedOptions: LoadCollectionOptions | undefined;
+
+  // Parse arguments: handle (data), (data, defs), (data, options), (data, defs, options)
+  if (defsOrOptions instanceof Definitions) {
+    definitions = defsOrOptions;
+    resolvedOptions = options;
+  } else if (defsOrOptions && typeof defsOrOptions === 'object') {
+    // Second param is options
+    resolvedOptions = defsOrOptions as LoadCollectionOptions;
+  }
+
+  // Resolve schema: by name from options, or default from definitions
+  if (definitions) {
+    if (resolvedOptions?.schemaName) {
+      resolvedSchema = definitions.get(resolvedOptions.schemaName) as Schema | undefined;
+      if (!resolvedSchema) {
+        throw new Error(`Schema '${resolvedOptions.schemaName}' not found in definitions.`);
+      }
+    } else {
+      resolvedSchema = definitions.defaultSchema || undefined;
+    }
+  }
+
+  // Schema-less mode: if no schema, load without validation
+  if (!resolvedSchema) {
+    return createSchemalessCollection(data);
+  }
+
+  return processCollection(data, resolvedSchema, definitions, resolvedOptions?.errorCollector);
+}
+
+/**
+ * Options for load function
+ */
+export interface LoadOptions {
   /**
-   * When true, infers definitions (schemas) from the input data structure.
-   * This allows loading JSON data without explicitly providing a schema.
+   * The name of the schema to use from definitions.
+   * If provided, the schema will be looked up by this name in the definitions.
+   * If not provided, uses `defs.defaultSchema` (`$schema`).
    *
-   * The inferred definitions will include:
-   * - `$schema` for the root object (default schema)
-   * - Named schemas like `$borrowedBy`, `$membershipType` for nested objects
-   *
+   * @example
+   * ```typescript
+   * const defs = parseDefinitions('~ $User: { name, age }');
+   * const doc = load(data, defs, { schemaName: '$User' });
+   * ```
+   */
+  schemaName?: string;
+
+  /**
+   * When true, throws on first validation error.
+   * When false (default), continues processing and collects errors.
    * @default false
    */
-  inferDefs?: boolean;
+  strict?: boolean;
+
+  /**
+   * Array to collect validation errors instead of throwing.
+   * Useful for processing collections where some items may be invalid.
+   */
+  errorCollector?: Error[];
 }
 
 /**
@@ -144,65 +248,80 @@ export interface LoadDocOptions {
  * schema definitions in the header. Use this when you need the complete IO format
  * with definitions output.
  *
- * @param data - Plain JavaScript object or array to loadObject
- * @param schema - Schema definition (IO text, Schema object, or Definitions object)
- * @param options - Optional loadObject options (including inferDefs)
+ * @param data - Plain JavaScript object or array to load
+ * @param defs - Definitions object containing schemas
+ * @param options - LoadOptions (schemaName, strict, errorCollector)
  * @returns Complete IODocument with header containing definitions
  *
  * @example
  * ```typescript
- * // Load JSON with inferred definitions
- * const jsonData = { name: 'Alice', age: 28, address: { city: 'NYC' } };
- * const doc = loadDoc(jsonData, undefined, { inferDefs: true });
- * const ioText = stringify(doc);
- * // Output:
- * // ~ $address: {city: string}
- * // ~ $schema: {name: string, age: number, address: $address}
- * // ---
- * // ~ Alice, 28, {NYC}
+ * // Schema-less (no validation)
+ * const doc = load(data);
  *
- * // Load with explicit schema
- * const doc = loadDoc(data, '{ name: string, age: number }');
+ * // Load with definitions (uses $schema as default)
+ * const defs = parseDefinitions('~ $schema: { name, age, address: $address }');
+ * const doc = load(data, defs);
+ *
+ * // Load with specific schema name
+ * const defs = parseDefinitions('~ $User: { name, age }');
+ * const doc = load(data, defs, { schemaName: '$User' });
  * ```
  */
-export function loadDoc(data: any, schema?: string | Schema | Definitions, options?: LoadDocOptions): Document {
+// Overloads for load
+export function load(data: any): Document;
+export function load(data: any, defs: Definitions): Document;
+export function load(data: any, options: LoadOptions): Document;
+export function load(data: any, defs: Definitions, options: LoadOptions): Document;
+export function load(
+  data: any,
+  defsOrOptions?: Definitions | LoadOptions,
+  options?: LoadOptions
+): Document {
   let resolvedSchema: Schema | undefined;
   let definitions: Definitions | undefined;
+  let resolvedOptions: LoadOptions | undefined;
 
-  // Resolve schema from explicit argument
-  if (typeof schema === 'string') {
-    resolvedSchema = compileSchema('$schema', schema);
-    definitions = new Definitions();
-    definitions.push('$schema', resolvedSchema, true, false);
-  } else if (schema instanceof Schema) {
-    resolvedSchema = schema;
-    definitions = new Definitions();
-    definitions.push('$schema', resolvedSchema, true, false);
-  } else if (schema instanceof Definitions) {
-    definitions = schema;
-    resolvedSchema = schema.defaultSchema || undefined;
+  // Parse arguments: handle (data), (data, defs), (data, options), (data, defs, options)
+  if (defsOrOptions instanceof Definitions) {
+    definitions = defsOrOptions;
+    resolvedOptions = options;
+  } else if (defsOrOptions && typeof defsOrOptions === 'object') {
+    // Second param is options
+    resolvedOptions = defsOrOptions as LoadOptions;
   }
 
-  // If inferDefs option is set, infer definitions from data
-  if (!resolvedSchema && options?.inferDefs) {
-    const inferred = inferDefs(data);
-    resolvedSchema = inferred.rootSchema;
-    definitions = inferred.definitions;
+  // Resolve schema: by name from options, or default from definitions
+  if (definitions) {
+    if (resolvedOptions?.schemaName) {
+      resolvedSchema = definitions.get(resolvedOptions.schemaName) as Schema | undefined;
+      if (!resolvedSchema) {
+        throw new Error(`Schema '${resolvedOptions.schemaName}' not found in definitions.`);
+      }
+    } else {
+      resolvedSchema = definitions.defaultSchema || undefined;
+    }
   }
 
-  if (!resolvedSchema || !definitions) {
-    throw new Error("No schema provided or found in definitions. Use { inferDefs: true } to infer definitions from data.");
-  }
-
-  // Create header with definitions
+  // Create header with definitions (if available)
   const header = new Header();
-  header.definitions.merge(definitions, true);
-  header.schema = resolvedSchema;
+  if (definitions) {
+    header.definitions.merge(definitions, true);
+  }
+  if (resolvedSchema) {
+    header.schema = resolvedSchema;
+  }
 
   // Load the data
   let loadedData: InternetObject | Collection<InternetObject>;
-  if (Array.isArray(data)) {
-    loadedData = loadCollection(data, resolvedSchema, definitions);
+  if (!resolvedSchema) {
+    // Schema-less mode: load without validation
+    if (Array.isArray(data)) {
+      loadedData = createSchemalessCollection(data);
+    } else {
+      loadedData = createSchemalessObject(data);
+    }
+  } else if (Array.isArray(data)) {
+    loadedData = processCollection(data, resolvedSchema, definitions, resolvedOptions?.errorCollector);
   } else {
     loadedData = processObject(data, resolvedSchema, definitions);
   }

@@ -30,9 +30,11 @@ export { default as IOValidationError               } from './errors/io-validati
 export { default as Schema                          } from './schema/schema';
 export { default as parse                           } from './parser/index';
 export { default as parseDefinitions                } from './parser/parse-defs';
-export { loadObject, loadDoc, LoadObjectOptions, LoadDocOptions } from './facade/load';
+export { load, LoadOptions                          } from './facade/load';
+export { loadObject, LoadObjectOptions              } from './facade/load';
+export { loadCollection                             } from './facade/load';
+export { loadInferred, LoadInferredOptions          } from './facade/load-inferred';
 export { stringify                                  } from './facade/stringify';
-export { loadCollection                             } from './schema/load-processor';
 export { loadDocument                               } from './facade/load-document';
 export { stringifyDocument, documentToObject        } from './facade/stringify-document';
 export { inferDefs, InferredDefs                    } from './schema/utils/defs-inferrer';

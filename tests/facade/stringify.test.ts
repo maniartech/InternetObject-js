@@ -5,6 +5,16 @@ import InternetObject from '../../src/core/internet-object';
 import Collection from '../../src/core/collection';
 import Definitions from '../../src/core/definitions';
 
+/**
+ * Helper to create definitions with a schema as the default
+ */
+function createDefsWithSchema(schemaName: string, schemaText: string): Definitions {
+  const defs = new Definitions();
+  const schema = compileSchema(schemaName, schemaText);
+  defs.set('$schema', schema);
+  return defs;
+}
+
 describe('High-level stringify() API', () => {
   describe('stringify single objects', () => {
     it('stringifies simple object', () => {
@@ -12,8 +22,8 @@ describe('High-level stringify() API', () => {
       obj.set('name', 'Alice');
       obj.set('age', 28);
 
-      const schema = compileSchema('User', '{ name: string, age: number }');
-      const result = stringify(obj, schema);
+      const defs = createDefsWithSchema('User', '{ name: string, age: number }');
+      const result = stringify(obj, defs);
 
       expect(result).toContain('Alice');
       expect(result).toContain('28');
@@ -24,8 +34,8 @@ describe('High-level stringify() API', () => {
       obj.set('name', 'Bob');
       obj.set('active', true);
 
-      const schema = compileSchema('User', '{ name: string, active: bool }');
-      const result = stringify(obj, schema);
+      const defs = createDefsWithSchema('User', '{ name: string, active: bool }');
+      const result = stringify(obj, defs);
 
       expect(result).toContain('Bob');
       expect(result).toContain('T');  // Boolean as IO format T
@@ -36,8 +46,8 @@ describe('High-level stringify() API', () => {
       obj.set('name', 'Charlie');
       // Don't set age - it's optional
 
-      const schema = compileSchema('User', '{ name: string, age?: number }');
-      const result = stringify(obj, schema);
+      const defs = createDefsWithSchema('User', '{ name: string, age?: number }');
+      const result = stringify(obj, defs);
 
       expect(result).toContain('Charlie');
     });
@@ -46,8 +56,8 @@ describe('High-level stringify() API', () => {
       const obj = new InternetObject();
       obj.set('id', 123456789012345n);
 
-      const schema = compileSchema('Entity', '{ id: bigint }');
-      const result = stringify(obj, schema);
+      const defs = createDefsWithSchema('Entity', '{ id: bigint }');
+      const result = stringify(obj, defs);
 
       expect(result).toContain('123456789012345');
     });
@@ -57,8 +67,8 @@ describe('High-level stringify() API', () => {
       const date = new Date('2024-01-15T10:30:00Z');
       obj.set('created', date);
 
-      const schema = compileSchema('Entity', '{ created: datetime }');
-      const result = stringify(obj, schema);
+      const defs = createDefsWithSchema('Entity', '{ created: datetime }');
+      const result = stringify(obj, defs);
 
       expect(result).toContain('2024');
     });
@@ -75,9 +85,9 @@ describe('High-level stringify() API', () => {
       obj2.set('age', 35);
 
       const collection = new Collection([obj1, obj2]);
-      const schema = compileSchema('User', '{ name: string, age: number }');
+      const defs = createDefsWithSchema('User', '{ name: string, age: number }');
 
-      const result = stringify(collection, schema);
+      const result = stringify(collection, defs);
 
       expect(result).toContain('Alice');
       expect(result).toContain('Bob');
@@ -87,9 +97,9 @@ describe('High-level stringify() API', () => {
 
     it('stringifies empty collection', () => {
       const collection = new Collection([]);
-      const schema = compileSchema('User', '{ name: string }');
+      const defs = createDefsWithSchema('User', '{ name: string }');
 
-      const result = stringify(collection, schema);
+      const result = stringify(collection, defs);
 
       expect(result).toBe('[]');
     });
@@ -105,9 +115,9 @@ describe('High-level stringify() API', () => {
       };
 
       const collection = new Collection([obj, errorObj as any]);
-      const schema = compileSchema('User', '{ name: string }');
+      const defs = createDefsWithSchema('User', '{ name: string }');
 
-      const result = stringify(collection, schema);
+      const result = stringify(collection, defs);
 
       expect(result).toContain('Alice');
       expect(result).toContain('error');
@@ -126,9 +136,9 @@ describe('High-level stringify() API', () => {
       obj2.set('name', 'Bob');
 
       const collection = new Collection([obj1, errorObj as any, obj2]);
-      const schema = compileSchema('User', '{ name: string }');
+      const defs = createDefsWithSchema('User', '{ name: string }');
 
-      const result = stringify(collection, schema, undefined, { skipErrors: true });
+      const result = stringify(collection, defs, { skipErrors: true });
 
       expect(result).toContain('Alice');
       expect(result).toContain('Bob');
@@ -142,8 +152,8 @@ describe('High-level stringify() API', () => {
       obj.set('name', 'Alice');
       obj.set('age', 28);
 
-      const schema = compileSchema('User', '{ name: string, age: number }');
-      const result = stringify(obj, schema, undefined, { indent: 2 });
+      const defs = createDefsWithSchema('User', '{ name: string, age: number }');
+      const result = stringify(obj, defs, { indent: 2 });
 
       expect(result).toContain('\n');
       expect(result).toContain('  ');  // Indentation
@@ -153,8 +163,8 @@ describe('High-level stringify() API', () => {
       const obj = new InternetObject();
       obj.set('name', 'Alice');
 
-      const schema = compileSchema('User', '{ name: string }');
-      const result = stringify(obj, schema, undefined, { indent: '\t' });
+      const defs = createDefsWithSchema('User', '{ name: string }');
+      const result = stringify(obj, defs, { indent: '\t' });
 
       expect(result).toContain('\n');
       expect(result).toContain('\t');
@@ -165,8 +175,8 @@ describe('High-level stringify() API', () => {
       obj.set('name', 'Alice');
       obj.set('age', 28);
 
-      const schema = compileSchema('User', '{ name: string, age: number }');
-      const result = stringify(obj, schema);
+      const defs = createDefsWithSchema('User', '{ name: string, age: number }');
+      const result = stringify(obj, defs);
 
       expect(result).not.toContain('\n');
       expect(result).toContain(',');
@@ -176,10 +186,10 @@ describe('High-level stringify() API', () => {
   describe('round-trip with loadObject', () => {
     it('load -> stringify maintains data', () => {
       const originalData = { name: 'Alice', age: 28, active: true };
-      const schema = compileSchema('User', '{ name: string, age: number, active: bool }');
+      const defs = createDefsWithSchema('User', '{ name: string, age: number, active: bool }');
 
       // Load
-      const loaded = loadObject(originalData, schema) as InternetObject;
+      const loaded = loadObject(originalData, defs) as InternetObject;
 
       // Verify loaded data
       expect(loaded.get('name')).toBe('Alice');
@@ -187,7 +197,7 @@ describe('High-level stringify() API', () => {
       expect(loaded.get('active')).toBe(true);
 
       // Stringify
-      const stringified = stringify(loaded, schema);
+      const stringified = stringify(loaded, defs);
 
       // Result should contain all values
       expect(stringified).toContain('Alice');
@@ -200,14 +210,14 @@ describe('High-level stringify() API', () => {
         { name: 'Alice', age: 28 },
         { name: 'Bob', age: 35 }
       ];
-      const schema = compileSchema('User', '{ name: string, age: number }');
+      const defs = createDefsWithSchema('User', '{ name: string, age: number }');
 
       // Load
-      const loaded = loadObject(originalData, schema) as Collection<InternetObject>;
+      const loaded = loadObject(originalData, defs) as Collection<InternetObject>;
       expect(loaded.length).toBe(2);
 
       // Stringify
-      const stringified = stringify(loaded, schema);
+      const stringified = stringify(loaded, defs);
 
       // Result should contain both objects
       expect(stringified).toContain('Alice');
@@ -221,15 +231,15 @@ describe('High-level stringify() API', () => {
         id: 999999999999999n,
         created: new Date('2024-01-15T10:30:00Z')
       };
-      const schema = compileSchema('Entity', '{ id: bigint, created: datetime }');
+      const defs = createDefsWithSchema('Entity', '{ id: bigint, created: datetime }');
 
       // Load
-      const loaded = loadObject(originalData, schema) as InternetObject;
+      const loaded = loadObject(originalData, defs) as InternetObject;
       expect(loaded.get('id')).toBe(999999999999999n);
       expect(loaded.get('created')).toBeInstanceOf(Date);
 
       // Stringify
-      const stringified = stringify(loaded, schema);
+      const stringified = stringify(loaded, defs);
 
       expect(stringified).toContain('999999999999999');
       expect(stringified).toContain('2024');
@@ -257,17 +267,18 @@ describe('High-level stringify() API', () => {
     });
   });
 
-  describe('with definitions', () => {
-    it('resolves schema from definitions', () => {
+  describe('with definitions using schemaName', () => {
+    it('uses schemaName to pick schema from definitions', () => {
       const defs = new Definitions();
       const schema = compileSchema('User', '{ name: string, age: number }');
-      defs.set('User', schema);
+      defs.set('$User', schema);
 
       const obj = new InternetObject();
       obj.set('name', 'Alice');
       obj.set('age', 28);
 
-      const result = stringify(obj, 'User', defs);
+      // Use schemaName option to pick $User schema
+      const result = stringify(obj, defs, { schemaName: '$User' });
 
       expect(result).toContain('Alice');
       expect(result).toContain('28');

@@ -46,6 +46,7 @@ function parse(
 ): Document
 
 interface ParseOptions {
+  schemaName?: string;        // Pick specific schema from defs (e.g., '$User')
   strict?: boolean;           // Throw on first error (default: false)
   errorCollector?: Error[];   // Collect parse errors
 }
@@ -53,8 +54,9 @@ interface ParseOptions {
 
 **How schema is resolved:**
 1. From IO string header (inline `~ $schema: {...}`)
-2. From `defs.defaultSchema` if provided
-3. Schema-less parsing if neither
+2. If `options.schemaName` provided → uses `defs.get(schemaName)`
+3. From `defs.defaultSchema` if provided (no schemaName)
+4. Schema-less parsing if neither
 
 **Usage:**
 ```typescript
@@ -94,6 +96,7 @@ function stringify(
 ): string
 
 interface StringifyOptions {
+  schemaName?: string;        // Pick specific schema from defs (e.g., '$User')
   indent?: number | string;   // Pretty print indentation
   includeHeader?: boolean;    // Include definitions header
   skipErrors?: boolean;       // Skip error objects in collections
@@ -102,7 +105,8 @@ interface StringifyOptions {
 
 **How schema is resolved:**
 1. If `Document` → uses `doc.header.schema`
-2. If `Definitions` → uses `defs.defaultSchema` (i.e., `$schema`)
+2. If `options.schemaName` provided → uses `defs.get(schemaName)`
+3. If `Definitions` (no schemaName) → uses `defs.defaultSchema` (i.e., `$schema`)
 
 **Usage:**
 ```typescript
@@ -110,9 +114,12 @@ interface StringifyOptions {
 const io = stringify(doc)
 const io = stringify(doc, { indent: 2 })
 
-// InternetObject/Collection with Definitions
+// InternetObject/Collection with Definitions (uses $schema)
 const io = stringify(obj, defs)
 const io = stringify(obj, defs, { includeHeader: true })
+
+// With specific schema from definitions
+const io = stringify(user, defs, { schemaName: '$User' })
 ```
 
 ---
@@ -138,14 +145,16 @@ function load(
 ): Document
 
 interface LoadOptions {
+  schemaName?: string;        // Pick specific schema from defs (e.g., '$User')
   strict?: boolean;           // Throw on first error (default: false)
   errorCollector?: Error[];   // Collect validation errors
 }
 ```
 
 **How schema is resolved:**
-- If `defs` provided → uses `defs.defaultSchema` (`$schema`)
-- If no `defs` → schema-less mode (no validation)
+1. If `options.schemaName` provided → uses `defs.get(schemaName)`
+2. If `defs` provided (no schemaName) → uses `defs.defaultSchema` (`$schema`)
+3. If no `defs` → schema-less mode (no validation)
 
 **Usage:**
 ```typescript
@@ -153,16 +162,27 @@ interface LoadOptions {
 const doc = load(data)
 const doc = load(data, { strict: true })
 
-// With Definitions (validates against $schema)
+// With Definitions (validates against $schema i.e. defs.defaultSchema)
 const doc = load(data, defs)
 const doc = load(data, defs, { strict: true })
 
+// With specific schema from definitions
+const doc = load(data, defs, { schemaName: '$User' })
+const doc = load(data, defs, { schemaName: '$Product', errorCollector: errors })
+
 // Creating Definitions using parseDefinitions
 const defs = parseDefinitions(`
+~ $User: { name: string, age: int }
+~ $Product: { title: string, price: number }
 ~ $address: { street: string, city: string, state: string }
 ~ $schema: { name: string, age: int, address: $address }
 `, null)
+
+// Validate against $schema (default)
 const doc = load(data, defs)
+
+// Validate against $User
+const doc = load(userData, defs, { schemaName: '$User' })
 ```
 
 ---
@@ -264,7 +284,18 @@ function loadObject(
   defs?: Definitions,
   options?: LoadOptions
 ): InternetObject
+
+interface LoadOptions {
+  schemaName?: string;        // Pick specific schema from defs (e.g., '$User')
+  strict?: boolean;           // Throw on first error (default: false)
+  errorCollector?: Error[];   // Collect validation errors
+}
 ```
+
+**How schema is resolved:**
+1. If `options.schemaName` provided → uses `defs.get(schemaName)`
+2. If `defs` provided (no schemaName) → uses `defs.defaultSchema` (`$schema`)
+3. If no `defs` → schema-less mode (no validation)
 
 **Usage:**
 ```typescript
@@ -275,6 +306,9 @@ const obj = loadObject(data, { strict: true })
 // With definitions (validates against $schema)
 const obj = loadObject(data, defs)
 const obj = loadObject(data, defs, { strict: true })
+
+// With specific schema from definitions
+const obj = loadObject(data, defs, { schemaName: '$User' })
 ```
 
 ---
@@ -300,10 +334,16 @@ function loadCollection(
 ): Collection<InternetObject>
 
 interface LoadOptions {
+  schemaName?: string;        // Pick specific schema from defs (e.g., '$User')
   strict?: boolean;           // Throw on first error (default: false)
   errorCollector?: Error[];   // Collect validation errors
 }
 ```
+
+**How schema is resolved:**
+1. If `options.schemaName` provided → uses `defs.get(schemaName)`
+2. If `defs` provided (no schemaName) → uses `defs.defaultSchema` (`$schema`)
+3. If no `defs` → schema-less mode (no validation)
 
 **Usage:**
 ```typescript
@@ -314,6 +354,9 @@ const col = loadCollection(data, { strict: true })
 // With definitions (validates each item against $schema)
 const col = loadCollection(data, defs)
 const col = loadCollection(data, defs, { errorCollector: errors })
+
+// With specific schema from definitions
+const col = loadCollection(users, defs, { schemaName: '$User' })
 ```
 
 ---

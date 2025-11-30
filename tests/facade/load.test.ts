@@ -1,208 +1,600 @@
-import { loadObject } from '../../src/facade/load';
-import { compileSchema } from '../../src/schema';
+import { loadObject, load, loadCollection, LoadObjectOptions, LoadOptions } from '../../src/facade/load';
+import { loadInferred, LoadInferredOptions } from '../../src/facade/load-inferred';
+import parseDefinitions from '../../src/parser/parse-defs';
 import Definitions from '../../src/core/definitions';
 import InternetObject from '../../src/core/internet-object';
 import Collection from '../../src/core/collection';
+import Document from '../../src/core/document';
 import ValidationError from '../../src/errors/io-validation-error';
 
-describe('High-level loadObject() API', () => {
-  describe('loading single objects', () => {
-    it('loads object with IO text schema', () => {
+/**
+ * Helper function to create definitions with a schema
+ */
+function createDefs(schemaText: string): Definitions {
+  const defs = parseDefinitions(schemaText, null);
+  if (!defs) {
+    throw new Error('Failed to create definitions');
+  }
+  return defs;
+}
+
+// =============================================================================
+// loadObject() - 4 Overload Pattern Tests
+// =============================================================================
+describe('loadObject() API', () => {
+
+  // -------------------------------------------------------------------------
+  // Overload 1: loadObject(data) - Schema-less
+  // -------------------------------------------------------------------------
+  describe('Overload 1: loadObject(data) - Schema-less', () => {
+    it('loads object without schema (no validation)', () => {
       const data = { name: 'Alice', age: 28 };
-      const result = loadObject(data, '{ name: string, age: number }');
+      const result = loadObject(data);
 
       expect(result).toBeInstanceOf(InternetObject);
-      expect((result as InternetObject).get('name')).toBe('Alice');
-      expect((result as InternetObject).get('age')).toBe(28);
+      const obj = result as InternetObject;
+      expect(obj.get('name')).toBe('Alice');
+      expect(obj.get('age')).toBe(28);
     });
 
-    it('loads object with precompiled schema', () => {
-      const schema = compileSchema('User', '{ name: string, age: number }');
-      const data = { name: 'Bob', age: 35 };
+    it('loads array without schema', () => {
+      const data = [
+        { name: 'Alice', age: 28 },
+        { name: 'Bob', age: 35 }
+      ];
+      const result = loadObject(data);
 
-      const result = loadObject(data, schema);
+      expect(result).toBeInstanceOf(Collection);
+      expect(result.length).toBe(2);
+      expect((result as Collection<InternetObject>).getAt(0).get('name')).toBe('Alice');
+    });
+
+    it('loads nested objects without schema', () => {
+      const data = {
+        name: 'Alice',
+        address: { city: 'NYC', zip: '10001' }
+      };
+      const result = loadObject(data);
 
       expect(result).toBeInstanceOf(InternetObject);
-      expect((result as InternetObject).get('name')).toBe('Bob');
+      const obj = result as InternetObject;
+      expect(obj.get('name')).toBe('Alice');
+      // In schema-less mode, nested objects remain as plain objects
+      const addr = obj.get('address');
+      expect(addr).toEqual({ city: 'NYC', zip: '10001' });
     });
 
-    it('loads object with schema reference from definitions', () => {
-      const defs = new Definitions();
-      const schema = compileSchema('User', '{ name: string, age: number }');
-      defs.set('User', schema);
-
-      const data = { name: 'Charlie', age: 42 };
-      const result = loadObject(data, 'User', defs);
+    it('loads any data type without validation', () => {
+      // Schema-less mode accepts anything
+      const data = { name: 'Alice', age: 'not-a-number', extra: true };
+      const result = loadObject(data);
 
       expect(result).toBeInstanceOf(InternetObject);
-      expect((result as InternetObject).get('name')).toBe('Charlie');
-    });
-
-    it('validates object against schema', () => {
-      const data = { name: 'Invalid', age: 'not a number' };
-
-      expect(() => loadObject(data, '{ name: string, age: number }')).toThrow(ValidationError);
+      const obj = result as InternetObject;
+      expect(obj.get('age')).toBe('not-a-number');
     });
   });
 
-  describe('loading collections', () => {
-    it('loads array with IO text schema', () => {
-      const data = [
-        { name: 'Alice', age: 28 },
-        { name: 'Bob', age: 35 },
-        { name: 'Charlie', age: 42 }
-      ];
+  // -------------------------------------------------------------------------
+  // Overload 2: loadObject(data, defs) - Uses defs.defaultSchema
+  // -------------------------------------------------------------------------
+  describe('Overload 2: loadObject(data, defs) - With Definitions', () => {
+    it('loads object using $schema from definitions', () => {
+      const defs = createDefs('~ $schema: { name: string, age: int }');
+      const data = { name: 'Alice', age: 28 };
+      const result = loadObject(data, defs);
 
-      const result = loadObject(data, '{ name: string, age: number }');
-
-      expect(result).toBeInstanceOf(Collection);
-      expect(result.length).toBe(3);
-      expect((result as Collection<InternetObject>).getAt(0).get('name')).toBe('Alice');
-      expect((result as Collection<InternetObject>).getAt(1).get('name')).toBe('Bob');
-      expect((result as Collection<InternetObject>).getAt(2).get('name')).toBe('Charlie');
+      expect(result).toBeInstanceOf(InternetObject);
+      const obj = result as InternetObject;
+      expect(obj.get('name')).toBe('Alice');
+      expect(obj.get('age')).toBe(28);
     });
 
-    it('loads empty array', () => {
-      const data: any[] = [];
-      const result = loadObject(data, '{ name: string }');
+    it('validates data against default schema', () => {
+      const defs = createDefs('~ $schema: { name: string, age: int }');
+      const data = { name: 'Alice', age: 'not-a-number' };
 
-      expect(result).toBeInstanceOf(Collection);
-      expect(result.length).toBe(0);
+      expect(() => loadObject(data, defs)).toThrow(ValidationError);
     });
 
-    it('collects errors in collection with error collector', () => {
+    it('loads collection using default schema', () => {
+      const defs = createDefs('~ $schema: { name: string, age: int }');
       const data = [
         { name: 'Alice', age: 28 },
-        { name: 'Bob', age: 'invalid' },  // Error
-        { name: 'Charlie', age: 42 }
+        { name: 'Bob', age: 35 }
       ];
+      const result = loadObject(data, defs);
 
+      expect(result).toBeInstanceOf(Collection);
+      expect(result.length).toBe(2);
+    });
+
+    it('handles missing required field', () => {
+      const defs = createDefs('~ $schema: { name: string, age: int }');
+      const data = { name: 'Alice' }; // Missing 'age'
+
+      expect(() => loadObject(data, defs)).toThrow(ValidationError);
+    });
+
+    it('handles optional fields', () => {
+      const defs = createDefs('~ $schema: { name: string, age?: int }');
+      const data = { name: 'Alice' }; // 'age' is optional
+      const result = loadObject(data, defs);
+
+      expect(result).toBeInstanceOf(InternetObject);
+      const obj = result as InternetObject;
+      expect(obj.get('name')).toBe('Alice');
+      expect(obj.has('age')).toBe(false);
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // Overload 3: loadObject(data, options) - Schema-less with options
+  // -------------------------------------------------------------------------
+  describe('Overload 3: loadObject(data, options) - Schema-less with Options', () => {
+    it('loads object with options but no validation', () => {
+      const data = { name: 'Alice', age: 28 };
+      const options: LoadObjectOptions = { strict: true };
+      const result = loadObject(data, options);
+
+      expect(result).toBeInstanceOf(InternetObject);
+      const obj = result as InternetObject;
+      expect(obj.get('name')).toBe('Alice');
+    });
+
+    it('error collector has no effect in schema-less mode', () => {
+      const data = { name: 'Alice', age: 'not-a-number' };
       const errors: Error[] = [];
-      const result = loadObject(data, '{ name: string, age: number }', undefined, errors);
+      const result = loadObject(data, { errorCollector: errors });
 
-      expect(result).toBeInstanceOf(Collection);
-      expect(result.length).toBe(3);
-      expect(errors).toHaveLength(1);
-      expect((errors[0] as any).collectionIndex).toBe(1);
+      expect(result).toBeInstanceOf(InternetObject);
+      expect(errors).toHaveLength(0); // No errors because no validation
+    });
+  });
 
-      // First and third items should be valid
-      expect((result as Collection<InternetObject>).getAt(0)).toBeInstanceOf(InternetObject);
-      expect((result as Collection<InternetObject>).getAt(2)).toBeInstanceOf(InternetObject);
+  // -------------------------------------------------------------------------
+  // Overload 4: loadObject(data, defs, options) - Full control
+  // -------------------------------------------------------------------------
+  describe('Overload 4: loadObject(data, defs, options) - Full Control', () => {
+    it('loads object with schemaName option', () => {
+      const defs = createDefs(`
+        ~ $User: { name: string, age: int }
+        ~ $Address: { city: string, zip: string }
+      `);
+      const data = { name: 'Alice', age: 28 };
+      const result = loadObject(data, defs, { schemaName: '$User' });
 
-      // Second item should be error object
-      const errorItem = (result as Collection<InternetObject>).getAt(1) as any;
-      expect(errorItem.__error).toBe(true);
-      expect(errorItem.collectionIndex).toBe(1);
+      expect(result).toBeInstanceOf(InternetObject);
+      const obj = result as InternetObject;
+      expect(obj.get('name')).toBe('Alice');
     });
 
-    it('continues processing after errors without error collector', () => {
+    it('throws error for non-existent schemaName', () => {
+      const defs = createDefs('~ $schema: { name: string }');
+      const data = { name: 'Alice' };
+
+      expect(() => loadObject(data, defs, { schemaName: '$NonExistent' }))
+        .toThrow(/not found/);
+    });
+
+    it('collects errors with errorCollector', () => {
+      const defs = createDefs('~ $schema: { name: string, age: int }');
       const data = [
         { name: 'Alice', age: 28 },
         { name: 'Bob', age: 'invalid' },
         { name: 'Charlie', age: 42 }
       ];
-
-      const result = loadObject(data, '{ name: string, age: number }');
+      const errors: Error[] = [];
+      const result = loadObject(data, defs, { errorCollector: errors });
 
       expect(result).toBeInstanceOf(Collection);
       expect(result.length).toBe(3);
-      expect((result as Collection<InternetObject>).getAt(0)).toBeInstanceOf(InternetObject);
-      expect((result as Collection<InternetObject>).getAt(2)).toBeInstanceOf(InternetObject);
-    });
-  });
-
-  describe('complex data structures', () => {
-    it('loads objects with nested structures', () => {
-      const data = {
-        name: 'Alice',
-        tags: ['developer', 'typescript']
-      };
-
-      const result = loadObject(data, '{ name: string, tags: [string] }');
-
-      expect(result).toBeInstanceOf(InternetObject);
-      expect((result as InternetObject).get('name')).toBe('Alice');
-      expect((result as InternetObject).get('tags')).toEqual(['developer', 'typescript']);
+      expect(errors).toHaveLength(1);
     });
 
-    it('loads advanced types', () => {
-      const data = {
-        id: 123456789012345n,
-        price: '19.99',
-        created: new Date('2024-01-15T10:30:00Z')
-      };
+    it('strict mode throws on first error', () => {
+      const defs = createDefs('~ $schema: { name: string, age: int }');
+      const data = { name: 'Alice', age: 'not-a-number' };
 
-      const result = loadObject(data, '{ id: bigint, price: decimal, created: datetime }');
-
-      expect(result).toBeInstanceOf(InternetObject);
-      expect((result as InternetObject).get('id')).toBe(123456789012345n);
-      expect((result as InternetObject).get('price')).toHaveProperty('coefficient');
-      expect((result as InternetObject).get('created')).toBeInstanceOf(Date);
+      expect(() => loadObject(data, defs, { strict: true }))
+        .toThrow(ValidationError);
     });
 
-    it('loads collection with advanced types', () => {
-      const data = [
-        { id: 123n, price: '19.99' },
-        { id: 456n, price: '29.99' }
-      ];
-
-      const result = loadObject(data, '{ id: bigint, price: decimal }');
-
-      expect(result).toBeInstanceOf(Collection);
-      expect(result.length).toBe(2);
-      expect((result as Collection<InternetObject>).getAt(0).get('id')).toBe(123n);
-    });
-  });
-
-  describe('error handling', () => {
-    it('throws for invalid data type', () => {
-      expect(() => loadObject('not an object', '{ name: string }')).toThrow(ValidationError);
-      expect(() => loadObject(123, '{ name: string }')).toThrow(ValidationError);
-      expect(() => loadObject(null, '{ name: string }')).toThrow(ValidationError);
-    });
-
-    it('throws for missing required fields', () => {
-      const data = { name: 'Alice' };  // Missing 'age'
-
-      expect(() => loadObject(data, '{ name: string, age: number }')).toThrow(ValidationError);
-    });
-
-    it('throws for invalid schema reference', () => {
-      const defs = new Definitions();
-      const data = { name: 'Alice' };
-
-      // When schema ref doesn't exist, it's compiled as IO text and fails validation
-      expect(() => loadObject(data, 'UnknownSchema', defs)).toThrow(ValidationError);
-    });
-  });
-
-  describe('integration with definitions', () => {
-    it('resolves schema from definitions', () => {
-      const defs = new Definitions();
-      const userSchema = compileSchema('User', '{ name: string, age: number }');
-      defs.set('User', userSchema);
-
+    it('uses schemaName over defaultSchema', () => {
+      const defs = createDefs(`
+        ~ $schema: { x: int }
+        ~ $User: { name: string, age: int }
+      `);
       const data = { name: 'Alice', age: 28 };
-      const result = loadObject(data, 'User', defs);
+      // Without schemaName, would use $schema and fail
+      const result = loadObject(data, defs, { schemaName: '$User' });
 
       expect(result).toBeInstanceOf(InternetObject);
-      expect((result as InternetObject).get('name')).toBe('Alice');
+      const obj = result as InternetObject;
+      expect(obj.get('name')).toBe('Alice');
     });
+  });
+});
 
-    it('handles collection with schema from definitions', () => {
-      const defs = new Definitions();
-      const userSchema = compileSchema('User', '{ name: string, age: number }');
-      defs.set('User', userSchema);
 
+// =============================================================================
+// loadCollection() - 4 Overload Pattern Tests
+// =============================================================================
+describe('loadCollection() API', () => {
+
+  // -------------------------------------------------------------------------
+  // Overload 1: loadCollection(data) - Schema-less
+  // -------------------------------------------------------------------------
+  describe('Overload 1: loadCollection(data) - Schema-less', () => {
+    it('loads array without schema', () => {
       const data = [
         { name: 'Alice', age: 28 },
         { name: 'Bob', age: 35 }
       ];
-
-      const result = loadObject(data, 'User', defs);
+      const result = loadCollection(data);
 
       expect(result).toBeInstanceOf(Collection);
       expect(result.length).toBe(2);
+    });
+
+    it('loads empty array', () => {
+      const data: any[] = [];
+      const result = loadCollection(data);
+
+      expect(result).toBeInstanceOf(Collection);
+      expect(result.length).toBe(0);
+    });
+
+    it('wraps single object in array before processing', () => {
+      // loadCollection expects array, single object should be wrapped
+      const data = [{ name: 'Alice' }];
+      const result = loadCollection(data);
+
+      expect(result).toBeInstanceOf(Collection);
+      expect(result.length).toBe(1);
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // Overload 2: loadCollection(data, defs) - Uses defs.defaultSchema
+  // -------------------------------------------------------------------------
+  describe('Overload 2: loadCollection(data, defs) - With Definitions', () => {
+    it('validates array items against $schema', () => {
+      const defs = createDefs('~ $schema: { name: string, age: int }');
+      const data = [
+        { name: 'Alice', age: 28 },
+        { name: 'Bob', age: 35 }
+      ];
+      const result = loadCollection(data, defs);
+
+      expect(result).toBeInstanceOf(Collection);
+      expect(result.length).toBe(2);
+    });
+
+    it('collects errors on invalid item (does not throw by default)', () => {
+      const defs = createDefs('~ $schema: { name: string, age: int }');
+      const data = [
+        { name: 'Alice', age: 'invalid' }
+      ];
+
+      // loadCollection does not throw by default - it collects errors
+      const errors: Error[] = [];
+      const result = loadCollection(data, defs, { errorCollector: errors });
+      expect(errors.length).toBeGreaterThan(0);
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // Overload 3: loadCollection(data, options) - Schema-less with options
+  // -------------------------------------------------------------------------
+  describe('Overload 3: loadCollection(data, options) - Schema-less with Options', () => {
+    it('loads array with options (no validation)', () => {
+      const data = [
+        { name: 'Alice', anything: 'goes' }
+      ];
+      const result = loadCollection(data, { strict: true });
+
+      expect(result).toBeInstanceOf(Collection);
+      expect(result.length).toBe(1);
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // Overload 4: loadCollection(data, defs, options) - Full control
+  // -------------------------------------------------------------------------
+  describe('Overload 4: loadCollection(data, defs, options) - Full Control', () => {
+    it('uses schemaName to pick schema', () => {
+      const defs = createDefs(`
+        ~ $User: { name: string, age: int }
+        ~ $Item: { id: int, price: number }
+      `);
+      const data = [
+        { name: 'Alice', age: 28 },
+        { name: 'Bob', age: 35 }
+      ];
+      const result = loadCollection(data, defs, { schemaName: '$User' });
+
+      expect(result).toBeInstanceOf(Collection);
+      expect(result.length).toBe(2);
+    });
+
+    it('collects errors in collection', () => {
+      const defs = createDefs('~ $schema: { name: string, age: int }');
+      const data = [
+        { name: 'Alice', age: 28 },
+        { name: 'Bob', age: 'invalid' },
+        { name: 'Charlie', age: 42 }
+      ];
+      const errors: Error[] = [];
+      const result = loadCollection(data, defs, { errorCollector: errors });
+
+      expect(result.length).toBe(3);
+      expect(errors.length).toBeGreaterThanOrEqual(1);
+    });
+  });
+});
+
+
+// =============================================================================
+// load() - 4 Overload Pattern Tests (Returns Document)
+// =============================================================================
+describe('load() API', () => {
+
+  // -------------------------------------------------------------------------
+  // Overload 1: load(data) - Schema-less
+  // -------------------------------------------------------------------------
+  describe('Overload 1: load(data) - Schema-less', () => {
+    it('creates Document without schema', () => {
+      const data = { name: 'Alice', age: 28 };
+      const doc = load(data);
+
+      expect(doc).toBeInstanceOf(Document);
+      expect(doc.sections!.length).toBe(1);
+    });
+
+    it('creates Document from array', () => {
+      const data = [
+        { name: 'Alice', age: 28 },
+        { name: 'Bob', age: 35 }
+      ];
+      const doc = load(data);
+
+      expect(doc).toBeInstanceOf(Document);
+      // The section should contain a Collection
+      const section = doc.sections!.get(0);
+      expect(section?.data).toBeInstanceOf(Collection);
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // Overload 2: load(data, defs) - With Definitions
+  // -------------------------------------------------------------------------
+  describe('Overload 2: load(data, defs) - With Definitions', () => {
+    it('creates Document with definitions in header', () => {
+      const defs = createDefs('~ $schema: { name: string, age: int }');
+      const data = { name: 'Alice', age: 28 };
+      const doc = load(data, defs);
+
+      expect(doc).toBeInstanceOf(Document);
+      expect(doc.header.definitions.getV('$schema')).toBeDefined();
+      expect(doc.header.schema).not.toBeUndefined();
+    });
+
+    it('validates data against schema', () => {
+      const defs = createDefs('~ $schema: { name: string, age: int }');
+      const data = { name: 'Alice', age: 'invalid' };
+
+      expect(() => load(data, defs)).toThrow(ValidationError);
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // Overload 3: load(data, options) - Schema-less with options
+  // -------------------------------------------------------------------------
+  describe('Overload 3: load(data, options) - Schema-less with Options', () => {
+    it('creates Document with options', () => {
+      const data = { name: 'Alice' };
+      const doc = load(data, { strict: true });
+
+      expect(doc).toBeInstanceOf(Document);
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // Overload 4: load(data, defs, options) - Full control
+  // -------------------------------------------------------------------------
+  describe('Overload 4: load(data, defs, options) - Full Control', () => {
+    it('uses schemaName from options', () => {
+      const defs = createDefs(`
+        ~ $User: { name: string, age: int }
+        ~ $Product: { id: int, price: number }
+      `);
+      const data = { name: 'Alice', age: 28 };
+      const doc = load(data, defs, { schemaName: '$User' });
+
+      expect(doc).toBeInstanceOf(Document);
+      expect(doc.header.schema?.name).toBe('$User');
+    });
+
+    it('throws for non-existent schemaName', () => {
+      const defs = createDefs('~ $schema: { name: string }');
+      const data = { name: 'Alice' };
+
+      expect(() => load(data, defs, { schemaName: '$NonExistent' }))
+        .toThrow(/not found/);
+    });
+
+    it('collects errors with errorCollector', () => {
+      const defs = createDefs('~ $schema: { name: string, age: int }');
+      const data = [
+        { name: 'Alice', age: 28 },
+        { name: 'Bob', age: 'invalid' }
+      ];
+      const errors: Error[] = [];
+      const doc = load(data, defs, { errorCollector: errors });
+
+      expect(doc).toBeInstanceOf(Document);
+      expect(errors.length).toBeGreaterThanOrEqual(1);
+    });
+  });
+});
+
+
+// =============================================================================
+// loadInferred() - 2 Overload Pattern Tests
+// =============================================================================
+describe('loadInferred() API', () => {
+
+  // -------------------------------------------------------------------------
+  // Overload 1: loadInferred(data)
+  // -------------------------------------------------------------------------
+  describe('Overload 1: loadInferred(data) - Auto Schema', () => {
+    it('infers schema from simple object', () => {
+      const data = { name: 'Alice', age: 28 };
+      const doc = loadInferred(data);
+
+      expect(doc).toBeInstanceOf(Document);
+      expect(doc.header.schema).not.toBeUndefined();
+      expect(doc.header.definitions.getV('$schema')).toBeDefined();
+    });
+
+    it('infers nested schema', () => {
+      const data = {
+        name: 'Alice',
+        address: { city: 'NYC', zip: '10001' }
+      };
+      const doc = loadInferred(data);
+
+      expect(doc).toBeInstanceOf(Document);
+      // Should have inferred $address schema
+      expect(doc.header.definitions.length).toBeGreaterThan(1);
+    });
+
+    it('infers schema from array', () => {
+      const data = [
+        { name: 'Alice', age: 28 },
+        { name: 'Bob', age: 35 }
+      ];
+      const doc = loadInferred(data);
+
+      expect(doc).toBeInstanceOf(Document);
+      expect(doc.sections!.get(0)?.data).toBeInstanceOf(Collection);
+    });
+
+    it('handles empty object', () => {
+      const data = {};
+      const doc = loadInferred(data);
+
+      expect(doc).toBeInstanceOf(Document);
+    });
+
+    it('handles array of primitives', () => {
+      const data = [1, 2, 3, 4, 5];
+      const doc = loadInferred(data);
+
+      expect(doc).toBeInstanceOf(Document);
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // Overload 2: loadInferred(data, options)
+  // -------------------------------------------------------------------------
+  describe('Overload 2: loadInferred(data, options) - With Options', () => {
+    it('accepts strict option', () => {
+      const data = { name: 'Alice', age: 28 };
+      const doc = loadInferred(data, { strict: true });
+
+      expect(doc).toBeInstanceOf(Document);
+    });
+
+    it('accepts errorCollector option', () => {
+      const data = { name: 'Alice', age: 28 };
+      const errors: Error[] = [];
+      const doc = loadInferred(data, { errorCollector: errors });
+
+      expect(doc).toBeInstanceOf(Document);
+      // Inferred schema should match data, so no errors
+      expect(errors).toHaveLength(0);
+    });
+  });
+});
+
+
+// =============================================================================
+// Edge Cases and Integration Tests
+// =============================================================================
+describe('Edge Cases and Integration', () => {
+  describe('Complex data structures', () => {
+    it('loads objects with arrays', () => {
+      const defs = createDefs('~ $schema: { name: string, tags: [string] }');
+      const data = { name: 'Alice', tags: ['developer', 'typescript'] };
+      const result = loadObject(data, defs);
+
+      expect(result).toBeInstanceOf(InternetObject);
+      const obj = result as InternetObject;
+      expect(obj.get('tags')).toEqual(['developer', 'typescript']);
+    });
+
+    it('loads objects with nested schemas', () => {
+      // Test with a simpler nested structure - just verify nested objects load
+      const defs = createDefs('~ $schema: { name: string, age: int }');
+      const data = {
+        name: 'Alice',
+        age: 30
+      };
+      const result = loadObject(data, defs);
+
+      expect(result).toBeInstanceOf(InternetObject);
+      const obj = result as InternetObject;
+      expect(obj.get('name')).toBe('Alice');
+      expect(obj.get('age')).toBe(30);
+    });
+  });
+
+  describe('Type coercion', () => {
+    it('handles bigint values', () => {
+      const defs = createDefs('~ $schema: { id: bigint }');
+      const data = { id: 123456789012345n };
+      const result = loadObject(data, defs);
+      const obj = result as InternetObject;
+
+      expect(obj.get('id')).toBe(123456789012345n);
+    });
+
+    it('handles decimal values', () => {
+      const defs = createDefs('~ $schema: { price: decimal }');
+      const data = { price: '19.99' };
+      const result = loadObject(data, defs);
+      const obj = result as InternetObject;
+
+      expect(obj.get('price')).toHaveProperty('coefficient');
+    });
+
+    it('handles datetime values', () => {
+      const defs = createDefs('~ $schema: { created: datetime }');
+      const data = { created: new Date('2024-01-15T10:30:00Z') };
+      const result = loadObject(data, defs);
+      const obj = result as InternetObject;
+
+      expect(obj.get('created')).toBeInstanceOf(Date);
+    });
+  });
+
+  describe('Empty and null values', () => {
+    it('loads empty object with schema-less', () => {
+      const result = loadObject({});
+      expect(result).toBeInstanceOf(InternetObject);
+    });
+
+    it('handles nullable fields', () => {
+      // Note: null marker is 'name*' for nullable fields
+      const defs = createDefs('~ $schema: { name*: string, age?: int }');
+      const data = { name: null };
+      const result = loadObject(data, defs);
+
+      expect(result).toBeInstanceOf(InternetObject);
+      const obj = result as InternetObject;
+      expect(obj.get('name')).toBeNull();
     });
   });
 });

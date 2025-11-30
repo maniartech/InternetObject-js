@@ -1,5 +1,6 @@
 import { inferDefs, InferredDefs } from '../../../src/schema/utils/defs-inferrer';
-import { loadDoc, loadObject } from '../../../src/facade/load';
+import { load, loadObject } from '../../../src/facade/load';
+import { loadInferred } from '../../../src/facade/load-inferred';
 import { stringify, parse } from '../../../src/index';
 
 describe('Definition Inference (inferDefs)', () => {
@@ -121,18 +122,18 @@ describe('Definition Inference (inferDefs)', () => {
       expect(rootSchema.defs['age'].type).toBe('number');
     });
 
-    it('loadDoc creates collection from root array', () => {
+    it('load creates collection from root array', () => {
       const users = [
         { name: 'Alice', age: 28 },
         { name: 'Bob', age: 35 }
       ];
-      const doc = loadDoc(users, undefined, { inferDefs: true });
+      const doc = loadInferred(users);
 
       expect(doc).toBeDefined();
       expect(doc.header.schema).toBeDefined();
 
       // Stringify should output collection format
-      const ioText = stringify(doc, undefined, undefined, { includeHeader: true });
+      const ioText = stringify(doc, { includeHeader: true });
       expect(ioText).toContain('name: string');
       expect(ioText).toContain('age: number');
     });
@@ -175,8 +176,8 @@ describe('Definition Inference (inferDefs)', () => {
         { name: 'Bob', age: 35 }
       ];
 
-      const doc = loadDoc(users, undefined, { inferDefs: true });
-      const ioText = stringify(doc, undefined, undefined, { includeHeader: true });
+      const doc = loadInferred(users);
+      const ioText = stringify(doc, { includeHeader: true });
 
       // Parse it back
       const reparsed = parse(ioText);
@@ -355,8 +356,8 @@ describe('Definition Inference (inferDefs)', () => {
         ]
       };
 
-      const doc = loadDoc(libraryData, undefined, { inferDefs: true });
-      const ioText = stringify(doc, undefined, undefined, { includeHeader: true });
+      const doc = loadInferred(libraryData);
+      const ioText = stringify(doc, { includeHeader: true });
 
       // Should contain schema definitions
       expect(ioText).toContain('$borrowedBy');
@@ -499,8 +500,8 @@ describe('Definition Inference (inferDefs)', () => {
         // Round-trip test - DISABLED: stringify outputs empty strings for missing optional fields
         // This is a stringify/parse issue, not an inference issue. Inference is correct.
         // TODO: Fix stringify to omit optional undefined fields instead of outputting ""
-        // const doc = loadDoc(orders, undefined, { inferDefs: true });
-        // const ioText = stringify(doc, undefined, undefined, { includeHeader: true });
+        // const doc = loadInferred(orders);
+        // const ioText = stringify(doc, { includeHeader: true });
         // const reparsed = parse(ioText);
         // expect(reparsed.toJSON()).toEqual(orders);
       });
@@ -643,8 +644,8 @@ describe('Definition Inference (inferDefs)', () => {
 
         // Round-trip test - DISABLED: strings starting with @ are parsed as variables
         // This is a parse issue, not an inference issue. Inference is correct.
-        // const doc = loadDoc(feedData, undefined, { inferDefs: true });
-        // const ioText = stringify(doc, undefined, undefined, { includeHeader: true });
+        // const doc = loadInferred(feedData);
+        // const ioText = stringify(doc, { includeHeader: true });
         // const reparsed = parse(ioText);
         // expect(reparsed.toJSON()).toEqual(feedData);
       });
@@ -832,8 +833,8 @@ describe('Definition Inference (inferDefs)', () => {
 
         // Round-trip test - DISABLED: numeric strings like ZIP "02101" parse back as numbers
         // Also outputs empty strings for optional fields. These are parse/stringify issues.
-        // const doc = loadDoc(patients, undefined, { inferDefs: true });
-        // const ioText = stringify(doc, undefined, undefined, { includeHeader: true });
+        // const doc = loadInferred(patients);
+        // const ioText = stringify(doc, { includeHeader: true });
         // const reparsed = parse(ioText);
         // expect(reparsed.toJSON()).toEqual(patients);
       });
@@ -923,8 +924,8 @@ describe('Definition Inference (inferDefs)', () => {
 
         // Round-trip test - DISABLED: syntax error with colons in nested 'any' type objects
         // This is a stringify issue with 'any' type containing complex objects
-        // const doc = loadDoc(sensorData, undefined, { inferDefs: true });
-        // const ioText = stringify(doc, undefined, undefined, { includeHeader: true });
+        // const doc = loadInferred(sensorData);
+        // const ioText = stringify(doc, { includeHeader: true });
         // const reparsed = parse(ioText);
         // expect(reparsed.toJSON()).toEqual(sensorData);
       });
@@ -1044,8 +1045,8 @@ describe('Definition Inference (inferDefs)', () => {
 
         // Round-trip test - DISABLED: empty object {} becomes {field: "", ...} due to schema defaults
         // This is expected behavior when schema has required fields
-        // const doc = loadDoc(analyticsReport, undefined, { inferDefs: true });
-        // const ioText = stringify(doc, undefined, undefined, { includeHeader: true });
+        // const doc = loadInferred(analyticsReport);
+        // const ioText = stringify(doc, { includeHeader: true });
         // const reparsed = parse(ioText);
         // expect(reparsed.toJSON()).toEqual(analyticsReport);
       });
@@ -1169,8 +1170,8 @@ describe('Definition Inference (inferDefs)', () => {
 
         // Round-trip test - DISABLED: numeric keys like {'5': 80} cause "invalid-key" error
         // This is a parse/stringify limitation with numeric object keys
-        // const doc = loadDoc(products, undefined, { inferDefs: true });
-        // const ioText = stringify(doc, undefined, undefined, { includeHeader: true });
+        // const doc = loadInferred(products);
+        // const ioText = stringify(doc, { includeHeader: true });
         // const reparsed = parse(ioText);
         // expect(reparsed.toJSON()).toEqual(products);
       });

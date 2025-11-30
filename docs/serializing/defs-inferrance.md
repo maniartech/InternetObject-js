@@ -241,7 +241,7 @@ const jsonData = {
 };
 
 // Load with inferred definitions
-const obj = load(jsonData, undefined, { inferDefs: true });
+const obj = load(jsonData, { inferDefs: true });
 ```
 
 ### `loadDoc()` with `inferDefs`

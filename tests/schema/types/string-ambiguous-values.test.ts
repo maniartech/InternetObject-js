@@ -1,4 +1,6 @@
 import { parse, stringify, loadObject } from '../../../src/index'
+import { compileSchema } from '../../../src/schema'
+import Definitions from '../../../src/core/definitions'
 
 /**
  * Tests for string values that could be confused with other types.
@@ -294,7 +296,10 @@ describe('String Ambiguous Values - Round Trip Safety', () => {
 
   describe('Load function with ambiguous values', () => {
     it('should loadObject and stringify ambiguous string values correctly', () => {
-      const schema = `{title: string, code: string, flag: string, empty: string}`
+      const schema = compileSchema('TestSchema', `{title: string, code: string, flag: string, empty: string}`)
+      const defs = new Definitions()
+      defs.push('$schema', schema, true)
+
       const data = {
         title: '1984',
         code: 'N',
@@ -302,8 +307,8 @@ describe('String Ambiguous Values - Round Trip Safety', () => {
         empty: ''
       }
 
-      const result = loadObject(data, schema)
-      const output = stringify(result, schema)
+      const result = loadObject(data, defs)
+      const output = stringify(result, defs)
 
       expect(output).toContain('"1984"')
       expect(output).toContain('"N"')

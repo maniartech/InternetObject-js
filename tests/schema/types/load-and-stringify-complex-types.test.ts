@@ -1,8 +1,16 @@
 import { loadObject } from '../../../src/schema/load-processor'
 import { compileSchema } from '../../../src/schema'
 import InternetObject from '../../../src/core/internet-object'
-import { stringify } from '../../../src/facade/stringify'
+import { stringify, stringifyObject } from '../../../src/facade/stringify'
 import ValidationError from '../../../src/errors/io-validation-error'
+import Definitions from '../../../src/core/definitions'
+
+// Helper to create defs with schema
+function createDefsWithSchema(schema: any): Definitions {
+  const defs = new Definitions();
+  defs.push('$schema', schema, true);
+  return defs;
+}
 
 describe('load() and stringify() - complex types (array, object, any)', () => {
   // ============================================================
@@ -188,7 +196,7 @@ describe('load() and stringify() - complex types (array, object, any)', () => {
       const schema = compileSchema('TestSchema', '{ value: any }')
       const dateOnly = new Date('2024-06-15T00:00:00.000Z')
       const loaded = loadObject({ value: dateOnly }, schema)
-      const result = stringify(loaded, schema)
+      const result = stringifyObject(loaded, schema)
       // Should use d"..." format, not dt"..."
       expect(result).toContain('d"2024-06-15"')
       expect(result).not.toContain('dt"')
@@ -198,7 +206,7 @@ describe('load() and stringify() - complex types (array, object, any)', () => {
       const schema = compileSchema('TestSchema', '{ value: any }')
       const timeOnly = new Date('1900-01-01T14:30:45.000Z')
       const loaded = loadObject({ value: timeOnly }, schema)
-      const result = stringify(loaded, schema)
+      const result = stringifyObject(loaded, schema)
       // Should use t"..." format
       expect(result).toContain('t"14:30:45"')
       expect(result).not.toContain('dt"')
@@ -208,7 +216,7 @@ describe('load() and stringify() - complex types (array, object, any)', () => {
       const schema = compileSchema('TestSchema', '{ value: any }')
       const fullDatetime = new Date('2024-06-15T14:30:45.000Z')
       const loaded = loadObject({ value: fullDatetime }, schema)
-      const result = stringify(loaded, schema)
+      const result = stringifyObject(loaded, schema)
       // Should use dt"..." format
       expect(result).toContain('dt"')
       expect(result).toContain('2024-06-15')
@@ -219,7 +227,7 @@ describe('load() and stringify() - complex types (array, object, any)', () => {
       const schema = compileSchema('TestSchema', '{ value: any }')
       const withMs = new Date('2024-06-15T00:00:00.123Z')
       const loaded = loadObject({ value: withMs }, schema)
-      const result = stringify(loaded, schema)
+      const result = stringifyObject(loaded, schema)
       // Should use dt"..." because ms !== 0
       expect(result).toContain('dt"')
     })
@@ -232,14 +240,14 @@ describe('load() and stringify() - complex types (array, object, any)', () => {
     test('stringifies object with array field', () => {
       const schema = compileSchema('TestSchema', '{ items: [number] }')
       const loaded = loadObject({ items: [1, 2, 3] }, schema)
-      const result = stringify(loaded, schema)
+      const result = stringifyObject(loaded, schema)
       expect(result).toContain('[1, 2, 3]')
     })
 
     test('stringifies object with string array', () => {
       const schema = compileSchema('TestSchema', '{ names: [string] }')
       const loaded = loadObject({ names: ['Alice', 'Bob'] }, schema)
-      const result = stringify(loaded, schema)
+      const result = stringifyObject(loaded, schema)
       expect(result).toContain('Alice')
       expect(result).toContain('Bob')
     })
@@ -247,7 +255,7 @@ describe('load() and stringify() - complex types (array, object, any)', () => {
     test('stringifies object with boolean array', () => {
       const schema = compileSchema('TestSchema', '{ flags: [bool] }')
       const loaded = loadObject({ flags: [true, false, true] }, schema)
-      const result = stringify(loaded, schema)
+      const result = stringifyObject(loaded, schema)
       expect(result).toContain('T')
       expect(result).toContain('F')
     })
@@ -255,7 +263,7 @@ describe('load() and stringify() - complex types (array, object, any)', () => {
     test('stringifies nested object', () => {
       const schema = compileSchema('TestSchema', '{ address: {city: string, zip: number} }')
       const loaded = loadObject({ address: { city: 'NYC', zip: 10001 } }, schema)
-      const result = stringify(loaded, schema)
+      const result = stringifyObject(loaded, schema)
       expect(result).toContain('NYC')
       expect(result).toContain('10001')
     })
@@ -263,7 +271,7 @@ describe('load() and stringify() - complex types (array, object, any)', () => {
     test('stringifies object with any field', () => {
       const schema = compileSchema('TestSchema', '{ value: any }')
       const loaded = loadObject({ value: 42 }, schema)
-      const result = stringify(loaded, schema)
+      const result = stringifyObject(loaded, schema)
       expect(result).toContain('42')
     })
 
@@ -272,7 +280,7 @@ describe('load() and stringify() - complex types (array, object, any)', () => {
       const loaded = loadObject({
         person: { name: 'Alice', active: true }
       }, schema)
-      const result = stringify(loaded, schema)
+      const result = stringifyObject(loaded, schema)
       expect(result).toContain('Alice')
       expect(result).toContain('T')
     })
@@ -285,7 +293,7 @@ describe('load() and stringify() - complex types (array, object, any)', () => {
           { name: 'Bob', age: 25 }
         ]
       }, schema)
-      const result = stringify(loaded, schema)
+      const result = stringifyObject(loaded, schema)
       expect(result).toContain('Alice')
       expect(result).toContain('Bob')
       expect(result).toContain('30')
@@ -301,7 +309,7 @@ describe('load() and stringify() - complex types (array, object, any)', () => {
       const schema = compileSchema('TestSchema', '{ items: [number] }')
       const original = { items: [1, 2, 3] }
       const loaded = loadObject(original, schema)
-      const stringified = stringify(loaded, schema)
+      const stringified = stringifyObject(loaded, schema)
 
       expect(stringified).toBe('[1, 2, 3]')
     })
@@ -310,7 +318,7 @@ describe('load() and stringify() - complex types (array, object, any)', () => {
       const schema = compileSchema('TestSchema', '{ name: string, address: {city: string} }')
       const original = { name: 'Alice', address: { city: 'NYC' } }
       const loaded = loadObject(original, schema)
-      const stringified = stringify(loaded, schema)
+      const stringified = stringifyObject(loaded, schema)
 
       expect(stringified).toContain('Alice')
       expect(stringified).toContain('NYC')
@@ -320,7 +328,7 @@ describe('load() and stringify() - complex types (array, object, any)', () => {
       const schema = compileSchema('TestSchema', '{ data: any }')
       const original = { data: { nested: 'value' } }
       const loaded = loadObject(original, schema)
-      const stringified = stringify(loaded, schema)
+      const stringified = stringifyObject(loaded, schema)
 
       expect(stringified).toContain('nested')
       expect(stringified).toContain('value')
@@ -330,7 +338,7 @@ describe('load() and stringify() - complex types (array, object, any)', () => {
       const schema = compileSchema('TestSchema', '{ name: string, scores: [number], active: bool }')
       const original = { name: 'Test', scores: [90, 85, 95], active: true }
       const loaded = loadObject(original, schema)
-      const stringified = stringify(loaded, schema)
+      const stringified = stringifyObject(loaded, schema)
 
       expect(stringified).toContain('Test')
       expect(stringified).toContain('90')

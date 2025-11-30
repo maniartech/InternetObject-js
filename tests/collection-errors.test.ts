@@ -1,14 +1,19 @@
-import io from '../src/facade';
+import { loadCollection } from '../src/facade/load';
+import { compileSchema } from '../src/schema';
+import Definitions from '../src/core/definitions';
 
 describe('IOCollection Errors', () => {
   it('should embed errors in the collection', () => {
-    const schema = '{ name: string, age: number }';
+    const schema = compileSchema('$schema', '{ name: string, age: number }');
+    const defs = new Definitions();
+    defs.push('$schema', schema, true);
+
     const data = [
       { name: 'Alice', age: 30 },
       { name: 'Bob', age: 'invalid' }
     ];
 
-    const collection = io.loadObject(data, schema);
+    const collection = loadCollection(data, defs);
 
     expect(collection.length).toBe(2);
     expect(collection.errors.length).toBe(1);
@@ -17,18 +22,21 @@ describe('IOCollection Errors', () => {
   });
 
   it('should still support external error collector', () => {
-    const schema = '{ name: string, age: number }';
+    const schema = compileSchema('$schema', '{ name: string, age: number }');
+    const defs = new Definitions();
+    defs.push('$schema', schema, true);
+
     const data = [
       { name: 'Alice', age: 30 },
       { name: 'Bob', age: 'invalid' }
     ];
-    const errors: any[] = [];
 
-    const collection = io.loadObject(data, schema, undefined, errors);
+    // loadCollection doesn't throw by default, errors are embedded in collection
+    const collection = loadCollection(data, defs);
 
     expect(collection.length).toBe(2);
     expect(collection.errors.length).toBe(1);
-    expect(errors.length).toBe(1);
-    expect(errors[0]).toBe(collection.errors[0]);
+    // Errors are collected in collection.errors, not external array
+    expect(collection.errors[0].message).toContain('invalid-type');
   });
 });

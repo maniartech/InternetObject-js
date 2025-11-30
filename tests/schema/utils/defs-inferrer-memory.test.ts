@@ -2,7 +2,8 @@
  * Memory and stress tests for defs-inferrer
  */
 import { inferDefs } from '../../../src/schema/utils/defs-inferrer';
-import { stringify, loadObject, loadDoc, parse } from '../../../src';
+import { loadInferred } from '../../../src/facade/load-inferred';
+import { stringify, loadObject, load, parse } from '../../../src';
 
 describe('Defs Inferrer - Memory and Stress Tests', () => {
   describe('Deep Nesting', () => {
@@ -59,7 +60,7 @@ describe('Defs Inferrer - Memory and Stress Tests', () => {
         schema: '$mySchema'
       };
 
-      const doc = loadDoc(data, undefined, { inferDefs: true });
+      const doc = loadInferred(data);
       const output = stringify(doc);
 
       // @ and $ are conventions, not reserved - allowed unquoted
@@ -75,7 +76,7 @@ describe('Defs Inferrer - Memory and Stress Tests', () => {
         tilde: '~value'
       };
 
-      const doc = loadDoc(data, undefined, { inferDefs: true });
+      const doc = loadInferred(data);
       const output = stringify(doc);
 
       // ~ is the definition marker, must be escaped
@@ -88,7 +89,7 @@ describe('Defs Inferrer - Memory and Stress Tests', () => {
         sentence: 'Hello, world!'
       };
 
-      const doc = loadDoc(data, undefined, { inferDefs: true });
+      const doc = loadInferred(data);
       const output = stringify(doc);
 
       expect(output).toContain('"a,b,c"');
@@ -102,7 +103,7 @@ describe('Defs Inferrer - Memory and Stress Tests', () => {
         time: '10:30'
       };
 
-      const doc = loadDoc(data, undefined, { inferDefs: true });
+      const doc = loadInferred(data);
       const output = stringify(doc);
 
       // [ is quoted, { and : are escaped
@@ -121,8 +122,8 @@ describe('Defs Inferrer - Memory and Stress Tests', () => {
         ]
       };
 
-      const doc = loadDoc(data, undefined, { inferDefs: true });
-      const output = stringify(doc, undefined, undefined, { includeHeader: true });
+      const doc = loadInferred(data);
+      const output = stringify(doc, { includeHeader: true });
 
       // Stringify correctly outputs @ and $ unquoted
       expect(output).toContain('@mention');

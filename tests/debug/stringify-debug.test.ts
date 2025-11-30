@@ -11,7 +11,7 @@ John, 30
     console.log('Document JSON:', JSON.stringify(doc.toJSON(), null, 2))
     console.log('Schema names:', doc.header.schema?.names)
     console.log('Data only:', JSON.stringify(stringify(doc)))
-    console.log('With types:', JSON.stringify(stringify(doc, undefined, undefined, { includeTypes: true })))
+    console.log('With types:', JSON.stringify(stringify(doc, { includeTypes: true })))
   })
 
   it('shows output format - named definition', () => {
@@ -23,6 +23,6 @@ John, 30
 `)
     console.log('Document JSON:', JSON.stringify(doc.toJSON(), null, 2))
     console.log('Data only:', JSON.stringify(stringify(doc)))
-    console.log('With types:', JSON.stringify(stringify(doc, undefined, undefined, { includeTypes: true })))
+    console.log('With types:', JSON.stringify(stringify(doc, { includeTypes: true })))
   })
 })

@@ -81,7 +81,7 @@ Test, 42
 ---
 John, 30
 `)
-      const result = stringify(doc, undefined, undefined, { includeTypes: false })
+      const result = stringify(doc, { includeTypes: false })
       expect(result).toBe('John, 30')
     })
 
@@ -92,7 +92,7 @@ John, 30
 ---
 {{5}}
 `)
-      const result = stringify(doc, undefined, undefined, { includeTypes: false })
+      const result = stringify(doc, { includeTypes: false })
       expect(result).toBe('{5}')
       expect(result).not.toContain('$def')
     })
@@ -105,7 +105,7 @@ John, 30
 ---
 John, 30
 `)
-      const result = stringify(doc, undefined, undefined, { includeTypes: true })
+      const result = stringify(doc, { includeTypes: true })
       // In schema-only mode, outputs bare schema (backward compatible)
       expect(result).toContain('name: string')
       expect(result).toContain('age: int')
@@ -120,7 +120,7 @@ John, 30
 ---
 Alice
 `)
-      const result = stringify(doc, undefined, undefined, { includeTypes: true })
+      const result = stringify(doc, { includeTypes: true })
       expect(result).toContain('~ @version:')
       expect(result).toContain('$schema')
     })
@@ -145,7 +145,7 @@ John, 30
 --- p: $person
 John, 30
 `)
-      const result = stringify(doc, undefined, undefined, { includeTypes: true })
+      const result = stringify(doc, { includeTypes: true })
       expect(result).toContain('~ $person: {name: string, age: int}')
       expect(result).toContain('--- p: $person')
       expect(result).toContain('John, 30')

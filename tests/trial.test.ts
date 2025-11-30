@@ -1,4 +1,4 @@
-import { loadDoc, parse, stringify } from '../src/index';
+import { load, loadInferred, parse, stringify } from '../src/index';
 
 describe('Trial Debug Playground', () => {
 
@@ -27,7 +27,7 @@ describe('Trial Debug Playground', () => {
 
     const doc = parse(input, null);
     // Request types (for schema line) but data rows should stay positional without keys
-    const iotext = stringify(doc, undefined, undefined, { includeTypes: true });
+    const iotext = stringify(doc, { includeTypes: true });
 
     console.log('Full output:\n', iotext);
 
@@ -80,9 +80,9 @@ describe('Trial Debug Playground', () => {
       ]
     };
 
-    const doc = loadDoc(jsonData, undefined, { inferDefs: true });
+    const doc = loadInferred(jsonData);
     // Use includeHeader: true to include schema definitions in output
-    const iotext = stringify(doc, undefined, undefined, { includeHeader: true });
+    const iotext = stringify(doc, { includeHeader: true });
 
     console.log('IO Format from JSON:\n', iotext);
 

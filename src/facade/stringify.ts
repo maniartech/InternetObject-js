@@ -13,6 +13,18 @@ import { IO_MARKERS } from './serialization-constants';
  */
 export interface StringifyOptions {
   /**
+   * The name of the schema to use from definitions.
+   * If provided, the schema will be looked up by this name in the definitions.
+   * If not provided, uses `defs.defaultSchema` (`$schema`).
+   *
+   * @example
+   * ```typescript
+   * const io = stringify(user, defs, { schemaName: '$User' });
+   * ```
+   */
+  schemaName?: string;
+
+  /**
    * Indentation for pretty printing (number of spaces or string)
    * If omitted, output is compact (single line)
    */
@@ -43,120 +55,116 @@ export interface StringifyOptions {
  * This is the high-level API for converting validated data back to IO format.
  * Uses TypeDef.stringify() methods to serialize each field according to type rules.
  *
+ * ## Overload Patterns
+ *
+ * 1. `stringify(value)` - Schema-less serialization (no validation)
+ * 2. `stringify(value, defs)` - Uses `defs.defaultSchema` ($schema) for type info
+ * 3. `stringify(value, options)` - Schema-less with formatting options
+ * 4. `stringify(value, defs, options)` - Full control with schema from defs
+ *
+ * ## Schema Resolution
+ *
+ * When `defs` is provided, the schema is resolved in this order:
+ * 1. `options.schemaName` → `defs.get(schemaName)` (pick specific schema)
+ * 2. `defs.defaultSchema` → Uses `$schema` from definitions
+ * 3. No schema → Schema-less mode (values only, no validation)
+ *
  * @param value - InternetObject, Collection, or Document to serialize
- * @param schema - Optional schema for type information (uses value's schema if available)
- * @param defs - Optional definitions for variable resolution
- * @param options - Optional formatting options
+ * @param defs - Optional definitions for schema and variable resolution
+ * @param options - Optional formatting options (includes `schemaName` to pick specific schema)
  * @returns Internet Object text representation
  *
  * @example
  * ```typescript
- * // Stringify a simple object
+ * // Schema-less stringify
  * const obj = new InternetObject();
  * obj.set('name', 'Alice');
  * obj.set('age', 28);
- * const text = stringify(obj, '{ name: string, age: number }');
+ * const text = stringify(obj);
  * // Output: "Alice, 28"
+ *
+ * // Stringify with definitions (uses $schema)
+ * const defs = new Definitions();
+ * defs.set('$schema', userSchema);
+ * const text = stringify(obj, defs);
+ *
+ * // Stringify with specific schema from defs
+ * const text = stringify(obj, defs, { schemaName: '$Address' });
  *
  * // Stringify a document
  * const doc = parse(ioText, null);
  * const text = stringify(doc);
- * // Output: Full IO document with headers and sections
  *
  * // Stringify with pretty printing
- * const text = stringify(obj, schema, undefined, { indent: 2 });
- * // Output:
- * // {
- * //   name: Alice,
- * //   age: 28
- * // }
+ * const text = stringify(obj, defs, { indent: 2 });
  *
  * // Stringify a collection
  * const collection = new Collection([obj1, obj2, obj3]);
- * const text = stringify(collection, schema);
- * // Output: "[Alice, 28], [Bob, 35], [Charlie, 42]"
- *
- * // Stringify with error skipping
- * const text = stringify(collectionWithErrors, schema, undefined, { skipErrors: true });
- * // Skips items that are error objects
+ * const text = stringify(collection, defs);
  * ```
  */
-export function stringify(value: any, schema?: string | Schema, defs?: Definitions, options?: StringifyOptions): string;
-export function stringify(value: any, defs?: Definitions | Schema | string, errorCollector?: Error[], options?: StringifyOptions): string;
+// Overload 1: Schema-less serialization
+export function stringify(value: InternetObject | Collection<InternetObject> | Document | any): string;
+// Overload 2: With definitions (uses defs.defaultSchema)
+export function stringify(value: InternetObject | Collection<InternetObject> | Document | any, defs: Definitions): string;
+// Overload 3: Schema-less with options
+export function stringify(value: InternetObject | Collection<InternetObject> | Document | any, options: StringifyOptions): string;
+// Overload 4: Full control with definitions and options
+export function stringify(value: InternetObject | Collection<InternetObject> | Document | any, defs: Definitions, options: StringifyOptions): string;
 export function stringify(
   value: InternetObject | Collection<InternetObject> | Document | any,
-  defs?: Definitions | Schema | string,
-  errorCollector?: Error[] | Definitions,
+  defsOrOptions?: Definitions | StringifyOptions,
   options?: StringifyOptions
 ): string {
+  // Resolve arguments
+  let defs: Definitions | undefined;
+  let opts: StringifyOptions | undefined;
+
+  if (defsOrOptions instanceof Definitions) {
+    defs = defsOrOptions;
+    opts = options;
+  } else if (defsOrOptions && typeof defsOrOptions === 'object') {
+    // It's options (StringifyOptions)
+    opts = defsOrOptions as StringifyOptions;
+  }
+
   // Handle Document (IODocument) - delegate to stringifyDocument
-  // Import here to avoid circular dependency
   if (value instanceof Document) {
     const { stringifyDocument } = require('./stringify-document');
-    // If options is passed as 4th arg, use it.
-    // If options is passed as 3rd arg (legacy), handle it below?
-    // Document stringify usually takes (doc, options).
-    // If we call stringify(doc, options), then defs=options.
-    let docOptions: any;
-    if (defs && typeof defs === 'object' && !Array.isArray(defs) && !(defs instanceof Schema) && !(defs instanceof Definitions)) {
-      docOptions = defs as StringifyOptions;
-    } else if (options) {
-      docOptions = options;
-    }
+
+    // Build document options
+    let docOptions: any = opts ? { ...opts } : {};
 
     // Default behavior: if includeHeader is not specified, use includeTypes to determine
-    // - includeHeader: true explicitly includes header
-    // - includeTypes: true also includes header (backward compatibility)
-    // - Otherwise, default to false (data only)
-    if (!docOptions) {
-      docOptions = { includeHeader: false };
-    } else if (docOptions.includeHeader === undefined) {
-      docOptions = { ...docOptions, includeHeader: docOptions.includeTypes ?? false };
+    if (docOptions.includeHeader === undefined) {
+      docOptions.includeHeader = docOptions.includeTypes ?? false;
     }
 
     return stringifyDocument(value, docOptions);
   }
 
-  let schema: Schema | string | undefined;
-  let definitions: Definitions | undefined;
-  let opts: StringifyOptions | undefined = options;
-
-  // Argument shifting for backward compatibility
-  // stringify(value, schema, defs, options)
-  if (defs instanceof Schema || typeof defs === 'string') {
-    schema = defs;
-    if (errorCollector instanceof Definitions) {
-      definitions = errorCollector;
-      // If 4th arg is options, use it
-      if (options) {
-        opts = options;
+  // Resolve schema from definitions
+  // Priority: options.schemaName → defs.defaultSchema → no schema
+  let schema: Schema | undefined;
+  if (defs) {
+    if (opts?.schemaName) {
+      const namedSchema = defs.getV(opts.schemaName);
+      if (namedSchema instanceof Schema) {
+        schema = namedSchema;
       }
-    } else if (errorCollector && typeof errorCollector === 'object' && !Array.isArray(errorCollector)) {
-      // stringify(value, schema, options)
-      opts = errorCollector as StringifyOptions;
-    }
-  } else if (defs instanceof Definitions) {
-    definitions = defs;
-    if (defs.defaultSchema) {
+    } else if (defs.defaultSchema) {
       schema = defs.defaultSchema;
     }
-
-    if (errorCollector && typeof errorCollector === 'object' && !Array.isArray(errorCollector)) {
-       opts = errorCollector as StringifyOptions;
-    }
-  } else if (defs && typeof defs === 'object' && !Array.isArray(defs)) {
-    // stringify(value, options)
-    opts = defs as StringifyOptions;
   }
 
   // Handle Collection
   if (value instanceof Collection) {
-    return stringifyCollection(value, schema, definitions, opts);
+    return stringifyCollection(value, schema, defs, opts);
   }
 
   // Handle InternetObject
   if (value instanceof InternetObject) {
-    return stringifyObject(value, schema, definitions, opts);
+    return stringifyObject(value, schema, defs, opts);
   }
 
   // Handle plain values
@@ -244,25 +252,23 @@ function stringifyAnyValue(val: any, defs?: Definitions): string {
 }
 
 /**
- * Internal helper to stringify an InternetObject
+ * Stringify an InternetObject to IO text format.
+ * @internal Used by stringifyDocument for section serialization.
  */
-function stringifyObject(
+export function stringifyObject(
   obj: InternetObject,
-  schema?: string | Schema,
+  schema?: Schema,
   defs?: Definitions,
   options?: StringifyOptions
 ): string {
-  // Get schema if not provided
-  const resolvedSchema = resolveSchema(schema, defs);
-
   const parts: string[] = [];
   const indent = options?.indent;
   const includeTypes = options?.includeTypes ?? false;
-  if (resolvedSchema) {
+  if (schema) {
     // First output members in schema order regardless of insertion order.
     const handled = new Set<string>();
-    for (const name of resolvedSchema.names) {
-      const memberDef: MemberDef | undefined = resolvedSchema.defs[name];
+    for (const name of schema.names) {
+      const memberDef: MemberDef | undefined = schema.defs[name];
       const hasValue = obj.has(name);
       if (hasValue) {
         const val = obj.get(name);
@@ -308,7 +314,7 @@ function stringifyObject(
     for (const [key, val] of obj.entries()) {
       if (!key) continue;
       if (handled.has(key)) continue; // already output
-      const memberDef: MemberDef | undefined = resolvedSchema.defs[key];
+      const memberDef: MemberDef | undefined = schema.defs[key];
       // For extras there is typically no memberDef (unless explicit definition outside names array)
       const typeDef = memberDef ? TypedefRegistry.get(memberDef.type) : undefined;
       let strValue: string | undefined;
@@ -355,11 +361,12 @@ function stringifyObject(
 }
 
 /**
- * Internal helper to stringify a Collection
+ * Stringify a Collection to IO text format.
+ * @internal Used by stringifyDocument for section serialization.
  */
-function stringifyCollection(
+export function stringifyCollection(
   collection: Collection<InternetObject>,
-  schema?: string | Schema,
+  schema?: Schema,
   defs?: Definitions,
   options?: StringifyOptions
 ): string {
@@ -392,22 +399,4 @@ function stringifyCollection(
   }
 }
 
-/**
- * Helper to resolve schema from string or Schema object
- */
-function resolveSchema(schema: string | Schema | undefined, defs?: Definitions): Schema | undefined {
-  if (!schema) return undefined;
-
-  if (typeof schema === 'string') {
-    if (defs && /^[a-zA-Z_$][a-zA-Z0-9_$]*$/.test(schema)) {
-      const schemaFromDefs = defs.getV(schema);
-      if (schemaFromDefs instanceof Schema) {
-        return schemaFromDefs;
-      }
-    }
-    // Can't compile schema here - would need to parse IO text
-    return undefined;
-  }
-
-  return schema;
-}
+// Note: resolveSchema helper is no longer needed - schema resolution is done in the main stringify function

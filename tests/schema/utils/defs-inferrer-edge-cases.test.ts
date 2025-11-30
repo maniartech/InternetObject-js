@@ -1,6 +1,17 @@
 import { inferDefs } from '../../../src/schema/utils/defs-inferrer';
-import { loadDoc, loadObject } from '../../../src/facade/load';
+import { load, loadObject } from '../../../src/facade/load';
+import { loadInferred } from '../../../src/facade/load-inferred';
 import { stringify, parse } from '../../../src/index';
+import { compileSchema } from '../../../src/schema';
+import Definitions from '../../../src/core/definitions';
+
+// Helper to create defs with schema string
+function createDefsWithSchemaString(schemaStr: string): Definitions {
+  const schema = compileSchema('$schema', schemaStr);
+  const defs = new Definitions();
+  defs.push('$schema', schema, true);
+  return defs;
+}
 
 describe('inferDefs Edge Cases', () => {
 
@@ -476,22 +487,22 @@ describe('stringify Edge Cases for Optional Fields', () => {
   describe('Optional Field Handling', () => {
 
     it('omits undefined optional field at end', () => {
-      const schema = '{ name: string, age?: number }';
+      const defs = createDefsWithSchemaString('{ name: string, age?: number }');
       const data = { name: 'Alice' };  // age is undefined
 
-      const doc = loadDoc(data, schema);
-      const result = stringify(doc, undefined, undefined, { includeHeader: false });
+      const doc = load(data, defs);
+      const result = stringify(doc, { includeHeader: false });
 
       // Should not have trailing comma or empty placeholder
       expect(result).toBe('Alice');
     });
 
     it('handles undefined optional field in middle', () => {
-      const schema = '{ name: string, middle?: string, last: string }';
+      const defs = createDefsWithSchemaString('{ name: string, middle?: string, last: string }');
       const data = { name: 'John', last: 'Doe' };  // middle is undefined
 
-      const doc = loadDoc(data, schema);
-      const result = stringify(doc, undefined, undefined, { includeHeader: false });
+      const doc = load(data, defs);
+      const result = stringify(doc, { includeHeader: false });
 
       // Middle field should have placeholder for positional format
       expect(result).toContain('John');
@@ -499,32 +510,32 @@ describe('stringify Edge Cases for Optional Fields', () => {
     });
 
     it('handles multiple consecutive undefined optional fields', () => {
-      const schema = '{ a: string, b?: number, c?: string, d?: bool, e: string }';
+      const defs = createDefsWithSchemaString('{ a: string, b?: number, c?: string, d?: bool, e: string }');
       const data = { a: 'start', e: 'end' };
 
-      const doc = loadDoc(data, schema);
-      const result = stringify(doc, undefined, undefined, { includeHeader: false });
+      const doc = load(data, defs);
+      const result = stringify(doc, { includeHeader: false });
 
       expect(result).toContain('start');
       expect(result).toContain('end');
     });
 
     it('handles all optional fields undefined except first', () => {
-      const schema = '{ req: string, opt1?: number, opt2?: string, opt3?: bool }';
+      const defs = createDefsWithSchemaString('{ req: string, opt1?: number, opt2?: string, opt3?: bool }');
       const data = { req: 'value' };
 
-      const doc = loadDoc(data, schema);
-      const result = stringify(doc, undefined, undefined, { includeHeader: false });
+      const doc = load(data, defs);
+      const result = stringify(doc, { includeHeader: false });
 
       expect(result).toBe('value');
     });
 
     it('handles nested objects with optional fields', () => {
-      const schema = '{ user: { name: string, email?: string } }';
+      const defs = createDefsWithSchemaString('{ user: { name: string, email?: string } }');
       const data = { user: { name: 'Alice' } };
 
-      const doc = loadDoc(data, schema);
-      const result = stringify(doc, undefined, undefined, { includeHeader: false });
+      const doc = load(data, defs);
+      const result = stringify(doc, { includeHeader: false });
 
       expect(result).toContain('Alice');
     });
@@ -533,43 +544,43 @@ describe('stringify Edge Cases for Optional Fields', () => {
   describe('Null vs Undefined Distinction', () => {
 
     it('outputs N for explicit null', () => {
-      const schema = '{ name: string, age*: number }';
+      const defs = createDefsWithSchemaString('{ name: string, age*: number }');
       const data = { name: 'Alice', age: null };
 
-      const doc = loadDoc(data, schema);
-      const result = stringify(doc, undefined, undefined, { includeHeader: false });
+      const doc = load(data, defs);
+      const result = stringify(doc, { includeHeader: false });
 
       expect(result).toContain('Alice');
       expect(result).toContain('N');
     });
 
     it('distinguishes between null and undefined', () => {
-      const schema = '{ a: string, b*?: number, c*?: string }';
+      const defs = createDefsWithSchemaString('{ a: string, b*?: number, c*?: string }');
       const data = { a: 'value', b: null };  // b is null, c is undefined
 
-      const doc = loadDoc(data, schema);
-      const result = stringify(doc, undefined, undefined, { includeHeader: false });
+      const doc = load(data, defs);
+      const result = stringify(doc, { includeHeader: false });
 
       expect(result).toContain('value');
       expect(result).toContain('N');  // b should be N
     });
 
     it('handles optional nullable at end with undefined', () => {
-      const schema = '{ name: string, extra*?: any }';
+      const defs = createDefsWithSchemaString('{ name: string, extra*?: any }');
       const data = { name: 'Test' };  // extra is undefined
 
-      const doc = loadDoc(data, schema);
-      const result = stringify(doc, undefined, undefined, { includeHeader: false });
+      const doc = load(data, defs);
+      const result = stringify(doc, { includeHeader: false });
 
       expect(result).toBe('Test');
     });
 
     it('handles optional nullable at end with null', () => {
-      const schema = '{ name: string, extra*?: any }';
+      const defs = createDefsWithSchemaString('{ name: string, extra*?: any }');
       const data = { name: 'Test', extra: null };
 
-      const doc = loadDoc(data, schema);
-      const result = stringify(doc, undefined, undefined, { includeHeader: false });
+      const doc = load(data, defs);
+      const result = stringify(doc, { includeHeader: false });
 
       expect(result).toContain('Test');
       expect(result).toContain('N');
@@ -579,21 +590,21 @@ describe('stringify Edge Cases for Optional Fields', () => {
   describe('Empty String Handling', () => {
 
     it('outputs quoted empty string for empty string value', () => {
-      const schema = '{ name: string }';
+      const defs = createDefsWithSchemaString('{ name: string }');
       const data = { name: '' };
 
-      const doc = loadDoc(data, schema);
-      const result = stringify(doc, undefined, undefined, { includeHeader: false });
+      const doc = load(data, defs);
+      const result = stringify(doc, { includeHeader: false });
 
       expect(result).toBe('""');
     });
 
     it('distinguishes empty string from undefined', () => {
-      const schema = '{ a: string, b?: string, c: string }';
+      const defs = createDefsWithSchemaString('{ a: string, b?: string, c: string }');
       const data = { a: 'first', b: '', c: 'last' };
 
-      const doc = loadDoc(data, schema);
-      const result = stringify(doc, undefined, undefined, { includeHeader: false });
+      const doc = load(data, defs);
+      const result = stringify(doc, { includeHeader: false });
 
       expect(result).toContain('first');
       expect(result).toContain('""');
@@ -604,7 +615,8 @@ describe('stringify Edge Cases for Optional Fields', () => {
   describe('Array with Optional Fields in Items', () => {
 
     it('handles array items with optional fields', () => {
-      const schema = '{ items: [{ id: number, name?: string }] }';
+      const schemaStr = '{ items: [{ id: number, name?: string }] }';
+      const defs = createDefsWithSchemaString(schemaStr);
       const data = {
         items: [
           { id: 1, name: 'First' },
@@ -613,8 +625,8 @@ describe('stringify Edge Cases for Optional Fields', () => {
         ]
       };
 
-      const doc = loadDoc(data, schema);
-      const result = stringify(doc, undefined, undefined, { includeHeader: false });
+      const doc = load(data, defs);
+      const result = stringify(doc, { includeHeader: false });
 
       expect(result).toContain('1');
       expect(result).toContain('First');
@@ -627,17 +639,18 @@ describe('stringify Edge Cases for Optional Fields', () => {
   describe('Complex Nested Optional Structures', () => {
 
     it('handles deeply nested optional fields', () => {
-      const schema = '{ a: { b: { c?: { d: string } } } }';
+      const schemaStr = '{ a: { b: { c?: { d: string } } } }';
+      const defs = createDefsWithSchemaString(schemaStr);
       const data = { a: { b: {} } };  // c is undefined
 
-      const doc = loadDoc(data, schema);
-      const result = stringify(doc, undefined, undefined, { includeHeader: false });
+      const doc = load(data, defs);
+      const result = stringify(doc, { includeHeader: false });
 
       expect(result).toBeDefined();
     });
 
     it('handles mixed nested optional and required', () => {
-      const schema = `{
+      const schemaStr = `{
         user: {
           name: string,
           profile?: {
@@ -646,6 +659,7 @@ describe('stringify Edge Cases for Optional Fields', () => {
           }
         }
       }`;
+      const defs = createDefsWithSchemaString(schemaStr);
       const data = {
         user: {
           name: 'Alice'
@@ -653,8 +667,8 @@ describe('stringify Edge Cases for Optional Fields', () => {
         }
       };
 
-      const doc = loadDoc(data, schema);
-      const result = stringify(doc, undefined, undefined, { includeHeader: false });
+      const doc = load(data, defs);
+      const result = stringify(doc, { includeHeader: false });
 
       expect(result).toContain('Alice');
     });
@@ -670,8 +684,8 @@ describe('Round-Trip Tests with inferDefs', () => {
       active: true
     };
 
-    const doc = loadDoc(original, undefined, { inferDefs: true });
-    const ioText = stringify(doc, undefined, undefined, { includeHeader: true });
+    const doc = loadInferred(original);
+    const ioText = stringify(doc, { includeHeader: true });
     const reparsed = parse(ioText);
 
     expect(reparsed.toJSON()).toEqual(original);
@@ -689,8 +703,8 @@ describe('Round-Trip Tests with inferDefs', () => {
       }
     };
 
-    const doc = loadDoc(original, undefined, { inferDefs: true });
-    const ioText = stringify(doc, undefined, undefined, { includeHeader: true });
+    const doc = loadInferred(original);
+    const ioText = stringify(doc, { includeHeader: true });
     const reparsed = parse(ioText);
 
     expect(reparsed.toJSON()).toEqual(original);
@@ -704,8 +718,8 @@ describe('Round-Trip Tests with inferDefs', () => {
       ]
     };
 
-    const doc = loadDoc(original, undefined, { inferDefs: true });
-    const ioText = stringify(doc, undefined, undefined, { includeHeader: true });
+    const doc = loadInferred(original);
+    const ioText = stringify(doc, { includeHeader: true });
     const reparsed = parse(ioText);
 
     // Compare JSON representation (structure) rather than object types
@@ -720,8 +734,8 @@ describe('Round-Trip Tests with inferDefs', () => {
       count: 5
     };
 
-    const doc = loadDoc(original, undefined, { inferDefs: true });
-    const ioText = stringify(doc, undefined, undefined, { includeHeader: true });
+    const doc = loadInferred(original);
+    const ioText = stringify(doc, { includeHeader: true });
     const reparsed = parse(ioText);
 
     expect(reparsed.toJSON()).toEqual(original);
@@ -733,8 +747,8 @@ describe('Round-Trip Tests with inferDefs', () => {
       tags: []
     };
 
-    const doc = loadDoc(original, undefined, { inferDefs: true });
-    const ioText = stringify(doc, undefined, undefined, { includeHeader: true });
+    const doc = loadInferred(original);
+    const ioText = stringify(doc, { includeHeader: true });
     const reparsed = parse(ioText);
 
     expect(reparsed.toJSON()).toEqual(original);
@@ -747,8 +761,8 @@ describe('Round-Trip Tests with inferDefs', () => {
       maybe: true
     };
 
-    const doc = loadDoc(original, undefined, { inferDefs: true });
-    const ioText = stringify(doc, undefined, undefined, { includeHeader: true });
+    const doc = loadInferred(original);
+    const ioText = stringify(doc, { includeHeader: true });
     const reparsed = parse(ioText);
 
     expect(reparsed.toJSON()).toEqual(original);
@@ -1007,8 +1021,8 @@ describe('Schema Name Conflict Resolution', () => {
         }
       };
 
-      const doc = loadDoc(original, undefined, { inferDefs: true });
-      const ioText = stringify(doc, undefined, undefined, { includeHeader: true });
+      const doc = loadInferred(original);
+      const ioText = stringify(doc, { includeHeader: true });
       const reparsed = parse(ioText);
 
       expect(reparsed.toJSON()).toEqual(original);
@@ -1037,8 +1051,8 @@ describe('Schema Name Conflict Resolution', () => {
         ]
       };
 
-      const doc = loadDoc(original, undefined, { inferDefs: true });
-      const ioText = stringify(doc, undefined, undefined, { includeHeader: true });
+      const doc = loadInferred(original);
+      const ioText = stringify(doc, { includeHeader: true });
       const reparsed = parse(ioText);
 
       // Use JSON.parse/stringify for deep comparison of plain objects
@@ -1056,8 +1070,8 @@ describe('Schema Name Conflict Resolution', () => {
         ]
       };
 
-      const doc = loadDoc(original, undefined, { inferDefs: true });
-      const ioText = stringify(doc, undefined, undefined, { includeHeader: true });
+      const doc = loadInferred(original);
+      const ioText = stringify(doc, { includeHeader: true });
       const reparsed = parse(ioText);
 
       // Use JSON.parse/stringify for deep comparison of plain objects
