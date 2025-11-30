@@ -73,12 +73,13 @@ class ObjectDef implements TypeDef {
 
   /**
    * Stringify: Converts a JavaScript object to IO text format
+   * Returns undefined if value is undefined (signals to skip this field)
    */
-  stringify = (value: any, memberDef: MemberDef, defs?: Definitions): string => {
+  stringify = (value: any, memberDef: MemberDef, defs?: Definitions): string | undefined => {
     const { value: checkedValue, changed } = doCommonTypeCheck(memberDef, value, undefined, defs)
     if (changed) {
       if (checkedValue === null) return 'N'
-      if (checkedValue === undefined) return ''
+      if (checkedValue === undefined) return undefined  // Skip this field entirely
       value = checkedValue
     }
 
@@ -195,7 +196,9 @@ class ObjectDef implements TypeDef {
         const typeDef = TypedefRegistry.get(memberDef.type)
         if (typeDef && 'stringify' in typeDef && typeof typeDef.stringify === 'function') {
           // Use auto format (default) - it safely handles all cases
-          parts.push(typeDef.stringify(value, memberDef, defs))
+          // stringify returns undefined to signal "skip this field" (missing optional)
+          const strValue = typeDef.stringify(value, memberDef, defs)
+          parts.push(strValue ?? '')  // Empty placeholder for positional format
         } else {
           // Fallback
           if (value === null) {
@@ -220,16 +223,17 @@ class ObjectDef implements TypeDef {
           if (!schemaNames.has(key)) {
             const value = data[key]
             const extraPath = basePath ? `${basePath}.${key}` : key
-            let strValue: string
 
+            // Skip undefined values for extra properties
+            if (value === undefined) continue
+
+            let strValue: string
             if (value === null) {
               strValue = 'N'
-            } else if (value === undefined) {
-              strValue = ''
             } else if (typeof value === 'string') {
               const stringDef = TypedefRegistry.get('string')
               if (stringDef && 'stringify' in stringDef && typeof stringDef.stringify === 'function') {
-                strValue = stringDef.stringify(value, { type: 'string', path: extraPath, format: 'auto' } as MemberDef, defs)
+                strValue = stringDef.stringify(value, { type: 'string', path: extraPath, format: 'auto' } as MemberDef, defs) ?? value
               } else {
                 strValue = JSON.stringify(value)
               }
@@ -244,12 +248,13 @@ class ObjectDef implements TypeDef {
       // No schema - output all properties
       for (const key in data) {
         const value = data[key]
-        let strValue: string
 
+        // Skip undefined values
+        if (value === undefined) continue
+
+        let strValue: string
         if (value === null) {
           strValue = 'N'
-        } else if (value === undefined) {
-          strValue = ''
         } else if (typeof value === 'string') {
           strValue = value
         } else if (typeof value === 'boolean') {

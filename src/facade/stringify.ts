@@ -175,7 +175,7 @@ function stringifyAnyValue(val: any, defs?: Definitions): string {
   if (typeof val === 'boolean') {
     const boolDef = TypedefRegistry.get('bool');
     if (boolDef && 'stringify' in boolDef && typeof boolDef.stringify === 'function') {
-      return boolDef.stringify(val, { type: 'bool', path: '', optional: false, null: false } as any);
+      return boolDef.stringify(val, { type: 'bool', path: '', optional: false, null: false } as any) ?? (val ? IO_MARKERS.TRUE : IO_MARKERS.FALSE);
     }
     return val ? IO_MARKERS.TRUE : IO_MARKERS.FALSE;
   }
@@ -198,7 +198,7 @@ function stringifyAnyValue(val: any, defs?: Definitions): string {
         escapeLines: false,
         encloser: '"'
       } as any;
-      return stringDef.stringify(val, memberDef);
+      return stringDef.stringify(val, memberDef) ?? val;
     }
     return val;
   }
@@ -207,7 +207,7 @@ function stringifyAnyValue(val: any, defs?: Definitions): string {
   if (val instanceof Date) {
     const dateDef = TypedefRegistry.get('date');
     if (dateDef && 'stringify' in dateDef && typeof dateDef.stringify === 'function') {
-      return (dateDef.stringify as any)(val);
+      return (dateDef.stringify as any)(val) ?? val.toISOString();
     }
     // Fallback: format as date-only d"YYYY-MM-DD"
     const year = val.getFullYear();
@@ -267,7 +267,7 @@ function stringifyObject(
       if (hasValue) {
         const val = obj.get(name);
         const typeDef = memberDef ? TypedefRegistry.get(memberDef.type) : undefined;
-        let strValue: string;
+        let strValue: string | undefined;
         if (memberDef && typeDef && 'stringify' in typeDef && typeof typeDef.stringify === 'function') {
           const effectiveMemberDef = { ...memberDef };
           if (memberDef.type === 'string' && !memberDef.format) {
@@ -279,10 +279,13 @@ function stringifyObject(
         } else {
           strValue = stringifyAnyValue(val, defs);
         }
+        // undefined means "skip this field" - use empty placeholder for positional format
         if (includeTypes) {
-          parts.push(`${name}: ${strValue}`);
+          if (strValue !== undefined) {
+            parts.push(`${name}: ${strValue}`);
+          }
         } else {
-          parts.push(strValue);
+          parts.push(strValue ?? '');
         }
       } else {
         // Missing optional member with no default: preserve positional placeholder by emitting empty slot when includeTypes is false.
@@ -295,6 +298,12 @@ function stringifyObject(
       }
       handled.add(name);
     }
+
+    // Trim trailing empty values (missing optional fields at the end)
+    while (parts.length > 0 && parts[parts.length - 1] === '') {
+      parts.pop();
+    }
+
     // Append any additional properties (wildcard or open schema extras) in original insertion order after core schema fields.
     for (const [key, val] of obj.entries()) {
       if (!key) continue;
@@ -302,7 +311,7 @@ function stringifyObject(
       const memberDef: MemberDef | undefined = resolvedSchema.defs[key];
       // For extras there is typically no memberDef (unless explicit definition outside names array)
       const typeDef = memberDef ? TypedefRegistry.get(memberDef.type) : undefined;
-      let strValue: string;
+      let strValue: string | undefined;
       if (memberDef && typeDef && 'stringify' in typeDef && typeof typeDef.stringify === 'function') {
         const effectiveMemberDef = { ...memberDef };
         if (memberDef.type === 'string' && !memberDef.format) {
@@ -316,7 +325,10 @@ function stringifyObject(
         strValue = stringifyAnyValue(val, defs);
       }
       // Extras should retain key label even when includeTypes is false (desired output for wildcard properties)
-      parts.push(`${key}: ${strValue}`);
+      // Skip if undefined (missing optional)
+      if (strValue !== undefined) {
+        parts.push(`${key}: ${strValue}`);
+      }
     }
   } else {
     // No schema: fall back to insertion order

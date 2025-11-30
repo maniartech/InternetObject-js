@@ -256,6 +256,26 @@ These are schema compilation issues, not load/stringify issues. The underlying l
 - Nested objects currently return plain JS objects, not InternetObject instances
 - This is a TypeDef implementation detail, not a load/stringify limitation
 
+### String Escaping and Special Characters
+
+**Syntax-Reserved Characters** (require escaping or quoting):
+| Character | Handling | Example |
+|-----------|----------|---------|
+| `~` | Escaped | `\~/home` |
+| `:` | Escaped | `10\:30` |
+| `{` `}` | Escaped | `\{key\}` |
+| `[` `]` | Quoted | `"[1,2,3]"` |
+| `,` | Quoted | `"a,b,c"` |
+
+**Convention Characters** (`@` and `$`):
+- These are **not** syntax-reserved, just conventions
+- `@name` = variable reference (in definitions)
+- `$name` = schema reference
+- In data section, output unquoted: `@mention`, `$100`
+- When parsing:
+  - `@var` not in defs → treated as literal string `"@var"`
+  - `$schema` not in defs → **throws error** (schema refs must exist)
+
 ## Performance Considerations
 
 - **Lazy Schema Compilation**: Schemas compiled only when needed

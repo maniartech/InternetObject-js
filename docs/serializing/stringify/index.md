@@ -229,13 +229,50 @@ stringify({ address: { city: 'NYC', zip: '10001' } })
 
 ## Trailing Empty Values
 
-Optional fields at the end with no value are trimmed:
+Optional fields at the end with `undefined` or missing values are automatically trimmed from the output:
 
 ```typescript
-// Schema: { name: string, middle?: string, age?: int }
+// Schema: { name: string, middle?: string, age?: int, suffix?: string }
+// Data: { name: 'Alice', age: 30 }
+stringify(data, schema);
+// → "Alice, , 30"  (middle is empty placeholder, but suffix is trimmed)
+
 // Data: { name: 'Alice' }
 stringify(data, schema);
-// → "Alice"  (not "Alice, , ")
+// → "Alice"  (all trailing empty values trimmed)
+```
+
+This ensures compact output while maintaining positional integrity for non-trailing optional fields.
+
+### How Trailing Trim Works
+
+1. Each schema field is stringified in order
+2. If a field's value is `undefined` or missing, `stringify` returns `undefined` (not empty string)
+3. The `undefined` is converted to empty string `''` for positional placeholders
+4. After all fields are processed, trailing empty strings are removed
+5. This preserves positions of middle optional fields while trimming end empties
+
+```typescript
+// Schema: { a: string, b?: string, c?: string, d?: string }
+// Data: { a: 'X', c: 'Y' }
+// Before trim: ['X', '', 'Y', '']
+// After trim:  ['X', '', 'Y']
+// Output: "X, , Y"
+```
+
+## Undefined vs Empty String in Stringify
+
+Type handlers can return `undefined` to signal "skip this field entirely" vs returning `''` which means "this field has an empty value". This distinction is important for:
+
+1. **Optional fields with no value**: Return `undefined` → becomes `''` placeholder, then trimmed if trailing
+2. **Empty string values**: Return `''` or `""` (quoted) → preserved in output
+3. **Null values**: Return `N` → explicitly shows null
+
+```typescript
+// Internal behavior:
+stringify(undefined, memberDef)  // returns undefined → placeholder
+stringify('', memberDef)         // returns '""' → empty string value
+stringify(null, memberDef)       // returns 'N' → null value
 ```
 
 ## Advanced: StringifyDocumentOptions

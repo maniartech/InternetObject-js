@@ -92,12 +92,13 @@ class ArrayDef implements TypeDef {
 
   /**
    * Stringify: Converts a JavaScript array to IO text format
+   * Returns undefined to signal "skip this field" (for missing optional values)
    */
-  public stringify = (value: any, memberDef: MemberDef, defs?: Definitions): string => {
+  public stringify = (value: any, memberDef: MemberDef, defs?: Definitions): string | undefined => {
     const { value: checkedValue, changed } = doCommonTypeCheck(memberDef, value, undefined, defs)
     if (changed) {
       if (checkedValue === null) return 'N'
-      if (checkedValue === undefined) return ''
+      if (checkedValue === undefined) return undefined  // Skip this field entirely
       value = checkedValue
     }
 
@@ -142,7 +143,8 @@ class ArrayDef implements TypeDef {
       const itemMemberDef = { ...arrayMemberDef, path: itemPath }
 
       if (typeDef && 'stringify' in typeDef && typeof typeDef.stringify === 'function') {
-        parts.push(typeDef.stringify(item, itemMemberDef, defs))
+        const strValue = typeDef.stringify(item, itemMemberDef, defs)
+        parts.push(strValue ?? '')  // Array items shouldn't be undefined, but fallback to empty
       } else {
         // Fallback: use JSON.stringify for items without stringify method
         parts.push(item === null ? 'N' : JSON.stringify(item))

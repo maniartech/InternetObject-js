@@ -122,18 +122,19 @@ export default class AnyDef implements TypeDef {
   /**
    * Stringify: Converts a JavaScript value to IO text format
    * Infers the type from the value and uses appropriate TypeDef.stringify()
+   * Returns undefined to signal "skip this field" (for missing optional values)
    */
-  stringify(value: any, memberDef: MemberDef, defs?: Definitions): string {
+  stringify(value: any, memberDef: MemberDef, defs?: Definitions): string | undefined {
     const { value: checkedValue, changed } = doCommonTypeCheck(memberDef, value, undefined, defs)
     if (changed) {
       if (checkedValue === null) return 'N'
-      if (checkedValue === undefined) return ''
+      if (checkedValue === undefined) return undefined  // Skip this field entirely
       value = checkedValue
     }
 
     // Handle null
     if (value === null) return 'N'
-    if (value === undefined) return ''
+    if (value === undefined) return undefined  // Skip this field entirely
 
     // If anyOf is specified, try to find a matching type
     const anyOf = memberDef.anyOf
@@ -164,13 +165,15 @@ export default class AnyDef implements TypeDef {
 
   /**
    * Stringify by inferring the type from the value
+   * Note: This is only called for non-null/non-undefined values, so inner
+   * stringify calls should always return strings, not undefined.
    */
   private _stringifyByInference(value: any, path: string, defs?: Definitions): string {
     // Boolean
     if (typeof value === 'boolean') {
       const boolDef = TypedefRegistry.get('bool')
       if (boolDef && 'stringify' in boolDef && typeof boolDef.stringify === 'function') {
-        return boolDef.stringify(value, { type: 'bool', path } as MemberDef, defs)
+        return boolDef.stringify(value, { type: 'bool', path } as MemberDef, defs) ?? (value ? 'T' : 'F')
       }
       return value ? 'T' : 'F'
     }
@@ -179,7 +182,7 @@ export default class AnyDef implements TypeDef {
     if (typeof value === 'number') {
       const numberDef = TypedefRegistry.get('number')
       if (numberDef && 'stringify' in numberDef && typeof numberDef.stringify === 'function') {
-        return numberDef.stringify(value, { type: 'number', path } as MemberDef, defs)
+        return numberDef.stringify(value, { type: 'number', path } as MemberDef, defs) ?? String(value)
       }
       return String(value)
     }
@@ -188,7 +191,7 @@ export default class AnyDef implements TypeDef {
     if (typeof value === 'bigint') {
       const bigintDef = TypedefRegistry.get('bigint')
       if (bigintDef && 'stringify' in bigintDef && typeof bigintDef.stringify === 'function') {
-        return bigintDef.stringify(value, { type: 'bigint', path } as MemberDef, defs)
+        return bigintDef.stringify(value, { type: 'bigint', path } as MemberDef, defs) ?? value.toString()
       }
       return value.toString()
     }
@@ -197,7 +200,7 @@ export default class AnyDef implements TypeDef {
     if (typeof value === 'string') {
       const stringDef = TypedefRegistry.get('string')
       if (stringDef && 'stringify' in stringDef && typeof stringDef.stringify === 'function') {
-        return stringDef.stringify(value, { type: 'string', path, format: 'open' } as MemberDef, defs)
+        return stringDef.stringify(value, { type: 'string', path, format: 'open' } as MemberDef, defs) ?? value
       }
       return value
     }
@@ -207,7 +210,7 @@ export default class AnyDef implements TypeDef {
       const inferredType = this._inferDateTimeType(value)
       const datetimeDef = TypedefRegistry.get(inferredType)
       if (datetimeDef && 'stringify' in datetimeDef && typeof datetimeDef.stringify === 'function') {
-        return datetimeDef.stringify(value, { type: inferredType, path } as MemberDef, defs)
+        return datetimeDef.stringify(value, { type: inferredType, path } as MemberDef, defs) ?? value.toISOString()
       }
       return value.toISOString()
     }
@@ -216,7 +219,8 @@ export default class AnyDef implements TypeDef {
     if (Array.isArray(value)) {
       const arrayDef = TypedefRegistry.get('array')
       if (arrayDef && 'stringify' in arrayDef && typeof arrayDef.stringify === 'function') {
-        return arrayDef.stringify(value, { type: 'array', path } as MemberDef, defs)
+        const result = arrayDef.stringify(value, { type: 'array', path } as MemberDef, defs)
+        if (result !== undefined) return result
       }
       const items = value.map((item, i) => this._stringifyByInference(item, `${path}[${i}]`, defs))
       return `[${items.join(', ')}]`
@@ -226,7 +230,8 @@ export default class AnyDef implements TypeDef {
     if (typeof value === 'object' && value !== null) {
       const objectDef = TypedefRegistry.get('object')
       if (objectDef && 'stringify' in objectDef && typeof objectDef.stringify === 'function') {
-        return objectDef.stringify(value, { type: 'object', path } as MemberDef, defs)
+        const result = objectDef.stringify(value, { type: 'object', path } as MemberDef, defs)
+        if (result !== undefined) return result
       }
       // Fallback: stringify as key-value pairs
       const parts: string[] = []

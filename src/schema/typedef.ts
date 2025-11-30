@@ -27,8 +27,10 @@ export default interface TypeDef {
   /** Load: JS Value → Validated JS Value (optional until all types adopt) */
   load?(value: any, memberDef: MemberDef, definitions?: Definitions): any
 
-  /** Stringify: Validated JS Value → IO Text (optional until all types adopt) */
-  stringify?(value: any, memberDef: MemberDef, definitions?: Definitions): string
+  /** Stringify: Validated JS Value → IO Text (optional until all types adopt)
+   *  Returns undefined to signal "skip this field entirely" (for missing optional values)
+   */
+  stringify?(value: any, memberDef: MemberDef, definitions?: Definitions): string | undefined
 
   /**
    * Loads the value as per the memberDef and returns the results

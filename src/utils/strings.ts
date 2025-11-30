@@ -44,6 +44,7 @@ const ambiguousValues = new Set([
 ]);
 
 function isAmbiguous(str: string): boolean {
+  if (str === null || str === undefined) return true;
   if (str.length === 0) return true;
   if (ambiguousValues.has(str)) return true;
   if (reNumber.test(str)) return true;
@@ -54,6 +55,11 @@ function isAmbiguous(str: string): boolean {
 }
 
 export const toAutoString = (str: string, escapeLines: boolean, encloser: string='"') => {
+  // Handle null/undefined
+  if (str === null || str === undefined) {
+    return '""';  // Empty string representation
+  }
+
   // If it looks like a number, bool, null, or date, quote it to preserve type
   if (isAmbiguous(str)) {
     return toRegularString(str, escapeLines, encloser);

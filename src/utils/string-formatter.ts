@@ -53,7 +53,7 @@ export function quoteString(
     } as any;
 
     try {
-      return stringDef.stringify(str, pseudoMember);
+      return stringDef.stringify(str, pseudoMember) ?? fallbackQuoteString(str, encloser);
     } catch (error) {
       // Fallback on typedef failure
       return fallbackQuoteString(str, encloser);

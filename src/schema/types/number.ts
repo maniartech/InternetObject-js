@@ -85,21 +85,26 @@ class NumberDef implements TypeDef {
     return validated
   }
 
-  stringify(value: any, memberDef: MemberDef): string {
-    // Validate before formatting to ensure consistency
-    this.load(value, memberDef)
+  stringify(value: any, memberDef: MemberDef, defs?: Definitions): string {
+    // Handle null/undefined first
+    const { value: checkedValue, changed } = doCommonTypeCheck(memberDef, value, undefined, defs)
+    if (changed) {
+      if (checkedValue === null) return 'N'
+      if (checkedValue === undefined) return ''
+    }
+
     // Delegate to specialized type if available
     if (this._delegateTypeDef && 'stringify' in this._delegateTypeDef) {
-      return (this._delegateTypeDef as any).stringify(value, memberDef)
+      return (this._delegateTypeDef as any).stringify(checkedValue, memberDef, defs)
     }
 
     // Handle standard number types
-    if (memberDef.format === 'scientific') { return value.toExponential() }
-    if (memberDef.format === 'hex') { return value.toString(16) }
-    if (memberDef.format === 'octal') { return value.toString(8) }
-    if (memberDef.format === 'binary') { return value.toString(2) }
+    if (memberDef.format === 'scientific') { return checkedValue.toExponential() }
+    if (memberDef.format === 'hex') { return checkedValue.toString(16) }
+    if (memberDef.format === 'octal') { return checkedValue.toString(8) }
+    if (memberDef.format === 'binary') { return checkedValue.toString(2) }
 
-    return value.toString()
+    return checkedValue.toString()
   }
 
   /**
