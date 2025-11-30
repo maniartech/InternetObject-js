@@ -27,8 +27,36 @@ export const toRawString = (str: string, encloser: string='"') => {
   return `r${encloser}${str.replace(new RegExp(encloser, 'g'), encloser + encloser)}${encloser}`;
 }
 
-// Regex for IO numbers (JSON compatible + Inf/NaN)
-const reNumber = /^-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?$/;
+// Regex to detect ANY string that looks like a number when parsed
+// This includes:
+// - Pure digits: "123", "0001", "5001"
+// - Negative numbers: "-123"
+// - Decimals: "3.14", ".5", "123."
+// - Scientific notation: "1e10", "1E-5"
+// - Special numeric values that IO parser recognizes
+// All of these MUST be quoted to preserve string type
+const reNumericLooking = /^-?\.?\d/;  // Starts with optional minus, optional dot, then digit
+
+// More precise check for values that would parse as numbers
+function looksLikeNumber(str: string): boolean {
+  // Empty string is not a number
+  if (str.length === 0) return false;
+
+  // Check if it starts like a number (digit, or -/+ followed by digit, or . followed by digit)
+  const first = str[0];
+  if (first === '-' || first === '+') {
+    if (str.length === 1) return false;
+    const second = str[1];
+    return second >= '0' && second <= '9' || second === '.';
+  }
+  if (first === '.') {
+    if (str.length === 1) return false;
+    const second = str[1];
+    return second >= '0' && second <= '9';
+  }
+  // If it starts with a digit, it looks like a number
+  return first >= '0' && first <= '9';
+}
 
 // Regex for Date/Time/DateTime
 const reDate = /^\d{4}-\d{2}-\d{2}$/;
@@ -47,7 +75,8 @@ function isAmbiguous(str: string): boolean {
   if (str === null || str === undefined) return true;
   if (str.length === 0) return true;
   if (ambiguousValues.has(str)) return true;
-  if (reNumber.test(str)) return true;
+  // Any string that looks like a number must be quoted
+  if (looksLikeNumber(str)) return true;
   if (reDate.test(str)) return true;
   if (reTime.test(str)) return true;
   if (reDateTime.test(str)) return true;

@@ -92,6 +92,7 @@ function fallbackQuoteString(str: string, encloser: string): string {
  * ```typescript
  * needsQuoting('hello')      // → false (safe identifier)
  * needsQuoting('123')        // → true (looks like number)
+ * needsQuoting('0001')       // → true (looks like number, has leading zeros)
  * needsQuoting('true')       // → true (looks like boolean)
  * needsQuoting('hello world') // → true (contains space)
  * needsQuoting('')           // → true (empty string)
@@ -104,8 +105,9 @@ export function needsQuoting(str: string): boolean {
   // Check for whitespace
   if (/\s/.test(str)) return true;
 
-  // Check if it looks like a number
-  if (/^-?\d+\.?\d*$/.test(str)) return true;
+  // Check if it looks like a number (starts with digit, or -/+/. followed by digit)
+  // This catches: "123", "0001", "-5", ".5", "3.14", etc.
+  if (looksLikeNumber(str)) return true;
 
   // Check if it looks like a boolean
   if (str === 'T' || str === 'F' || str === 'true' || str === 'false') return true;
@@ -121,6 +123,27 @@ export function needsQuoting(str: string): boolean {
 
   // Safe to use unquoted
   return false;
+}
+
+/**
+ * Check if a string looks like a number when parsed.
+ * Any string starting with a digit (or -/+/. followed by digit) looks like a number.
+ */
+function looksLikeNumber(str: string): boolean {
+  if (str.length === 0) return false;
+
+  const first = str[0];
+  if (first === '-' || first === '+') {
+    if (str.length === 1) return false;
+    const second = str[1];
+    return (second >= '0' && second <= '9') || second === '.';
+  }
+  if (first === '.') {
+    if (str.length === 1) return false;
+    const second = str[1];
+    return second >= '0' && second <= '9';
+  }
+  return first >= '0' && first <= '9';
 }
 
 /**

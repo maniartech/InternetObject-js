@@ -288,6 +288,39 @@ JavaScript types are mapped to IO types:
 | `Array` | `array` or `[$itemSchema]` |
 | `Object` | Named schema reference |
 
+### String Type Policy
+
+**Important:** Type inference is based strictly on JavaScript's `typeof` operator. If a value is a JavaScript string, it **must** be inferred as `string` type - regardless of what the string content looks like.
+
+```typescript
+const data = {
+  id: "0001",           // string (not number, even though it looks numeric)
+  code: "123",          // string (not number)
+  flag: "T",            // string (not bool, even though T could mean true)
+  answer: "N",          // string (not bool, even though N could mean no)
+  active: "true",       // string (not bool)
+  price: "99.99",       // string (not number)
+  zip: "02101"          // string (leading zero preserved)
+};
+
+// Generates:
+// ~ $schema: {id: string, code: string, flag: string, answer: string, active: string, price: string, zip: string}
+```
+
+This policy ensures:
+1. **Data integrity** - No loss of leading zeros (e.g., `"0001"` stays `"0001"`)
+2. **Round-trip safety** - Original string values are preserved exactly
+3. **Predictable behavior** - The inferred type matches the JavaScript runtime type
+
+**Corollary:** If you want a field to be a number or boolean, the source data must already have that type:
+
+```typescript
+const data = {
+  id: 1,        // number (not string)
+  active: true  // bool (not string)
+};
+```
+
 ### Named Schema Generation
 
 Nested objects automatically generate named schema definitions:

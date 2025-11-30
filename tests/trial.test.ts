@@ -1,6 +1,53 @@
 import { load, loadInferred, parse, stringify } from '../src/index';
+import { inferDefs } from '../src/schema/utils/defs-inferrer';
 
 describe('Trial Debug Playground', () => {
+
+  it('infers string type for numeric-looking strings', () => {
+    const data = {
+      "id": "0001",
+      "type": "donut",
+      "name": "Cake",
+      "ppu": 0.55,
+      "batters": {
+        "batter": [
+          { "id": "1001", "type": "Regular" },
+          { "id": "1002", "type": "Chocolate" }
+        ]
+      },
+      "topping": [
+        { "id": "5001", "type": "None" },
+        { "id": "5002", "type": "Glazed" }
+      ]
+    };
+
+    console.log('typeof data.id:', typeof data.id);
+    console.log('typeof data.batters.batter[0].id:', typeof data.batters.batter[0].id);
+
+    const { definitions, rootSchema } = inferDefs(data);
+
+    console.log('Root schema id type:', rootSchema.defs['id'].type);
+    console.log('Root schema id:', JSON.stringify(rootSchema.defs['id'], null, 2));
+
+    const batterSchema = definitions.get('$batter');
+    console.log('$batter id type:', batterSchema?.defs['id']?.type);
+
+    const toppingSchema = definitions.get('$topping');
+    console.log('$topping id type:', toppingSchema?.defs['id']?.type);
+
+    // All string IDs should be inferred as string type
+    expect(rootSchema.defs['id'].type).toBe('string');
+    expect(batterSchema?.defs['id']?.type).toBe('string');
+    expect(toppingSchema?.defs['id']?.type).toBe('string');
+
+    // Stringify and check output
+    const doc = loadInferred(data);
+    const iotext = stringify(doc, { includeHeader: true });
+    console.log('\nIO Output:\n', iotext);
+
+    // Schema should show "id: string" not "id: number"
+    expect(iotext).toContain('id: string');
+  });
 
   it('reorders late keyed optional member into positional slot', () => {
 
