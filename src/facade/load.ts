@@ -6,7 +6,7 @@ import SectionCollection from '../core/section-collection';
 import InternetObject from '../core/internet-object';
 import Collection from '../core/collection';
 import Schema from '../schema/schema';
-import { loadObject, loadCollection } from '../schema/load-processor';
+import { loadObject as processObject, loadCollection } from '../schema/load-processor';
 import { compileSchema } from '../schema';
 import { inferDefs } from '../schema/utils/defs-inferrer';
 
@@ -29,7 +29,7 @@ export interface LoadOptions {
  *
  * This is the high-level API for validating external data (from APIs, databases, etc.)
  * using Internet Object schemas. Unlike parse(), which processes IO text,
- * load() validates plain JavaScript objects.
+ * loadObject() validates plain JavaScript objects.
  *
  * @param data - Plain JavaScript object or array to validate
  * @param schema - Schema definition (IO text, Schema object, or schema name when used with definitions)
@@ -42,7 +42,7 @@ export interface LoadOptions {
  * ```typescript
  * // Load a single object with explicit schema
  * const data = { name: 'Alice', age: 28 };
- * const obj = load(data, '{ name: string, age: number }');
+ * const obj = loadObject(data, '{ name: string, age: number }');
  * console.log(obj.get('name')); // 'Alice'
  *
  * // Load a collection
@@ -50,24 +50,24 @@ export interface LoadOptions {
  *   { name: 'Alice', age: 28 },
  *   { name: 'Bob', age: 35 }
  * ];
- * const collection = load(users, '{ name: string, age: number }');
+ * const collection = loadObject(users, '{ name: string, age: number }');
  * console.log(collection.length); // 2
  *
  * // Load with schema from definitions
  * const defs = new Definitions();
  * defs.set('User', compileSchema('User', '{ name: string, age: number }'));
- * const obj = load(data, 'User', defs);
+ * const obj = loadObject(data, 'User', defs);
  *
  * // Load with inferred definitions (no explicit schema required)
  * const jsonData = { name: 'Alice', age: 28 };
- * const obj = load(jsonData, undefined, { inferDefs: true });
+ * const obj = loadObject(jsonData, undefined, { inferDefs: true });
  * ```
  */
 // Overloads for backward compatibility
-export function load(data: any, schema?: string | Schema | Definitions, options?: LoadOptions): InternetObject | Collection<InternetObject>;
-export function load(data: any, schemaName: string, definitions: Definitions, errors?: Error[]): InternetObject | Collection<InternetObject>;
-export function load(data: any, schema: string | Schema, defsOrUndefined: undefined, errors: Error[]): InternetObject | Collection<InternetObject>;
-export function load(
+export function loadObject(data: any, schema?: string | Schema | Definitions, options?: LoadOptions): InternetObject | Collection<InternetObject>;
+export function loadObject(data: any, schemaName: string, definitions: Definitions, errors?: Error[]): InternetObject | Collection<InternetObject>;
+export function loadObject(data: any, schema: string | Schema, defsOrUndefined: undefined, errors: Error[]): InternetObject | Collection<InternetObject>;
+export function loadObject(
   data: any,
   schema?: string | Schema | Definitions,
   defsOrOptions?: Definitions | LoadOptions,
@@ -116,7 +116,7 @@ export function load(
   if (Array.isArray(data)) {
     return loadCollection(data, resolvedSchema, definitions, errors);
   } else {
-    return loadObject(data, resolvedSchema, definitions);
+    return processObject(data, resolvedSchema, definitions);
   }
 }
 
@@ -144,9 +144,9 @@ export interface LoadDocOptions {
  * schema definitions in the header. Use this when you need the complete IO format
  * with definitions output.
  *
- * @param data - Plain JavaScript object or array to load
+ * @param data - Plain JavaScript object or array to loadObject
  * @param schema - Schema definition (IO text, Schema object, or Definitions object)
- * @param options - Optional load options (including inferDefs)
+ * @param options - Optional loadObject options (including inferDefs)
  * @returns Complete IODocument with header containing definitions
  *
  * @example
@@ -204,7 +204,7 @@ export function loadDoc(data: any, schema?: string | Schema | Definitions, optio
   if (Array.isArray(data)) {
     loadedData = loadCollection(data, resolvedSchema, definitions);
   } else {
-    loadedData = loadObject(data, resolvedSchema, definitions);
+    loadedData = processObject(data, resolvedSchema, definitions);
   }
 
   // Create section

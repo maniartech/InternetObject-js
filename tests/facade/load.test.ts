@@ -1,15 +1,15 @@
-import { load } from '../../src/facade/load';
+import { loadObject } from '../../src/facade/load';
 import { compileSchema } from '../../src/schema';
 import Definitions from '../../src/core/definitions';
 import InternetObject from '../../src/core/internet-object';
 import Collection from '../../src/core/collection';
 import ValidationError from '../../src/errors/io-validation-error';
 
-describe('High-level load() API', () => {
+describe('High-level loadObject() API', () => {
   describe('loading single objects', () => {
     it('loads object with IO text schema', () => {
       const data = { name: 'Alice', age: 28 };
-      const result = load(data, '{ name: string, age: number }');
+      const result = loadObject(data, '{ name: string, age: number }');
 
       expect(result).toBeInstanceOf(InternetObject);
       expect((result as InternetObject).get('name')).toBe('Alice');
@@ -20,7 +20,7 @@ describe('High-level load() API', () => {
       const schema = compileSchema('User', '{ name: string, age: number }');
       const data = { name: 'Bob', age: 35 };
 
-      const result = load(data, schema);
+      const result = loadObject(data, schema);
 
       expect(result).toBeInstanceOf(InternetObject);
       expect((result as InternetObject).get('name')).toBe('Bob');
@@ -32,7 +32,7 @@ describe('High-level load() API', () => {
       defs.set('User', schema);
 
       const data = { name: 'Charlie', age: 42 };
-      const result = load(data, 'User', defs);
+      const result = loadObject(data, 'User', defs);
 
       expect(result).toBeInstanceOf(InternetObject);
       expect((result as InternetObject).get('name')).toBe('Charlie');
@@ -41,7 +41,7 @@ describe('High-level load() API', () => {
     it('validates object against schema', () => {
       const data = { name: 'Invalid', age: 'not a number' };
 
-      expect(() => load(data, '{ name: string, age: number }')).toThrow(ValidationError);
+      expect(() => loadObject(data, '{ name: string, age: number }')).toThrow(ValidationError);
     });
   });
 
@@ -53,7 +53,7 @@ describe('High-level load() API', () => {
         { name: 'Charlie', age: 42 }
       ];
 
-      const result = load(data, '{ name: string, age: number }');
+      const result = loadObject(data, '{ name: string, age: number }');
 
       expect(result).toBeInstanceOf(Collection);
       expect(result.length).toBe(3);
@@ -64,7 +64,7 @@ describe('High-level load() API', () => {
 
     it('loads empty array', () => {
       const data: any[] = [];
-      const result = load(data, '{ name: string }');
+      const result = loadObject(data, '{ name: string }');
 
       expect(result).toBeInstanceOf(Collection);
       expect(result.length).toBe(0);
@@ -78,7 +78,7 @@ describe('High-level load() API', () => {
       ];
 
       const errors: Error[] = [];
-      const result = load(data, '{ name: string, age: number }', undefined, errors);
+      const result = loadObject(data, '{ name: string, age: number }', undefined, errors);
 
       expect(result).toBeInstanceOf(Collection);
       expect(result.length).toBe(3);
@@ -102,7 +102,7 @@ describe('High-level load() API', () => {
         { name: 'Charlie', age: 42 }
       ];
 
-      const result = load(data, '{ name: string, age: number }');
+      const result = loadObject(data, '{ name: string, age: number }');
 
       expect(result).toBeInstanceOf(Collection);
       expect(result.length).toBe(3);
@@ -118,7 +118,7 @@ describe('High-level load() API', () => {
         tags: ['developer', 'typescript']
       };
 
-      const result = load(data, '{ name: string, tags: [string] }');
+      const result = loadObject(data, '{ name: string, tags: [string] }');
 
       expect(result).toBeInstanceOf(InternetObject);
       expect((result as InternetObject).get('name')).toBe('Alice');
@@ -132,7 +132,7 @@ describe('High-level load() API', () => {
         created: new Date('2024-01-15T10:30:00Z')
       };
 
-      const result = load(data, '{ id: bigint, price: decimal, created: datetime }');
+      const result = loadObject(data, '{ id: bigint, price: decimal, created: datetime }');
 
       expect(result).toBeInstanceOf(InternetObject);
       expect((result as InternetObject).get('id')).toBe(123456789012345n);
@@ -146,7 +146,7 @@ describe('High-level load() API', () => {
         { id: 456n, price: '29.99' }
       ];
 
-      const result = load(data, '{ id: bigint, price: decimal }');
+      const result = loadObject(data, '{ id: bigint, price: decimal }');
 
       expect(result).toBeInstanceOf(Collection);
       expect(result.length).toBe(2);
@@ -156,15 +156,15 @@ describe('High-level load() API', () => {
 
   describe('error handling', () => {
     it('throws for invalid data type', () => {
-      expect(() => load('not an object', '{ name: string }')).toThrow(ValidationError);
-      expect(() => load(123, '{ name: string }')).toThrow(ValidationError);
-      expect(() => load(null, '{ name: string }')).toThrow(ValidationError);
+      expect(() => loadObject('not an object', '{ name: string }')).toThrow(ValidationError);
+      expect(() => loadObject(123, '{ name: string }')).toThrow(ValidationError);
+      expect(() => loadObject(null, '{ name: string }')).toThrow(ValidationError);
     });
 
     it('throws for missing required fields', () => {
       const data = { name: 'Alice' };  // Missing 'age'
 
-      expect(() => load(data, '{ name: string, age: number }')).toThrow(ValidationError);
+      expect(() => loadObject(data, '{ name: string, age: number }')).toThrow(ValidationError);
     });
 
     it('throws for invalid schema reference', () => {
@@ -172,7 +172,7 @@ describe('High-level load() API', () => {
       const data = { name: 'Alice' };
 
       // When schema ref doesn't exist, it's compiled as IO text and fails validation
-      expect(() => load(data, 'UnknownSchema', defs)).toThrow(ValidationError);
+      expect(() => loadObject(data, 'UnknownSchema', defs)).toThrow(ValidationError);
     });
   });
 
@@ -183,7 +183,7 @@ describe('High-level load() API', () => {
       defs.set('User', userSchema);
 
       const data = { name: 'Alice', age: 28 };
-      const result = load(data, 'User', defs);
+      const result = loadObject(data, 'User', defs);
 
       expect(result).toBeInstanceOf(InternetObject);
       expect((result as InternetObject).get('name')).toBe('Alice');
@@ -199,7 +199,7 @@ describe('High-level load() API', () => {
         { name: 'Bob', age: 35 }
       ];
 
-      const result = load(data, 'User', defs);
+      const result = loadObject(data, 'User', defs);
 
       expect(result).toBeInstanceOf(Collection);
       expect(result.length).toBe(2);

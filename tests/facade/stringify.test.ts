@@ -1,6 +1,6 @@
 import { stringify } from '../../src/facade/stringify';
 import { compileSchema } from '../../src/schema';
-import { load } from '../../src/facade/load';
+import { loadObject } from '../../src/facade/load';
 import InternetObject from '../../src/core/internet-object';
 import Collection from '../../src/core/collection';
 import Definitions from '../../src/core/definitions';
@@ -173,13 +173,13 @@ describe('High-level stringify() API', () => {
     });
   });
 
-  describe('round-trip with load', () => {
+  describe('round-trip with loadObject', () => {
     it('load -> stringify maintains data', () => {
       const originalData = { name: 'Alice', age: 28, active: true };
       const schema = compileSchema('User', '{ name: string, age: number, active: bool }');
 
       // Load
-      const loaded = load(originalData, schema) as InternetObject;
+      const loaded = loadObject(originalData, schema) as InternetObject;
 
       // Verify loaded data
       expect(loaded.get('name')).toBe('Alice');
@@ -195,7 +195,7 @@ describe('High-level stringify() API', () => {
       expect(stringified).toContain('T');  // Boolean as IO format
     });
 
-    it('collection load -> stringify maintains data', () => {
+    it('collection loadObject -> stringify maintains data', () => {
       const originalData = [
         { name: 'Alice', age: 28 },
         { name: 'Bob', age: 35 }
@@ -203,7 +203,7 @@ describe('High-level stringify() API', () => {
       const schema = compileSchema('User', '{ name: string, age: number }');
 
       // Load
-      const loaded = load(originalData, schema) as Collection<InternetObject>;
+      const loaded = loadObject(originalData, schema) as Collection<InternetObject>;
       expect(loaded.length).toBe(2);
 
       // Stringify
@@ -224,7 +224,7 @@ describe('High-level stringify() API', () => {
       const schema = compileSchema('Entity', '{ id: bigint, created: datetime }');
 
       // Load
-      const loaded = load(originalData, schema) as InternetObject;
+      const loaded = loadObject(originalData, schema) as InternetObject;
       expect(loaded.get('id')).toBe(999999999999999n);
       expect(loaded.get('created')).toBeInstanceOf(Date);
 

@@ -100,7 +100,7 @@ export function loadObject(
 }
 
 /**
- * Internal helper to load an object with resolved schema
+ * Internal helper to loadObject an object with resolved schema
  */
 function _loadObject(data: any, schema: Schema, defs?: Definitions): InternetObject {
   const result = new InternetObject();
@@ -116,7 +116,7 @@ function _loadObject(data: any, schema: Schema, defs?: Definitions): InternetObj
       throw new Error(`Type ${memberDef.type} is not registered.`);
     }
 
-    // Use load() method if available
+    // Use loadObject() method if available
     if ('load' in typeDef && typeDef.load) {
       try {
         const loadedValue = typeDef.load(value, memberDef, defs);
@@ -134,7 +134,7 @@ function _loadObject(data: any, schema: Schema, defs?: Definitions): InternetObj
         throw error;
       }
     } else {
-      // Fallback for types without load() - use value as-is if present
+      // Fallback for types without loadObject() - use value as-is if present
       if (value !== undefined) {
         result.set(name, value);
       } else if (memberDef.default !== undefined) {

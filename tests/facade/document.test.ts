@@ -425,7 +425,7 @@ describe('Document Load/Stringify', () => {
   });
 
   describe('round-trip', () => {
-    it('maintains data through load -> stringify -> load cycle', () => {
+    it('maintains data through loadObject -> stringify -> loadObject cycle', () => {
       const schema = compileSchema('User', '{ name: string, age: number }');
       const originalData: DocumentData = {
         header: {

@@ -287,7 +287,7 @@ describe('Load Processor', () => {
       });
 
       it.skip('throws error for unregistered type', () => {
-        // Error is thrown at schema compile time, not load time
+        // Error is thrown at schema compile time, not loadObject time
         const schema = compileSchema('TestSchema', '{ id: unknownType }');
         const data = { id: 'test' };
 

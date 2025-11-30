@@ -1,5 +1,5 @@
 import { inferDefs } from '../../../src/schema/utils/defs-inferrer';
-import { loadDoc, load } from '../../../src/facade/load';
+import { loadDoc, loadObject } from '../../../src/facade/load';
 import { stringify, parse } from '../../../src/index';
 
 describe('inferDefs Edge Cases', () => {

@@ -2,7 +2,7 @@
  * Memory and stress tests for defs-inferrer
  */
 import { inferDefs } from '../../../src/schema/utils/defs-inferrer';
-import { stringify, load, loadDoc, parse } from '../../../src';
+import { stringify, loadObject, loadDoc, parse } from '../../../src';
 
 describe('Defs Inferrer - Memory and Stress Tests', () => {
   describe('Deep Nesting', () => {

@@ -14,7 +14,7 @@ import IOValidationError      from './errors/io-validation-error';
 import Schema                 from './schema/schema';
 import { ioDefinitions, ioDocument, ioObject } from './template-funcs';
 import parse                  from './parser/index';
-import { load }               from './facade/load';
+import { loadObject }               from './facade/load';
 import { stringify }          from './facade/stringify';
 
 
@@ -22,7 +22,7 @@ import { stringify }          from './facade/stringify';
 const io = {
   // Facade methods
   parse,
-  load,
+  loadObject,
   stringify,
 
   // Short aliases for template functions

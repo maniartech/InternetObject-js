@@ -1,4 +1,4 @@
-import { parse, stringify, load } from '../../../src/index'
+import { parse, stringify, loadObject } from '../../../src/index'
 
 /**
  * Tests for string values that could be confused with other types.
@@ -293,7 +293,7 @@ describe('String Ambiguous Values - Round Trip Safety', () => {
   })
 
   describe('Load function with ambiguous values', () => {
-    it('should load and stringify ambiguous string values correctly', () => {
+    it('should loadObject and stringify ambiguous string values correctly', () => {
       const schema = `{title: string, code: string, flag: string, empty: string}`
       const data = {
         title: '1984',
@@ -302,7 +302,7 @@ describe('String Ambiguous Values - Round Trip Safety', () => {
         empty: ''
       }
 
-      const result = load(data, schema)
+      const result = loadObject(data, schema)
       const output = stringify(result, schema)
 
       expect(output).toContain('"1984"')

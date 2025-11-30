@@ -8,7 +8,7 @@ describe('IOCollection Errors', () => {
       { name: 'Bob', age: 'invalid' }
     ];
 
-    const collection = io.load(data, schema);
+    const collection = io.loadObject(data, schema);
 
     expect(collection.length).toBe(2);
     expect(collection.errors.length).toBe(1);
@@ -24,7 +24,7 @@ describe('IOCollection Errors', () => {
     ];
     const errors: any[] = [];
 
-    const collection = io.load(data, schema, undefined, errors);
+    const collection = io.loadObject(data, schema, undefined, errors);
 
     expect(collection.length).toBe(2);
     expect(collection.errors.length).toBe(1);
