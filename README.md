@@ -23,233 +23,261 @@ Internet Object is a schema-first data format. You can load plain JavaScript obj
 
 ### Loading and Validating Data
 
-Use `io.load()` to validate JavaScript objects against a schema.
+Use `load()` to validate JavaScript objects against a schema and get a `Document`.
 
 ```ts
-import io from 'internet-object';
+import { load, loadObject, loadCollection, parseDefinitions } from 'internet-object';
 
-// 1. Define a schema (inline or separate)
-const schema = '{ name: string, age: number, email?: string }';
+// 1. Create definitions with a schema
+const defs = parseDefinitions('~ $schema: { name: string, age: int, email?: string }', null);
 
-// 2. Load and validate data
-const data = {
-  name: 'Alice',
-  age: 30,
-  email: 'alice@example.com'
-};
+// 2. Load and validate a single object
+const data = { name: 'Alice', age: 30, email: 'alice@example.com' };
+const doc = load(data, defs);
+console.log(doc.toJSON()); // { name: 'Alice', age: 30, email: 'alice@example.com' }
 
-const user = io.load(data, schema);
-console.log(user.get('name')); // 'Alice'
+// 3. Or use loadObject for direct InternetObject access
+const obj = loadObject(data, defs);
+console.log(obj.get('name')); // 'Alice'
+
+// 4. Load collections with loadCollection
+const users = [
+  { name: 'Alice', age: 30 },
+  { name: 'Bob', age: 25 }
+];
+const collection = loadCollection(users, defs);
+console.log(collection.length); // 2
+```
+
+### Schema-less Loading
+
+Load data without validation when you don't need schema enforcement:
+
+```ts
+import { loadObject, loadCollection } from 'internet-object';
+
+// Schema-less loading - no validation
+const obj = loadObject({ name: 'Alice', anything: 'goes' });
+const col = loadCollection([{ a: 1 }, { b: 2 }]);
+```
+
+### Using Named Schemas
+
+```ts
+import { load, parseDefinitions } from 'internet-object';
+
+// Define multiple schemas
+const defs = parseDefinitions(`
+  ~ $User: { name: string, age: int }
+  ~ $Product: { title: string, price: number }
+  ~ $schema: $User
+`, null);
+
+// Use specific schema via options
+const userData = { name: 'Alice', age: 30 };
+const doc = load(userData, defs, { schemaName: '$User' });
 ```
 
 ### Parsing IO Strings
 
-Use `io.parse()` to parse Internet Object formatted strings.
+Use `parse()` to parse Internet Object formatted strings.
 
 ```ts
+import { parse } from 'internet-object';
+
 const ioString = `
-  name, age
+  ~ $schema: { name, age }
+  ---
+  Alice, 30
+  ---
+  Bob, 25
+`;
+
+const doc = parse(ioString);
+console.log(doc.toJSON());
+// Output: [{ name: 'Alice', age: 30 }, { name: 'Bob', age: 25 }]
+```
+
+### Stringifying Data
+
+Use `stringify()` to convert data back to Internet Object format.
+
+```ts
+import { stringify, load, parseDefinitions } from 'internet-object';
+
+const defs = parseDefinitions('~ $schema: { name: string, age: int }', null);
+const doc = load({ name: 'Alice', age: 30 }, defs);
+
+const ioString = stringify(doc);
+// Output: Alice, 30
+```
+
+### Inferring Schema from Data
+
+Use `loadInferred()` to automatically generate a schema from your data structure:
+
+```ts
+import { loadInferred } from 'internet-object';
+
+const data = {
+  name: 'Alice',
+  age: 30,
+  address: { city: 'NYC', zip: '10001' }
+};
+
+const doc = loadInferred(data);
+
+// Access the inferred schema
+console.log(doc.header.schema);
+// Inferred: { name: string, age: number, address: $address }
+// With $address: { city: string, zip: string }
+```
+
+## 📚 API Reference
+
+### Core Functions
+
+#### `load(data, defs?, options?): Document`
+
+Loads JavaScript data into a Document with optional schema validation.
+
+```ts
+load(data)                        // Schema-less
+load(data, defs)                  // Uses defs.defaultSchema ($schema)
+load(data, options)               // Schema-less with options
+load(data, defs, options)         // Full control
+```
+
+#### `loadObject(data, defs?, options?): InternetObject`
+
+Loads a single JavaScript object (not arrays).
+
+```ts
+loadObject(data)                  // Schema-less
+loadObject(data, defs)            // With validation
+loadObject(data, { schemaName: '$User' })  // With options
+```
+
+#### `loadCollection(data[], defs?, options?): Collection`
+
+Loads an array of JavaScript objects.
+
+```ts
+loadCollection(data)              // Schema-less
+loadCollection(data, defs)        // With validation
+loadCollection(data, defs, { errorCollector: errors })
+```
+
+#### `loadInferred(data, options?): Document`
+
+Loads data with automatically inferred schema.
+
+#### `parse(ioString, defs?, options?): Document`
+
+Parses an Internet Object string into a Document.
+
+#### `stringify(doc, options?): string`
+
+Serializes a Document to Internet Object format.
+
+#### `parseDefinitions(source, externalDefs?): Definitions`
+
+Parses IO header text into a Definitions object.
+
+### Options
+
+```ts
+interface LoadOptions {
+  schemaName?: string;      // Pick specific schema (e.g., '$User')
+  strict?: boolean;         // Throw on first error (default: false)
+  errorCollector?: Error[]; // Collect validation errors
+}
+```
+
+## 🏗️ Core Structural Classes
+
+```ts
+import {
+  IODocument,    // Full document with header and sections
+  IOObject,      // Single Internet Object record
+  IOCollection,  // Collection of records
+  IODefinitions, // Schema definitions and variables
+  IOSection,     // Document section
+  IOHeader,      // Document header
+  Schema,        // Schema definition
+  IOError,       // Base error class
+  IOValidationError,  // Validation errors
+  IOSyntaxError       // Parsing errors
+} from 'internet-object';
+```
+
+## 📝 Template Literals API
+
+```ts
+import io from 'internet-object';
+
+// Parse a document
+const doc = io.doc`
+  ~ $schema: { name, age }
   ---
   Alice, 30
   Bob, 25
 `;
 
-const doc = io.parse(ioString);
-console.log(doc.toJSON());
-```
-
-### Stringifying Data
-
-Use `io.stringify()` to convert data back to Internet Object format.
-
-```ts
-const data = { name: 'Alice', age: 30 };
-const ioString = io.stringify(data);
-// Output:
-// name, age
-// ---
-// Alice, 30
-```
-
-## 📚 API Reference
-
-### `io.load(data, defs?, errorCollector?, options?)`
-
-Loads and validates JavaScript data (objects or arrays) against a schema.
-
-- **data**: The JavaScript object or array to load.
-- **defs**: The schema definition. Can be:
-  - A `Schema` object.
-  - A `Definitions` object.
-  - A `string` (IO text schema or schema name).
-- **errorCollector**: An optional array to collect validation errors (useful for collections).
-- **options**: Load options.
-
-### `io.stringify(value, defs?, errorCollector?, options?)`
-
-Serializes JavaScript data to Internet Object format.
-
-### `io.parse(source, defs?, errorCollector?, options?)`
-
-Parses an Internet Object string into a Document.
-
-## 🏗️ Core Structural Classes
-
-The `load` and `parse` methods return instances of core structural classes. You can import these classes for type checking or advanced manipulation.
-
-```ts
-import {
-  IODocument,
-  IOObject,
-  IOCollection,
-  IODefinitions,
-  IOSection,
-  IOHeader
-} from 'internet-object';
-
-// Or access them via the default export
-// import io from 'internet-object';
-// const doc = new io.IODocument(...);
-```
-
-### `IODocument`
-Represents a full Internet Object document, including header, definitions, and data sections.
-- Returned by `io.parse()`.
-
-### `IOObject`
-Represents a single Internet Object record.
-- Returned by `io.load()` (when loading a single object).
-
-### `IOCollection`
-Represents a collection of Internet Object records.
-- Returned by `io.load()` (when loading an array).
-
-### `IODefinitions`
-Manages schema definitions and variables.
-- Returned by `io.defs`.
-
-## 📝 Template Literals API
-
-Internet Object also provides a set of template literal tags for a more declarative approach.
-
-### Parsing strings into documents
-
-```ts
-import io from 'internet-object';
-
-// Parse a document with schema
-const doc = io.doc`
-  name, age, email
-  ---
-  ~ Alice, 30, alice@example.com
-  ~ Bob, 25, bob@example.com
-`;
-
-console.log(doc.toJSON());
-// Output: [
-//   { name: 'Alice', age: 30, email: 'alice@example.com' },
-//   { name: 'Bob', age: 25, email: 'bob@example.com' }
-// ]
-```
-
-### Working with Definitions and Errors
-
-You can provide external definitions and an error collector using the `.with()` modifier.
-
-```ts
 // Create definitions
 const defs = io.defs`
-  ~ $address: { street: string, city: string, state: string, zip: string }
-  ~ $employee: { name: string, age: number, address: $address }
+  ~ $address: { street: string, city: string }
+  ~ $person: { name: string, address: $address }
 `;
 
-// Create an error collector
-const errors = [];
-
-// Use definitions and error collector in document parsing
-const doc = io.doc.with(defs, errors)`
-  ~ $schema: { name, age, color: { string, choices: $colors } }
+// Use definitions with document parsing
+const doc2 = io.doc.with(defs)`
+  ~ $schema: $person
   ---
-  ~ Alice, 30, red
-  ~ Bob, 25, purple  // Invalid color
+  Alice, { "123 Main St", NYC }
 `;
-
-if (errors.length > 0) {
-  console.error("Validation errors:", errors);
-}
-
-console.log(doc.toJSON());
 ```
 
-### Core Parsing Interfaces
-
-For advanced use cases, you can access the underlying parsing components:
-
-```ts
-import { Tokenizer, ASTParser, IODocument, IODefinitions } from 'internet-object';
-
-// Tokenize source code
-const tokenizer = new Tokenizer(source);
-const tokens = tokenizer.tokenize();
-
-// Parse tokens into AST
-const parser = new ASTParser(tokens);
-const ast = parser.parse();
-
-// Convert to IODocument or work with the AST directly
-const doc = ast.toDocument();
-```
-
-### Work in Progress Status
+## ✅ Feature Status
 
 - [x] Tokenizer
 - [x] AST Parser
 - [x] Schema
-  - [x] Parsing
+  - [x] Parsing & Compilation
   - [x] Validation
+  - [x] Schema Inference (`loadInferred`)
 - [x] Data Types
-  - [x] Numbers
-    - [x] Decimal Numbers
-    - [x] Binary Number
-    - [x] Hex Numbers
-    - [x] Octal Numbers
-  - [x] Strings
-    - [x] Open Strings
-    - [x] Regular Strings
-    - [x] Raw Strings
+  - [x] Numbers (int, uint, int8-32, uint8-32, number, decimal, bigint)
+  - [x] Strings (open, regular, raw)
   - [x] Boolean and Nulls
-  - [x] DateTime
-    - [x] DateTime
-    - [x] Date
-    - [x] Time
+  - [x] DateTime (datetime, date, time)
+  - [x] Arrays and Objects
   - [x] Base64 Binary Data
-- [x] IOCollections
-- [x] IODefinitions
-- [ ] Serialization (WIP)
-- [ ] API Interface Finalization (WIP)
-- [ ] Errors Standardization (WIP)
-- [ ] Optimization (WIP)
-- [ ] Testing (WIP)
+- [x] IOCollections with error handling
+- [x] IODefinitions with variables
+- [x] Load API (`load`, `loadObject`, `loadCollection`, `loadInferred`)
+- [x] Stringify API
+- [x] Parse API
+- [x] Error Standardization (IOError, IOValidationError, IOSyntaxError)
+- [ ] Optimization (ongoing)
+- [ ] Documentation (ongoing)
 
-### Development Process
+## 🛠️ Development
 
-🚧 **Pull requests are currently not accepted.** Development is ongoing, and the API is still under finalization. Once the API is stable, we will welcome contributions. Please note that the following instructions are for reference only.
+🚧 **Pull requests are currently not accepted.** Development is ongoing, and the API is still under finalization.
 
-1. Fork repository from <https://github.com/maniartech/InternetObject-js>
-1. Install dependencies `yarn install`
-1. Make changes in `./src`
-1. Update tests in `./tests/`
-1. Run tests, `yarn test`
-1. Send pull request(s)
+```bash
+# Install dependencies
+yarn install
 
-For a comprehensive understanding of Internet Object, refer to the official specification available at [docs.InternetObject.org](https://docs.internetobject.org).
+# Run tests
+yarn test
 
-**ISC License:**
+# Run performance benchmarks
+yarn perf
+yarn perf:decimal
+```
 
-© 2018-2025 ManiarTech® - All rights reserved.
+For a comprehensive understanding of Internet Object, refer to the official specification at [docs.InternetObject.org](https://docs.internetobject.org).
 
-## 📚 Documentation
-
-- **[LOAD-STRINGIFY-IMPLEMENTATION.md](./LOAD-STRINGIFY-IMPLEMENTATION.md)** - Complete guide for `load()` and `stringify()` APIs
-- **[DOCUMENT-API.md](./DOCUMENT-API.md)** - Comprehensive documentation for `loadDocument()` and `stringifyDocument()` APIs
-- **[docs/decimal.md](./docs/decimal.md)** - Decimal design, semantics, and usage
+**ISC License:** © 2018-2025 ManiarTech® - All rights reserved.
