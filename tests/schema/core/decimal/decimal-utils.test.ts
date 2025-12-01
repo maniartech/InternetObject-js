@@ -1,8 +1,5 @@
 // decimal-utils.test.ts
 import {
-  normalizeCoefficient,
-  getAbsoluteValue,
-  getSign,
   scaleUp,
   scaleDown,
   roundHalfUp,
@@ -11,72 +8,10 @@ import {
   formatBigIntAsDecimal,
   fitToPrecision,
   validatePrecisionScale,
-  performLongDivision,
   alignOperands,
-  NormalizedCoefficient
 } from '../../../../src/core/decimal-utils';
 
 describe('Decimal Utility Functions', () => {
-  describe('normalizeCoefficient', () => {
-    it('should normalize zero coefficient correctly', () => {
-      const result: NormalizedCoefficient = normalizeCoefficient(0n);
-      expect(result.coefficient).toBe(0n);
-      expect(result.isZero).toBe(true);
-    });
-
-    it('should normalize positive coefficients correctly', () => {
-      const result: NormalizedCoefficient = normalizeCoefficient(123n);
-      expect(result.coefficient).toBe(123n);
-      expect(result.isZero).toBe(false);
-    });
-
-    it('should normalize negative coefficients correctly', () => {
-      const result: NormalizedCoefficient = normalizeCoefficient(-123n);
-      expect(result.coefficient).toBe(-123n);
-      expect(result.isZero).toBe(false);
-    });
-
-    it('should handle very large coefficients', () => {
-      const largeCoeff = 10n ** 100n;
-      const result: NormalizedCoefficient = normalizeCoefficient(largeCoeff);
-      expect(result.coefficient).toBe(largeCoeff);
-      expect(result.isZero).toBe(false);
-    });
-  });
-
-  describe('getAbsoluteValue', () => {
-    it('should return the same value for positive numbers', () => {
-      expect(getAbsoluteValue(123n)).toBe(123n);
-    });
-
-    it('should return the positive value for negative numbers', () => {
-      expect(getAbsoluteValue(-123n)).toBe(123n);
-    });
-
-    it('should return zero for zero', () => {
-      expect(getAbsoluteValue(0n)).toBe(0n);
-    });
-
-    it('should handle very large numbers', () => {
-      const largeNegative = -(10n ** 100n);
-      expect(getAbsoluteValue(largeNegative)).toBe(10n ** 100n);
-    });
-  });
-
-  describe('getSign', () => {
-    it('should return 1 for positive numbers', () => {
-      expect(getSign(123n)).toBe(1);
-    });
-
-    it('should return -1 for negative numbers', () => {
-      expect(getSign(-123n)).toBe(-1);
-    });
-
-    it('should return 0 for zero', () => {
-      expect(getSign(0n)).toBe(0);
-    });
-  });
-
   describe('scaleUp and scaleDown', () => {
     it('should scale up correctly', () => {
       expect(scaleUp(123n, 2)).toBe(12300n);
@@ -395,151 +330,6 @@ describe('Decimal Utility Functions', () => {
 
       // 100 digits coefficient with 99 precision
       expect(validatePrecisionScale(largeCoeff, 99, 0).valid).toBe(false);
-    });
-  });
-
-  describe('performLongDivision', () => {
-    // Basic division tests
-    it('should perform basic division correctly', () => {
-      // 10 / 2 = 5
-      const result1 = performLongDivision(10n, 2n, 0, 10);
-      expect(result1.quotient).toBe(5n);
-      expect(result1.remainder).toBe(0n);
-      expect(result1.isExact).toBe(true);
-
-      // 10 / 3 = 3.333... (with scale 3)
-      const result2 = performLongDivision(10n, 3n, 3, 10);
-      expect(result2.quotient).toBe(3333n);
-      expect(result2.remainder).toBe(1n);
-      expect(result2.isExact).toBe(false);
-
-      // 4565 / 123 = 37.11... (with scale 2)
-      const result3 = performLongDivision(4565n, 123n, 2, 10);
-      expect(result3.quotient).toBe(3711n);
-      expect(result3.isExact).toBe(false);
-    });
-
-    // Additional tests for division at precision boundaries
-    it('should handle division at precision boundaries', () => {
-      // Division that exactly hits precision limit
-      const result = performLongDivision(1000000n, 3n, 6, 10);
-      expect(result.quotient.toString().length).toBe(10); // 10 digits total
-      expect(result.quotient).toBe(3333333333n); // 333333.3333 with 6 decimal places
-
-      // Division that would exceed precision but gets truncated
-      const result2 = performLongDivision(1000000n, 3n, 5, 10);
-      expect(result2.quotient.toString().length).toBeLessThanOrEqual(10);
-    });
-
-    // Test for complex repeating decimal patterns
-    it('should detect complex repeating decimal patterns', () => {
-      // 1/7 = 0.142857142857... (repeating pattern of 6 digits)
-      const result = performLongDivision(1n, 7n, 12, 20);
-      expect(result.repeatingDigits).toBe('142857');
-
-      // 1/11 = 0.09090909... (repeating pattern of 2 digits)
-      const result2 = performLongDivision(1n, 11n, 8, 20);
-      expect(result2.repeatingDigits).toBe('09');
-    });
-
-    // Division with very small numbers
-    it('should handle division with very small numbers', () => {
-      // 1 / 1000 = 0.001 (with scale 3)
-      const result = performLongDivision(1n, 1000n, 3, 10);
-      expect(result.quotient).toBe(1n);
-      expect(result.remainder).toBe(0n);
-      expect(result.isExact).toBe(true);
-
-      // 1 / 1000 = 0.001 (with scale 4)
-      const result2 = performLongDivision(1n, 1000n, 4, 10);
-      expect(result2.quotient).toBe(10n);
-      expect(result2.remainder).toBe(0n);
-      expect(result2.isExact).toBe(true);
-    });
-
-    // Division with repeating decimals
-    it('should handle repeating decimals', () => {
-      // 1 / 3 = 0.333... (with scale 10)
-      const result = performLongDivision(1n, 3n, 10, 15);
-      expect(result.quotient).toBe(3333333333n);
-      expect(result.isExact).toBe(false);
-      expect(result.repeatingDigits).toBe('3');
-
-      // 1 / 6 = 0.166... (with scale 10)
-      const result2 = performLongDivision(1n, 6n, 10, 15);
-      expect(result2.quotient).toBe(1666666666n); // Truncated to 10 decimal places
-      expect(result2.isExact).toBe(false);
-      expect(result2.repeatingDigits).toBe('6');
-    });
-
-    // Precision overflow tests
-    it('should handle precision overflow', () => {
-      // 1 / 3 with scale 10 but precision 5
-      const result = performLongDivision(1n, 3n, 5, 5);
-      expect(result.quotient.toString().length).toBeLessThanOrEqual(5);
-      expect(result.isExact).toBe(false);
-    });
-
-    // Edge cases
-    it('should handle edge cases correctly', () => {
-      // Division by 1
-      const result1 = performLongDivision(123n, 1n, 2, 10);
-      expect(result1.quotient).toBe(12300n);
-      expect(result1.isExact).toBe(true);
-
-      // Zero dividend
-      const result2 = performLongDivision(0n, 123n, 2, 10);
-      expect(result2.quotient).toBe(0n);
-      expect(result2.isExact).toBe(true);
-
-      // Negative numbers
-      const result3 = performLongDivision(-10n, 2n, 0, 10);
-      expect(result3.quotient).toBe(-5n);
-      expect(result3.isExact).toBe(true);
-
-      const result4 = performLongDivision(10n, -2n, 0, 10);
-      expect(result4.quotient).toBe(-5n);
-      expect(result4.isExact).toBe(true);
-
-      const result5 = performLongDivision(-10n, -2n, 0, 10);
-      expect(result5.quotient).toBe(5n);
-      expect(result5.isExact).toBe(true);
-    });
-
-    // Error cases
-    it('should throw errors for invalid inputs', () => {
-      // Division by zero
-      expect(() => performLongDivision(10n, 0n, 2, 10)).toThrow('Division by zero');
-
-      // Invalid precision
-      expect(() => performLongDivision(10n, 2n, 2, 0)).toThrow('Precision must be positive');
-
-      // Invalid scale
-      expect(() => performLongDivision(10n, 2n, -1, 10)).toThrow('Scale must be non-negative');
-
-      // Scale > precision
-      expect(() => performLongDivision(10n, 2n, 10, 5)).toThrow('Scale must be less than or equal to precision');
-    });
-
-    // Very large dividend/divisor combinations
-    it('should handle very large dividend/divisor combinations', () => {
-      const largeDividend = 10n ** 50n + 1n;
-      const largeDivisor = 10n ** 25n + 1n;
-
-      const result = performLongDivision(largeDividend, largeDivisor, 10, 50);
-      expect(result.quotient.toString().length).toBeLessThanOrEqual(50);
-
-      // Verify result is approximately 10^25
-      const quotientStr = result.quotient.toString();
-      expect(quotientStr.length - 10).toBeCloseTo(25, -1); // Allow some margin due to rounding
-    });
-
-    // Test the specific failing case from the task description
-    it('should correctly handle the specific failing case (4.565 / 1.23)', () => {
-      // 4.565 / 1.23 should equal 3.71
-      // With scale 2, we're working with 456.5 / 123 = 371.1...
-      const result = performLongDivision(4565n, 123n, 2, 10);
-      expect(result.quotient).toBe(3711n);
     });
   });
 

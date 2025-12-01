@@ -1,235 +1,23 @@
 /**
  * Test suite for decimal utility functions
- * 
+ *
  * Comprehensive tests covering edge cases including leading zeros, trailing zeros,
  * sign handling, empty coefficients, and very large coefficient scenarios.
  */
 
-import { 
-  normalizeCoefficient, 
-  getAbsoluteValue, 
-  getSign,
+import {
   scaleUp,
   scaleDown,
   roundHalfUp,
   ceilRound,
   floorRound,
   formatBigIntAsDecimal,
-  type NormalizedCoefficient 
 } from '../../src/core/decimal-utils';
 
 describe('Decimal Utility Functions', () => {
-  
-  describe('normalizeCoefficient', () => {
-    
-    test('should handle zero coefficient', () => {
-      const result = normalizeCoefficient(0n);
-      expect(result.coefficient).toBe(0n);
-      expect(result.isZero).toBe(true);
-    });
-
-    test('should handle positive coefficient', () => {
-      const result = normalizeCoefficient(123n);
-      expect(result.coefficient).toBe(123n);
-      expect(result.isZero).toBe(false);
-    });
-
-    test('should handle negative coefficient', () => {
-      const result = normalizeCoefficient(-456n);
-      expect(result.coefficient).toBe(-456n);
-      expect(result.isZero).toBe(false);
-    });
-
-    test('should handle very large positive coefficient', () => {
-      // Create a coefficient with hundreds of digits
-      const largeCoeff = BigInt('1' + '0'.repeat(200) + '123456789');
-      const result = normalizeCoefficient(largeCoeff);
-      expect(result.coefficient).toBe(largeCoeff);
-      expect(result.isZero).toBe(false);
-    });
-
-    test('should handle very large negative coefficient', () => {
-      // Create a negative coefficient with hundreds of digits
-      const largeCoeff = BigInt('-9' + '8'.repeat(300) + '123456789');
-      const result = normalizeCoefficient(largeCoeff);
-      expect(result.coefficient).toBe(largeCoeff);
-      expect(result.isZero).toBe(false);
-    });
-
-    test('should handle coefficient 100,000+ times larger than Number.MAX_SAFE_INTEGER', () => {
-      // Number.MAX_SAFE_INTEGER is 9007199254740991 (about 9e15)
-      // Create a number 100,000+ times larger (about 9e20)
-      const maxSafeInt = BigInt(Number.MAX_SAFE_INTEGER);
-      const veryLargeCoeff = maxSafeInt * 100000n + 12345n;
-      const result = normalizeCoefficient(veryLargeCoeff);
-      expect(result.coefficient).toBe(veryLargeCoeff);
-      expect(result.isZero).toBe(false);
-    });
-
-    test('should handle single digit coefficients', () => {
-      for (let i = 1; i <= 9; i++) {
-        const result = normalizeCoefficient(BigInt(i));
-        expect(result.coefficient).toBe(BigInt(i));
-        expect(result.isZero).toBe(false);
-      }
-    });
-
-    test('should handle boundary values', () => {
-      // Test 1 and -1
-      const positiveOne = normalizeCoefficient(1n);
-      expect(positiveOne.coefficient).toBe(1n);
-      expect(positiveOne.isZero).toBe(false);
-
-      const negativeOne = normalizeCoefficient(-1n);
-      expect(negativeOne.coefficient).toBe(-1n);
-      expect(negativeOne.isZero).toBe(false);
-    });
-
-    test('should maintain coefficient integrity for complex numbers', () => {
-      const complexCoeff = BigInt('123456789012345678901234567890');
-      const result = normalizeCoefficient(complexCoeff);
-      expect(result.coefficient.toString()).toBe('123456789012345678901234567890');
-      expect(result.isZero).toBe(false);
-    });
-  });
-
-  describe('getAbsoluteValue', () => {
-    
-    test('should return absolute value of positive coefficient', () => {
-      expect(getAbsoluteValue(123n)).toBe(123n);
-      expect(getAbsoluteValue(1n)).toBe(1n);
-    });
-
-    test('should return absolute value of negative coefficient', () => {
-      expect(getAbsoluteValue(-123n)).toBe(123n);
-      expect(getAbsoluteValue(-1n)).toBe(1n);
-    });
-
-    test('should return zero for zero coefficient', () => {
-      expect(getAbsoluteValue(0n)).toBe(0n);
-    });
-
-    test('should handle very large positive coefficients', () => {
-      const largeCoeff = BigInt('9' + '8'.repeat(100) + '123456789');
-      expect(getAbsoluteValue(largeCoeff)).toBe(largeCoeff);
-    });
-
-    test('should handle very large negative coefficients', () => {
-      const largeNegCoeff = BigInt('-9' + '8'.repeat(100) + '123456789');
-      const expectedAbs = BigInt('9' + '8'.repeat(100) + '123456789');
-      expect(getAbsoluteValue(largeNegCoeff)).toBe(expectedAbs);
-    });
-
-    test('should handle coefficients 100,000+ times larger than Number.MAX_SAFE_INTEGER', () => {
-      const maxSafeInt = BigInt(Number.MAX_SAFE_INTEGER);
-      const veryLargeCoeff = maxSafeInt * 100000n + 12345n;
-      const veryLargeNegCoeff = -veryLargeCoeff;
-      
-      expect(getAbsoluteValue(veryLargeCoeff)).toBe(veryLargeCoeff);
-      expect(getAbsoluteValue(veryLargeNegCoeff)).toBe(veryLargeCoeff);
-    });
-
-    test('should handle boundary cases', () => {
-      // Test with maximum and minimum single digit values
-      expect(getAbsoluteValue(9n)).toBe(9n);
-      expect(getAbsoluteValue(-9n)).toBe(9n);
-    });
-
-    test('should preserve coefficient precision for hundreds of digits', () => {
-      const hundredsOfDigits = BigInt('1' + '2'.repeat(200) + '3' + '4'.repeat(200));
-      const negativeHundreds = -hundredsOfDigits;
-      
-      expect(getAbsoluteValue(hundredsOfDigits)).toBe(hundredsOfDigits);
-      expect(getAbsoluteValue(negativeHundreds)).toBe(hundredsOfDigits);
-      
-      // Verify the string representation maintains all digits
-      expect(getAbsoluteValue(negativeHundreds).toString().length).toBe(402);
-    });
-  });
-
-  describe('getSign', () => {
-    
-    test('should return 1 for positive coefficients', () => {
-      expect(getSign(1n)).toBe(1);
-      expect(getSign(123n)).toBe(1);
-      expect(getSign(999999n)).toBe(1);
-    });
-
-    test('should return -1 for negative coefficients', () => {
-      expect(getSign(-1n)).toBe(-1);
-      expect(getSign(-123n)).toBe(-1);
-      expect(getSign(-999999n)).toBe(-1);
-    });
-
-    test('should return 0 for zero coefficient', () => {
-      expect(getSign(0n)).toBe(0);
-    });
-
-    test('should handle very large positive coefficients', () => {
-      const largeCoeff = BigInt('1' + '0'.repeat(300));
-      expect(getSign(largeCoeff)).toBe(1);
-    });
-
-    test('should handle very large negative coefficients', () => {
-      const largeNegCoeff = BigInt('-1' + '0'.repeat(300));
-      expect(getSign(largeNegCoeff)).toBe(-1);
-    });
-
-    test('should handle coefficients 100,000+ times larger than Number.MAX_SAFE_INTEGER', () => {
-      const maxSafeInt = BigInt(Number.MAX_SAFE_INTEGER);
-      const veryLargeCoeff = maxSafeInt * 100000n + 12345n;
-      const veryLargeNegCoeff = -veryLargeCoeff;
-      
-      expect(getSign(veryLargeCoeff)).toBe(1);
-      expect(getSign(veryLargeNegCoeff)).toBe(-1);
-    });
-
-    test('should handle boundary single digit values', () => {
-      // Test all single digits
-      for (let i = 1; i <= 9; i++) {
-        expect(getSign(BigInt(i))).toBe(1);
-        expect(getSign(BigInt(-i))).toBe(-1);
-      }
-    });
-
-    test('should handle coefficients with hundreds of digits', () => {
-      // Create coefficients with exactly 500 digits
-      const positiveHuge = BigInt('1' + '2'.repeat(499));
-      const negativeHuge = -positiveHuge;
-      
-      expect(getSign(positiveHuge)).toBe(1);
-      expect(getSign(negativeHuge)).toBe(-1);
-      
-      // Verify we're actually dealing with hundreds of digits
-      expect(positiveHuge.toString().length).toBe(500);
-    });
-
-    test('should maintain consistency with absolute value function', () => {
-      const testValues = [
-        123n,
-        -456n,
-        0n,
-        BigInt('9'.repeat(100)),
-        -BigInt('8'.repeat(100))
-      ];
-
-      testValues.forEach(value => {
-        const sign = getSign(value);
-        const abs = getAbsoluteValue(value);
-        
-        if (sign === 0) {
-          expect(abs).toBe(0n);
-        } else if (sign === 1) {
-          expect(value).toBe(abs);
-        } else if (sign === -1) {
-          expect(value).toBe(-abs);
-        }
-      });
-    });
-  });
 
   describe('scaleUp', () => {
-    
+
     test('should scale up positive coefficient by powers of 10', () => {
       expect(scaleUp(123n, 0)).toBe(123n);
       expect(scaleUp(123n, 1)).toBe(1230n);
@@ -270,7 +58,7 @@ describe('Decimal Utility Functions', () => {
       const largeCoeff = BigInt('1' + '2'.repeat(99));
       const scaled = scaleUp(largeCoeff, 50);
       const expected = largeCoeff * (10n ** 50n);
-      
+
       expect(scaled).toBe(expected);
       expect(scaled.toString().length).toBe(150); // 100 + 50
     });
@@ -278,10 +66,10 @@ describe('Decimal Utility Functions', () => {
     test('should handle coefficients 100,000+ times larger than Number.MAX_SAFE_INTEGER', () => {
       const maxSafeInt = BigInt(Number.MAX_SAFE_INTEGER);
       const veryLargeCoeff = maxSafeInt * 100000n + 12345n;
-      
+
       const scaled = scaleUp(veryLargeCoeff, 10);
       const expected = veryLargeCoeff * (10n ** 10n);
-      
+
       expect(scaled).toBe(expected);
     });
 
@@ -302,7 +90,7 @@ describe('Decimal Utility Functions', () => {
     test('should handle extreme scale factors with large coefficients', () => {
       const coeff = BigInt('9'.repeat(500)); // 500 digits
       const scaled = scaleUp(coeff, 500); // Scale by 500
-      
+
       expect(scaled.toString().length).toBe(1000); // 500 + 500
       expect(scaled.toString().startsWith('9'.repeat(500))).toBe(true);
       expect(scaled.toString().endsWith('0'.repeat(500))).toBe(true);
@@ -312,7 +100,7 @@ describe('Decimal Utility Functions', () => {
       const coeff = 123456789n;
       const largeFactor = 1000;
       const scaled = scaleUp(coeff, largeFactor);
-      
+
       // Verify the result is exactly coefficient * 10^largeFactor
       expect(scaled).toBe(coeff * (10n ** BigInt(largeFactor)));
       expect(scaled.toString()).toBe(coeff.toString() + '0'.repeat(largeFactor));
@@ -320,7 +108,7 @@ describe('Decimal Utility Functions', () => {
   });
 
   describe('scaleDown', () => {
-    
+
     test('should scale down positive coefficient by powers of 10', () => {
       expect(scaleDown(12300n, 0)).toBe(12300n);
       expect(scaleDown(12300n, 1)).toBe(1230n);
@@ -357,7 +145,7 @@ describe('Decimal Utility Functions', () => {
       expect(scaleDown(1234n, 1)).toBe(123n); // 123.4 -> 123 (truncated)
       expect(scaleDown(1235n, 1)).toBe(123n); // 123.5 -> 123 (truncated, not rounded to 124)
       expect(scaleDown(1239n, 1)).toBe(123n); // 123.9 -> 123 (truncated)
-      
+
       expect(scaleDown(-1234n, 1)).toBe(-123n); // -123.4 -> -123 (truncated)
       expect(scaleDown(-1235n, 1)).toBe(-123n); // -123.5 -> -123 (truncated)
       expect(scaleDown(-1239n, 1)).toBe(-123n); // -123.9 -> -123 (truncated)
@@ -366,7 +154,7 @@ describe('Decimal Utility Functions', () => {
     test('should handle maximum scale differences', () => {
       // Create a large coefficient and scale it down significantly
       const largeCoeff = BigInt('1' + '0'.repeat(100)); // 1 followed by 100 zeros
-      
+
       expect(scaleDown(largeCoeff, 50)).toBe(BigInt('1' + '0'.repeat(50)));
       expect(scaleDown(largeCoeff, 100)).toBe(1n);
       expect(scaleDown(largeCoeff, 101)).toBe(0n); // Scaled beyond the coefficient
@@ -376,7 +164,7 @@ describe('Decimal Utility Functions', () => {
       // Create coefficient with 300 digits
       const largeCoeff = BigInt('1' + '2'.repeat(299));
       const scaled = scaleDown(largeCoeff, 100);
-      
+
       // Should remove 100 digits from the right
       const expected = BigInt('1' + '2'.repeat(199));
       expect(scaled).toBe(expected);
@@ -386,10 +174,10 @@ describe('Decimal Utility Functions', () => {
     test('should handle coefficients 100,000+ times larger than Number.MAX_SAFE_INTEGER', () => {
       const maxSafeInt = BigInt(Number.MAX_SAFE_INTEGER);
       const veryLargeCoeff = maxSafeInt * 100000n; // Exactly 100,000 times larger
-      
+
       const scaled = scaleDown(veryLargeCoeff, 5); // Scale down by 5 digits
       const expected = veryLargeCoeff / (10n ** 5n);
-      
+
       expect(scaled).toBe(expected);
     });
 
@@ -409,16 +197,16 @@ describe('Decimal Utility Functions', () => {
 
     test('should handle extreme scale factors with large coefficients', () => {
       const coeff = BigInt('9'.repeat(1000)); // 1000 digits
-      
+
       // Scale down by 500 digits
       const scaled = scaleDown(coeff, 500);
       expect(scaled.toString().length).toBe(500); // 1000 - 500
       expect(scaled.toString()).toBe('9'.repeat(500));
-      
+
       // Scale down by exactly the coefficient length
       const scaledToOne = scaleDown(coeff, 999);
       expect(scaledToOne).toBe(9n);
-      
+
       // Scale down beyond the coefficient length
       const scaledToZero = scaleDown(coeff, 1000);
       expect(scaledToZero).toBe(0n);
@@ -447,12 +235,12 @@ describe('Decimal Utility Functions', () => {
       expect(scaleDown(1000n, 3)).toBe(1n);
       expect(scaleDown(10000n, 4)).toBe(1n);
       expect(scaleDown(100000n, 5)).toBe(1n);
-      
+
       // Test coefficients that are one less than powers of 10
       expect(scaleDown(999n, 3)).toBe(0n);
       expect(scaleDown(9999n, 4)).toBe(0n);
       expect(scaleDown(99999n, 5)).toBe(0n);
-      
+
       // Test coefficients that are one more than powers of 10
       expect(scaleDown(1001n, 3)).toBe(1n);
       expect(scaleDown(10001n, 4)).toBe(1n);
@@ -461,35 +249,35 @@ describe('Decimal Utility Functions', () => {
   });
 
   describe('Scale Operations Integration', () => {
-    
+
     test('should be inverse operations for exact powers of 10', () => {
       const coeff = 123n;
       const scaleFactor = 5;
-      
+
       // Scale up then scale down should return original for exact cases
       const scaledUp = scaleUp(coeff, scaleFactor);
       const scaledBack = scaleDown(scaledUp, scaleFactor);
-      
+
       expect(scaledBack).toBe(coeff);
     });
 
     test('should handle round-trip operations with truncation', () => {
       const coeff = 12345n;
-      
+
       // Scale up by less than we scale down - should truncate
       const scaledUp = scaleUp(coeff, 2); // 1234500n
       const scaledDown = scaleDown(scaledUp, 3); // 1234n (truncated)
-      
+
       expect(scaledDown).toBe(1234n);
     });
 
     test('should work with very large coefficients in both directions', () => {
       const largeCoeff = BigInt('1' + '2'.repeat(500)); // 501 digits
-      
+
       // Scale up then down
       const scaledUp = scaleUp(largeCoeff, 100);
       expect(scaledUp.toString().length).toBe(601); // 501 + 100
-      
+
       const scaledDown = scaleDown(scaledUp, 100);
       expect(scaledDown).toBe(largeCoeff);
       expect(scaledDown.toString().length).toBe(501);
@@ -498,7 +286,7 @@ describe('Decimal Utility Functions', () => {
     test('should handle zero consistently in both operations', () => {
       expect(scaleUp(0n, 100)).toBe(0n);
       expect(scaleDown(0n, 100)).toBe(0n);
-      
+
       // Scale up zero then scale down
       const scaledUp = scaleUp(0n, 50);
       const scaledDown = scaleDown(scaledUp, 25);
@@ -508,35 +296,35 @@ describe('Decimal Utility Functions', () => {
     test('should maintain sign consistency', () => {
       const positiveCoeff = 12345n;
       const negativeCoeff = -12345n;
-      
-      // Both operations should preserve sign
-      expect(getSign(scaleUp(positiveCoeff, 10))).toBe(1);
-      expect(getSign(scaleUp(negativeCoeff, 10))).toBe(-1);
-      expect(getSign(scaleDown(positiveCoeff, 2))).toBe(1);
-      expect(getSign(scaleDown(negativeCoeff, 2))).toBe(-1);
+
+      // Both operations should preserve sign (using inline check)
+      expect(scaleUp(positiveCoeff, 10) > 0n).toBe(true);
+      expect(scaleUp(negativeCoeff, 10) < 0n).toBe(true);
+      expect(scaleDown(positiveCoeff, 2) > 0n).toBe(true);
+      expect(scaleDown(negativeCoeff, 2) < 0n).toBe(true);
     });
 
     test('should handle extreme scale differences efficiently', () => {
       const coeff = 123n;
-      
+
       // Test performance with very large scale factors
       const startTime = Date.now();
-      
+
       const largeScaleUp = scaleUp(coeff, 1000);
       const largeScaleDown = scaleDown(largeScaleUp, 500);
-      
+
       const endTime = Date.now();
-      
+
       // Should complete quickly
       expect(endTime - startTime).toBeLessThan(100);
-      
+
       // Verify correctness
       expect(largeScaleDown).toBe(scaleUp(coeff, 500));
     });
   });
 
   describe('formatBigIntAsDecimal', () => {
-    
+
     test('should format zero coefficients with various scales', () => {
       expect(formatBigIntAsDecimal(0n, 0)).toBe('0');
       expect(formatBigIntAsDecimal(0n, 1)).toBe('0.0');
@@ -564,17 +352,17 @@ describe('Decimal Utility Functions', () => {
     test('should handle very large coefficients with hundreds of digits', () => {
       // Create coefficient with 200 digits
       const largeCoeff = BigInt('1' + '2'.repeat(199));
-      
+
       // Test with scale 0 (integer)
       const formatted0 = formatBigIntAsDecimal(largeCoeff, 0);
       expect(formatted0).toBe('1' + '2'.repeat(199));
       expect(formatted0.length).toBe(200);
-      
+
       // Test with scale 50 (50 decimal places)
       const formatted50 = formatBigIntAsDecimal(largeCoeff, 50);
       expect(formatted50).toBe('1' + '2'.repeat(149) + '.' + '2'.repeat(50));
       expect(formatted50.replace('.', '').length).toBe(200);
-      
+
       // Test with scale 100 (100 decimal places)
       const formatted100 = formatBigIntAsDecimal(largeCoeff, 100);
       expect(formatted100).toBe('1' + '2'.repeat(99) + '.' + '2'.repeat(100));
@@ -584,11 +372,11 @@ describe('Decimal Utility Functions', () => {
     test('should handle coefficients 100,000+ times larger than Number.MAX_SAFE_INTEGER', () => {
       const maxSafeInt = BigInt(Number.MAX_SAFE_INTEGER);
       const veryLargeCoeff = maxSafeInt * 100000n + 12345n;
-      
+
       const formatted = formatBigIntAsDecimal(veryLargeCoeff, 5);
       const expectedStr = veryLargeCoeff.toString();
       const expected = expectedStr.slice(0, -5) + '.' + expectedStr.slice(-5);
-      
+
       expect(formatted).toBe(expected);
     });
 
@@ -597,7 +385,7 @@ describe('Decimal Utility Functions', () => {
       expect(formatBigIntAsDecimal(1n, 3)).toBe('0.001');
       expect(formatBigIntAsDecimal(12n, 5)).toBe('0.00012');
       expect(formatBigIntAsDecimal(123n, 10)).toBe('0.0000000123');
-      
+
       // Test negative cases
       expect(formatBigIntAsDecimal(-1n, 3)).toBe('-0.001');
       expect(formatBigIntAsDecimal(-12n, 5)).toBe('-0.00012');
@@ -616,7 +404,7 @@ describe('Decimal Utility Functions', () => {
     test('should handle maximum scale scenarios', () => {
       const coeff = 123456789n;
       const maxScale = 50;
-      
+
       const formatted = formatBigIntAsDecimal(coeff, maxScale);
       expect(formatted).toBe('0.' + '0'.repeat(maxScale - 9) + '123456789');
       expect(formatted.split('.')[1].length).toBe(maxScale);
@@ -624,7 +412,7 @@ describe('Decimal Utility Functions', () => {
   });
 
   describe('roundHalfUp', () => {
-    
+
     test('should handle scale up scenarios (no rounding needed)', () => {
       expect(roundHalfUp(123n, 2, 3)).toBe(1230n); // 1.23 -> 1.230 = 1230 with scale 3
       expect(roundHalfUp(123n, 1, 4)).toBe(123000n); // 12.3 -> 12.3000 = 123000 with scale 4
@@ -643,11 +431,11 @@ describe('Decimal Utility Functions', () => {
       expect(roundHalfUp(125n, 3, 2)).toBe(13n); // 1.25 -> 1.3 (round up)
       expect(roundHalfUp(135n, 3, 2)).toBe(14n); // 1.35 -> 1.4 (round up)
       expect(roundHalfUp(1235n, 4, 3)).toBe(124n); // 1.235 -> 1.24 (round up)
-      
+
       // Test less than half cases
       expect(roundHalfUp(124n, 3, 2)).toBe(12n); // 1.24 -> 1.2 (no round)
       expect(roundHalfUp(1234n, 4, 3)).toBe(123n); // 1.234 -> 1.23 (no round)
-      
+
       // Test greater than half cases
       expect(roundHalfUp(126n, 3, 2)).toBe(13n); // 1.26 -> 1.3 (round up)
       expect(roundHalfUp(1236n, 4, 3)).toBe(124n); // 1.236 -> 1.24 (round up)
@@ -657,11 +445,11 @@ describe('Decimal Utility Functions', () => {
       // Test exact half cases (round away from zero)
       expect(roundHalfUp(-125n, 3, 2)).toBe(-13n); // -1.25 -> -1.3 (round away from zero)
       expect(roundHalfUp(-135n, 3, 2)).toBe(-14n); // -1.35 -> -1.4 (round away from zero)
-      
+
       // Test less than half cases
       expect(roundHalfUp(-124n, 3, 2)).toBe(-12n); // -1.24 -> -1.2 (no round)
       expect(roundHalfUp(-1234n, 4, 3)).toBe(-123n); // -1.234 -> -1.23 (no round)
-      
+
       // Test greater than half cases
       expect(roundHalfUp(-126n, 3, 2)).toBe(-13n); // -1.26 -> -1.3 (round away from zero)
       expect(roundHalfUp(-1236n, 4, 3)).toBe(-124n); // -1.236 -> -1.24 (round away from zero)
@@ -682,10 +470,10 @@ describe('Decimal Utility Functions', () => {
     test('should handle very large coefficients with hundreds of digits', () => {
       // Create coefficient with 300 digits
       const largeCoeff = BigInt('1' + '2'.repeat(299));
-      
+
       // Round from scale 150 to scale 100 (remove 50 digits)
       const rounded = roundHalfUp(largeCoeff, 150, 100);
-      
+
       // Should truncate the last 50 digits and potentially round
       expect(rounded.toString().length).toBeLessThanOrEqual(250); // 300 - 50
     });
@@ -693,10 +481,10 @@ describe('Decimal Utility Functions', () => {
     test('should handle coefficients 100,000+ times larger than Number.MAX_SAFE_INTEGER', () => {
       const maxSafeInt = BigInt(Number.MAX_SAFE_INTEGER);
       const veryLargeCoeff = maxSafeInt * 100000n + 12345n;
-      
+
       // Round from high precision to lower precision
       const rounded = roundHalfUp(veryLargeCoeff, 10, 5);
-      
+
       // Should be a valid BigInt result
       expect(typeof rounded).toBe('bigint');
       expect(rounded).toBeGreaterThan(0n);
@@ -710,19 +498,19 @@ describe('Decimal Utility Functions', () => {
 
     test('should handle extreme scale differences', () => {
       const coeff = BigInt('1' + '0'.repeat(100)); // 1 followed by 100 zeros
-      
+
       // Round from scale 50 to scale 10
       const rounded = roundHalfUp(coeff, 50, 10);
       expect(rounded).toBe(BigInt('1' + '0'.repeat(60))); // Should scale up
-      
-      // Round from scale 10 to scale 50  
+
+      // Round from scale 10 to scale 50
       const rounded2 = roundHalfUp(coeff, 10, 50);
       expect(rounded2).toBe(BigInt('1' + '0'.repeat(140))); // Should scale up more
     });
   });
 
   describe('ceilRound', () => {
-    
+
     test('should handle scale up scenarios (no rounding needed)', () => {
       expect(ceilRound(123n, 2, 3)).toBe(1230n); // 1.23 -> 1.230 = 1230 with scale 3
       expect(ceilRound(123n, 1, 4)).toBe(123000n); // 12.3 -> 12.3000 = 123000 with scale 4
@@ -741,7 +529,7 @@ describe('Decimal Utility Functions', () => {
       expect(ceilRound(125n, 3, 2)).toBe(13n); // 1.25 -> 1.3 (round up)
       expect(ceilRound(129n, 3, 2)).toBe(13n); // 1.29 -> 1.3 (round up)
       expect(ceilRound(120n, 3, 2)).toBe(12n); // 1.20 -> 1.2 (no remainder, no round)
-      
+
       expect(ceilRound(1231n, 4, 3)).toBe(124n); // 1.231 -> 1.24 (round up)
       expect(ceilRound(1235n, 4, 3)).toBe(124n); // 1.235 -> 1.24 (round up)
       expect(ceilRound(1239n, 4, 3)).toBe(124n); // 1.239 -> 1.24 (round up)
@@ -752,7 +540,7 @@ describe('Decimal Utility Functions', () => {
       expect(ceilRound(-125n, 3, 2)).toBe(-12n); // -1.25 -> -1.2 (towards zero)
       expect(ceilRound(-129n, 3, 2)).toBe(-12n); // -1.29 -> -1.2 (towards zero)
       expect(ceilRound(-120n, 3, 2)).toBe(-12n); // -1.20 -> -1.2 (no remainder)
-      
+
       expect(ceilRound(-1231n, 4, 3)).toBe(-123n); // -1.231 -> -1.23 (towards zero)
       expect(ceilRound(-1235n, 4, 3)).toBe(-123n); // -1.235 -> -1.23 (towards zero)
       expect(ceilRound(-1239n, 4, 3)).toBe(-123n); // -1.239 -> -1.23 (towards zero)
@@ -773,10 +561,10 @@ describe('Decimal Utility Functions', () => {
     test('should handle very large coefficients with hundreds of digits', () => {
       // Create coefficient with 300 digits
       const largeCoeff = BigInt('1' + '2'.repeat(299));
-      
+
       // Ceiling round from scale 150 to scale 100
       const ceiled = ceilRound(largeCoeff, 150, 100);
-      
+
       // Should be larger than or equal to truncated version
       const truncated = largeCoeff / (10n ** 50n);
       expect(ceiled).toBeGreaterThanOrEqual(truncated);
@@ -785,10 +573,10 @@ describe('Decimal Utility Functions', () => {
     test('should handle coefficients 100,000+ times larger than Number.MAX_SAFE_INTEGER', () => {
       const maxSafeInt = BigInt(Number.MAX_SAFE_INTEGER);
       const veryLargeCoeff = maxSafeInt * 100000n + 12345n;
-      
+
       // Ceiling round from high precision to lower precision
       const ceiled = ceilRound(veryLargeCoeff, 10, 5);
-      
+
       // Should be a valid BigInt result
       expect(typeof ceiled).toBe('bigint');
       expect(ceiled).toBeGreaterThan(0n);
@@ -810,7 +598,7 @@ describe('Decimal Utility Functions', () => {
   });
 
   describe('floorRound', () => {
-    
+
     test('should handle scale up scenarios (no rounding needed)', () => {
       expect(floorRound(123n, 2, 3)).toBe(1230n); // 1.23 -> 1.230 = 1230 with scale 3
       expect(floorRound(123n, 1, 4)).toBe(123000n); // 12.3 -> 12.3000 = 123000 with scale 4
@@ -829,7 +617,7 @@ describe('Decimal Utility Functions', () => {
       expect(floorRound(125n, 3, 2)).toBe(12n); // 1.25 -> 1.2 (towards zero)
       expect(floorRound(129n, 3, 2)).toBe(12n); // 1.29 -> 1.2 (towards zero)
       expect(floorRound(120n, 3, 2)).toBe(12n); // 1.20 -> 1.2 (no remainder)
-      
+
       expect(floorRound(1231n, 4, 3)).toBe(123n); // 1.231 -> 1.23 (towards zero)
       expect(floorRound(1235n, 4, 3)).toBe(123n); // 1.235 -> 1.23 (towards zero)
       expect(floorRound(1239n, 4, 3)).toBe(123n); // 1.239 -> 1.23 (towards zero)
@@ -840,7 +628,7 @@ describe('Decimal Utility Functions', () => {
       expect(floorRound(-125n, 3, 2)).toBe(-13n); // -1.25 -> -1.3 (round down)
       expect(floorRound(-129n, 3, 2)).toBe(-13n); // -1.29 -> -1.3 (round down)
       expect(floorRound(-120n, 3, 2)).toBe(-12n); // -1.20 -> -1.2 (no remainder)
-      
+
       expect(floorRound(-1231n, 4, 3)).toBe(-124n); // -1.231 -> -1.24 (round down)
       expect(floorRound(-1235n, 4, 3)).toBe(-124n); // -1.235 -> -1.24 (round down)
       expect(floorRound(-1239n, 4, 3)).toBe(-124n); // -1.239 -> -1.24 (round down)
@@ -861,10 +649,10 @@ describe('Decimal Utility Functions', () => {
     test('should handle very large coefficients with hundreds of digits', () => {
       // Create coefficient with 300 digits
       const largeCoeff = BigInt('1' + '2'.repeat(299));
-      
+
       // Floor round from scale 150 to scale 100
       const floored = floorRound(largeCoeff, 150, 100);
-      
+
       // Should be less than or equal to truncated version for positive numbers
       const truncated = largeCoeff / (10n ** 50n);
       expect(floored).toBeLessThanOrEqual(truncated);
@@ -873,10 +661,10 @@ describe('Decimal Utility Functions', () => {
     test('should handle coefficients 100,000+ times larger than Number.MAX_SAFE_INTEGER', () => {
       const maxSafeInt = BigInt(Number.MAX_SAFE_INTEGER);
       const veryLargeCoeff = maxSafeInt * 100000n + 12345n;
-      
+
       // Floor round from high precision to lower precision
       const floored = floorRound(veryLargeCoeff, 10, 5);
-      
+
       // Should be a valid BigInt result
       expect(typeof floored).toBe('bigint');
       expect(floored).toBeGreaterThan(0n);
@@ -898,18 +686,18 @@ describe('Decimal Utility Functions', () => {
   });
 
   describe('Rounding Functions Integration', () => {
-    
+
     test('should demonstrate different rounding behaviors', () => {
       const coeff = 1235n; // Represents 1.235 with scale 3
       const currentScale = 3;
       const targetScale = 2;
-      
+
       // Round half up: 1.235 -> 1.24
       expect(roundHalfUp(coeff, currentScale, targetScale)).toBe(124n);
-      
+
       // Ceiling: 1.235 -> 1.24 (round up)
       expect(ceilRound(coeff, currentScale, targetScale)).toBe(124n);
-      
+
       // Floor: 1.235 -> 1.23 (round down)
       expect(floorRound(coeff, currentScale, targetScale)).toBe(123n);
     });
@@ -918,13 +706,13 @@ describe('Decimal Utility Functions', () => {
       const coeff = -1235n; // Represents -1.235 with scale 3
       const currentScale = 3;
       const targetScale = 2;
-      
+
       // Round half up: -1.235 -> -1.24 (away from zero)
       expect(roundHalfUp(coeff, currentScale, targetScale)).toBe(-124n);
-      
+
       // Ceiling: -1.235 -> -1.23 (towards zero)
       expect(ceilRound(coeff, currentScale, targetScale)).toBe(-123n);
-      
+
       // Floor: -1.235 -> -1.24 (away from zero)
       expect(floorRound(coeff, currentScale, targetScale)).toBe(-124n);
     });
@@ -933,7 +721,7 @@ describe('Decimal Utility Functions', () => {
       const coeff = 1230n; // Represents 1.230 with scale 3
       const currentScale = 3;
       const targetScale = 2;
-      
+
       // All rounding methods should give same result for exact values
       expect(roundHalfUp(coeff, currentScale, targetScale)).toBe(123n);
       expect(ceilRound(coeff, currentScale, targetScale)).toBe(123n);
@@ -944,7 +732,7 @@ describe('Decimal Utility Functions', () => {
       const coeff = 0n;
       const currentScale = 5;
       const targetScale = 2;
-      
+
       expect(roundHalfUp(coeff, currentScale, targetScale)).toBe(0n);
       expect(ceilRound(coeff, currentScale, targetScale)).toBe(0n);
       expect(floorRound(coeff, currentScale, targetScale)).toBe(0n);
@@ -954,9 +742,9 @@ describe('Decimal Utility Functions', () => {
       const coeff = 123n;
       const currentScale = 2;
       const targetScale = 5;
-      
+
       const expected = 123000n; // Scale up by 3
-      
+
       expect(roundHalfUp(coeff, currentScale, targetScale)).toBe(expected);
       expect(ceilRound(coeff, currentScale, targetScale)).toBe(expected);
       expect(floorRound(coeff, currentScale, targetScale)).toBe(expected);
@@ -966,88 +754,86 @@ describe('Decimal Utility Functions', () => {
       const largeCoeff = BigInt('1' + '2'.repeat(100) + '5'); // Ends in 5 for rounding test
       const currentScale = 50;
       const targetScale = 49;
-      
+
       // All should handle the large coefficient without error
       const rounded = roundHalfUp(largeCoeff, currentScale, targetScale);
       const ceiled = ceilRound(largeCoeff, currentScale, targetScale);
       const floored = floorRound(largeCoeff, currentScale, targetScale);
-      
+
       expect(typeof rounded).toBe('bigint');
       expect(typeof ceiled).toBe('bigint');
       expect(typeof floored).toBe('bigint');
-      
+
       // Ceiling should be >= floor
       expect(ceiled).toBeGreaterThanOrEqual(floored);
     });
   });
 
   describe('Edge Cases and Integration', () => {
-    
+
     test('should handle empty coefficient scenarios gracefully', () => {
       // Test with the smallest possible BigInt values
-      const result = normalizeCoefficient(0n);
-      expect(result.isZero).toBe(true);
-      expect(getAbsoluteValue(result.coefficient)).toBe(0n);
-      expect(getSign(result.coefficient)).toBe(0);
+      const coeff = 0n;
+      expect(coeff === 0n).toBe(true);
+      const absCoeff = coeff < 0n ? -coeff : coeff;
+      expect(absCoeff).toBe(0n);
     });
 
     test('should handle trailing zeros in coefficient representation', () => {
       // BigInt automatically handles trailing zeros, but test the concept
       const coeff1 = BigInt('1000');
       const coeff2 = BigInt('1000000');
-      
-      expect(normalizeCoefficient(coeff1).coefficient).toBe(1000n);
-      expect(normalizeCoefficient(coeff2).coefficient).toBe(1000000n);
-      expect(getAbsoluteValue(coeff1)).toBe(1000n);
-      expect(getSign(coeff1)).toBe(1);
+
+      expect(coeff1).toBe(1000n);
+      expect(coeff2).toBe(1000000n);
+      const absCoeff = coeff1 < 0n ? -coeff1 : coeff1;
+      expect(absCoeff).toBe(1000n);
+      expect(coeff1 > 0n).toBe(true);
     });
 
     test('should handle maximum precision scenarios', () => {
       // Test with coefficients at JavaScript's BigInt limits
       const maxPrecisionCoeff = BigInt('9'.repeat(1000)); // 1000 digits
-      const result = normalizeCoefficient(maxPrecisionCoeff);
-      
-      expect(result.coefficient).toBe(maxPrecisionCoeff);
-      expect(result.isZero).toBe(false);
-      expect(getAbsoluteValue(maxPrecisionCoeff)).toBe(maxPrecisionCoeff);
-      expect(getSign(maxPrecisionCoeff)).toBe(1);
+
+      expect(maxPrecisionCoeff.toString().length).toBe(1000);
+      const absCoeff = maxPrecisionCoeff < 0n ? -maxPrecisionCoeff : maxPrecisionCoeff;
+      expect(absCoeff).toBe(maxPrecisionCoeff);
+      expect(maxPrecisionCoeff > 0n).toBe(true);
     });
 
     test('should maintain performance with very large coefficients', () => {
       // Performance test with extremely large numbers
       const extremelyLarge = BigInt('1' + '0'.repeat(10000)); // 10,001 digits
-      
+
       const startTime = Date.now();
-      
-      const normalized = normalizeCoefficient(extremelyLarge);
-      const absolute = getAbsoluteValue(extremelyLarge);
-      const sign = getSign(extremelyLarge);
-      
+
+      const absCoeff = extremelyLarge < 0n ? -extremelyLarge : extremelyLarge;
+      const isPositive = extremelyLarge > 0n;
+
       const endTime = Date.now();
-      
+
       // Operations should complete quickly (under 100ms for this size)
       expect(endTime - startTime).toBeLessThan(100);
-      
-      expect(normalized.coefficient).toBe(extremelyLarge);
-      expect(absolute).toBe(extremelyLarge);
-      expect(sign).toBe(1);
+
+      expect(absCoeff).toBe(extremelyLarge);
+      expect(isPositive).toBe(true);
     });
 
     test('should integrate formatBigIntAsDecimal with rounding functions', () => {
       const coeff = 12345n;
       const currentScale = 4; // 1.2345
       const targetScale = 2;
-      
+
       // Test round half up
       const rounded = roundHalfUp(coeff, currentScale, targetScale);
       const formattedRounded = formatBigIntAsDecimal(rounded, targetScale);
       expect(formattedRounded).toBe('1.23'); // 1.2345 -> 1.23 (round half up)
-      
+
       // Test ceiling
       const ceiled = ceilRound(coeff, currentScale, targetScale);
       const formattedCeiled = formatBigIntAsDecimal(ceiled, targetScale);
       expect(formattedCeiled).toBe('1.24'); // 1.2345 -> 1.24 (ceiling)
-      
+
       // Test floor
       const floored = floorRound(coeff, currentScale, targetScale);
       const formattedFloored = formatBigIntAsDecimal(floored, targetScale);

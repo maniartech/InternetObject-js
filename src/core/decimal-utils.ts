@@ -7,63 +7,11 @@
 import { DecimalError } from './decimal';
 
 /**
- * Result of coefficient normalization
- */
-export interface NormalizedCoefficient {
-    coefficient: bigint;
-    isZero: boolean;
-}
-
-/**
  * Result of precision and scale validation
  */
 export interface ValidationResult {
     valid: boolean;
     reason?: string;
-}
-
-/**
- * Normalizes a BigInt coefficient by handling leading zeros and sign normalization.
- *
- * @param coefficient The BigInt coefficient to normalize
- * @returns Normalized coefficient and zero flag
- */
-export function normalizeCoefficient(coefficient: bigint): NormalizedCoefficient {
-    // Handle zero case
-    if (coefficient === 0n) {
-        return {
-            coefficient: 0n,
-            isZero: true
-        };
-    }
-
-    // For non-zero values, BigInt already handles normalization
-    // No leading zeros exist in BigInt representation
-    return {
-        coefficient,
-        isZero: false
-    };
-}
-
-/**
- * Gets the absolute value of a BigInt coefficient.
- *
- * @param coefficient The BigInt coefficient
- * @returns The absolute value as BigInt
- */
-export function getAbsoluteValue(coefficient: bigint): bigint {
-    return coefficient < 0n ? -coefficient : coefficient;
-}
-
-/**
- * Gets the sign of a BigInt coefficient.
- *
- * @param coefficient The BigInt coefficient
- * @returns 1 for positive, -1 for negative, 0 for zero
- */
-export function getSign(coefficient: bigint): 1 | -1 | 0 {
-    if (coefficient === 0n) return 0;
-    return coefficient > 0n ? 1 : -1;
 }
 
 /**
@@ -314,8 +262,8 @@ export function fitToPrecision(
         return 0n;
     }
 
-    // Get absolute value for digit counting
-    const absCoeff = getAbsoluteValue(coefficient);
+    // Get absolute value for digit counting (inlined for performance)
+    const absCoeff = coefficient < 0n ? -coefficient : coefficient;
     const coeffStr = absCoeff.toString();
 
     // If already fits within precision, return unchanged
@@ -356,7 +304,7 @@ export function fitToPrecision(
     }
 
     // Verify the result fits within precision
-    const resultStr = getAbsoluteValue(result).toString();
+    const resultStr = (result < 0n ? -result : result).toString();
     if (resultStr.length > precision) {
         // This can happen with rounding (e.g., 999 rounded to 2 digits becomes 1000)
         // In this case, we need to adjust scale again
@@ -384,7 +332,7 @@ export function fitToPrecision(
                     zerosToRemove++;
                 }
 
-                if (getAbsoluteValue(tempResult).toString().length <= precision) {
+                if ((tempResult < 0n ? -tempResult : tempResult).toString().length <= precision) {
                     return tempResult;
                 }
             }
@@ -430,8 +378,8 @@ export function validatePrecisionScale(
         return { valid: true };
     }
 
-    // Get absolute value for digit counting
-    const absCoeff = getAbsoluteValue(coefficient);
+    // Get absolute value for digit counting (inlined for performance)
+    const absCoeff = coefficient < 0n ? -coefficient : coefficient;
     const coeffStr = absCoeff.toString();
 
     // Check if coefficient fits within precision
@@ -454,115 +402,6 @@ export function validatePrecisionScale(
 
     // If we get here, the coefficient fits within precision and scale constraints
     return { valid: true };
-}
-
-/**
- * Result of long division operation
- */
-export interface DivisionResult {
-    quotient: bigint;
-    remainder: bigint;
-    isExact: boolean;
-    repeatingDigits?: string;
-}
-
-/**
- * Performs long division between two BigInt coefficients with specified scale and precision.
- * Handles repeating decimals and precision constraints.
- *
- * @param dividend The dividend coefficient
- * @param divisor The divisor coefficient (must not be zero)
- * @param scale The desired scale (decimal places) for the result
- * @param precision The maximum precision allowed for the result
- * @param maxIterations Maximum number of iterations to detect repeating decimals (default: 100)
- * @returns A DivisionResult object containing quotient, remainder, and flags for exactness and repeating digits
- * @throws DecimalError if divisor is zero or if precision constraints cannot be met
- */
-export function performLongDivision(
-    dividend: bigint,
-    divisor: bigint,
-    scale: number,
-    precision: number,
-    maxIterations: number = 100
-): DivisionResult {
-    // Validate inputs
-    if (divisor === 0n) {
-        throw new DecimalError("Division by zero");
-    }
-
-    if (precision <= 0) {
-        throw new DecimalError("Precision must be positive");
-    }
-
-    if (scale < 0) {
-        throw new DecimalError("Scale must be non-negative");
-    }
-
-    if (scale > precision) {
-        throw new DecimalError("Scale must be less than or equal to precision");
-    }
-
-    // Handle zero dividend case
-    if (dividend === 0n) {
-        return {
-            quotient: 0n,
-            remainder: 0n,
-            isExact: true
-        };
-    }
-
-    // Work with absolute values for division
-    const isNegative = (dividend < 0n) !== (divisor < 0n);
-    const absDividend = getAbsoluteValue(dividend);
-    const absDivisor = getAbsoluteValue(divisor);
-
-    // Scale up the dividend to get the desired decimal places (use cached pow10)
-    const scaledDividend = absDividend * getPow10(scale);
-
-    // Perform integer division
-    let quotient = scaledDividend / absDivisor;
-    const remainder = scaledDividend % absDivisor;
-
-    // Check if division is exact
-    const isExact = remainder === 0n;
-
-    // Apply sign to quotient
-    if (isNegative) {
-        quotient = -quotient;
-    }
-
-    // Check for repeating decimals if not exact
-    let repeatingDigits: string | undefined;
-    if (!isExact && scale > 0) {
-        repeatingDigits = detectRepeatingDecimals(absDividend, absDivisor, scale, maxIterations);
-    }
-
-    // Ensure the result fits within precision constraints
-    const quotientStr = getAbsoluteValue(quotient).toString();
-    if (quotientStr.length > precision) {
-        // For division, we should truncate excess digits rather than trying to round
-        // This is because division can produce an infinite number of digits
-        const excessDigits = quotientStr.length - precision;
-
-        if (excessDigits <= scale) {
-            // We can truncate from the fractional part
-            const divisor = 10n ** BigInt(excessDigits);
-            quotient = quotient / divisor;
-        } else {
-            // Cannot fit within precision constraints
-            throw new DecimalError(
-                `Division result exceeds precision limit (${precision}). ` +
-                `Result has ${quotientStr.length} digits, but precision is ${precision}.`
-            );
-        }
-    }
-
-    return {
-        quotient,
-        remainder: isNegative ? -remainder : remainder,
-        isExact,
-        repeatingDigits
-    };
 }
 
 /**
@@ -684,64 +523,6 @@ export function alignOperands(
 }
 
 /**
- * Detects repeating decimals in division operation.
- * Uses the standard long division algorithm to identify repeating patterns.
- *
- * @param dividend The dividend (absolute value)
- * @param divisor The divisor (absolute value)
- * @param scale The desired scale (decimal places)
- * @param maxIterations Maximum iterations to detect repeating pattern
- * @returns The repeating decimal digits as a string, or undefined if no repeating pattern found
- */
-function detectRepeatingDecimals(
-    dividend: bigint,
-    divisor: bigint,
-    scale: number,
-    maxIterations: number
-): string | undefined {
-    // First, get the integer part out of the way
-    const integerPart = dividend / divisor;
-    let remainder = dividend % divisor;
-
-    // If remainder is zero, there's no repeating decimal
-    if (remainder === 0n) {
-        return undefined;
-    }
-
-    // Track remainders to detect cycles
-    const remainders: Map<string, number> = new Map();
-    let fractionalDigits = '';
-    let position = 0;
-
-    // Perform long division algorithm
-    while (remainder !== 0n && position < maxIterations) {
-        // Scale up remainder by 10
-        remainder = remainder * 10n;
-
-        // Store the current remainder and position
-        const remainderKey = remainder.toString();
-        if (remainders.has(remainderKey)) {
-            // Found a repeating pattern
-            const cycleStart = remainders.get(remainderKey)!;
-            return fractionalDigits.substring(cycleStart);
-        }
-
-        remainders.set(remainderKey, position);
-
-        // Calculate next digit and remainder
-        const digit = remainder / divisor;
-        remainder = remainder % divisor;
-
-        // Add digit to fractional part
-        fractionalDigits += digit.toString();
-        position++;
-    }
-
-    // If we've reached max iterations without finding a cycle,
-    // we can't determine if there's a repeating pattern
-    return undefined;
-}/**
-
  * RDBMS-compliant precision and scale calculation result
  */
 export interface RdbmsArithmeticResult {
