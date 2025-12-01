@@ -1,5 +1,5 @@
 import IOCollection           from './core/collection';
-import Decimal                from './core/decimal';
+import Decimal                from './core/decimal/decimal';
 import IODefinitions          from './core/definitions';
 import IODocument             from './core/document';
 import IOObject               from './core/internet-object';

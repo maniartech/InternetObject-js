@@ -1,4 +1,4 @@
-import Decimal, { DecimalError } from '../../src/core/decimal';
+import Decimal, { DecimalError } from '../../../src/core/decimal/decimal';
 
 describe('Decimal', () => {
   it('should create a Decimal from string and number', () => {

@@ -12,7 +12,7 @@ import {
   ceilRound,
   floorRound,
   formatBigIntAsDecimal,
-} from '../../src/core/decimal-utils';
+} from '../../../src/core/decimal/decimal-utils';
 
 describe('Decimal Utility Functions', () => {
 

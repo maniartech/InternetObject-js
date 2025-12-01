@@ -1,11 +1,11 @@
 /**
  * Test suite for Decimal class rounding methods
- * 
+ *
  * Comprehensive tests covering round, ceil, and floor methods with various edge cases
  * including positive, negative, zero, boundary values, and coefficients with hundreds of digits.
  */
 
-import Decimal, { DecimalError } from '../../src/core/decimal';
+import Decimal, { DecimalError } from '../../../src/core/decimal/decimal';
 
 describe('Decimal Rounding Methods', () => {
 

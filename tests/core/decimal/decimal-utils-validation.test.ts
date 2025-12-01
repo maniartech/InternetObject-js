@@ -1,4 +1,4 @@
-import { validatePrecisionScale, fitToPrecision } from '../../src/core/decimal-utils';
+import { validatePrecisionScale, fitToPrecision } from '../../../src/core/decimal/decimal-utils';
 
 describe('validatePrecisionScale', () => {
   it('should validate correct precision and scale', () => {

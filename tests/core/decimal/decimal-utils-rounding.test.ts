@@ -1,4 +1,4 @@
-import { roundHalfUp, ceilRound, floorRound } from '../../src/core/decimal-utils';
+import { roundHalfUp, ceilRound, floorRound } from '../../../src/core/decimal/decimal-utils';
 
 describe('roundHalfUp', () => {
   it('should round up at half or more', () => {

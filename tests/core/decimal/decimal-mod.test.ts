@@ -1,4 +1,4 @@
-import Decimal, { DecimalError } from "../../src/core/decimal";
+import Decimal, { DecimalError } from "../../../src/core/decimal/decimal";
 
 describe('Decimal.mod', () => {
   it('computes simple remainders with same scale', () => {

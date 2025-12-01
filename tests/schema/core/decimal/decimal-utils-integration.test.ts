@@ -4,8 +4,8 @@ import {
   fitToPrecision,
   formatBigIntAsDecimal,
   validatePrecisionScale
-} from '../../../../src/core/decimal-utils';
-import Decimal from '../../../../src/core/decimal';
+} from '../../../../src/core/decimal/decimal-utils';
+import Decimal from '../../../../src/core/decimal/decimal';
 
 describe('Decimal Utilities Integration Tests', () => {
   describe('Addition with utility functions', () => {

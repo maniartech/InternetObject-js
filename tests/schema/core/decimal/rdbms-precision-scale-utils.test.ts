@@ -5,7 +5,7 @@ import {
     validateAndAdjustPrecisionScale,
     calculateRdbmsArithmeticResult,
     RdbmsArithmeticResult
-} from '../../../../src/core/decimal-utils';
+} from '../../../../src/core/decimal/decimal-utils';
 
 describe('RDBMS Precision and Scale Utility Functions', () => {
 

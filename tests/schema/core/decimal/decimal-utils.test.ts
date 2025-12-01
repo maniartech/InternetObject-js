@@ -9,7 +9,7 @@ import {
   fitToPrecision,
   validatePrecisionScale,
   alignOperands,
-} from '../../../../src/core/decimal-utils';
+} from '../../../../src/core/decimal/decimal-utils';
 
 describe('Decimal Utility Functions', () => {
   describe('scaleUp and scaleDown', () => {

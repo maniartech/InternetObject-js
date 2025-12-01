@@ -1,4 +1,4 @@
-import Decimal from "../../src/core/decimal";
+import Decimal from "../../../src/core/decimal/decimal";
 
 describe('Decimal.div negative rounding edge cases', () => {
   it('rounds -1 / 3 at scale 0 to -0 correctly (towards -1)', () => {

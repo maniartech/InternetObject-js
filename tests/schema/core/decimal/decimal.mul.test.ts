@@ -1,4 +1,4 @@
-import Decimal from "../../../../src/core/decimal";
+import Decimal from "../../../../src/core/decimal/decimal";
 
 describe('Comprehensive Decimal.mul Regression Tests', () => {
 

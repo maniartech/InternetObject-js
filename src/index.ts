@@ -14,7 +14,7 @@ export { default as IODocument                      } from './core/document';
 export { default as IOHeader                        } from './core/header';
 export { default as IODefinitions                   } from './core/definitions';
 export { default as IOCollection                    } from './core/collection';
-export { default as Decimal                         } from './core/decimal';
+export { default as Decimal                         } from './core/decimal/decimal';
 export { default as IOObject                        } from './core/internet-object';
 export { default as IOSection                       } from './core/section';
 export { default as IOSectionCollection             } from './core/section-collection';

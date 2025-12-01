@@ -1,4 +1,4 @@
-import Decimal from '../../core/decimal'
+import Decimal from '../../core/decimal/decimal'
 import ErrorCodes from '../../errors/io-error-codes'
 import ValidationError from '../../errors/io-validation-error'
 import Node from '../../parser/nodes/nodes'

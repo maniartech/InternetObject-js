@@ -1,4 +1,4 @@
-import { getPow10 } from '../../src/core/decimal-utils';
+import { getPow10 } from '../../../src/core/decimal/decimal-utils';
 
 describe('getPow10 utility', () => {
   it('should return correct powers of 10 for small exponents', () => {

@@ -1,4 +1,4 @@
-import { formatBigIntAsDecimal } from '../../src/core/decimal-utils';
+import { formatBigIntAsDecimal } from '../../../src/core/decimal/decimal-utils';
 
 describe('formatBigIntAsDecimal', () => {
   it('should format zero coefficients with various scales', () => {
