@@ -3,7 +3,7 @@
 * Enumeration representing types of tokens.
 */
 enum TokenType {
-  CURLY_OPEN        = 'CURLEY_OPEN',
+  CURLY_OPEN        = 'CURLY_OPEN',
   CURLY_CLOSE       = 'CURLY_CLOSE',
   BRACKET_OPEN      = 'BRACKET_OPEN',
   BRACKET_CLOSE     = 'BRACKET_CLOSE',

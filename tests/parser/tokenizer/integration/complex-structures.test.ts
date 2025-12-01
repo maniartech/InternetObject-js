@@ -40,10 +40,10 @@ describe("Complex Structure Tokenization", () => {
 
       const openBraces = tokens.filter(t => t.type === TokenType.CURLY_OPEN);
       const closeBraces = tokens.filter(t => t.type === TokenType.CURLY_CLOSE);
-      
+
       expect(openBraces).toHaveLength(4);
       expect(closeBraces).toHaveLength(4);
-      
+
       const deepString = tokens.find(t => t.value === "deep");
       expect(deepString).toBeDefined();
       expect(deepString?.type).toBe(TokenType.STRING);
@@ -63,7 +63,7 @@ describe("Complex Structure Tokenization", () => {
       const tokens = tokenizer.tokenize();
 
       const tokenTypes = new Set(tokens.map(t => t.type));
-      
+
       expect(tokenTypes.has(TokenType.STRING)).toBe(true);
       expect(tokenTypes.has(TokenType.NUMBER)).toBe(true);
       expect(tokenTypes.has(TokenType.BOOLEAN)).toBe(true);
@@ -109,10 +109,10 @@ describe("Complex Structure Tokenization", () => {
 
       const openBrackets = tokens.filter(t => t.type === TokenType.BRACKET_OPEN);
       const closeBrackets = tokens.filter(t => t.type === TokenType.BRACKET_CLOSE);
-      
+
       expect(openBrackets).toHaveLength(5);
       expect(closeBrackets).toHaveLength(5);
-      
+
       const numbers = tokens.filter(t => t.type === TokenType.NUMBER);
       expect(numbers).toHaveLength(5);
       expect(numbers.map(t => t.value)).toEqual([1, 2, 3, 4, 5]);
@@ -124,7 +124,7 @@ describe("Complex Structure Tokenization", () => {
       const tokens = tokenizer.tokenize();
 
       const tokenTypes = new Set(tokens.map(t => t.type));
-      
+
       expect(tokenTypes.has(TokenType.NUMBER)).toBe(true);
       expect(tokenTypes.has(TokenType.STRING)).toBe(true);
       expect(tokenTypes.has(TokenType.BOOLEAN)).toBe(true);
@@ -144,13 +144,13 @@ describe("Complex Structure Tokenization", () => {
       const tokenizer = new Tokenizer(input);
       const tokens = tokenizer.tokenize();
 
-      const objectBraces = tokens.filter(t => 
+      const objectBraces = tokens.filter(t =>
         t.type === TokenType.CURLY_OPEN || t.type === TokenType.CURLY_CLOSE
       );
-      const arrayBrackets = tokens.filter(t => 
+      const arrayBrackets = tokens.filter(t =>
         t.type === TokenType.BRACKET_OPEN || t.type === TokenType.BRACKET_CLOSE
       );
-      
+
       expect(objectBraces).toHaveLength(2); // One object
       expect(arrayBrackets).toHaveLength(6); // Three arrays
     });
@@ -164,13 +164,13 @@ describe("Complex Structure Tokenization", () => {
       const tokenizer = new Tokenizer(input);
       const tokens = tokenizer.tokenize();
 
-      const objectBraces = tokens.filter(t => 
+      const objectBraces = tokens.filter(t =>
         t.type === TokenType.CURLY_OPEN || t.type === TokenType.CURLY_CLOSE
       );
-      const arrayBrackets = tokens.filter(t => 
+      const arrayBrackets = tokens.filter(t =>
         t.type === TokenType.BRACKET_OPEN || t.type === TokenType.BRACKET_CLOSE
       );
-      
+
       expect(arrayBrackets).toHaveLength(2); // One array
       expect(objectBraces).toHaveLength(6); // Three objects
     });
@@ -202,21 +202,21 @@ describe("Complex Structure Tokenization", () => {
       const tokens = tokenizer.tokenize();
 
       // Verify we have a complex structure with multiple levels
-      const objectBraces = tokens.filter(t => 
+      const objectBraces = tokens.filter(t =>
         t.type === TokenType.CURLY_OPEN || t.type === TokenType.CURLY_CLOSE
       );
-      const arrayBrackets = tokens.filter(t => 
+      const arrayBrackets = tokens.filter(t =>
         t.type === TokenType.BRACKET_OPEN || t.type === TokenType.BRACKET_CLOSE
       );
-      
+
       expect(objectBraces.length).toBeGreaterThan(10);
       expect(arrayBrackets.length).toBeGreaterThan(8);
-      
+
       // Verify we can find specific values
       const aliceToken = tokens.find(t => t.value === "Alice");
       const bobToken = tokens.find(t => t.value === "Bob");
       const versionToken = tokens.find(t => t.value === 1.0);
-      
+
       expect(aliceToken).toBeDefined();
       expect(bobToken).toBeDefined();
       expect(versionToken).toBeDefined();
@@ -287,12 +287,12 @@ describe("Complex Structure Tokenization", () => {
 
       const collectionTokens = tokens.filter(t => t.type === TokenType.COLLECTION_START);
       expect(collectionTokens).toHaveLength(2);
-      
+
       // Verify collections are followed by appropriate structures
       for (const collectionToken of collectionTokens) {
         const nextTokenIndex = tokens.indexOf(collectionToken) + 1;
         const nextToken = tokens[nextTokenIndex];
-        expect(nextToken.type).toMatch(/BRACKET_OPEN|CURLEY_OPEN/); // Note: CURLEY_OPEN is the actual token type
+        expect(nextToken.type).toMatch(/BRACKET_OPEN|CURLY_OPEN/);
       }
     });
   });
@@ -315,10 +315,10 @@ describe("Complex Structure Tokenization", () => {
 
       const openBraces = tokens.filter(t => t.type === TokenType.CURLY_OPEN);
       const closeBraces = tokens.filter(t => t.type === TokenType.CURLY_CLOSE);
-      
+
       expect(openBraces).toHaveLength(101); // 100 nested + 1 root
       expect(closeBraces).toHaveLength(101);
-      
+
       const deepValue = tokens.find(t => t.value === "deep");
       expect(deepValue).toBeDefined();
     });
@@ -337,7 +337,7 @@ describe("Complex Structure Tokenization", () => {
       const numberTokens = tokens.filter(t => t.type === TokenType.NUMBER);
       const stringTokens = tokens.filter(t => t.type === TokenType.STRING);
       const commaTokens = tokens.filter(t => t.type === TokenType.COMMA);
-      
+
       expect(numberTokens).toHaveLength(100);
       expect(stringTokens).toHaveLength(100); // All keys
       expect(commaTokens).toHaveLength(99); // n-1 commas
@@ -398,12 +398,12 @@ describe("Complex Structure Tokenization", () => {
       const tokenizer = new Tokenizer(input);
       const tokens = tokenizer.tokenize();
 
-      const validTokens = tokens.filter(t => 
+      const validTokens = tokens.filter(t =>
         (t.type === TokenType.STRING && t.value === "string") ||
         (t.type === TokenType.NUMBER && t.value === 123) ||
         (t.type === TokenType.BOOLEAN && t.value === true)
       );
-      
+
       const errorTokens = tokens.filter(t => t.type === TokenType.ERROR);
 
       expect(validTokens).toHaveLength(3);
