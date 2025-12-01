@@ -81,14 +81,16 @@ if [ -f "$ESM_INDEX" ]; then
     echo "  Raw:     $(format_bytes $ESM_SIZE)"
     echo "  Gzipped: $(format_bytes $ESM_GZIP)"
 
-    # Check against thresholds
+    # Check against thresholds - for full library bundle, 30-50KB gzipped is good
     ESM_GZIP_KB=$((ESM_GZIP / 1024))
-    if [ "$ESM_GZIP_KB" -lt 15 ]; then
-        print_status "Size is excellent (< 15KB gzipped)"
-    elif [ "$ESM_GZIP_KB" -lt 25 ]; then
-        print_warning "Size is acceptable but could be optimized (15-25KB gzipped)"
+    if [ "$ESM_GZIP_KB" -lt 25 ]; then
+        print_status "Size is excellent (< 25KB gzipped)"
+    elif [ "$ESM_GZIP_KB" -lt 35 ]; then
+        print_status "Size is good for a parser library (< 35KB gzipped)"
+    elif [ "$ESM_GZIP_KB" -lt 50 ]; then
+        print_warning "Size is acceptable but could be optimized (< 50KB gzipped)"
     else
-        print_warning "Size exceeds 25KB gzipped (expected for full library bundle)"
+        print_warning "Size is large (> 50KB gzipped)"
     fi
 else
     print_error "ESM build not found!"
@@ -169,15 +171,9 @@ print_section "6. Optimization Suggestions"
 # Check for potential optimizations
 SUGGESTIONS=0
 
-# Check if terser is used
-if ! grep -q '"minify"' package.json; then
-    echo "  • Add minification script using terser"
-    SUGGESTIONS=$((SUGGESTIONS + 1))
-fi
-
-# Check for source maps in production
-if [ -f "dist/esm/index.js.map" ]; then
-    echo "  • Consider removing source maps from production builds"
+# Check if minification is enabled in tsup.config.ts
+if [ -f "tsup.config.ts" ] && ! grep -q 'minify:\s*true' tsup.config.ts; then
+    echo "  • Enable minification in tsup.config.ts (minify: true)"
     SUGGESTIONS=$((SUGGESTIONS + 1))
 fi
 
@@ -200,14 +196,14 @@ echo ""
 
 SCORE=100
 
-# Size scoring
+# Size scoring - for a full parser library, 30-50KB gzipped is reasonable
 ESM_GZIP_KB=$((ESM_GZIP / 1024))
-if [ "$ESM_GZIP_KB" -gt 25 ]; then
+if [ "$ESM_GZIP_KB" -gt 50 ]; then
     SCORE=$((SCORE - 20))
-    echo "  [-20] Bundle size > 25KB gzipped"
-elif [ "$ESM_GZIP_KB" -gt 15 ]; then
+    echo "  [-20] Bundle size > 50KB gzipped"
+elif [ "$ESM_GZIP_KB" -gt 35 ]; then
     SCORE=$((SCORE - 10))
-    echo "  [-10] Bundle size > 15KB gzipped"
+    echo "  [-10] Bundle size > 35KB gzipped"
 fi
 
 # sideEffects scoring

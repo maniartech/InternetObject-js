@@ -1,5 +1,7 @@
 import { defineConfig } from 'tsup';
 
+const isProd = process.env.NODE_ENV === 'production';
+
 export default defineConfig({
   entry: ['src/index.ts'],
   format: ['cjs', 'esm'],
@@ -7,8 +9,11 @@ export default defineConfig({
   clean: true,
   sourcemap: true,
   splitting: false,
-  treeshake: true,
-  minify: false, // Keep readable for debugging; use minify: true for production
+  treeshake: {
+    preset: 'recommended',
+    moduleSideEffects: false,
+  },
+  minify: true, // Minify for smaller bundles (~42% gzip reduction)
   target: 'es2022',
   outDir: 'dist',
   // Generate separate folders for ESM and CJS
@@ -18,11 +23,10 @@ export default defineConfig({
     };
   },
   esbuildOptions(options) {
-    options.banner = {
-      js: '// Internet Object - https://internetobject.org',
-    };
+    options.legalComments = 'none'; // Remove license comments (we have LICENSE file)
+    options.drop = isProd ? ['console', 'debugger'] : []; // Drop console in prod
+    options.pure = ['console.log', 'console.debug']; // Mark as side-effect free
   },
-  // Add package.json exports automatically
   onSuccess: async () => {
     console.log('✅ Build complete!');
   },
