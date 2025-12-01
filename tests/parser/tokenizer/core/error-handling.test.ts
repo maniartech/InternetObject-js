@@ -1,5 +1,6 @@
 import Tokenizer from "../../../../src/parser/tokenizer";
 import TokenType from "../../../../src/parser/tokenizer/token-types";
+import { TokenErrorValue } from "../../../../src/parser/tokenizer/tokens";
 
 describe("Error Handling and Recovery", () => {
   describe("String Error Recovery", () => {
@@ -10,8 +11,8 @@ describe("Error Handling and Recovery", () => {
 
       expect(tokens).toHaveLength(1);
       expect(tokens[0].type).toBe(TokenType.ERROR);
-      expect(tokens[0].value.__error).toBe(true);
-      expect(tokens[0].value.message).toContain("Unterminated string literal");
+      expect((tokens[0].value as TokenErrorValue).__error).toBe(true);
+      expect((tokens[0].value as TokenErrorValue).message).toContain("Unterminated string literal");
     });
 
     it("should handle mixed closed and unclosed strings correctly", () => {
@@ -32,8 +33,8 @@ describe("Error Handling and Recovery", () => {
 
       // Third token: error token for the unclosed quote
       expect(tokens[2].type).toBe(TokenType.ERROR);
-      expect(tokens[2].value.__error).toBe(true);
-      expect(tokens[2].value.message).toContain("string-not-closed");
+      expect((tokens[2].value as TokenErrorValue).__error).toBe(true);
+      expect((tokens[2].value as TokenErrorValue).message).toContain("string-not-closed");
     });
 
     it("should handle invalid escape sequences gracefully", () => {
@@ -116,7 +117,7 @@ describe("Error Handling and Recovery", () => {
 
       expect(tokens).toHaveLength(3);
       expect(tokens[0].type).toBe(TokenType.ERROR);
-      expect(tokens[0].value.__error).toBe(true);
+      expect((tokens[0].value as TokenErrorValue).__error).toBe(true);
       expect(tokens[2].type).toBe(TokenType.STRING);
       expect(tokens[2].value).toBe("next");
     });
@@ -128,7 +129,7 @@ describe("Error Handling and Recovery", () => {
 
       expect(tokens).toHaveLength(3);
       expect(tokens[0].type).toBe(TokenType.ERROR);
-      expect(tokens[0].value.__error).toBe(true);
+      expect((tokens[0].value as TokenErrorValue).__error).toBe(true);
       expect(tokens[2].type).toBe(TokenType.STRING);
       expect(tokens[2].value).toBe("next");
     });
@@ -162,7 +163,7 @@ describe("Error Handling and Recovery", () => {
 
       // Third token: error for unclosed quote
       expect(tokens[2].type).toBe(TokenType.ERROR);
-      expect(tokens[2].value.__error).toBe(true);
+      expect((tokens[2].value as TokenErrorValue).__error).toBe(true);
     });
 
     it("should handle unclosed byte string correctly", () => {
@@ -173,11 +174,11 @@ describe("Error Handling and Recovery", () => {
       expect(tokens).toHaveLength(3);
       // The byte string should fail due to invalid base64 content after the comma
       expect(tokens[0].type).toBe(TokenType.ERROR);
-      expect(tokens[0].value.__error).toBe(true);
+      expect((tokens[0].value as TokenErrorValue).__error).toBe(true);
       expect(tokens[1].type).toBe(TokenType.STRING);
       expect(tokens[1].value).toBe("valid string");
       expect(tokens[2].type).toBe(TokenType.ERROR);
-      expect(tokens[2].value.__error).toBe(true);
+      expect((tokens[2].value as TokenErrorValue).__error).toBe(true);
     });
 
     it("should create error token for invalid base64 in byte string", () => {
@@ -188,7 +189,7 @@ describe("Error Handling and Recovery", () => {
       expect(tokens).toHaveLength(3);
       // The byte string parsing should fail and create an error token
       expect(tokens[0].type).toBe(TokenType.ERROR);
-      expect(tokens[0].value.__error).toBe(true);
+      expect((tokens[0].value as TokenErrorValue).__error).toBe(true);
       expect(tokens[1].type).toBe(TokenType.COMMA);
       expect(tokens[2].type).toBe(TokenType.STRING);
       expect(tokens[2].value).toBe("valid string");
@@ -201,7 +202,7 @@ describe("Error Handling and Recovery", () => {
 
       expect(tokens).toHaveLength(3);
       expect(tokens[0].type).toBe(TokenType.ERROR);
-      expect(tokens[0].value.__error).toBe(true);
+      expect((tokens[0].value as TokenErrorValue).__error).toBe(true);
       expect(tokens[1].type).toBe(TokenType.COMMA);
       expect(tokens[2].type).toBe(TokenType.STRING);
       expect(tokens[2].value).toBe("valid string");
@@ -214,8 +215,8 @@ describe("Error Handling and Recovery", () => {
 
       expect(tokens).toHaveLength(4); // error, parsed string, comma, valid string
       expect(tokens[0].type).toBe(TokenType.ERROR);
-      expect(tokens[0].value.__error).toBe(true);
-      expect(tokens[0].value.message).toContain("unsupported-annotation");
+      expect((tokens[0].value as TokenErrorValue).__error).toBe(true);
+      expect((tokens[0].value as TokenErrorValue).message).toContain("unsupported-annotation");
       expect(tokens[1].type).toBe(TokenType.STRING);
       expect(tokens[1].value).toBe("unsupported");
       expect(tokens[2].type).toBe(TokenType.COMMA);
@@ -250,8 +251,8 @@ describe("Error Handling and Recovery", () => {
       expect(tokens[1].type).toBe(TokenType.STRING);
       expect(tokens[1].subType).toBe(TokenType.SECTION_NAME);
       expect(tokens[2].type).toBe(TokenType.ERROR);
-      expect(tokens[2].value.__error).toBe(true);
-      expect(tokens[2].value.message).toContain("schema-missing");
+      expect((tokens[2].value as TokenErrorValue).__error).toBe(true);
+      expect((tokens[2].value as TokenErrorValue).message).toContain("schema-missing");
     });
   });
 
@@ -280,7 +281,7 @@ describe("Error Handling and Recovery", () => {
       const tokens = tokenizer.tokenize();
 
       const errorTokens = tokens.filter(t => t.type === TokenType.ERROR);
-      const validTokens = tokens.filter(t => t.type === TokenType.STRING && !t.value.__error);
+      const validTokens = tokens.filter(t => t.type === TokenType.STRING && !(t.value as TokenErrorValue)?.__error);
 
       expect(errorTokens.length).toBeGreaterThan(0);
       expect(validTokens.length).toBeGreaterThan(0);
@@ -299,14 +300,14 @@ describe("Error Handling and Recovery", () => {
 
       expect(tokens).toHaveLength(1);
       const errorToken = tokens[0];
-      
+
       expect(errorToken.type).toBe(TokenType.ERROR);
       expect(errorToken.value).toHaveProperty("__error", true);
       expect(errorToken.value).toHaveProperty("message");
       expect(errorToken.value).toHaveProperty("originalError");
-      expect(typeof errorToken.value.message).toBe("string");
-      expect(errorToken.value.originalError).toBeInstanceOf(Error);
-      
+      expect(typeof (errorToken.value as TokenErrorValue).message).toBe("string");
+      expect((errorToken.value as TokenErrorValue).originalError).toBeInstanceOf(Error);
+
       // Position information should be valid
       expect(errorToken.pos).toBeGreaterThanOrEqual(0);
       expect(errorToken.row).toBeGreaterThanOrEqual(1);
@@ -326,8 +327,8 @@ describe("Error Handling and Recovery", () => {
       expect(errorToken!.value).toHaveProperty("__error", true);
       expect(errorToken!.value).toHaveProperty("message");
       expect(errorToken!.value).toHaveProperty("originalError");
-      expect(typeof errorToken!.value.message).toBe("string");
-      expect(errorToken!.value.originalError).toBeInstanceOf(Error);
+      expect(typeof (errorToken!.value as TokenErrorValue).message).toBe("string");
+      expect((errorToken!.value as TokenErrorValue).originalError).toBeInstanceOf(Error);
 
       // Should have valid position information
       expect(errorToken!.pos).toBeGreaterThanOrEqual(0);

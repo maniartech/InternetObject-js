@@ -317,7 +317,7 @@ describe('Schema System Integration Tests', () => {
 
   describe('Registry warnings behavior', () => {
     test('should not emit duplicate warnings when disabled (quiet mode)', () => {
-      const spy = vi.spyOn(console, 'warn').mockImplementation();
+      const spy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
       // beforeEach registered types with warnings disabled
       // Attempt duplicate registration; should be quiet
@@ -330,7 +330,7 @@ describe('Schema System Integration Tests', () => {
     test('should emit a single warning when enabled and duplicate occurs', () => {
       // Enable warnings just for this test
       TypedefRegistry.setWarnOnDuplicates(true);
-      const spy = vi.spyOn(console, 'warn').mockImplementation();
+      const spy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
       // Trigger a duplicate for 'string'
       TypedefRegistry.register(MockStringTypeDef);

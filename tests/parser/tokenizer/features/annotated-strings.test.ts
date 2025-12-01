@@ -1,5 +1,6 @@
 import Tokenizer from "../../../../src/parser/tokenizer";
 import TokenType from "../../../../src/parser/tokenizer/token-types";
+import { TokenErrorValue } from "../../../../src/parser/tokenizer/tokens";
 
 describe("Annotated String Parsing", () => {
   describe("Raw Strings", () => {
@@ -12,7 +13,7 @@ describe("Annotated String Parsing", () => {
       expect(tokens[0].type).toBe(TokenType.STRING);
       expect(tokens[0].subType).toBe("RAW_STRING");
       expect(tokens[0].value).toBe("raw string with \\n literal");
-      
+
       expect(tokens[2].type).toBe(TokenType.STRING);
       expect(tokens[2].subType).toBe("RAW_STRING");
       expect(tokens[2].value).toBe("another raw");
@@ -27,7 +28,7 @@ describe("Annotated String Parsing", () => {
       expect(tokens[0].type).toBe(TokenType.STRING);
       expect(tokens[0].subType).toBe("RAW_STRING");
       expect(tokens[0].value).toBe("double quotes");
-      
+
       expect(tokens[2].type).toBe(TokenType.STRING);
       expect(tokens[2].subType).toBe("RAW_STRING");
       expect(tokens[2].value).toBe("single quotes");
@@ -42,7 +43,7 @@ describe("Annotated String Parsing", () => {
       expect(tokens[0].type).toBe(TokenType.STRING);
       expect(tokens[0].subType).toBe("RAW_STRING");
       expect(tokens[0].value).toBe("[0-9\\n\\t\\r]");
-      
+
       expect(tokens[2].type).toBe(TokenType.STRING);
       expect(tokens[2].subType).toBe("RAW_STRING");
       expect(tokens[2].value).toBe("g~^&*(@hi🤐");
@@ -60,7 +61,7 @@ describe("Annotated String Parsing", () => {
       expect(tokens[0].type).toBe(TokenType.BINARY);
       expect(tokens[0].subType).toBe("BINARY_STRING");
       expect(Buffer.isBuffer(tokens[0].value)).toBe(true);
-      expect(tokens[0].value.toString()).toBe("hello world");
+      expect((tokens[0].value as Buffer).toString()).toBe("hello world");
     });
 
     it("should handle various base64 encoded data", () => {
@@ -107,7 +108,7 @@ describe("Annotated String Parsing", () => {
       expect(tokens[0].type).toBe(TokenType.BINARY);
       expect(tokens[0].subType).toBe("BINARY_STRING");
       expect(Buffer.isBuffer(tokens[0].value)).toBe(true);
-      expect(tokens[0].value.length).toBe(0);
+      expect((tokens[0].value as Buffer).length).toBe(0);
     });
   });
 
@@ -152,27 +153,27 @@ describe("Annotated String Parsing", () => {
       const tokens = tokenizer.tokenize();
 
       expect(tokens).toHaveLength(9); // 5 strings + 4 commas
-      
+
       // Raw string
       expect(tokens[0].type).toBe(TokenType.STRING);
       expect(tokens[0].subType).toBe("RAW_STRING");
       expect(tokens[0].value).toBe("raw");
-      
+
       // Byte string
       expect(tokens[2].type).toBe(TokenType.BINARY);
       expect(tokens[2].subType).toBe("BINARY_STRING");
       expect(Buffer.isBuffer(tokens[2].value)).toBe(true);
-      
+
       // DateTime
       expect(tokens[4].type).toBe(TokenType.DATETIME);
       expect(tokens[4].subType).toBe(TokenType.DATETIME);
       expect(tokens[4].value).toBeInstanceOf(Date);
-      
+
       // Date
       expect(tokens[6].type).toBe(TokenType.DATETIME);
       expect(tokens[6].subType).toBe(TokenType.DATE);
       expect(tokens[6].value).toBeInstanceOf(Date);
-      
+
       // Time
       expect(tokens[8].type).toBe(TokenType.DATETIME);
       expect(tokens[8].subType).toBe(TokenType.TIME);
@@ -213,7 +214,7 @@ describe("Annotated String Parsing", () => {
       expect(tokens[0].type).toBe(TokenType.STRING);
       expect(tokens[0].subType).toBe("RAW_STRING");
       expect(tokens[0].value).toBe("double quotes");
-      
+
       expect(tokens[2].type).toBe(TokenType.STRING);
       expect(tokens[2].subType).toBe("RAW_STRING");
       expect(tokens[2].value).toBe("single quotes");
@@ -238,12 +239,12 @@ describe("Annotated String Parsing", () => {
 
       // Some may be error tokens due to invalid content (empty datetime/date/time)
       expect(tokens.length).toBeGreaterThanOrEqual(9);
-      
+
       // Raw string should work with empty content
       const rawToken = tokens.find(t => t.subType === "RAW_STRING");
       expect(rawToken).toBeDefined();
       expect(rawToken?.value).toBe("");
-      
+
       // Binary string should work with empty content
       const binaryToken = tokens.find(t => t.subType === "BINARY_STRING");
       expect(binaryToken).toBeDefined();
@@ -271,10 +272,10 @@ describe("Annotated String Parsing", () => {
       expect(tokens[0].type).toBe(TokenType.STRING);
       expect(tokens[0].subType).toBe("RAW_STRING");
       expect(tokens[0].value).toBe("Hello 世界 🌍");
-      
+
       expect(tokens[2].type).toBe(TokenType.BINARY);
       expect(tokens[2].subType).toBe("BINARY_STRING");
-      expect(tokens[2].value.toString()).toBe("Hello 世界");
+      expect((tokens[2].value as Buffer).toString()).toBe("Hello 世界");
     });
   });
 
@@ -286,7 +287,7 @@ describe("Annotated String Parsing", () => {
 
       expect(tokens).toHaveLength(3);
       expect(tokens[0].type).toBe(TokenType.ERROR);
-      expect(tokens[0].value.__error).toBe(true);
+      expect((tokens[0].value as TokenErrorValue).__error).toBe(true);
       expect(tokens[2].type).toBe(TokenType.STRING);
       expect(tokens[2].value).toBe("next");
     });
@@ -298,7 +299,7 @@ describe("Annotated String Parsing", () => {
 
       expect(tokens).toHaveLength(3);
       expect(tokens[0].type).toBe(TokenType.ERROR);
-      expect(tokens[0].value.__error).toBe(true);
+      expect((tokens[0].value as TokenErrorValue).__error).toBe(true);
       expect(tokens[2].type).toBe(TokenType.STRING);
       expect(tokens[2].value).toBe("next");
     });
@@ -322,9 +323,9 @@ describe("Annotated String Parsing", () => {
       const tokenizer = new Tokenizer(input);
       const tokens = tokenizer.tokenize();
 
-      const annotatedTokens = tokens.filter(t => 
-        t.subType === "RAW_STRING" || 
-        t.subType === "BINARY_STRING" || 
+      const annotatedTokens = tokens.filter(t =>
+        t.subType === "RAW_STRING" ||
+        t.subType === "BINARY_STRING" ||
         t.subType === TokenType.DATETIME
       );
 
@@ -341,9 +342,9 @@ describe("Annotated String Parsing", () => {
       const tokenizer = new Tokenizer(input);
       const tokens = tokenizer.tokenize();
 
-      const annotatedTokens = tokens.filter(t => 
-        t.subType === "RAW_STRING" || 
-        t.subType === "BINARY_STRING" || 
+      const annotatedTokens = tokens.filter(t =>
+        t.subType === "RAW_STRING" ||
+        t.subType === "BINARY_STRING" ||
         t.subType === TokenType.DATETIME
       );
 

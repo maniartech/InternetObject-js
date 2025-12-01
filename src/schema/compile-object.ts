@@ -30,6 +30,7 @@ export default function compileObject(
   if (
     node instanceof TokenNode &&
     node.type === TokenType.STRING &&
+    typeof node.value === 'string' &&
     node.value.startsWith('$')) {
     return node;
   }
@@ -68,12 +69,13 @@ function parseObjectOrTypeDef(o: ObjectNode, path:string, defs?:Definitions) {
     if (firstNode.value instanceof TokenNode) {
       const token = firstNode.value;
       if (token.type === TokenType.STRING) {
+        const tokenValue = token.value as string;
         // Built-in type shorthand: { string, min: ..., max: ... }
-        if (TypedefRegistry.isRegisteredType(token.value)) {
-          return parseMemberDef(token.value, o, defs);
+        if (TypedefRegistry.isRegisteredType(tokenValue)) {
+          return parseMemberDef(tokenValue, o, defs);
         }
         // Schema variable shorthand: { $Person, ... }
-        if (typeof token.value === 'string' && token.value.startsWith('$')) {
+        if (tokenValue.startsWith('$')) {
           return { type: 'object', schema: token, path } as MemberDef;
         }
       }
@@ -90,7 +92,7 @@ function parseObjectOrTypeDef(o: ObjectNode, path:string, defs?:Definitions) {
     const child = o.children[i];
     if (child instanceof MemberNode && child.key && child.key.value === 'type') {
       if (child.value instanceof TokenNode && child.value.type === TokenType.STRING) {
-        type = child.value.value;
+        type = child.value.value as string;
         typeNode = child.value;
         break;
       }
@@ -374,14 +376,14 @@ const parseName = (keyNode: Node): {
     throw new SyntaxError(ErrorCodes.invalidKey, "The key must be a string.", keyNode);
   }
 
-  const key = keyNode.value;
-  const optionalExp = /\?$/
-  const nullExp = /\*$/
-  const optNullExp = /(\?\*)|(\*\?)$/
-
   if (keyNode.type !== TokenType.STRING) {
     throw new SyntaxError(ErrorCodes.invalidKey, "The key must be a string.", keyNode);
   }
+
+  const key = keyNode.value as string;
+  const optionalExp = /\?$/
+  const nullExp = /\*$/
+  const optNullExp = /(\?\*)|(\*\?)$/
 
   // Optional and null
   if (key.match(optNullExp)) {

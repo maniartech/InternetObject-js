@@ -23,11 +23,11 @@ class SectionNode implements Node {
   }
 
   get name(): string | undefined {
-    return this.nameNode?.value || this.schemaNode?.value.toString().substring(1) || 'unnamed';
+    return (this.nameNode?.value as string | undefined) || this.schemaNode?.value?.toString().substring(1) || 'unnamed';
   }
 
   get schemaName(): string | undefined {
-    return this.schemaNode?.value || "$schema";
+    return (this.schemaNode?.value as string | undefined) || "$schema";
   }
 
   get firstChild(): SectionChild {

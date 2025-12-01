@@ -72,7 +72,7 @@ describe('TypedefRegistry', () => {
     });
 
     test('should warn and skip duplicate registration', () => {
-      const consoleSpy = vi.spyOn(console, 'warn').mockImplementation();
+      const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
   // Explicitly enable warnings for this test
   TypedefRegistry.setWarnOnDuplicates(true);

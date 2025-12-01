@@ -28,7 +28,7 @@ class ObjectNode extends ContainerNode {
     for (const child of this.children as Array<MemberNode>) {
       if (child && child.value) {
         if (child.key) {
-          value[child.key.value] = child.value.toValue(defs);
+          value[child.key.value as string] = child.value.toValue(defs);
         } else {
           value[index] = child.value.toValue(defs);
         }
@@ -64,7 +64,7 @@ class ObjectNode extends ContainerNode {
       if (member && member.value) {
         if (member.key) {
           // o[member.key.value] = member.value.toValue(defs);
-          o.set(member.key.value, member.value.toValue(defs));
+          o.set(member.key.value as string, member.value.toValue(defs));
         } else {
           o.set(i.toString(), member.value.toValue(defs))
         }
@@ -111,7 +111,7 @@ class ObjectNode extends ContainerNode {
       if (child) {
         const member = child as MemberNode;
         if (member.key) {
-          keys.push(member.key.value);
+          keys.push(member.key.value as string);
         } else {
           keys.push(index.toString());
         }

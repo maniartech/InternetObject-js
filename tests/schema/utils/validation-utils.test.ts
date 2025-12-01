@@ -191,7 +191,7 @@ describe('ProcessingResult', () => {
         // TypeScript should know that data is available here
         expect(successResult.data).toBe('data');
       } else {
-        fail('Should be success result');
+        throw new Error('Should be success result');
       }
     });
 

@@ -82,7 +82,7 @@ describe('Array Error Ranges - Critical Boundary Tests', () => {
         errorMessage: bracketError.message
       });
     } else {
-      fail('Array boundary error should have positionRange');
+      throw new Error('Array boundary error should have positionRange');
     }
   });
 

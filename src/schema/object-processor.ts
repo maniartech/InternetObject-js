@@ -157,7 +157,7 @@ function _processObject(data: ObjectNode, schema: Schema, defs?: Definitions, co
       throw new SyntaxError(ErrorCodes.unexpectedPositionalMember, "Positional members must not be allowed after the keyed member is found.", member);
     }
 
-    let name = member.key.value;
+    let name = member.key.value as string;
     let memberDef = _resolveMemberDefVariables(schema.defs[name], defs);
 
     if (processedNames.has(name)) {
@@ -174,9 +174,9 @@ function _processObject(data: ObjectNode, schema: Schema, defs?: Definitions, co
     // In an open schema, the memberDef is not found. Use schema.open constraints if available, else type 'any'.
     if (!memberDef && schema.open) {
       if (typeof schema.open === 'object' && schema.open.type) {
-        memberDef = { ...schema.open, path: name };
+        memberDef = { ...schema.open, path: name as string };
       } else {
-        memberDef = { type: 'any', path: name };
+        memberDef = { type: 'any', path: name as string };
       }
     }
 

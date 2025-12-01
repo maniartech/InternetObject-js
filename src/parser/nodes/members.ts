@@ -19,7 +19,7 @@ class MemberNode implements Node {
   toValue(defs?: Definitions):any {
     if (this.key) {
       return {
-        [this.key.value]: this.value.toValue(defs),
+        [this.key.value as string]: this.value.toValue(defs),
       }
     } else {
       return this.value.toValue(defs);

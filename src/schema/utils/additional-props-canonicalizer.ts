@@ -38,7 +38,7 @@ export function canonicalizeAdditionalProps(node: any, path: string = '*'): Memb
         for (let i = 1; i < node.children.length; i++) {
           const child = node.children[i] as import('../../parser/nodes/members').default;
           if (child && child.key && child.value instanceof TokenNode) {
-            (memberDef as any)[child.key.value] = (child.value as any).value;
+            (memberDef as any)[child.key.value as string] = (child.value as any).value;
           }
         }
         return memberDef;

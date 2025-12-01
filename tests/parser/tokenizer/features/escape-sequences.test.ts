@@ -199,7 +199,7 @@ describe("Escape Sequence Handling", () => {
       expect(tokens).toHaveLength(1);
       expect(tokens[0].type).toBe(TokenType.STRING);
       expect(typeof tokens[0].value).toBe('string');
-      expect(tokens[0].value.length).toBeGreaterThan(0);
+      expect((tokens[0].value as string).length).toBeGreaterThan(0);
     });
 
     it("should handle escape sequences at string boundaries", () => {

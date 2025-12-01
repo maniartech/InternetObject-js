@@ -34,7 +34,8 @@ class MockKeyToken extends Token {
   }
 
   getEndPos(): Position {
-    return { pos: this.value.length, row: 1, col: this.value.length + 1 };
+    const len = typeof this.value === 'string' ? this.value.length : 0;
+    return { pos: len, row: 1, col: len + 1 };
   }
 }
 

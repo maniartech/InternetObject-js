@@ -30,21 +30,21 @@ describe("Edge Cases and Boundary Conditions", () => {
 
     it("should handle single character inputs", () => {
       const singleChars = ['{', '}', '[', ']', ':', ',', '~'];
-      
+
       for (const char of singleChars) {
         const tokenizer = new Tokenizer(char);
         const tokens = tokenizer.tokenize();
-        
+
         expect(tokens).toHaveLength(1);
         expect(tokens[0].value).toBe(char);
       }
-      
+
       // Handle quote characters separately as they create error tokens when unclosed
       const quoteChars = ['"', "'"];
       for (const char of quoteChars) {
         const tokenizer = new Tokenizer(char);
         const tokens = tokenizer.tokenize();
-        
+
         expect(tokens).toHaveLength(1);
         expect(tokens[0].type).toBe(TokenType.ERROR);
       }
@@ -52,11 +52,11 @@ describe("Edge Cases and Boundary Conditions", () => {
 
     it("should handle minimal valid structures", () => {
       const minimalInputs = ['{}', '[]', '""', "''", 'a', '1', 'T', 'N'];
-      
+
       for (const input of minimalInputs) {
         const tokenizer = new Tokenizer(input);
         const tokens = tokenizer.tokenize();
-        
+
         expect(tokens.length).toBeGreaterThan(0);
         expect(tokens[0]).toHaveProperty('type');
         expect(tokens[0]).toHaveProperty('value');
@@ -74,7 +74,7 @@ describe("Edge Cases and Boundary Conditions", () => {
       expect(tokens).toHaveLength(1);
       expect(tokens[0].type).toBe(TokenType.STRING);
       expect(tokens[0].value).toBe(longString);
-      expect(tokens[0].value.length).toBe(10000);
+      expect((tokens[0].value as string).length).toBe(10000);
     });
 
     it("should handle very large numbers", () => {
@@ -101,7 +101,7 @@ describe("Edge Cases and Boundary Conditions", () => {
       const tokens = tokenizer.tokenize();
 
       expect(tokens.length).toBe(2001); // 1000 numbers + 999 commas + 2 brackets (actual behavior)
-      
+
       const numberTokens = tokens.filter(t => t.type === TokenType.NUMBER);
       expect(numberTokens).toHaveLength(1000);
     });
@@ -113,7 +113,7 @@ describe("Edge Cases and Boundary Conditions", () => {
 
       const openBraces = tokens.filter(t => t.type === TokenType.CURLY_OPEN);
       const closeBraces = tokens.filter(t => t.type === TokenType.CURLY_CLOSE);
-      
+
       expect(openBraces).toHaveLength(4);
       expect(closeBraces).toHaveLength(4);
     });
@@ -229,11 +229,11 @@ describe("Edge Cases and Boundary Conditions", () => {
       const tokenizer = new Tokenizer(input);
       const tokens = tokenizer.tokenize();
 
-      const validTokens = tokens.filter(t => 
+      const validTokens = tokens.filter(t =>
         (t.type === TokenType.STRING && t.value === "valid") ||
         (t.type === TokenType.NUMBER && t.value === 123)
       );
-      
+
       const errorTokens = tokens.filter(t => t.type === TokenType.ERROR);
 
       expect(validTokens).toHaveLength(2);
@@ -253,7 +253,7 @@ describe("Edge Cases and Boundary Conditions", () => {
       for (const input of truncatedInputs) {
         const tokenizer = new Tokenizer(input);
         const tokens = tokenizer.tokenize();
-        
+
         expect(tokens.length).toBeGreaterThan(0);
         // Should either create valid tokens or error tokens, but not crash
         for (const token of tokens) {
@@ -335,7 +335,7 @@ describe("Edge Cases and Boundary Conditions", () => {
       const tokens = tokenizer.tokenize();
 
       expect(tokens).toHaveLength(9999); // 5000 strings + 4999 commas
-      
+
       // Verify memory usage is reasonable (tokens should not be excessively large)
       const avgTokenSize = JSON.stringify(tokens).length / tokens.length;
       expect(avgTokenSize).toBeLessThan(200); // Reasonable size per token
@@ -344,14 +344,14 @@ describe("Edge Cases and Boundary Conditions", () => {
     it("should handle input with few large tokens", () => {
       const largeString = "x".repeat(50000);
       const input = `"${largeString}", "${largeString}", "${largeString}"`;
-      
+
       const tokenizer = new Tokenizer(input);
       const tokens = tokenizer.tokenize();
 
       expect(tokens).toHaveLength(5); // 3 strings + 2 commas
-      expect(tokens[0].value.length).toBe(50000);
-      expect(tokens[2].value.length).toBe(50000);
-      expect(tokens[4].value.length).toBe(50000);
+      expect((tokens[0].value as string).length).toBe(50000);
+      expect((tokens[2].value as string).length).toBe(50000);
+      expect((tokens[4].value as string).length).toBe(50000);
     });
   });
 
@@ -363,7 +363,7 @@ describe("Edge Cases and Boundary Conditions", () => {
 
       // Actual tokenizer behavior - may parse as one open string
       expect(tokens.length).toBeGreaterThanOrEqual(1);
-      
+
       const stringTokens = tokens.filter(t => t.type === TokenType.STRING);
       expect(stringTokens.length).toBeGreaterThanOrEqual(1);
     });

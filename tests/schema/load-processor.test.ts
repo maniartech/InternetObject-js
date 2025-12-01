@@ -300,7 +300,7 @@ describe('Load Processor', () => {
 
         try {
           loadObject({ age: 150 }, schema);
-          fail('Should have thrown ValidationError');
+          throw new Error('Should have thrown ValidationError');
         } catch (error) {
           expect(error).toBeInstanceOf(ValidationError);
           expect((error as Error).message).toContain('age');

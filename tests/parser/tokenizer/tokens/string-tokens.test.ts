@@ -12,10 +12,10 @@ describe("String Token Parsing", () => {
       expect(tokens[0].type).toBe(TokenType.STRING);
       expect(tokens[0].subType).toBe("REGULAR_STRING");
       expect(tokens[0].value).toBe("hello");
-      
+
       expect(tokens[2].type).toBe(TokenType.STRING);
       expect(tokens[2].value).toBe("world with spaces");
-      
+
       expect(tokens[4].type).toBe(TokenType.STRING);
       expect(tokens[4].value).toBe("with\nnewlines");
     });
@@ -29,7 +29,7 @@ describe("String Token Parsing", () => {
       expect(tokens[0].type).toBe(TokenType.STRING);
       expect(tokens[0].subType).toBe("REGULAR_STRING");
       expect(tokens[0].value).toBe("hello");
-      
+
       expect(tokens[2].value).toBe("world with spaces");
       expect(tokens[4].value).toBe("with\ttabs");
     });
@@ -83,7 +83,7 @@ describe("String Token Parsing", () => {
       expect(tokens[0].type).toBe(TokenType.STRING);
       expect(tokens[0].subType).toBe("OPEN_STRING");
       expect(tokens[0].value).toBe("hello");
-      
+
       expect(tokens[2].value).toBe("world123");
       expect(tokens[4].value).toBe("test_value");
     });
@@ -115,7 +115,7 @@ describe("String Token Parsing", () => {
       expect(tokens[0].type).toBe(TokenType.STRING);
       expect(tokens[0].subType).toBe("RAW_STRING");
       expect(tokens[0].value).toBe("raw string with \\n literal");
-      
+
       expect(tokens[2].type).toBe(TokenType.STRING);
       expect(tokens[2].subType).toBe("RAW_STRING");
       expect(tokens[2].value).toBe("another raw");
@@ -171,7 +171,7 @@ describe("String Token Parsing", () => {
       expect(tokens[0].type).toBe(TokenType.BINARY);
       expect(tokens[0].subType).toBe("BINARY_STRING");
       expect(Buffer.isBuffer(tokens[0].value)).toBe(true);
-      expect(tokens[0].value.toString()).toBe("hello world");
+      expect((tokens[0].value as Buffer).toString()).toBe("hello world");
     });
 
     it("should tokenize the binary string tokens", () => {
