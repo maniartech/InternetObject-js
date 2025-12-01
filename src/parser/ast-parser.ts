@@ -214,7 +214,8 @@ class ASTParser {
     // the section has started without a section name. A header
     // section does not have a name.
     const [schemaNode, nameNode] = this.parseSectionAndSchemaNames();
-    let name: string = nameNode?.value || schemaNode?.value.toString().substring(1) || 'unnamed';
+    let name: string = nameNode?.value != null ? String(nameNode.value)
+      : (schemaNode?.value != null ? String(schemaNode.value).substring(1) : 'unnamed');
     const originalName = name;
 
     // Check if the section name is already used - implement auto-rename for error recovery
