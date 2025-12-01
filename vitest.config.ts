@@ -5,6 +5,11 @@ export default defineConfig({
     // Test environment
     environment: 'node',
 
+    // TypeScript config for tests
+    typecheck: {
+      tsconfig: './tsconfig.test.json',
+    },
+
     // Test file patterns
     include: ['tests/**/*.test.ts', 'tests/**/*.spec.ts', 'src/**/*.test.ts'],
 

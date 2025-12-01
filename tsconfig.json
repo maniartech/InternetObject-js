@@ -10,14 +10,9 @@
     "module": "ESNext",
     "moduleResolution": "bundler",
     "resolveJsonModule": true,
-    "rootDir": "./src",
-    "outDir": "./dist/esm",
 
-    // Emit
-    "declaration": true,
-    "declarationMap": true,
-    "sourceMap": true,
-    "noEmitOnError": true,
+    // Emit - disabled for IDE, tsup handles builds
+    "noEmit": true,
 
     // Interop
     "esModuleInterop": true,
@@ -30,8 +25,11 @@
     "noImplicitReturns": true,
 
     // Completeness
-    "skipLibCheck": true
+    "skipLibCheck": true,
+
+    // Types for vitest globals
+    "types": ["vitest/globals", "node"]
   },
-  "include": ["src/**/*"],
-  "exclude": ["node_modules", "**/*.spec.ts", "**/*.test.ts", "dist"]
+  "include": ["src/**/*", "tests/**/*"],
+  "exclude": ["node_modules", "dist"]
 }
