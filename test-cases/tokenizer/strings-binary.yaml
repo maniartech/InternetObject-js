@@ -124,5 +124,20 @@ error_cases:
         code: stringNotClosed
         message: "String not closed"
 
-    # Note: Invalid base64 content validation may be deferred to parser
-    # The tokenizer only checks for string closure
+    - name: invalid_base64_chars
+      input: 'b"Hello!@#$"'
+      expected_error:
+        code: invalidBase64
+        message: "Invalid base64 format"
+
+    - name: invalid_base64_spaces
+      input: 'b"SGVs bG8="'
+      expected_error:
+        code: invalidBase64
+        message: "Invalid base64 format"
+
+    - name: invalid_base64_padding
+      input: 'b"SGVsbG8==="'
+      expected_error:
+        code: invalidBase64
+        message: "Invalid base64 format"

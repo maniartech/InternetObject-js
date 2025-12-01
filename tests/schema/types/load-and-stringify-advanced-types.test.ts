@@ -1,7 +1,7 @@
 import BigIntDef from '../../../src/schema/types/bigint'
 import DecimalDef from '../../../src/schema/types/decimal'
 import DateTimeDef from '../../../src/schema/types/datetime'
-import Decimal from '../../../src/core/decimal'
+import Decimal from '../../../src/core/decimal/decimal'
 
 describe('load() and stringify() - advanced types', () => {
   describe('BigIntDef.load', () => {

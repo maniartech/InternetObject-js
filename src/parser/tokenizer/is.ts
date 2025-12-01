@@ -1,8 +1,91 @@
 import Symbols from "./symbols";
 import TokenType from "./token-types";
 
-const reSpaces = /\s/;
-const reHSpaces = /[ \t]+/;
+// Character code constants for ultra-fast character checking
+// Exported for use in the tokenizer's hot path
+export const CHAR_CODES = {
+  SPACE: 32,        // ' '
+  TAB: 9,           // '\t'
+  NEWLINE: 10,      // '\n'
+  CARRIAGE_RETURN: 13, // '\r'
+  DOUBLE_QUOTE: 34, // '"'
+  SINGLE_QUOTE: 39, // "'"
+  HASH: 35,         // '#'
+  PLUS: 43,         // '+'
+  MINUS: 45,        // '-'
+  DOT: 46,          // '.'
+  ZERO: 48,         // '0'
+  NINE: 57,         // '9'
+  COLON: 58,        // ':'
+  COMMA: 44,        // ','
+  CURLY_OPEN: 123,  // '{'
+  CURLY_CLOSE: 125, // '}'
+  BRACKET_OPEN: 91, // '['
+  BRACKET_CLOSE: 93, // ']'
+  BACKSLASH: 92,    // '\'
+  TILDE: 126,       // '~'
+  A_UPPER: 65,      // 'A'
+  F_UPPER: 70,      // 'F'
+  A_LOWER: 97,      // 'a'
+  F_LOWER: 102,     // 'f'
+  X_UPPER: 88,      // 'X'
+  X_LOWER: 120,     // 'x'
+  O_UPPER: 79,      // 'O'
+  O_LOWER: 111,     // 'o'
+  B_UPPER: 66,      // 'B'
+  B_LOWER: 98       // 'b'
+} as const;
+
+// Pre-computed lookup for specific Unicode whitespace characters
+// Exported for use in the tokenizer's fast whitespace checking
+export const WHITESPACE_LOOKUP = new Set([
+  0x1680, // Ogham space mark
+  0x2028, // Line separator
+  0x2029, // Paragraph separator
+  0x202F, // Narrow no-break space
+  0x205F, // Medium mathematical space
+  0x3000, // Ideographic space
+  0xFEFF  // BOM/Zero width no-break space
+]);
+
+/**
+ * Fast digit checking using character codes.
+ * @param charCode - Character code to check.
+ * @returns True if the character code represents a digit (0-9).
+ */
+export const isDigitCode = (charCode: number): boolean =>
+  charCode >= CHAR_CODES.ZERO && charCode <= CHAR_CODES.NINE;
+
+/**
+ * Fast whitespace checking using character codes.
+ * This is the canonical implementation used by both is.ts and the tokenizer.
+ * @param charCode - Character code to check.
+ * @returns True if the character code represents whitespace.
+ */
+export const isWhitespaceCode = (charCode: number): boolean => {
+  // Fast path: ASCII whitespace and control characters (U+0000 to U+0020)
+  if (charCode <= 0x20) {
+    return true;
+  }
+
+  // Fast path: Extended ASCII range (U+0021 to U+00FF) - only U+00A0 is whitespace
+  if (charCode <= 0xFF) {
+    return charCode === 0x00A0;
+  }
+
+  // Fast path: Anything above U+FEFF is never whitespace
+  if (charCode > 0xFEFF) {
+    return false;
+  }
+
+  // Fast path: Unicode range U+2000-U+200A (various em/en spaces)
+  if (charCode >= 0x2000 && charCode <= 0x200A) {
+    return true;
+  }
+
+  // Lookup table for remaining Unicode whitespace characters
+  return WHITESPACE_LOOKUP.has(charCode);
+};
 
 /**
   * Check if the given character is a special symbol.
@@ -37,17 +120,6 @@ export const isDigit = (char: string): boolean => {
   return /[0-9]/.test(char);
 }
 
-// Pre-computed lookup for specific Unicode whitespace characters
-const WHITESPACE_LOOKUP = new Set([
-  0x1680, // Ogham space mark
-  0x2028, // Line separator
-  0x2029, // Paragraph separator
-  0x202F, // Narrow no-break space
-  0x205F, // Medium mathematical space
-  0x3000, // Ideographic space
-  0xFEFF  // BOM/Zero width no-break space
-]);
-
 /**
   * Check if the given character represents a whitespace.
   * @param {string} char - Character to check.
@@ -59,31 +131,9 @@ export const isWhitespace = (char: string, hspacesOnly: boolean = false): boolea
     return char === ' ' || char === '\t';
   }
 
-  // Use codePointAt for proper Unicode handling
+  // Use codePointAt for proper Unicode handling, then delegate to the fast code-based check
   const code = char.codePointAt(0) || 0;
-
-  // Fast path: ASCII whitespace and control characters (U+0000 to U+0020)
-  if (code <= 0x20) {
-    return true;
-  }
-
-  // Fast path: Extended ASCII range (U+0021 to U+00FF) - only U+00A0 is whitespace
-  if (code <= 0xFF) {
-    return code === 0x00A0;
-  }
-
-  // Fast path: Anything above U+FEFF is never whitespace
-  if (code > 0xFEFF) {
-    return false;
-  }
-
-  // Fast path: Unicode range U+2000-U+200A (various em/en spaces)
-  if (code >= 0x2000 && code <= 0x200A) {
-    return true;
-  }
-
-  // Lookup table for remaining Unicode whitespace characters
-  return WHITESPACE_LOOKUP.has(code);
+  return isWhitespaceCode(code);
 }
 
 /**

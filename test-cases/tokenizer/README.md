@@ -206,10 +206,11 @@ This design allows the **parser** (not tokenizer) to handle semantic validation.
 These are the **ONLY** error codes the tokenizer produces:
 
 | Error Code | Description | Example Trigger |
-|------------|-------------|-----------------|
+|------------|-------------|------------------|
 | `stringNotClosed` | Unterminated string literal | `"hello` |
 | `invalidEscapeSequence` | Invalid escape in string | `"\q"` (if strict) |
 | `unsupportedAnnotation` | Unknown string annotation | `x"hello"` |
+| `invalidBase64` | Invalid base64 encoding | `b"Hello!@#"` |
 | `invalidDateTime` | Invalid date/time format | `d'2024-13-45'` |
 | `schemaMissing` | Missing schema after colon | `--- name:` |
 
@@ -220,7 +221,7 @@ type: ERROR
 token: "original text"
 value:
   __error: true
-  errorCode: stringNotClosed
+  errorCode: stringNotClosed  # or invalidBase64, invalidDateTime, etc.
   message: "Human readable description"
 ```
 

@@ -1,4 +1,4 @@
-import Decimal        from '../../core/decimal';
+import Decimal        from '../../core/decimal/decimal';
 import PositionRange  from '../../core/positions';
 import assertNever    from '../../errors/asserts/asserts';
 import ErrorCodes     from '../../errors/io-error-codes';
@@ -6,10 +6,11 @@ import SyntaxError    from '../../errors/io-syntax-error';
 import { unclosedConstructRange, createPosition } from '../../errors/error-range-utils';
 import * as dtParser  from '../../utils/datetime';
 import * as is        from './is';
+import { CHAR_CODES, isDigitCode, isWhitespaceCode } from './is';
 import Literals       from './literals';
 import Symbols        from './symbols';
 import TokenType      from './token-types';
-import Token          from './tokens';
+import Token, { TokenErrorValue, isIOError } from './tokens';
 
 // Cached regex patterns for performance optimization
 const REGEX_CACHE = {
@@ -25,84 +26,11 @@ const REGEX_CACHE = {
   base64: /^[A-Za-z0-9+/]*={0,2}$/
 } as const;
 
-// Character code constants for ultra-fast character checking
-const CHAR_CODES = {
-  SPACE: 32,        // ' '
-  TAB: 9,           // '\t'
-  NEWLINE: 10,      // '\n'
-  CARRIAGE_RETURN: 13, // '\r'
-  DOUBLE_QUOTE: 34, // '"'
-  SINGLE_QUOTE: 39, // "'"
-  HASH: 35,         // '#'
-  PLUS: 43,         // '+'
-  MINUS: 45,        // '-'
-  DOT: 46,          // '.'
-  ZERO: 48,         // '0'
-  NINE: 57,         // '9'
-  COLON: 58,        // ':'
-  COMMA: 44,        // ','
-  CURLY_OPEN: 123,  // '{'
-  CURLY_CLOSE: 125, // '}'
-  BRACKET_OPEN: 91, // '['
-  BRACKET_CLOSE: 93, // ']'
-  BACKSLASH: 92,    // '\'
-  TILDE: 126,       // '~'
-  A_UPPER: 65,      // 'A'
-  F_UPPER: 70,      // 'F'
-  A_LOWER: 97,      // 'a'
-  F_LOWER: 102,     // 'f'
-  X_UPPER: 88,      // 'X'
-  X_LOWER: 120,     // 'x'
-  O_UPPER: 79,      // 'O'
-  O_LOWER: 111,     // 'o'
-  B_UPPER: 66,      // 'B'
-  B_LOWER: 98       // 'b'
-} as const;
-
-// Fast character checking functions using character codes
-const isDigitFast = (charCode: number): boolean => charCode >= CHAR_CODES.ZERO && charCode <= CHAR_CODES.NINE;
-const isHexDigitFast = (charCode: number): boolean =>
-  isDigitFast(charCode) ||
+// Fast hex digit checking using character codes (only used in tokenizer)
+const isHexDigitCode = (charCode: number): boolean =>
+  isDigitCode(charCode) ||
   (charCode >= CHAR_CODES.A_UPPER && charCode <= CHAR_CODES.F_UPPER) ||
   (charCode >= CHAR_CODES.A_LOWER && charCode <= CHAR_CODES.F_LOWER);
-// Pre-computed lookup for specific Unicode whitespace characters (matching is.ts)
-const WHITESPACE_LOOKUP_FAST = new Set([
-  0x1680, // Ogham space mark
-  0x2028, // Line separator
-  0x2029, // Paragraph separator
-  0x202F, // Narrow no-break space
-  0x205F, // Medium mathematical space
-  0x3000, // Ideographic space
-  0xFEFF  // BOM/Zero width no-break space
-]);
-
-/**
- * Fast whitespace checking that matches the specification in is.ts
- */
-const isWhitespaceFast = (charCode: number): boolean => {
-  // Fast path: ASCII whitespace and control characters (U+0000 to U+0020)
-  if (charCode <= 0x20) {
-    return true;
-  }
-
-  // Fast path: Extended ASCII range (U+0021 to U+00FF) - only U+00A0 is whitespace
-  if (charCode <= 0xFF) {
-    return charCode === 0x00A0;
-  }
-
-  // Fast path: Anything above U+FEFF is never whitespace
-  if (charCode > 0xFEFF) {
-    return false;
-  }
-
-  // Fast path: Unicode range U+2000-U+200A (various em/en spaces)
-  if (charCode >= 0x2000 && charCode <= 0x200A) {
-    return true;
-  }
-
-  // Lookup table for remaining Unicode whitespace characters
-  return WHITESPACE_LOOKUP_FAST.has(charCode);
-};
 
 const regexHex4 = REGEX_CACHE.hex4;
 const regexHex2 = REGEX_CACHE.hex2;
@@ -178,16 +106,23 @@ class Tokenizer {
    * @param tokenText - The invalid token text
    */
   private createErrorToken(error: Error, startPos: number, startRow: number, startCol: number, tokenText: string): Token {
+    const errorValue: TokenErrorValue = {
+      __error: true,
+      message: error.message,
+      originalError: error
+    };
+
+    // Extract errorCode from IOError instances for typed error handling
+    if (isIOError(error)) {
+      errorValue.errorCode = error.errorCode;
+    }
+
     return Token.init(
       startPos,
       startRow,
       startCol,
       tokenText,
-      {
-        __error: true,
-        message: error.message,
-        originalError: error
-      },
+      errorValue,
       TokenType.ERROR
     );
   }
@@ -518,21 +453,23 @@ class Tokenizer {
       return token;
     }
 
-    try {
-      // Validate base64 format using cached regex
-      if (!REGEX_CACHE.base64.test(token.value)) {
-        throw new Error("Invalid base64 format");
-      }
-
-      token.type = TokenType.BINARY;
-      token.subType = "BINARY_STRING";
-
-      // Convert the base64 string to a byte array
-      token.value = Buffer.from(token.value, "base64");
-      return token;
-    } catch (error) {
-      return this.createErrorToken(error as Error, token.pos, token.row, token.col, token.token);
+    // Validate base64 format using cached regex
+    const valueStr = token.value as string;
+    if (!REGEX_CACHE.base64.test(valueStr)) {
+      const error = new SyntaxError(
+        ErrorCodes.invalidBase64,
+        `Invalid base64 format '${valueStr.length > 20 ? valueStr.substring(0, 20) + '...' : valueStr}'. Expected valid base64 characters (A-Z, a-z, 0-9, +, /) with optional '=' padding.`,
+        token
+      );
+      return this.createErrorToken(error, token.pos, token.row, token.col, token.token);
     }
+
+    token.type = TokenType.BINARY;
+    token.subType = "BINARY_STRING";
+
+    // Convert the base64 string to a byte array
+    token.value = Buffer.from(valueStr, "base64");
+    return token;
   }
 
   private parseDateTime(annotation: Annotation): Token {
@@ -949,7 +886,7 @@ class Tokenizer {
       const charCode = this.input.charCodeAt(this.pos);
 
       // Whitespaces - use fast character code checking
-      if (isWhitespaceFast(charCode)) {
+      if (isWhitespaceCode(charCode)) {
         // Skip over the whitespace
         this.advance();
         continue;
@@ -982,7 +919,7 @@ class Tokenizer {
       }
 
       // Numbers
-      else if (charCode === CHAR_CODES.PLUS || charCode === CHAR_CODES.MINUS || charCode === CHAR_CODES.DOT || isDigitFast(charCode)) {
+      else if (charCode === CHAR_CODES.PLUS || charCode === CHAR_CODES.MINUS || charCode === CHAR_CODES.DOT || isDigitCode(charCode)) {
         // Check if it is a SECTION_SEP ---
         if (charCode === CHAR_CODES.MINUS) {
           // If the next two chars are -- that means it is a

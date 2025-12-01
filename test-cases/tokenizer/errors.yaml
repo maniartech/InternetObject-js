@@ -113,6 +113,40 @@ datetime_errors:
           errorCode: invalidDateTime
           message: "Invalid datetime format"
 
+base64_errors:
+  name: base64_errors
+  description: Tests for ERROR tokens from invalid base64 encoding
+  cases:
+    - name: invalid_base64_chars
+      input: 'b"Hello!@#$"'
+      expected:
+        type: ERROR
+        token: 'b"Hello!@#$"'
+        value:
+          __error: true
+          errorCode: invalidBase64
+          message: "Invalid base64 format"
+
+    - name: invalid_base64_with_spaces
+      input: 'b"SGVs bG8="'
+      expected:
+        type: ERROR
+        token: 'b"SGVs bG8="'
+        value:
+          __error: true
+          errorCode: invalidBase64
+          message: "Invalid base64 format"
+
+    - name: invalid_base64_excess_padding
+      input: 'b"SGVsbG8==="'
+      expected:
+        type: ERROR
+        token: 'b"SGVsbG8==="'
+        value:
+          __error: true
+          errorCode: invalidBase64
+          message: "Invalid base64 format"
+
 section_errors:
   name: section_errors
   description: Tests for ERROR tokens from section parsing failures
@@ -165,6 +199,12 @@ error_recovery:
 # - token: the original text that caused the error
 # - value:
 #     __error: true
-#     errorCode: one of (stringNotClosed, invalidEscapeSequence, unsupportedAnnotation, invalidDateTime, schemaMissing)
+#     errorCode: one of:
+#       - stringNotClosed: Unterminated string literal
+#       - invalidEscapeSequence: Invalid escape sequence in string
+#       - unsupportedAnnotation: Unknown string annotation prefix
+#       - invalidDateTime: Invalid date/time/datetime format
+#       - invalidBase64: Invalid base64 encoding in binary string
+#       - schemaMissing: Missing schema after colon in section
 #     message: human-readable error description
 #     originalError: the actual Error object (not testable in YAML)

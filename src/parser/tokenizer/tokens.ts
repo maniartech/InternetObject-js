@@ -1,5 +1,60 @@
+import Decimal from '../../core/decimal/decimal';
 import { Position } from '../../core/positions';
 import PositionRange from "../../core/positions";
+import IOError from '../../errors/io-error';
+import TokenType from './token-types';
+
+/**
+ * Represents the error value stored in ERROR tokens.
+ * When the originalError is an IOError, errorCode will be available.
+ */
+export interface TokenErrorValue {
+  __error: true;
+  errorCode?: string;       // Error code from IOError (e.g., 'string-not-closed')
+  message: string;
+  originalError: Error;
+}
+
+/**
+ * Type guard to check if an error is an IOError with an errorCode
+ */
+export function isIOError(error: Error): error is IOError {
+  return error instanceof IOError || 'errorCode' in error;
+}
+
+/**
+ * Union type representing all possible token values.
+ * This provides type safety for the parsed value of each token type.
+ */
+export type TokenValue =
+  | string                  // STRING, OPEN_STRING, RAW_STRING, symbols
+  | number                  // NUMBER (includes Infinity, NaN)
+  | bigint                  // BIGINT
+  | Decimal                 // DECIMAL
+  | boolean                 // BOOLEAN
+  | null                    // NULL
+  | Date                    // DATETIME, DATE, TIME
+  | Buffer                  // BINARY
+  | TokenErrorValue         // ERROR
+  | undefined;              // UNDEFINED
+
+/**
+ * String literal type for token subtypes.
+ */
+export type TokenSubType =
+  | 'REGULAR_STRING'
+  | 'OPEN_STRING'
+  | 'RAW_STRING'
+  | 'BINARY_STRING'
+  | 'HEX'
+  | 'OCTAL'
+  | 'BINARY'
+  | typeof TokenType.DATETIME
+  | typeof TokenType.DATE
+  | typeof TokenType.TIME
+  | typeof TokenType.SECTION_SCHEMA
+  | typeof TokenType.SECTION_NAME
+  | undefined;
 
 /**
 * Represents a parsed token.
@@ -9,9 +64,9 @@ class Token implements PositionRange {
   row: number;
   col: number;
   token: string;
-  value: any;
-  type: string;
-  subType?: string;
+  value: TokenValue;
+  type: TokenType | string;
+  subType?: TokenSubType | string;
 
   constructor() {
     this.pos = -1;
@@ -33,7 +88,7 @@ class Token implements PositionRange {
    * @param type - A descriptive type name for the token.
    * @param subType - Optional subtype for the token.
    */
-  static init(pos: number, row: number, col: number, token: string, value: any, type: string, subType?: string): Token {
+  static init(pos: number, row: number, col: number, token: string, value: TokenValue, type: TokenType | string, subType?: TokenSubType | string): Token {
     const t = new Token()
     t.pos = pos;
     t.row = row;
