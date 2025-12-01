@@ -1,12 +1,23 @@
 # Internet Object Tokenizer Test Suite
 
-This directory contains test cases for the Internet Object tokenizer. The test cases are organized by token type (one file per token type) and written in YAML format for easy parsing and cross-platform compatibility.
+This directory contains the **official test specifications** for the Internet Object tokenizer. These specs serve as the definitive reference for implementing tokenizers in any programming language.
 
-## Directory Structure
+## 🎯 Purpose
+
+These test specifications serve as:
+
+1. **Reference Implementation Guide** - Definitive specification for tokenizer behavior
+2. **Cross-Platform Compatibility** - Ensures consistent behavior across all language implementations
+3. **Regression Testing** - Prevents breaking changes in existing implementations
+4. **Documentation** - Documents expected tokenizer behavior with concrete examples
+
+---
+
+## 📁 Directory Structure
 
 ```
 tokenizer/
-├── README.md              # This file
+├── README.md              # This file (implementation guide)
 │
 ├── # String Types
 ├── strings-regular.yaml   # Quoted strings ("...", '...')
@@ -25,19 +36,95 @@ tokenizer/
 ├── nulls.yaml             # NULL tokens (null, N)
 │
 ├── # Structural & Syntax
-├── braces.yaml            # Structural tokens ({}, [], ())
+├── braces.yaml            # Structural tokens ({}, [])
 ├── punctuation.yaml       # Punctuation tokens (comma, colon)
-├── operators.yaml         # Operator tokens (*, ~, @, ...)
+├── operators.yaml         # Operator tokens (~)
 ├── sections.yaml          # Section separator (---)
 │
 ├── # Whitespace & Comments
 ├── comments.yaml          # Comment handling (#, /* */)
-└── whitespace.yaml        # Whitespace handling (spaces, tabs, newlines)
+├── whitespace.yaml        # Whitespace handling
+│
+├── # Error Handling
+└── errors.yaml            # ERROR token generation and recovery
 ```
 
-## Test Case Format
+---
 
-Each test file follows a consistent YAML format with a metadata header:
+## 🔤 Token Types Reference
+
+### Complete Token Type Enumeration
+
+Implementations MUST support these exact token type names:
+
+| Token Type | Description | Example Input |
+|------------|-------------|---------------|
+| `CURLY_OPEN` | Opening curly brace | `{` |
+| `CURLY_CLOSE` | Closing curly brace | `}` |
+| `BRACKET_OPEN` | Opening square bracket | `[` |
+| `BRACKET_CLOSE` | Closing square bracket | `]` |
+| `COLON` | Colon separator | `:` |
+| `COMMA` | Comma separator | `,` |
+| `STRING` | String literal (see subtypes) | `"hello"`, `hello` |
+| `BINARY` | Binary/base64 data | `b"SGVsbG8="` |
+| `NUMBER` | Numeric literal | `123`, `3.14`, `0xFF` |
+| `BIGINT` | Big integer literal | `123n` |
+| `DECIMAL` | Decimal literal | `123.456m` |
+| `BOOLEAN` | Boolean literal | `true`, `false`, `T`, `F` |
+| `NULL` | Null literal | `null`, `N` |
+| `DATETIME` | DateTime literal | `dt'2024-01-15T10:30:00'` |
+| `SECTION_SEP` | Section separator | `---` |
+| `COLLECTION_START` | Collection marker | `~` |
+| `ERROR` | Tokenization error | (invalid input) |
+
+### Internal Types (Not Tested)
+
+These types exist in the reference implementation but are NOT tested:
+
+| Token Type | Purpose |
+|------------|---------|
+| `UNDEFINED` | Internal placeholder |
+| `UNKNOWN` | Internal error state |
+| `WHITESPACE` | Filtered during tokenization |
+
+### String Subtypes
+
+| SubType | Description | Example |
+|---------|-------------|---------|
+| `REGULAR_STRING` | Quoted string | `"hello"`, `'world'` |
+| `OPEN_STRING` | Unquoted string | `hello` |
+| `RAW_STRING` | Raw string (no escape processing) | `r"C:\path"` |
+
+### Number Subtypes
+
+| SubType | Description | Example |
+|---------|-------------|---------|
+| `HEX` | Hexadecimal | `0xFF` |
+| `OCTAL` | Octal | `0o77` |
+| `BINARY` | Binary | `0b1010` |
+
+### DateTime Subtypes
+
+| SubType | Description | Example |
+|---------|-------------|---------|
+| `DATE` | Date only | `d'2024-01-15'` |
+| `TIME` | Time only | `t'14:30:00'` |
+| (none) | Full datetime | `dt'2024-01-15T14:30:00'` |
+
+### Section Subtypes
+
+| SubType | Description | Example |
+|---------|-------------|---------|
+| `SECTION_NAME` | Named section | `--- mySection` |
+| `SECTION_SCHEMA` | Schema reference | `--- $mySchema` |
+
+---
+
+## 📋 Test Case Format
+
+### File Structure
+
+Each test file follows this YAML format:
 
 ```yaml
 _meta:
@@ -46,173 +133,451 @@ _meta:
   version: "1.0.0"
   description: "Description of this test file"
 
-test_category:
-  name: category_name
-  description: "Description of the test category"
+test_group:
+  name: group_name
+  description: "Description of tests"
   cases:
     - name: test_case_name
       input: "input string"
       expected:
         type: TOKEN_TYPE
-        subType: SUB_TYPE  # Optional
+        subType: SUB_TYPE      # Optional
         value: expected_value
-        token: "original token"
-
-error_cases:
-  name: error_category_name
-  description: "Description of error cases"
-  cases:
-    - name: error_case_name
-      input: "invalid input"
-      expected_error:
-        code: ERROR_CODE
-        message: "Error message"
+        token: "original text"
 ```
 
-## Test Files by Token Type
+### Token Properties
 
-| File | Token Type(s) | Description |
-|------|---------------|-------------|
-| `strings-regular.yaml` | STRING (REGULAR_STRING) | Double and single quoted strings |
-| `strings-open.yaml` | STRING (OPEN_STRING) | Unquoted strings + invalid literal fallbacks |
-| `strings-raw.yaml` | STRING (RAW_STRING) | Raw strings preserving escapes |
-| `strings-binary.yaml` | BINARY | Base64-encoded binary data |
-| `numbers.yaml` | NUMBER | Integers, floats, hex, octal, binary |
-| `bigints.yaml` | BIGINT | Arbitrary-precision integers |
-| `decimals.yaml` | DECIMAL | Arbitrary-precision decimals |
-| `datetime.yaml` | DATETIME | Date, time, and datetime literals |
-| `booleans.yaml` | BOOLEAN | true, false, T, F |
-| `nulls.yaml` | NULL | null, N |
-| `comments.yaml` | (filtered) | Comment handling with # and /* */ |
-| `whitespace.yaml` | (filtered) | Space, tab, newline handling |
-| `braces.yaml` | OPEN_BRACE, CLOSE_BRACE, etc. | Structural tokens |
-| `punctuation.yaml` | COMMA, COLON | Punctuation tokens |
-| `operators.yaml` | SPREAD, ASTERISK, TILDE, AT | Operator tokens |
-| `sections.yaml` | SECTION_SEP | Section separators |
+Each expected token includes:
 
-## Token Properties
+| Property | Required | Description |
+|----------|----------|-------------|
+| `type` | ✅ Yes | Token type (e.g., `STRING`, `NUMBER`) |
+| `subType` | ❌ No | Token subtype (e.g., `REGULAR_STRING`, `HEX`) |
+| `value` | ✅ Yes | Parsed/processed value |
+| `token` | ❌ No | Original source text |
 
-Each token in the expected output includes:
+### Multiple Tokens
 
-- `type`: The token type (e.g., STRING, NUMBER, DATETIME)
-- `subType`: Optional subtype (e.g., REGULAR_STRING, HEX)
-- `value`: The parsed value
-- `token`: The original token text
-
-## Error Codes
-
-The Internet Object tokenizer is **intentionally lenient by design**. Most invalid inputs become valid OPEN_STRING tokens rather than throwing errors. This allows the parser (not the tokenizer) to handle semantic validation.
-
-### Tokenization Error Codes
-
-These are the **ONLY** valid error codes for tokenizer test cases (from `tokenization-error-codes.ts`):
-
-| Code (YAML test) | Code (Source) | Description |
-|------------------|---------------|-------------|
-| `stringNotClosed` | `string-not-closed` | Unterminated string literal |
-| `invalidEscapeSequence` | `invalid-escape-sequence` | Invalid escape sequence in string |
-| `unsupportedAnnotation` | `unsupported-annotation` | Unsupported string/type annotation prefix |
-| `invalidDateTime` | `invalid-datetime` | Invalid date, time, or datetime format |
-
-> **Important:** Test YAML files use camelCase for error codes (`stringNotClosed`), while the source code uses kebab-case (`string-not-closed`). Implementations should normalize these when comparing.
-
-### Lenient Tokenizer Design
-
-The tokenizer does NOT throw errors for:
-- Invalid number formats (e.g., `123abc`, `0x12G3`) → become OPEN_STRING
-- Invalid boolean-like values (e.g., `True`, `FALSE`) → become OPEN_STRING
-- Invalid null-like values (e.g., `Null`, `NULL`) → become OPEN_STRING
-- Invalid special numbers (e.g., `nan`, `inf`) → become OPEN_STRING
-- Mismatched braces → individual brace tokens (parser validates)
-- Unusual whitespace characters → separators or open strings
-- Section-related semantic errors → parser handles these
-
-### Error Case Format
+When input produces multiple tokens:
 
 ```yaml
-error_cases:
-  name: error_category_name
-  description: "Tests that should produce specific errors"
-  cases:
-    - name: error_case_name
-      input: "invalid input"
-      expected_error:
-        code: stringNotClosed    # Must be one of the 4 tokenizer errors
-        message: "Human readable message (informational)"
+- name: key_value_pair
+  input: "key:value"
+  expected:
+    - type: STRING
+      subType: OPEN_STRING
+      value: "key"
+    - type: COLON
+      token: ":"
+    - type: STRING
+      subType: OPEN_STRING
+      value: "value"
 ```
 
-> **Note:** The `message` field is informational only. Cross-platform implementations should validate against the `code` field, as exact error messages may vary between implementations.
+### Error Cases
 
-## Using the Test Suite
+For expected errors, use `expected_error` instead of `expected`:
 
-### Python Example
+```yaml
+- name: unclosed_string
+  input: '"hello'
+  expected_error:
+    code: stringNotClosed
+    message: "String not closed"
+```
+
+---
+
+## ⚠️ Error Handling
+
+### Design Philosophy: Lenient Tokenizer
+
+The Internet Object tokenizer is **intentionally lenient**. Instead of throwing exceptions for invalid input, it:
+
+1. Creates ERROR tokens for unrecoverable syntax errors
+2. Falls back to OPEN_STRING for invalid literals
+3. Continues tokenizing after errors (error recovery)
+
+This design allows the **parser** (not tokenizer) to handle semantic validation.
+
+### Valid Error Codes
+
+These are the **ONLY** error codes the tokenizer produces:
+
+| Error Code | Description | Example Trigger |
+|------------|-------------|-----------------|
+| `stringNotClosed` | Unterminated string literal | `"hello` |
+| `invalidEscapeSequence` | Invalid escape in string | `"\q"` (if strict) |
+| `unsupportedAnnotation` | Unknown string annotation | `x"hello"` |
+| `invalidDateTime` | Invalid date/time format | `d'2024-13-45'` |
+| `schemaMissing` | Missing schema after colon | `--- name:` |
+
+### ERROR Token Structure
+
+```yaml
+type: ERROR
+token: "original text"
+value:
+  __error: true
+  errorCode: stringNotClosed
+  message: "Human readable description"
+```
+
+### What Does NOT Produce Errors
+
+The tokenizer does **NOT** throw errors for:
+
+| Input | Result | Reason |
+|-------|--------|--------|
+| `123abc` | OPEN_STRING | Invalid number → fallback |
+| `True` | OPEN_STRING | Wrong case → fallback |
+| `Null` | OPEN_STRING | Wrong case → fallback |
+| `nan` | OPEN_STRING | Wrong case (should be `NaN`) |
+| `inf` | OPEN_STRING | Wrong case (should be `Inf`) |
+| `0x12G3` | OPEN_STRING | Invalid hex → fallback |
+| `{}` mismatch | Individual tokens | Parser validates matching |
+
+---
+
+## ✅ DOs and ❌ DON'Ts for Implementers
+
+### ✅ DO
+
+1. **Match token types exactly** - Use `CURLY_OPEN`, not `OPEN_BRACE` or `LBRACE`
+2. **Support all escape sequences** - `\n`, `\t`, `\r`, `\\`, `\"`, `\'`, `\b`, `\f`, `\uXXXX`, `\xXX`
+3. **Preserve original token text** - Store the source text in the `token` field
+4. **Handle Unicode properly** - Support full Unicode in strings and identifiers
+5. **Create ERROR tokens** - Don't throw exceptions; create ERROR tokens for recovery
+6. **Fallback to OPEN_STRING** - Invalid literals become strings, not errors
+7. **Case-sensitive literals** - `true` ≠ `True` ≠ `TRUE`
+8. **Support number bases** - Hex (`0x`), octal (`0o`), binary (`0b`)
+9. **Support special numbers** - `Inf`, `+Inf`, `-Inf`, `NaN`
+
+### ❌ DON'T
+
+1. **Don't support parentheses** - `()` are NOT structural tokens
+2. **Don't support semicolon** - `;` is NOT a separator token
+3. **Don't tokenize operators** - Only `~` is a token; `*`, `@`, `...` become OPEN_STRING
+4. **Don't throw exceptions** - Create ERROR tokens instead
+5. **Don't validate semantics** - Leave brace matching, type checking to parser
+6. **Don't modify whitespace in strings** - Preserve exactly as written
+7. **Don't support nested comments** - `/* /* */ */` behavior is implementation-defined
+8. **Don't case-normalize** - `True` → OPEN_STRING, not BOOLEAN
+
+---
+
+## 🔢 Literal Formats
+
+### Booleans
+
+```
+true  → BOOLEAN (true)
+false → BOOLEAN (false)
+T     → BOOLEAN (true)
+F     → BOOLEAN (false)
+```
+
+**Invalid** (become OPEN_STRING): `True`, `False`, `TRUE`, `FALSE`
+
+### Null
+
+```
+null → NULL
+N    → NULL
+```
+
+**Invalid** (become OPEN_STRING): `Null`, `NULL`, `nil`, `none`, `None`
+
+### Numbers
+
+```
+123       → NUMBER (integer)
+-123      → NUMBER (negative integer)
+123.456   → NUMBER (float)
+.5        → NUMBER (0.5)
+1.23e10   → NUMBER (scientific)
+1.23E-10  → NUMBER (scientific)
+0xFF      → NUMBER subType:HEX (255)
+0o77      → NUMBER subType:OCTAL (63)
+0b1010    → NUMBER subType:BINARY (10)
+Inf       → NUMBER (Infinity)
++Inf      → NUMBER (Infinity)
+-Inf      → NUMBER (-Infinity)
+NaN       → NUMBER (NaN)
+```
+
+**Invalid** (become OPEN_STRING): `123abc`, `00123`, `123.`, `0x12G3`
+
+### BigInts
+
+```
+123n    → BIGINT ("123")
+-123n   → BIGINT ("-123")
+0xFFn   → BIGINT subType:HEX ("255")
+```
+
+### Decimals
+
+```
+123.456m → DECIMAL ("123.456")
+123m     → DECIMAL ("123")
+```
+
+### DateTime
+
+```
+d'2024-01-15'              → DATETIME subType:DATE
+t'14:30:00'                → DATETIME subType:TIME
+t'14:30:00.123'            → DATETIME subType:TIME
+dt'2024-01-15T14:30:00'    → DATETIME
+dt'2024-01-15T14:30:00Z'   → DATETIME
+dt'2024-01-15T14:30:00+05:30' → DATETIME
+```
+
+### Strings
+
+```
+"hello"       → STRING subType:REGULAR_STRING
+'hello'       → STRING subType:REGULAR_STRING
+hello         → STRING subType:OPEN_STRING
+r"C:\path"    → STRING subType:RAW_STRING
+b"SGVsbG8="   → BINARY
+```
+
+---
+
+## 🧪 Implementation Testing
+
+### Recommended Test Order
+
+1. **Punctuation** (`punctuation.yaml`) - Basic structural tokens
+2. **Braces** (`braces.yaml`) - Brackets and curly braces
+3. **Booleans** (`booleans.yaml`) - Simple literals
+4. **Nulls** (`nulls.yaml`) - Null literals
+5. **Numbers** (`numbers.yaml`) - Numeric parsing
+6. **Strings Regular** (`strings-regular.yaml`) - Quoted strings
+7. **Strings Open** (`strings-open.yaml`) - Open strings + fallbacks
+8. **Strings Raw** (`strings-raw.yaml`) - Raw strings
+9. **Strings Binary** (`strings-binary.yaml`) - Binary data
+10. **BigInts** (`bigints.yaml`) - Big integers
+11. **Decimals** (`decimals.yaml`) - Decimal numbers
+12. **DateTime** (`datetime.yaml`) - Date/time literals
+13. **Comments** (`comments.yaml`) - Comment handling
+14. **Whitespace** (`whitespace.yaml`) - Whitespace handling
+15. **Operators** (`operators.yaml`) - Special operators
+16. **Sections** (`sections.yaml`) - Section separators
+17. **Errors** (`errors.yaml`) - Error handling
+
+### Test Runner Example (Python)
+
 ```python
 import yaml
+from pathlib import Path
 
-def load_test_cases(file_path):
-    with open(file_path, 'r') as f:
-        return yaml.safe_load(f)
+def load_test_suite(directory: str):
+    """Load all test cases from YAML files."""
+    tests = {}
+    for file in Path(directory).glob("*.yaml"):
+        with open(file) as f:
+            data = yaml.safe_load(f)
+            # Skip metadata
+            tests[file.stem] = {
+                k: v for k, v in data.items()
+                if not k.startswith('_')
+            }
+    return tests
 
-# Load and run tests
-test_cases = load_test_cases('tokenizer/strings.yaml')
-for category in test_cases.values():
-    for case in category['cases']:
-        # Run test case
-        result = tokenizer.tokenize(case['input'])
-        assert result == case['expected']
+def run_tokenizer_tests(tokenizer, test_suite):
+    """Run all test cases against a tokenizer."""
+    results = {"passed": 0, "failed": 0, "errors": []}
+
+    for file_name, categories in test_suite.items():
+        for category_name, category in categories.items():
+            if not isinstance(category, dict) or 'cases' not in category:
+                continue
+
+            for case in category['cases']:
+                try:
+                    tokens = tokenizer.tokenize(case['input'])
+
+                    if 'expected_error' in case:
+                        # Should have produced an error
+                        if not has_error_token(tokens, case['expected_error']['code']):
+                            results['failed'] += 1
+                            results['errors'].append({
+                                'file': file_name,
+                                'case': case['name'],
+                                'expected': f"ERROR: {case['expected_error']['code']}",
+                                'got': tokens
+                            })
+                        else:
+                            results['passed'] += 1
+                    else:
+                        # Should match expected tokens
+                        if matches_expected(tokens, case['expected']):
+                            results['passed'] += 1
+                        else:
+                            results['failed'] += 1
+                            results['errors'].append({
+                                'file': file_name,
+                                'case': case['name'],
+                                'expected': case['expected'],
+                                'got': tokens
+                            })
+                except Exception as e:
+                    results['failed'] += 1
+                    results['errors'].append({
+                        'file': file_name,
+                        'case': case['name'],
+                        'exception': str(e)
+                    })
+
+    return results
 ```
 
-### JavaScript/TypeScript Example
-```typescript
-import * as yaml from 'js-yaml';
-import * as fs from 'fs';
+### Test Runner Example (Go)
 
-interface Token {
-    type: string;
-    subType?: string;
-    value: any;
-    token: string;
+```go
+package tokenizer_test
+
+import (
+    "os"
+    "path/filepath"
+    "testing"
+
+    "gopkg.in/yaml.v3"
+)
+
+type TestCase struct {
+    Name          string                 `yaml:"name"`
+    Input         string                 `yaml:"input"`
+    Expected      interface{}            `yaml:"expected"`
+    ExpectedError *ExpectedError         `yaml:"expected_error"`
 }
 
-interface TestCase {
-    name: string;
-    input: string;
-    expected: Token | Token[];
-    expected_error?: {
-        code: string;
-        message: string;
-    };
+type ExpectedError struct {
+    Code    string `yaml:"code"`
+    Message string `yaml:"message"`
 }
 
-function loadTestCases(filePath: string): Record<string, TestCase[]> {
-    const content = fs.readFileSync(filePath, 'utf8');
-    return yaml.load(content) as Record<string, TestCase[]>;
-}
+func TestTokenizer(t *testing.T) {
+    files, _ := filepath.Glob("testcases/tokenizer/*.yaml")
 
-// Load and run tests
-const testCases = loadTestCases('tokenizer/strings.yaml');
-for (const [category, cases] of Object.entries(testCases)) {
-    for (const testCase of cases) {
-        // Run test case
-        const result = tokenizer.tokenize(testCase.input);
-        assert.deepEqual(result, testCase.expected);
+    for _, file := range files {
+        data, _ := os.ReadFile(file)
+        var suite map[string]interface{}
+        yaml.Unmarshal(data, &suite)
+
+        for categoryName, category := range suite {
+            if categoryName == "_meta" {
+                continue
+            }
+
+            categoryMap := category.(map[string]interface{})
+            cases := categoryMap["cases"].([]interface{})
+
+            for _, c := range cases {
+                testCase := parseTestCase(c)
+                t.Run(testCase.Name, func(t *testing.T) {
+                    tokens := Tokenize(testCase.Input)
+                    // Assert tokens match expected...
+                })
+            }
+        }
     }
 }
 ```
 
-## Adding New Tests
+---
 
-1. Choose the appropriate YAML file based on token type
-2. Add a new test case following the format
-3. Include both success and error cases
-4. Add descriptive names and comments
-5. Ensure test cases are comprehensive
+## 📝 Notes for Language Porters
 
-## Best Practices
+### String Handling
 
-1. Keep test cases focused and atomic
-2. Include edge cases and error conditions
-3. Use descriptive names for test cases
-4. Document any special requirements
-5. Maintain consistent formatting
-6. Include comments for complex cases
+1. **Escape Sequences**: Process in REGULAR_STRING, preserve in RAW_STRING
+2. **Unicode**: Support `\uXXXX` (4 hex digits) and `\xXX` (2 hex digits)
+3. **Multiline**: Strings cannot span lines (produces `stringNotClosed` error)
+4. **Quote Matching**: `"..."` and `'...'` are equivalent
+
+### Number Handling
+
+1. **Leading Zeros**: `00123` is invalid (becomes OPEN_STRING)
+2. **Leading Dot**: `.5` is valid (equals `0.5`)
+3. **Trailing Dot**: `123.` is invalid (becomes OPEN_STRING)
+4. **Exponent**: Both `e` and `E` are valid
+5. **Sign in Exponent**: Both `e+10` and `e-10` are valid
+
+### BigInt/Decimal Storage
+
+1. **BigInt**: Store as string to preserve precision beyond native int limits
+2. **Decimal**: Store as string to preserve exact decimal representation
+3. **Don't Parse**: Keep the numeric string; let the application handle conversion
+
+### Section Handling
+
+1. **SECTION_SEP**: Always `---` (exactly three dashes)
+2. **SECTION_NAME**: Identifier after `---` (without `$`)
+3. **SECTION_SCHEMA**: Identifier starting with `$` after `---`
+
+### Unicode Whitespace Support
+
+Internet Object supports comprehensive Unicode whitespace, unlike many other formats.
+
+**Recognized Whitespace Characters:**
+
+| Range | Code Points | Description |
+|-------|-------------|-------------|
+| ASCII Control | U+0000 to U+0020 | All control chars including space, tab, CR, LF |
+| NBSP | U+00A0 | No-Break Space |
+| Em/En Spaces | U+2000 to U+200A | Typographic spaces (11 characters) |
+| Ogham | U+1680 | Ogham Space Mark |
+| Separators | U+2028, U+2029 | Line and Paragraph Separator |
+| Special | U+202F, U+205F, U+3000 | Narrow NBSP, Math Space, Ideographic Space |
+| BOM | U+FEFF | Byte Order Mark |
+
+**NOT Whitespace:**
+- U+200B Zero Width Space (becomes part of strings)
+- U+200C/U+200D Zero Width (Non-)Joiner
+- U+2060 Word Joiner
+- Anything above U+FEFF
+
+**Algorithm for Implementers:**
+```
+function isWhitespace(code):
+  if code <= 0x20: return true           // ASCII control + space
+  if code == 0x00A0: return true         // NBSP
+  if code >= 0x2000 && code <= 0x200A:   // Em/en spaces
+    return true
+  if code in {0x1680, 0x2028, 0x2029, 0x202F, 0x205F, 0x3000, 0xFEFF}:
+    return true
+  return false
+```
+
+### Position Tracking (Optional but Recommended)
+
+Consider tracking source positions for error reporting:
+
+```typescript
+interface TokenPosition {
+    line: number;      // 1-based
+    column: number;    // 1-based
+    offset: number;    // 0-based byte offset
+}
+```
+
+---
+
+## 🔄 Version History
+
+| Version | Date | Changes |
+|---------|------|---------|
+| 1.0.0 | 2024-12 | Initial comprehensive test suite |
+
+---
+
+## 📚 Related Resources
+
+- [Internet Object Specification](https://internetobject.org)
+- [Reference Implementation (TypeScript)](../../src/parser/tokenizer/)
+- [Parser Test Cases](../parser/)

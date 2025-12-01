@@ -1,0 +1,170 @@
+# Error Token Test Cases
+# Tests for ERROR token generation when tokenization fails
+
+_meta:
+  suite: tokenizer
+  category: errors
+  version: "1.0.0"
+  description: "Error token test cases - verifies tokenizer marks invalid tokens as ERROR type"
+
+# When tokenization fails, the tokenizer creates an ERROR token
+# instead of throwing an exception. This allows error recovery
+# and continued parsing of the rest of the input.
+
+string_errors:
+  name: string_errors
+  description: Tests for ERROR tokens from string parsing failures
+  cases:
+    - name: unclosed_double_quote
+      input: '"hello'
+      expected:
+        type: ERROR
+        token: '"hello'
+        value:
+          __error: true
+          errorCode: stringNotClosed
+          message: "Unterminated string literal"
+
+    - name: unclosed_single_quote
+      input: "'hello"
+      expected:
+        type: ERROR
+        token: "'hello"
+        value:
+          __error: true
+          errorCode: stringNotClosed
+          message: "Unterminated string literal"
+
+    - name: unclosed_raw_string
+      input: 'r"hello'
+      expected:
+        type: ERROR
+        token: 'r"hello'
+        value:
+          __error: true
+          errorCode: stringNotClosed
+          message: "Unterminated string literal"
+
+    - name: unclosed_binary_string
+      input: 'b"SGVsbG8'
+      expected:
+        type: ERROR
+        token: 'b"SGVsbG8'
+        value:
+          __error: true
+          errorCode: stringNotClosed
+          message: "Unterminated string literal"
+
+annotation_errors:
+  name: annotation_errors
+  description: Tests for ERROR tokens from unsupported annotations
+  cases:
+    - name: unsupported_annotation_x
+      input: 'x"hello"'
+      expected:
+        type: ERROR
+        token: 'x"'
+        value:
+          __error: true
+          errorCode: unsupportedAnnotation
+          message: "Unsupported annotation"
+
+    - name: unsupported_annotation_foo
+      input: 'foo"test"'
+      expected:
+        type: ERROR
+        token: 'foo"'
+        value:
+          __error: true
+          errorCode: unsupportedAnnotation
+          message: "Unsupported annotation"
+
+datetime_errors:
+  name: datetime_errors
+  description: Tests for ERROR tokens from invalid datetime parsing
+  cases:
+    - name: invalid_date_format
+      input: "d'2024-13-45'"
+      expected:
+        type: ERROR
+        token: "d'2024-13-45'"
+        value:
+          __error: true
+          errorCode: invalidDateTime
+          message: "Invalid date format"
+
+    - name: invalid_time_format
+      input: "t'25:99:99'"
+      expected:
+        type: ERROR
+        token: "t'25:99:99'"
+        value:
+          __error: true
+          errorCode: invalidDateTime
+          message: "Invalid time format"
+
+    - name: invalid_datetime_format
+      input: "dt'not-a-datetime'"
+      expected:
+        type: ERROR
+        token: "dt'not-a-datetime'"
+        value:
+          __error: true
+          errorCode: invalidDateTime
+          message: "Invalid datetime format"
+
+section_errors:
+  name: section_errors
+  description: Tests for ERROR tokens from section parsing failures
+  cases:
+    - name: missing_schema_after_colon
+      input: "--- mySection:"
+      expected:
+        - type: SECTION_SEP
+          token: "---"
+        - type: STRING
+          subType: SECTION_NAME
+          value: "mySection"
+        - type: ERROR
+          token: ""
+          value:
+            __error: true
+            errorCode: schemaMissing
+            message: "Missing schema definition"
+
+error_recovery:
+  name: error_recovery
+  description: Tests that tokenizer continues after encountering errors
+  cases:
+    - name: error_then_valid_token
+      input: '"unclosed, 123'
+      expected:
+        - type: ERROR
+          token: '"unclosed, 123'
+          value:
+            __error: true
+            errorCode: stringNotClosed
+        # Note: The unclosed string consumes to EOF
+
+    - name: valid_error_valid
+      input: 'hello x"bad" world'
+      expected:
+        - type: STRING
+          subType: OPEN_STRING
+          value: "hello"
+        - type: ERROR
+          value:
+            __error: true
+            errorCode: unsupportedAnnotation
+        - type: STRING
+          subType: OPEN_STRING
+          value: "world"
+
+# ERROR Token Structure:
+# - type: ERROR
+# - token: the original text that caused the error
+# - value:
+#     __error: true
+#     errorCode: one of (stringNotClosed, invalidEscapeSequence, unsupportedAnnotation, invalidDateTime, schemaMissing)
+#     message: human-readable error description
+#     originalError: the actual Error object (not testable in YAML)

@@ -75,15 +75,8 @@ colon:
           subType: OPEN_STRING
           value: "value"
 
-semicolon:
-  name: semicolon
-  description: Tests for semicolon tokens (if supported)
-  cases:
-    - name: single_semicolon
-      input: ";"
-      expected:
-        type: SEMICOLON
-        token: ";"
+# Note: SEMICOLON is NOT a supported token type
+# If semicolon is encountered, it becomes part of an OPEN_STRING
 
 combined_punctuation:
   name: combined_punctuation
@@ -92,7 +85,7 @@ combined_punctuation:
     - name: object_syntax
       input: "{a:1,b:2}"
       expected:
-        - type: OPEN_BRACE
+        - type: CURLY_OPEN
           token: "{"
         - type: STRING
           subType: OPEN_STRING
@@ -110,13 +103,13 @@ combined_punctuation:
           token: ":"
         - type: NUMBER
           value: 2
-        - type: CLOSE_BRACE
+        - type: CURLY_CLOSE
           token: "}"
 
     - name: array_syntax
       input: "[1,2,3]"
       expected:
-        - type: OPEN_BRACKET
+        - type: BRACKET_OPEN
           token: "["
         - type: NUMBER
           value: 1
@@ -128,5 +121,5 @@ combined_punctuation:
           token: ","
         - type: NUMBER
           value: 3
-        - type: CLOSE_BRACKET
+        - type: BRACKET_CLOSE
           token: "]"

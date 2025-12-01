@@ -14,33 +14,33 @@ curly_braces:
     - name: open_brace
       input: "{"
       expected:
-        type: OPEN_BRACE
+        type: CURLY_OPEN
         token: "{"
 
     - name: close_brace
       input: "}"
       expected:
-        type: CLOSE_BRACE
+        type: CURLY_CLOSE
         token: "}"
 
     - name: empty_object
       input: "{}"
       expected:
-        - type: OPEN_BRACE
+        - type: CURLY_OPEN
           token: "{"
-        - type: CLOSE_BRACE
+        - type: CURLY_CLOSE
           token: "}"
 
     - name: nested_braces
       input: "{{}}"
       expected:
-        - type: OPEN_BRACE
+        - type: CURLY_OPEN
           token: "{"
-        - type: OPEN_BRACE
+        - type: CURLY_OPEN
           token: "{"
-        - type: CLOSE_BRACE
+        - type: CURLY_CLOSE
           token: "}"
-        - type: CLOSE_BRACE
+        - type: CURLY_CLOSE
           token: "}"
 
 square_brackets:
@@ -50,58 +50,34 @@ square_brackets:
     - name: open_bracket
       input: "["
       expected:
-        type: OPEN_BRACKET
+        type: BRACKET_OPEN
         token: "["
 
     - name: close_bracket
       input: "]"
       expected:
-        type: CLOSE_BRACKET
+        type: BRACKET_CLOSE
         token: "]"
 
     - name: empty_array
       input: "[]"
       expected:
-        - type: OPEN_BRACKET
+        - type: BRACKET_OPEN
           token: "["
-        - type: CLOSE_BRACKET
+        - type: BRACKET_CLOSE
           token: "]"
 
     - name: nested_brackets
       input: "[[]]"
       expected:
-        - type: OPEN_BRACKET
+        - type: BRACKET_OPEN
           token: "["
-        - type: OPEN_BRACKET
+        - type: BRACKET_OPEN
           token: "["
-        - type: CLOSE_BRACKET
+        - type: BRACKET_CLOSE
           token: "]"
-        - type: CLOSE_BRACKET
+        - type: BRACKET_CLOSE
           token: "]"
-
-parentheses:
-  name: parentheses
-  description: Tests for parentheses tokens
-  cases:
-    - name: open_paren
-      input: "("
-      expected:
-        type: OPEN_PAREN
-        token: "("
-
-    - name: close_paren
-      input: ")"
-      expected:
-        type: CLOSE_PAREN
-        token: ")"
-
-    - name: empty_parens
-      input: "()"
-      expected:
-        - type: OPEN_PAREN
-          token: "("
-        - type: CLOSE_PAREN
-          token: ")"
 
 mixed_braces:
   name: mixed_braces
@@ -110,27 +86,29 @@ mixed_braces:
     - name: array_of_objects
       input: "[{}]"
       expected:
-        - type: OPEN_BRACKET
+        - type: BRACKET_OPEN
           token: "["
-        - type: OPEN_BRACE
+        - type: CURLY_OPEN
           token: "{"
-        - type: CLOSE_BRACE
+        - type: CURLY_CLOSE
           token: "}"
-        - type: CLOSE_BRACKET
+        - type: BRACKET_CLOSE
           token: "]"
 
     - name: object_with_array
       input: "{[]}"
       expected:
-        - type: OPEN_BRACE
+        - type: CURLY_OPEN
           token: "{"
-        - type: OPEN_BRACKET
+        - type: BRACKET_OPEN
           token: "["
-        - type: CLOSE_BRACKET
+        - type: BRACKET_CLOSE
           token: "]"
-        - type: CLOSE_BRACE
+        - type: CURLY_CLOSE
           token: "}"
 
+# Note: Parentheses are NOT supported by the tokenizer
+# They become part of open strings if encountered
 # Note: Mismatched braces are NOT tokenization errors.
 # The tokenizer produces individual brace tokens.
 # Matching validation happens at the parser level.

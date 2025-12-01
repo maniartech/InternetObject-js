@@ -1,19 +1,72 @@
 # Whitespace Token Test Cases
 # Tests for whitespace and separator handling
+#
+# Internet Object supports comprehensive Unicode whitespace characters.
+# This is a key differentiator from many other data formats.
 
 _meta:
   suite: tokenizer
   category: whitespace
   version: "1.0.0"
-  description: "Whitespace token test cases"
+  description: "Whitespace token test cases - including full Unicode support"
 
-# Note: Whitespace tokens are typically filtered out during tokenization
-# These tests verify that whitespace is correctly handled as separators
-# between other tokens, not that whitespace produces its own tokens
+# ============================================================================
+# WHITESPACE CHARACTER REFERENCE
+# ============================================================================
+#
+# Internet Object recognizes the following whitespace characters:
+#
+# ASCII Whitespace (U+0000 to U+0020):
+# ----------------------------------------------------------------------------
+# | Code Point | Name                    | Escape | Notes                    |
+# |------------|-------------------------|--------|--------------------------|
+# | U+0009     | Horizontal Tab          | \t     | Common indentation       |
+# | U+000A     | Line Feed (LF)          | \n     | Unix newline             |
+# | U+000B     | Vertical Tab            | \v     | Rarely used              |
+# | U+000C     | Form Feed               | \f     | Page break               |
+# | U+000D     | Carriage Return (CR)    | \r     | Windows newline (with LF)|
+# | U+0020     | Space                   |        | Standard space           |
+#
+# Extended ASCII (U+00A0):
+# ----------------------------------------------------------------------------
+# | U+00A0     | No-Break Space          |        | Non-breaking space       |
+#
+# Unicode General Punctuation (U+2000 to U+200A):
+# ----------------------------------------------------------------------------
+# | U+2000     | En Quad                 |        | Width of 'n'             |
+# | U+2001     | Em Quad                 |        | Width of 'm'             |
+# | U+2002     | En Space                |        | Half em space            |
+# | U+2003     | Em Space                |        | Full em space            |
+# | U+2004     | Three-Per-Em Space      |        | 1/3 em                   |
+# | U+2005     | Four-Per-Em Space       |        | 1/4 em                   |
+# | U+2006     | Six-Per-Em Space        |        | 1/6 em                   |
+# | U+2007     | Figure Space            |        | Width of digits          |
+# | U+2008     | Punctuation Space       |        | Width of period          |
+# | U+2009     | Thin Space              |        | 1/5 em (or 1/6)          |
+# | U+200A     | Hair Space              |        | Narrowest                |
+#
+# Other Unicode Whitespace:
+# ----------------------------------------------------------------------------
+# | U+1680     | Ogham Space Mark        |        | Irish Ogham script       |
+# | U+2028     | Line Separator          |        | Unicode line break       |
+# | U+2029     | Paragraph Separator     |        | Unicode paragraph break  |
+# | U+202F     | Narrow No-Break Space   |        | French punctuation       |
+# | U+205F     | Medium Mathematical Space|       | Math typesetting         |
+# | U+3000     | Ideographic Space       |        | CJK full-width space     |
+# | U+FEFF     | BOM / Zero Width No-Break|       | Byte Order Mark          |
+#
+# ============================================================================
 
-basic_whitespace:
-  name: basic_whitespace
-  description: Tests for basic whitespace handling
+# Note: Whitespace tokens are filtered out during tokenization.
+# These tests verify that whitespace correctly separates tokens.
+
+# ----------------------------------------------------------------------------
+# ASCII WHITESPACE
+# ----------------------------------------------------------------------------
+
+ascii_whitespace:
+  name: ascii_whitespace
+  description: Tests for standard ASCII whitespace characters
   cases:
     - name: space_separator
       input: "a b"
@@ -36,6 +89,7 @@ basic_whitespace:
           value: "b"
 
     - name: tab_separator
+      description: "U+0009 Horizontal Tab"
       input: "a\tb"
       expected:
         - type: STRING
@@ -45,7 +99,8 @@ basic_whitespace:
           subType: OPEN_STRING
           value: "b"
 
-    - name: newline_separator
+    - name: newline_lf
+      description: "U+000A Line Feed"
       input: "a\nb"
       expected:
         - type: STRING
@@ -55,7 +110,19 @@ basic_whitespace:
           subType: OPEN_STRING
           value: "b"
 
-    - name: crlf_separator
+    - name: newline_cr
+      description: "U+000D Carriage Return"
+      input: "a\rb"
+      expected:
+        - type: STRING
+          subType: OPEN_STRING
+          value: "a"
+        - type: STRING
+          subType: OPEN_STRING
+          value: "b"
+
+    - name: newline_crlf
+      description: "U+000D U+000A Windows-style newline"
       input: "a\r\nb"
       expected:
         - type: STRING
@@ -65,19 +132,264 @@ basic_whitespace:
           subType: OPEN_STRING
           value: "b"
 
-    - name: leading_whitespace
-      input: "  a"
+    - name: vertical_tab
+      description: "U+000B Vertical Tab"
+      input: "a\u000Bb"
       expected:
         - type: STRING
           subType: OPEN_STRING
           value: "a"
+        - type: STRING
+          subType: OPEN_STRING
+          value: "b"
 
-    - name: trailing_whitespace
-      input: "a  "
+    - name: form_feed
+      description: "U+000C Form Feed"
+      input: "a\u000Cb"
       expected:
         - type: STRING
           subType: OPEN_STRING
           value: "a"
+        - type: STRING
+          subType: OPEN_STRING
+          value: "b"
+
+# ----------------------------------------------------------------------------
+# EXTENDED ASCII WHITESPACE
+# ----------------------------------------------------------------------------
+
+extended_ascii_whitespace:
+  name: extended_ascii_whitespace
+  description: Tests for extended ASCII whitespace (U+00A0)
+  cases:
+    - name: no_break_space
+      description: "U+00A0 No-Break Space (NBSP)"
+      input: "a\u00A0b"
+      expected:
+        - type: STRING
+          subType: OPEN_STRING
+          value: "a"
+        - type: STRING
+          subType: OPEN_STRING
+          value: "b"
+
+# ----------------------------------------------------------------------------
+# UNICODE EM/EN SPACES (U+2000 to U+200A)
+# ----------------------------------------------------------------------------
+
+unicode_em_en_spaces:
+  name: unicode_em_en_spaces
+  description: Tests for Unicode typographic spaces
+  cases:
+    - name: en_quad
+      description: "U+2000 En Quad"
+      input: "a\u2000b"
+      expected:
+        - type: STRING
+          subType: OPEN_STRING
+          value: "a"
+        - type: STRING
+          subType: OPEN_STRING
+          value: "b"
+
+    - name: em_quad
+      description: "U+2001 Em Quad"
+      input: "a\u2001b"
+      expected:
+        - type: STRING
+          subType: OPEN_STRING
+          value: "a"
+        - type: STRING
+          subType: OPEN_STRING
+          value: "b"
+
+    - name: en_space
+      description: "U+2002 En Space"
+      input: "a\u2002b"
+      expected:
+        - type: STRING
+          subType: OPEN_STRING
+          value: "a"
+        - type: STRING
+          subType: OPEN_STRING
+          value: "b"
+
+    - name: em_space
+      description: "U+2003 Em Space"
+      input: "a\u2003b"
+      expected:
+        - type: STRING
+          subType: OPEN_STRING
+          value: "a"
+        - type: STRING
+          subType: OPEN_STRING
+          value: "b"
+
+    - name: three_per_em_space
+      description: "U+2004 Three-Per-Em Space"
+      input: "a\u2004b"
+      expected:
+        - type: STRING
+          subType: OPEN_STRING
+          value: "a"
+        - type: STRING
+          subType: OPEN_STRING
+          value: "b"
+
+    - name: four_per_em_space
+      description: "U+2005 Four-Per-Em Space"
+      input: "a\u2005b"
+      expected:
+        - type: STRING
+          subType: OPEN_STRING
+          value: "a"
+        - type: STRING
+          subType: OPEN_STRING
+          value: "b"
+
+    - name: six_per_em_space
+      description: "U+2006 Six-Per-Em Space"
+      input: "a\u2006b"
+      expected:
+        - type: STRING
+          subType: OPEN_STRING
+          value: "a"
+        - type: STRING
+          subType: OPEN_STRING
+          value: "b"
+
+    - name: figure_space
+      description: "U+2007 Figure Space"
+      input: "a\u2007b"
+      expected:
+        - type: STRING
+          subType: OPEN_STRING
+          value: "a"
+        - type: STRING
+          subType: OPEN_STRING
+          value: "b"
+
+    - name: punctuation_space
+      description: "U+2008 Punctuation Space"
+      input: "a\u2008b"
+      expected:
+        - type: STRING
+          subType: OPEN_STRING
+          value: "a"
+        - type: STRING
+          subType: OPEN_STRING
+          value: "b"
+
+    - name: thin_space
+      description: "U+2009 Thin Space"
+      input: "a\u2009b"
+      expected:
+        - type: STRING
+          subType: OPEN_STRING
+          value: "a"
+        - type: STRING
+          subType: OPEN_STRING
+          value: "b"
+
+    - name: hair_space
+      description: "U+200A Hair Space"
+      input: "a\u200Ab"
+      expected:
+        - type: STRING
+          subType: OPEN_STRING
+          value: "a"
+        - type: STRING
+          subType: OPEN_STRING
+          value: "b"
+
+# ----------------------------------------------------------------------------
+# OTHER UNICODE WHITESPACE
+# ----------------------------------------------------------------------------
+
+unicode_special_whitespace:
+  name: unicode_special_whitespace
+  description: Tests for other Unicode whitespace characters
+  cases:
+    - name: ogham_space_mark
+      description: "U+1680 Ogham Space Mark"
+      input: "a\u1680b"
+      expected:
+        - type: STRING
+          subType: OPEN_STRING
+          value: "a"
+        - type: STRING
+          subType: OPEN_STRING
+          value: "b"
+
+    - name: line_separator
+      description: "U+2028 Line Separator"
+      input: "a\u2028b"
+      expected:
+        - type: STRING
+          subType: OPEN_STRING
+          value: "a"
+        - type: STRING
+          subType: OPEN_STRING
+          value: "b"
+
+    - name: paragraph_separator
+      description: "U+2029 Paragraph Separator"
+      input: "a\u2029b"
+      expected:
+        - type: STRING
+          subType: OPEN_STRING
+          value: "a"
+        - type: STRING
+          subType: OPEN_STRING
+          value: "b"
+
+    - name: narrow_no_break_space
+      description: "U+202F Narrow No-Break Space"
+      input: "a\u202Fb"
+      expected:
+        - type: STRING
+          subType: OPEN_STRING
+          value: "a"
+        - type: STRING
+          subType: OPEN_STRING
+          value: "b"
+
+    - name: medium_mathematical_space
+      description: "U+205F Medium Mathematical Space"
+      input: "a\u205Fb"
+      expected:
+        - type: STRING
+          subType: OPEN_STRING
+          value: "a"
+        - type: STRING
+          subType: OPEN_STRING
+          value: "b"
+
+    - name: ideographic_space
+      description: "U+3000 Ideographic Space (CJK full-width)"
+      input: "a\u3000b"
+      expected:
+        - type: STRING
+          subType: OPEN_STRING
+          value: "a"
+        - type: STRING
+          subType: OPEN_STRING
+          value: "b"
+
+    - name: byte_order_mark
+      description: "U+FEFF BOM / Zero Width No-Break Space"
+      input: "a\uFEFFb"
+      expected:
+        - type: STRING
+          subType: OPEN_STRING
+          value: "a"
+        - type: STRING
+          subType: OPEN_STRING
+          value: "b"
+
+# ----------------------------------------------------------------------------
+# MIXED WHITESPACE
+# ----------------------------------------------------------------------------
 
 mixed_whitespace:
   name: mixed_whitespace
@@ -103,6 +415,199 @@ mixed_whitespace:
           subType: OPEN_STRING
           value: "b"
 
-# Note: The tokenizer does NOT throw errors for unusual whitespace
-# characters. Non-printable or unusual characters that aren't
-# recognized become part of open strings or are treated as separators.
+    - name: ascii_and_unicode_mixed
+      description: "Mix of space, em space, and thin space"
+      input: "a \u2003\u2009b"
+      expected:
+        - type: STRING
+          subType: OPEN_STRING
+          value: "a"
+        - type: STRING
+          subType: OPEN_STRING
+          value: "b"
+
+    - name: cjk_with_ideographic_space
+      description: "CJK text with ideographic space separator"
+      input: "hello\u3000world"
+      expected:
+        - type: STRING
+          subType: OPEN_STRING
+          value: "hello"
+        - type: STRING
+          subType: OPEN_STRING
+          value: "world"
+
+# ----------------------------------------------------------------------------
+# LEADING AND TRAILING WHITESPACE
+# ----------------------------------------------------------------------------
+
+boundary_whitespace:
+  name: boundary_whitespace
+  description: Tests for whitespace at boundaries
+  cases:
+    - name: leading_space
+      input: "  a"
+      expected:
+        - type: STRING
+          subType: OPEN_STRING
+          value: "a"
+
+    - name: trailing_space
+      input: "a  "
+      expected:
+        - type: STRING
+          subType: OPEN_STRING
+          value: "a"
+
+    - name: leading_unicode_whitespace
+      description: "Leading em space"
+      input: "\u2003a"
+      expected:
+        - type: STRING
+          subType: OPEN_STRING
+          value: "a"
+
+    - name: trailing_unicode_whitespace
+      description: "Trailing ideographic space"
+      input: "a\u3000"
+      expected:
+        - type: STRING
+          subType: OPEN_STRING
+          value: "a"
+
+    - name: leading_bom
+      description: "Leading BOM (common in files)"
+      input: "\uFEFFa"
+      expected:
+        - type: STRING
+          subType: OPEN_STRING
+          value: "a"
+
+# ----------------------------------------------------------------------------
+# WHITESPACE IN STRUCTURAL CONTEXTS
+# ----------------------------------------------------------------------------
+
+structural_whitespace:
+  name: structural_whitespace
+  description: Tests for whitespace around structural tokens
+  cases:
+    - name: whitespace_around_colon
+      input: "key : value"
+      expected:
+        - type: STRING
+          subType: OPEN_STRING
+          value: "key"
+        - type: COLON
+          token: ":"
+        - type: STRING
+          subType: OPEN_STRING
+          value: "value"
+
+    - name: unicode_whitespace_around_colon
+      description: "Em space around colon"
+      input: "key\u2003:\u2003value"
+      expected:
+        - type: STRING
+          subType: OPEN_STRING
+          value: "key"
+        - type: COLON
+          token: ":"
+        - type: STRING
+          subType: OPEN_STRING
+          value: "value"
+
+    - name: whitespace_around_comma
+      input: "a , b"
+      expected:
+        - type: STRING
+          subType: OPEN_STRING
+          value: "a"
+        - type: COMMA
+          token: ","
+        - type: STRING
+          subType: OPEN_STRING
+          value: "b"
+
+    - name: whitespace_in_array
+      input: "[ a , b ]"
+      expected:
+        - type: BRACKET_OPEN
+          token: "["
+        - type: STRING
+          subType: OPEN_STRING
+          value: "a"
+        - type: COMMA
+          token: ","
+        - type: STRING
+          subType: OPEN_STRING
+          value: "b"
+        - type: BRACKET_CLOSE
+          token: "]"
+
+    - name: whitespace_in_object
+      input: "{ a : 1 }"
+      expected:
+        - type: CURLY_OPEN
+          token: "{"
+        - type: STRING
+          subType: OPEN_STRING
+          value: "a"
+        - type: COLON
+          token: ":"
+        - type: NUMBER
+          value: 1
+        - type: CURLY_CLOSE
+          token: "}"
+
+# ----------------------------------------------------------------------------
+# NON-WHITESPACE UNICODE (NEGATIVE TESTS)
+# ----------------------------------------------------------------------------
+
+non_whitespace_unicode:
+  name: non_whitespace_unicode
+  description: Tests verifying non-whitespace Unicode is NOT treated as whitespace
+  cases:
+    - name: zero_width_space_not_whitespace
+      description: "U+200B Zero Width Space - NOT whitespace in IO"
+      input: "a\u200Bb"
+      expected:
+        - type: STRING
+          subType: OPEN_STRING
+          value: "a\u200Bb"
+          # Note: Zero Width Space becomes part of the string
+
+    - name: zero_width_joiner_not_whitespace
+      description: "U+200D Zero Width Joiner - NOT whitespace"
+      input: "a\u200Db"
+      expected:
+        - type: STRING
+          subType: OPEN_STRING
+          value: "a\u200Db"
+
+    - name: word_joiner_not_whitespace
+      description: "U+2060 Word Joiner - NOT whitespace"
+      input: "a\u2060b"
+      expected:
+        - type: STRING
+          subType: OPEN_STRING
+          value: "a\u2060b"
+
+# ============================================================================
+# IMPLEMENTATION NOTES FOR PORTERS
+# ============================================================================
+#
+# 1. Use Unicode-aware character handling (codePointAt, not charCodeAt)
+#
+# 2. Whitespace detection algorithm:
+#    - Fast path: code <= 0x20 → whitespace (ASCII control + space)
+#    - Fast path: code == 0x00A0 → whitespace (NBSP)
+#    - Fast path: code >= 0x2000 && code <= 0x200A → whitespace (em/en spaces)
+#    - Lookup: {0x1680, 0x2028, 0x2029, 0x202F, 0x205F, 0x3000, 0xFEFF}
+#    - All other codes → NOT whitespace
+#
+# 3. Characters above U+FEFF are NEVER whitespace
+#
+# 4. Zero Width Space (U+200B) is NOT whitespace - it's an invisible character
+#    that becomes part of strings
+#
+# ============================================================================

@@ -67,7 +67,7 @@ comment_edge_cases:
       input: '"hello # world"'
       expected:
         type: STRING
-        subType: QUOTED_STRING
+        subType: REGULAR_STRING
         value: "hello # world"
         token: '"hello # world"'
 
@@ -75,7 +75,7 @@ comment_edge_cases:
       input: '"/* not a comment */"'
       expected:
         type: STRING
-        subType: QUOTED_STRING
+        subType: REGULAR_STRING
         value: "/* not a comment */"
         token: '"/* not a comment */"'
 
