@@ -94,10 +94,11 @@ export function isDefined<T>(val: T | null | undefined): val is T {
  *
  * @param obj
  */
-export const isSchemaDef = (obj: any) => {
+export const isSchemaDef = (obj: any): boolean => {
   if (isArray(obj)) {
     return typeof obj[0] === 'string' && isDataType(obj[0])
   }
+  return false
 }
 
 // export function isToken(val: any): val is Token {

@@ -1,0 +1,63 @@
+# NPM publish configuration
+# Specifies files/folders to EXCLUDE from npm package
+
+# Source files (use dist instead)
+src/
+tests/
+test-cases/
+
+# Development files
+*.ts
+!*.d.ts
+tsconfig*.json
+jest.config.cjs
+tsfmt.json
+.editorconfig
+.markdownlint.json
+.hintrc
+
+# CI/CD and Git
+.git/
+.github/
+.gitignore
+.travis.yml
+
+# IDE and editor
+.vscode/
+.idea/
+*.swp
+*.swo
+.kiro/
+
+# Documentation (keep README.md)
+docs/
+planning-and-todos/
+research/
+specs/
+*.md
+!README.md
+!LICENSE
+
+# Scripts and tools
+scripts/
+*.sh
+
+# Test files
+*.test.ts
+*.spec.ts
+test-*.ts
+test-*.js
+test-*.mjs
+test-*.cjs
+temp-*.js
+performance*.ts
+
+# Coverage
+coverage/
+.nyc_output/
+
+# Misc
+*.log
+*.tgz
+io-go/
+io-js.code-workspace
