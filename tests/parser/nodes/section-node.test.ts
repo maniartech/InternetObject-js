@@ -7,6 +7,7 @@ import TokenNode from "../../../src/parser/nodes/tokens";
 import Token from "../../../src/parser/tokenizer/tokens";
 import TokenType from "../../../src/parser/tokenizer/token-types";
 import Section from "../../../src/core/section";
+import { Position } from "../../../src/core/positions";
 
 describe("SectionNode", () => {
   // Helper function to create a mock token
@@ -207,7 +208,7 @@ describe("SectionNode", () => {
       const section = new SectionNode(null, null, null);
 
       const startPos = section.getStartPos();
-      expect(startPos).toEqual({ row: 0, col: 0, pos: 0 });
+      expect(startPos).toEqual(Position.unknown);
     });
 
     it("should return child end position when child exists", () => {
@@ -222,7 +223,7 @@ describe("SectionNode", () => {
       const section = new SectionNode(null, null, null);
 
       const endPos = section.getEndPos();
-      expect(endPos).toEqual({ row: 0, col: 0, pos: 0 });
+      expect(endPos).toEqual(Position.unknown);
     });
   });
 

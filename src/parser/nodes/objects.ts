@@ -46,7 +46,7 @@ class ObjectNode extends ContainerNode {
       return this.openBracket.getStartPos();
     }
 
-    return this.children[0]?.getStartPos() ?? { row: 0, col: 0, pos: 0 };
+    return this.children[0]?.getStartPos() ?? Position.unknown;
   }
 
   getEndPos(): Position {
@@ -54,7 +54,7 @@ class ObjectNode extends ContainerNode {
       return this.closeBracket.getEndPos();
     }
 
-    return this.children[this.children.length - 1]?.getEndPos() ?? { row: 0, col: 0, pos: 0 };
+    return this.children[this.children.length - 1]?.getEndPos() ?? Position.unknown;
   }
 
   toValue (defs?: Definitions): InternetObject {

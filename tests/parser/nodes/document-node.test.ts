@@ -8,6 +8,7 @@ import Token from "../../../src/parser/tokenizer/tokens";
 import TokenType from "../../../src/parser/tokenizer/token-types";
 import Document from "../../../src/core/document";
 import SectionCollection from "../../../src/core/section-collection";
+import { Position } from "../../../src/core/positions";
 
 describe("DocumentNode", () => {
   // Helper function to create a mock token
@@ -33,7 +34,7 @@ describe("DocumentNode", () => {
   describe("Constructor", () => {
     it("should create DocumentNode with no header and no sections", () => {
       const docNode = new DocumentNode(null, []);
-      
+
       expect(docNode.header).toBeNull();
       expect(docNode.children).toHaveLength(0);
     });
@@ -41,7 +42,7 @@ describe("DocumentNode", () => {
     it("should create DocumentNode with header but no sections", () => {
       const headerSection = createSimpleSection("header");
       const docNode = new DocumentNode(headerSection, []);
-      
+
       expect(docNode.header).toBe(headerSection);
       expect(docNode.children).toHaveLength(0);
     });
@@ -50,7 +51,7 @@ describe("DocumentNode", () => {
       const section1 = createSimpleSection("section1");
       const section2 = createSimpleSection("section2");
       const docNode = new DocumentNode(null, [section1, section2]);
-      
+
       expect(docNode.header).toBeNull();
       expect(docNode.children).toHaveLength(2);
       expect(docNode.children[0]).toBe(section1);
@@ -62,7 +63,7 @@ describe("DocumentNode", () => {
       const section1 = createSimpleSection("section1");
       const section2 = createSimpleSection("section2");
       const docNode = new DocumentNode(headerSection, [section1, section2]);
-      
+
       expect(docNode.header).toBe(headerSection);
       expect(docNode.children).toHaveLength(2);
       expect(docNode.children[0]).toBe(section1);
@@ -73,7 +74,7 @@ describe("DocumentNode", () => {
   describe("firstChild getter", () => {
     it("should return null when no sections exist", () => {
       const docNode = new DocumentNode(null, []);
-      
+
       expect(docNode.firstChild).toBeNull();
     });
 
@@ -81,7 +82,7 @@ describe("DocumentNode", () => {
       const section1 = createSimpleSection("section1");
       const section2 = createSimpleSection("section2");
       const docNode = new DocumentNode(null, [section1, section2]);
-      
+
       expect(docNode.firstChild).toBe(section1);
     });
 
@@ -89,7 +90,7 @@ describe("DocumentNode", () => {
       const headerSection = createSimpleSection("header");
       const section1 = createSimpleSection("section1");
       const docNode = new DocumentNode(headerSection, [section1]);
-      
+
       expect(docNode.firstChild).toBe(section1);
     });
   });
@@ -98,7 +99,7 @@ describe("DocumentNode", () => {
     it("should convert to Document with null header and empty sections", () => {
       const docNode = new DocumentNode(null, []);
       const result = docNode.toValue();
-      
+
       expect(result).toBeInstanceOf(Document);
       expect(result.header).toBeNull();
       expect(result.sections).toBeInstanceOf(SectionCollection);
@@ -109,7 +110,7 @@ describe("DocumentNode", () => {
       const headerSection = createSimpleSection("header");
       const docNode = new DocumentNode(headerSection, []);
       const result = docNode.toValue();
-      
+
       expect(result).toBeInstanceOf(Document);
       expect(result.header).not.toBeNull();
       expect(result.sections).toBeInstanceOf(SectionCollection);
@@ -121,7 +122,7 @@ describe("DocumentNode", () => {
       const section2 = createSimpleSection("section2");
       const docNode = new DocumentNode(null, [section1, section2]);
       const result = docNode.toValue();
-      
+
       expect(result).toBeInstanceOf(Document);
       expect(result.header).toBeNull();
       expect(result.sections).toBeInstanceOf(SectionCollection);
@@ -134,7 +135,7 @@ describe("DocumentNode", () => {
       const section2 = createSimpleSection("section2");
       const docNode = new DocumentNode(headerSection, [section1, section2]);
       const result = docNode.toValue();
-      
+
       expect(result).toBeInstanceOf(Document);
       expect(result.header).not.toBeNull();
       expect(result.sections).toBeInstanceOf(SectionCollection);
@@ -146,10 +147,10 @@ describe("DocumentNode", () => {
       const obj2 = new ObjectNode([new MemberNode(new TokenNode(createMockToken(TokenType.STRING, "value2", 5)))]);
       const collection = new CollectionNode([obj1, obj2]);
       const sectionWithCollection = new SectionNode(collection, null, null);
-      
+
       const docNode = new DocumentNode(null, [sectionWithCollection]);
       const result = docNode.toValue();
-      
+
       expect(result).toBeInstanceOf(Document);
       expect(result.sections.length).toBe(1);
     });
@@ -160,7 +161,7 @@ describe("DocumentNode", () => {
       const headerSection = createSimpleSection("header");
       const section1 = createSimpleSection("section1");
       const docNode = new DocumentNode(headerSection, [section1]);
-      
+
       const startPos = docNode.getStartPos();
       expect(startPos).toEqual(headerSection.getStartPos());
     });
@@ -169,16 +170,16 @@ describe("DocumentNode", () => {
       const section1 = createSimpleSection("section1");
       const section2 = createSimpleSection("section2");
       const docNode = new DocumentNode(null, [section1, section2]);
-      
+
       const startPos = docNode.getStartPos();
       expect(startPos).toEqual(section1.getStartPos());
     });
 
     it("should return default position when no header and no sections", () => {
       const docNode = new DocumentNode(null, []);
-      
+
       const startPos = docNode.getStartPos();
-      expect(startPos).toEqual({ row: 0, col: 0, pos: 0 });
+      expect(startPos).toEqual(Position.unknown);
     });
 
     it("should return last section end position when sections exist", () => {
@@ -186,7 +187,7 @@ describe("DocumentNode", () => {
       const section1 = createSimpleSection("section1");
       const section2 = createSimpleSection("section2");
       const docNode = new DocumentNode(headerSection, [section1, section2]);
-      
+
       const endPos = docNode.getEndPos();
       expect(endPos).toEqual(section2.getEndPos());
     });
@@ -194,16 +195,16 @@ describe("DocumentNode", () => {
     it("should return header end position when no sections", () => {
       const headerSection = createSimpleSection("header");
       const docNode = new DocumentNode(headerSection, []);
-      
+
       const endPos = docNode.getEndPos();
       expect(endPos).toEqual(headerSection.getEndPos());
     });
 
     it("should return default position when no header and no sections for end", () => {
       const docNode = new DocumentNode(null, []);
-      
+
       const endPos = docNode.getEndPos();
-      expect(endPos).toEqual({ row: 0, col: 0, pos: 0 });
+      expect(endPos).toEqual(Position.unknown);
     });
   });
 
@@ -211,11 +212,11 @@ describe("DocumentNode", () => {
     it("should handle document with schema definitions in header", () => {
       // Create header with schema definitions
       const schemaMember1 = new MemberNode(
-        new ObjectNode([]), 
+        new ObjectNode([]),
         new TokenNode(createMockToken(TokenType.STRING, "$userSchema", 0))
       );
       const schemaMember2 = new MemberNode(
-        new ObjectNode([]), 
+        new ObjectNode([]),
         new TokenNode(createMockToken(TokenType.STRING, "$productSchema", 20))
       );
       const headerObj = new ObjectNode([schemaMember1, schemaMember2]);
@@ -236,16 +237,16 @@ describe("DocumentNode", () => {
     it("should handle document with collection sections", () => {
       // Create collection with multiple objects
       const obj1 = new ObjectNode([
-        new MemberNode(new TokenNode(createMockToken(TokenType.STRING, "Alice", 0)), 
+        new MemberNode(new TokenNode(createMockToken(TokenType.STRING, "Alice", 0)),
                       new TokenNode(createMockToken(TokenType.STRING, "name", 0)))
       ]);
       const obj2 = new ObjectNode([
-        new MemberNode(new TokenNode(createMockToken(TokenType.STRING, "Bob", 10)), 
+        new MemberNode(new TokenNode(createMockToken(TokenType.STRING, "Bob", 10)),
                       new TokenNode(createMockToken(TokenType.STRING, "name", 10)))
       ]);
-      
+
       const collection = new CollectionNode([obj1, obj2]);
-      const collectionSection = new SectionNode(collection, 
+      const collectionSection = new SectionNode(collection,
         new TokenNode(createMockToken(TokenType.STRING, "users", 0)), null);
 
       const docNode = new DocumentNode(null, [collectionSection]);
@@ -256,9 +257,9 @@ describe("DocumentNode", () => {
     });
 
     it("should handle empty sections", () => {
-      const emptySection = new SectionNode(null, 
+      const emptySection = new SectionNode(null,
         new TokenNode(createMockToken(TokenType.STRING, "empty", 0)), null);
-      
+
       const docNode = new DocumentNode(null, [emptySection]);
       const result = docNode.toValue();
 
@@ -269,15 +270,15 @@ describe("DocumentNode", () => {
 
   describe("Edge Cases", () => {
     it("should handle document with many sections", () => {
-      const sections = Array.from({ length: 100 }, (_, i) => 
+      const sections = Array.from({ length: 100 }, (_, i) =>
         createSimpleSection(`section${i}`)
       );
-      
+
       const docNode = new DocumentNode(null, sections);
-      
+
       expect(docNode.children).toHaveLength(100);
       expect(docNode.firstChild).toBe(sections[0]);
-      
+
       const result = docNode.toValue();
       expect(result.sections.length).toBe(100);
     });
@@ -285,10 +286,10 @@ describe("DocumentNode", () => {
     it("should handle document with header containing complex nested structures", () => {
       // Create nested object in header
       const innerObj = new ObjectNode([
-        new MemberNode(new TokenNode(createMockToken(TokenType.NUMBER, 25, 0)), 
+        new MemberNode(new TokenNode(createMockToken(TokenType.NUMBER, 25, 0)),
                       new TokenNode(createMockToken(TokenType.STRING, "age", 0)))
       ]);
-      const outerMember = new MemberNode(innerObj, 
+      const outerMember = new MemberNode(innerObj,
         new TokenNode(createMockToken(TokenType.STRING, "details", 0)));
       const headerObj = new ObjectNode([outerMember]);
       const headerSection = new SectionNode(headerObj, null, null);
@@ -304,13 +305,13 @@ describe("DocumentNode", () => {
       const section1 = createSimpleSection("first");
       const section2 = createSimpleSection("second");
       const section3 = createSimpleSection("third");
-      
+
       const docNode = new DocumentNode(null, [section1, section2, section3]);
-      
+
       expect(docNode.children[0]).toBe(section1);
       expect(docNode.children[1]).toBe(section2);
       expect(docNode.children[2]).toBe(section3);
-      
+
       const result = docNode.toValue();
       expect(result.sections.length).toBe(3);
     });

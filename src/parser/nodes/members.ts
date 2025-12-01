@@ -42,7 +42,7 @@ class MemberNode implements Node {
       return this.key.getEndPos();
     }
 
-    return { row: 0, col: 0, pos: 0 };
+    return Position.unknown;
   }
 }
 

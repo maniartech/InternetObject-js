@@ -5,6 +5,7 @@ import ArrayNode from "../../../src/parser/nodes/array";
 import Token from "../../../src/parser/tokenizer/tokens";
 import TokenType from "../../../src/parser/tokenizer/token-types";
 import Definitions from "../../../src/core/definitions";
+import { Position } from "../../../src/core/positions";
 
 describe("MemberNode", () => {
   // Helper function to create a mock token
@@ -201,7 +202,7 @@ describe("MemberNode", () => {
       const member = new MemberNode(null as any);
 
       const endPos = member.getEndPos();
-      expect(endPos).toEqual({ row: 0, col: 0, pos: 0 });
+      expect(endPos).toEqual(Position.unknown);
     });
 
     it("should handle complex value positions", () => {

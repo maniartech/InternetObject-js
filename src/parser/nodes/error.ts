@@ -1,5 +1,6 @@
 import Definitions from "../../core/definitions";
 import { Position } from '../../core/positions';
+import IOError from "../../errors/io-error";
 import Node from "./nodes";
 
 /**
@@ -11,16 +12,48 @@ export type ErrorCategory = 'syntax' | 'validation' | 'runtime';
  * ErrorNode represents a parsing error that occurred during AST construction.
  * This allows the parser to continue processing and collect multiple errors
  * instead of stopping at the first error encountered.
+ *
+ * @remarks
+ * The error property accepts both IOError (preferred) and plain Error types
+ * for backward compatibility. When IOError is used, additional properties
+ * like errorCode, positionRange, and fact are available.
  */
 class ErrorNode implements Node {
-  readonly error: Error;
+  /**
+   * The error that caused this node to be created.
+   * Prefer IOError for full type-safe access to error properties.
+   */
+  readonly error: Error | IOError;
   readonly position: Position;
   readonly endPosition?: Position;
 
-  constructor(error: Error, position: Position, endPosition?: Position) {
+  constructor(error: Error | IOError, position: Position, endPosition?: Position) {
     this.error = error;
     this.position = position;
     this.endPosition = endPosition;
+  }
+
+  /**
+   * Type guard to check if the error is an IOError.
+   * Use this to safely access IOError-specific properties.
+   *
+   * @example
+   * ```ts
+   * if (errorNode.isIOError()) {
+   *   console.log(errorNode.error.errorCode);
+   * }
+   * ```
+   */
+  isIOError(): this is ErrorNode & { error: IOError } {
+    return this.error instanceof IOError;
+  }
+
+  /**
+   * Gets the error code if available.
+   * Returns undefined for plain Error instances.
+   */
+  get errorCode(): string | undefined {
+    return this.isIOError() ? this.error.errorCode : undefined;
   }
 
   /**
@@ -47,7 +80,7 @@ class ErrorNode implements Node {
   /**
    * Returns error information as a value object.
    * This allows ErrorNodes to be serialized alongside valid nodes.
-   * Includes error category for UI styling.
+   * Includes error category for UI styling and errorCode when available.
    */
   toValue(defs?: Definitions): any {
     const base: any = {
@@ -56,7 +89,8 @@ class ErrorNode implements Node {
       message: this.error.message,
       name: this.error.name,
       position: this.position,
-      ...(this.endPosition && { endPosition: this.endPosition })
+      ...(this.endPosition && { endPosition: this.endPosition }),
+      ...(this.errorCode && { errorCode: this.errorCode })
     };
     // Include collectionIndex if the original error carries it (boundary context)
     const anyErr: any = this.error as any;

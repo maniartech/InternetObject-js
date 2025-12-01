@@ -16,17 +16,49 @@ import ObjectNode       from './nodes/objects';
 import SectionNode      from './nodes/section';
 import TokenNode        from './nodes/tokens';
 
+/**
+ * ASTParser transforms a token stream into an Abstract Syntax Tree (AST).
+ *
+ * @remarks
+ * This is a recursive descent parser with error recovery capabilities.
+ * It implements a three-tier error recovery strategy:
+ *
+ * 1. **Token-level**: Handles individual token errors (via ERROR tokens from tokenizer)
+ * 2. **Collection-level**: `skipToNextCollectionItem()` - recovers at `~` boundaries
+ * 3. **Section-level**: `skipToNextSyncPoint()` - recovers at structural terminators
+ *
+ * The parser accumulates errors in the `errors` array and continues parsing,
+ * allowing IDEs to show all diagnostics in a single pass.
+ *
+ * @example
+ * ```ts
+ * const tokenizer = new Tokenizer(input);
+ * const tokens = tokenizer.tokenize();
+ * const parser = new ASTParser(tokens);
+ * const doc = parser.parse();
+ *
+ * // Check for errors
+ * const errors = doc.getErrors();
+ * if (errors.length > 0) {
+ *   errors.forEach(e => console.error(e.message));
+ * }
+ * ```
+ */
 class ASTParser {
 
-  // array of tokens produced by the tokenizer
+  /** Array of tokens produced by the tokenizer */
   private readonly tokens: readonly Token[];
-  private readonly sectionNames: { [key: string]: boolean } = {};
-  private readonly errors: Error[] = []; // Accumulated errors during parsing
 
-  // current token index
+  /** Tracks section names for duplicate detection */
+  private readonly sectionNames: { [key: string]: boolean } = {};
+
+  /** Accumulated errors during parsing for IDE diagnostics */
+  private readonly errors: Error[] = [];
+
+  /** Current token index in the token stream */
   private current: number;
 
-  // Cached arrays for performance optimization
+  // Cached arrays for performance optimization (avoids array allocation in hot paths)
   private static readonly CURLY_OPEN_ARRAY = [TokenType.CURLY_OPEN] as const;
   private static readonly CURLY_CLOSE_ARRAY = [TokenType.CURLY_CLOSE] as const;
   private static readonly BRACKET_OPEN_ARRAY = [TokenType.BRACKET_OPEN] as const;
@@ -43,24 +75,37 @@ class ASTParser {
     TokenType.NULL,
   ] as const;
 
+  /**
+   * Creates a new ASTParser instance.
+   * @param tokens - Read-only array of tokens from the tokenizer
+   */
   constructor(tokens: readonly Token[]) {
     this.tokens = tokens;
     this.current = 0;
   }
 
+  /**
+   * Parses the token stream and produces a DocumentNode AST.
+   *
+   * @returns DocumentNode containing the parsed AST and accumulated errors
+   */
   public parse(): DocumentNode {
     return this.processDocument();
   }
 
   /**
    * Creates a syntax error with proper range spanning the entire construct.
-   * Industry standard: Error should highlight from start token to end token.
    *
-   * @param errorCode - The error code
-   * @param message - Error message
+   * @remarks
+   * Industry standard (TypeScript, Roslyn): Error should highlight from
+   * the opening token to the last valid token, not just a single point.
+   * This provides better IDE experience for unclosed constructs.
+   *
+   * @param errorCode - The error code from ErrorCodes
+   * @param message - Human-readable error message
    * @param startToken - Opening token of the construct (e.g., '{' or '[')
-   * @param members - Array of parsed members/elements (to find last token) - can include undefined
-   * @returns SyntaxError with range spanning the entire construct
+   * @param members - Array of parsed members/elements to find the last valid token
+   * @returns SyntaxError with position range spanning the entire construct
    */
   private createUnclosedConstructError(
     errorCode: string,
@@ -312,8 +357,21 @@ class ASTParser {
   }
 
   /**
-   * Skips tokens until the next collection item (COLLECTION_START token) or section end.
-   * This is used for error recovery in collection parsing.
+   * Skips tokens until the next collection item boundary.
+   *
+   * @remarks
+   * This is a **collection-level error recovery** mechanism.
+   * When an error occurs while parsing a collection item, this method
+   * advances the token stream to the next `~` (COLLECTION_START) or
+   * section separator (`---`), allowing parsing to continue with the
+   * next collection item.
+   *
+   * Recovery pattern:
+   * ```
+   * ~ valid, item           ← parsed successfully
+   * ~ { unclosed object     ← error here, skipToNextCollectionItem called
+   * ~ another, valid        ← parsing resumes here
+   * ```
    */
   private skipToNextCollectionItem(): void {
     // Skip tokens until we find next `~` (COLLECTION_START) or section end
@@ -324,9 +382,19 @@ class ASTParser {
   }
 
   /**
-   * Skips tokens to the next synchronization point after an error.
-   * Synchronization points are terminator tokens (structural boundaries).
-   * This enables error recovery by finding a safe place to resume parsing.
+   * Skips tokens to the next synchronization point after a parsing error.
+   *
+   * @remarks
+   * This is a **section-level error recovery** mechanism.
+   * Synchronization points are structural terminator tokens (comma, colon,
+   * brackets, etc.) that serve as safe resumption points after an error.
+   *
+   * This method is more aggressive than `skipToNextCollectionItem()` and
+   * is used when errors occur in non-collection contexts or when finer-grained
+   * recovery is needed.
+   *
+   * The method uses `isTerminator()` to check for token types that represent
+   * structural boundaries in the Internet Object format.
    */
   private skipToNextSyncPoint(): void {
     while (this.peek()) {

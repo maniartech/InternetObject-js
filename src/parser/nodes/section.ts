@@ -45,11 +45,11 @@ class SectionNode implements Node {
   }
 
   getStartPos(): Position {
-    return this.child?.getStartPos() ?? { row: 0, col: 0, pos: 0 };
+    return this.child?.getStartPos() ?? Position.unknown;
   }
 
   getEndPos(): Position {
-    return this.child?.getEndPos() ?? { row: 0, col: 0, pos: 0 };
+    return this.child?.getEndPos() ?? Position.unknown;
   }
 
   toValue (defs?:Definitions):any {

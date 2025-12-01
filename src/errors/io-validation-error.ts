@@ -19,6 +19,7 @@ class IOValidationError extends InternetObjectError {
   constructor(errorCode: string, fact?: string, posRange?: PositionRange, isEof: boolean = false, ssf?: any) {
     super(errorCode, fact, posRange, isEof, ssf)
     this.name = 'InternetObject(ValidationError)'
+    this.updateMessage()
   }
 }
 
