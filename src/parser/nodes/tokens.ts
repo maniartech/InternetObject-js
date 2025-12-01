@@ -19,7 +19,7 @@ class TokenNode extends Token implements Node {
    * @returns The parsed value.
    */
   toValue(defs?: Definitions): any {
-    if ((this.type === 'string' || this.type === TokenType.STRING) && defs !== undefined) {
+    if (this.type === TokenType.STRING && defs !== undefined) {
       const valueFound = defs.getV(this.value);
       return valueFound === undefined ? this.value : valueFound;
     }

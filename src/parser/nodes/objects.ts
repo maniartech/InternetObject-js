@@ -3,6 +3,7 @@ import InternetObject from '../../core/internet-object';
 import { Position } from '../../core/positions';
 import Token from '../tokenizer/tokens';
 import ContainerNode  from './containers';
+import ErrorNode      from './error';
 import MemberNode     from './members';
 
 class ObjectNode extends ContainerNode {
@@ -127,12 +128,12 @@ class ObjectNode extends ContainerNode {
       const member = child as MemberNode;
 
       // Check if the member value is an ErrorNode
-      if (member.value && (member.value as any).error !== undefined) {
+      if (member.value instanceof ErrorNode) {
         return false;
       }
 
       // Check if the member key is an ErrorNode (though this is less common)
-      if (member.key && (member.key as any).error !== undefined) {
+      if (member.key instanceof ErrorNode) {
         return false;
       }
 

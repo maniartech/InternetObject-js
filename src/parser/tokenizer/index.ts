@@ -500,7 +500,7 @@ class Tokenizer {
           assertNever(annotation);
       }
 
-      const dt = fn(token.value);
+      const dt = typeof token.value === 'string' ? fn(token.value) : null;
       if (!dt) {
         const error = new SyntaxError(ErrorCodes.invalidDateTime,
           `Invalid ${annotation.name === 'dt' ? 'datetime' : annotation.name === 'd' ? 'date' : 'time'} format '${token.value}'. Expected valid ISO 8601 format.`,
@@ -832,7 +832,7 @@ class Tokenizer {
     token.row = first.row;
     token.col = first.col;
     token.token = first.token + second.token;
-    token.value = first.token + second.value.toString();
+    token.value = first.token + (second.value?.toString() ?? '');
     token.type = second.type;
     token.subType = second.subType;
     return token;

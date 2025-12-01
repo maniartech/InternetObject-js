@@ -8,6 +8,7 @@ export default defineConfig({
     // TypeScript config for tests
     typecheck: {
       tsconfig: './tsconfig.test.json',
+      enabled: false, // Use separate type-check command
     },
 
     // Test file patterns
@@ -45,10 +46,5 @@ export default defineConfig({
 
     // Reporter
     reporters: ['verbose'],
-
-    // TypeScript support via esbuild (fast!)
-    typecheck: {
-      enabled: false, // Use separate type-check command
-    },
   },
 });

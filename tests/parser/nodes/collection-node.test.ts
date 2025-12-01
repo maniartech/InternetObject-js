@@ -1,4 +1,5 @@
 import CollectionNode from "../../../src/parser/nodes/collections";
+import ErrorNode from "../../../src/parser/nodes/error";
 import { Position } from "../../../src/core/positions";
 
 // Mock node class for testing
@@ -129,14 +130,14 @@ describe('CollectionNode Utility Methods', () => {
     });
 
     it('should return false for collection with only ErrorNodes', () => {
-      const errorNode1 = { error: new Error('Test error 1') } as any;
-      const errorNode2 = { error: new Error('Test error 2') } as any;
+      const errorNode1 = new ErrorNode(new Error('Test error 1'), { pos: 0, row: 1, col: 1 });
+      const errorNode2 = new ErrorNode(new Error('Test error 2'), { pos: 0, row: 1, col: 1 });
       const collectionNode = new CollectionNode([errorNode1, errorNode2]);
       expect(collectionNode.hasValidItems()).toBe(false);
     });
 
     it('should return true for collection with mixed ErrorNodes and valid items', () => {
-      const errorNode = { error: new Error('Test error') } as any;
+      const errorNode = new ErrorNode(new Error('Test error'), { pos: 0, row: 1, col: 1 });
       const validNode = new MockNode('value') as any;
       const collectionNode = new CollectionNode([errorNode, validNode, undefined]);
       expect(collectionNode.hasValidItems()).toBe(true);
@@ -180,7 +181,7 @@ describe('CollectionNode Utility Methods', () => {
     });
 
     it('should exclude ErrorNodes but include undefined items', () => {
-      const errorNode = { error: new Error('Test error') } as any;
+      const errorNode = new ErrorNode(new Error('Test error'), { pos: 0, row: 1, col: 1 });
       const validNode = new MockNode('value') as any;
       const collectionNode = new CollectionNode([validNode, errorNode, undefined]);
       const validItems = collectionNode.getValidItems();
@@ -210,15 +211,15 @@ describe('CollectionNode Utility Methods', () => {
     });
 
     it('should return false for collection with ErrorNode', () => {
-      const errorNode = { error: new Error('Test error') } as any;
+      const errorNode = new ErrorNode(new Error('Test error'), { pos: 0, row: 1, col: 1 });
       const validNode = new MockNode('value') as any;
       const collectionNode = new CollectionNode([validNode, errorNode]);
       expect(collectionNode.isValid()).toBe(false);
     });
 
     it('should return false for collection with only ErrorNodes', () => {
-      const errorNode1 = { error: new Error('Test error 1') } as any;
-      const errorNode2 = { error: new Error('Test error 2') } as any;
+      const errorNode1 = new ErrorNode(new Error('Test error 1'), { pos: 0, row: 1, col: 1 });
+      const errorNode2 = new ErrorNode(new Error('Test error 2'), { pos: 0, row: 1, col: 1 });
       const collectionNode = new CollectionNode([errorNode1, errorNode2]);
       expect(collectionNode.isValid()).toBe(false);
     });

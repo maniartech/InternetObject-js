@@ -1,6 +1,7 @@
 import ObjectNode from "../../../src/parser/nodes/objects";
 import MemberNode from "../../../src/parser/nodes/members";
 import TokenNode from "../../../src/parser/nodes/tokens";
+import ErrorNode from "../../../src/parser/nodes/error";
 import Token from "../../../src/parser/tokenizer/tokens";
 import { Position } from "../../../src/core/positions";
 
@@ -228,7 +229,7 @@ describe('ObjectNode Utility Methods', () => {
     });
 
     it('should return false for object with ErrorNode as value', () => {
-      const errorNode = { error: new Error('Test error') } as any;
+      const errorNode = new ErrorNode(new Error('Test error'), { pos: 0, row: 1, col: 1 });
       const member = new MemberNode(
         errorNode,
         new TokenNode(new MockKeyToken('name')) as any
@@ -238,10 +239,10 @@ describe('ObjectNode Utility Methods', () => {
     });
 
     it('should return false for object with ErrorNode as key', () => {
-      const errorKey = { error: new Error('Test error') } as any;
+      const errorNode = new ErrorNode(new Error('Test error'), { pos: 0, row: 1, col: 1 });
       const member = new MemberNode(
         new MockValueNode('John') as any,
-        errorKey
+        errorNode as any
       );
       const objectNode = new ObjectNode([member]);
       expect(objectNode.isValid()).toBe(false);
@@ -252,7 +253,7 @@ describe('ObjectNode Utility Methods', () => {
         new MockValueNode('John') as any,
         new TokenNode(new MockKeyToken('name')) as any
       );
-      const errorNode = { error: new Error('Test error') } as any;
+      const errorNode = new ErrorNode(new Error('Test error'), { pos: 0, row: 1, col: 1 });
       const invalidMember = new MemberNode(
         errorNode,
         new TokenNode(new MockKeyToken('age')) as any

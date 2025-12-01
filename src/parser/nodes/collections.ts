@@ -2,6 +2,7 @@ import Collection from "../../core/collection";
 import Definitions from "../../core/definitions";
 import { Position } from '../../core/positions';
 import ContainerNode from "./containers";
+import ErrorNode from "./error";
 import Node from "./nodes";
 
 class CollectionNode extends ContainerNode {
@@ -53,7 +54,7 @@ class CollectionNode extends ContainerNode {
       if (!child) return true; // undefined items are valid
 
       // Check if the child is an ErrorNode
-      if ((child as any).error !== undefined) {
+      if (child instanceof ErrorNode) {
         return false;
       }
 
@@ -66,7 +67,7 @@ class CollectionNode extends ContainerNode {
       if (!child) return true; // undefined items are valid
 
       // Check if the child is an ErrorNode
-      if ((child as any).error !== undefined) {
+      if (child instanceof ErrorNode) {
         return false;
       }
 
@@ -80,7 +81,7 @@ class CollectionNode extends ContainerNode {
       if (!child) return true; // undefined items are considered valid
 
       // Check if the child is an ErrorNode
-      if ((child as any).error !== undefined) {
+      if (child instanceof ErrorNode) {
         return false;
       }
 
