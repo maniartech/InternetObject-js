@@ -1,0 +1,43 @@
+# Boolean Token Test Cases
+# Tests for boolean literals (true, false, T, F)
+
+_meta:
+  suite: tokenizer
+  category: booleans
+  version: "1.0.0"
+  description: "Boolean token test cases"
+
+boolean_literals:
+  name: boolean_literals
+  description: Tests for boolean literals
+  cases:
+    - name: true_literal
+      input: "true"
+      expected:
+        type: BOOLEAN
+        value: true
+        token: "true"
+
+    - name: false_literal
+      input: "false"
+      expected:
+        type: BOOLEAN
+        value: false
+        token: "false"
+
+    - name: true_short
+      input: "T"
+      expected:
+        type: BOOLEAN
+        value: true
+        token: "T"
+
+    - name: false_short
+      input: "F"
+      expected:
+        type: BOOLEAN
+        value: false
+        token: "F"
+
+# Note: Invalid boolean formats (True, FALSE, etc.) become OPEN_STRING
+# See strings-open.yaml for fallback test cases

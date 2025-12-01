@@ -1,24 +1,51 @@
 # Internet Object Tokenizer Test Suite
 
-This directory contains test cases for the Internet Object tokenizer. The test cases are organized by token type and written in YAML format for easy parsing and maintenance.
+This directory contains test cases for the Internet Object tokenizer. The test cases are organized by token type (one file per token type) and written in YAML format for easy parsing and cross-platform compatibility.
 
 ## Directory Structure
 
 ```
 tokenizer/
-├── README.md           # This file
-├── strings.yaml        # String token tests
-├── numbers.yaml        # Number token tests
-├── datetime.yaml       # DateTime token tests
-├── symbols.yaml        # Symbol and operator tests
-└── literals.yaml       # Literal token tests
+├── README.md              # This file
+│
+├── # String Types
+├── strings-regular.yaml   # Quoted strings ("...", '...')
+├── strings-open.yaml      # Unquoted/open strings + fallback cases
+├── strings-raw.yaml       # Raw strings (r"...")
+├── strings-binary.yaml    # Binary/base64 strings (b"...")
+│
+├── # Number Types
+├── numbers.yaml           # NUMBER tokens (int, float, hex, octal, binary)
+├── bigints.yaml           # BIGINT tokens (123n)
+├── decimals.yaml          # DECIMAL tokens (123.456m)
+│
+├── # Other Value Types
+├── datetime.yaml          # DATETIME tokens (date, time, datetime)
+├── booleans.yaml          # BOOLEAN tokens (true, false, T, F)
+├── nulls.yaml             # NULL tokens (null, N)
+│
+├── # Structural & Syntax
+├── braces.yaml            # Structural tokens ({}, [], ())
+├── punctuation.yaml       # Punctuation tokens (comma, colon)
+├── operators.yaml         # Operator tokens (*, ~, @, ...)
+├── sections.yaml          # Section separator (---)
+│
+├── # Whitespace & Comments
+├── comments.yaml          # Comment handling (#, /* */)
+└── whitespace.yaml        # Whitespace handling (spaces, tabs, newlines)
 ```
 
 ## Test Case Format
 
-Each test file follows a consistent YAML format:
+Each test file follows a consistent YAML format with a metadata header:
 
 ```yaml
+_meta:
+  suite: tokenizer
+  category: category_name
+  version: "1.0.0"
+  description: "Description of this test file"
+
 test_category:
   name: category_name
   description: "Description of the test category"
@@ -30,7 +57,6 @@ test_category:
         subType: SUB_TYPE  # Optional
         value: expected_value
         token: "original token"
-    # ... more test cases ...
 
 error_cases:
   name: error_category_name
@@ -43,45 +69,26 @@ error_cases:
         message: "Error message"
 ```
 
-## Test Categories
+## Test Files by Token Type
 
-### 1. String Tests (`strings.yaml`)
-- Regular strings (quoted)
-- Open strings (unquoted)
-- Raw strings (r-prefixed)
-- Byte strings (b-prefixed)
-- String error cases
-
-### 2. Number Tests (`numbers.yaml`)
-- Decimal numbers
-- Special numbers (Inf, NaN)
-- Hexadecimal numbers
-- Octal numbers
-- Binary numbers
-- BigInt numbers
-- Decimal type numbers
-- Number error cases
-
-### 3. DateTime Tests (`datetime.yaml`)
-- Date strings (d-prefixed)
-- Time strings (t-prefixed)
-- DateTime strings (dt-prefixed)
-- DateTime error cases
-
-### 4. Symbol Tests (`symbols.yaml`)
-- Special symbols
-- Operators
-- Section separators
-- Schema tokens
-- Symbol error cases
-
-### 5. Literals (`literals.yaml`)
-- Boolean literals (true, false, t, f)
-- Null literals (null, n)
-- Comments (single-line)
-- Whitespace handling
-- Complex combinations (objects, arrays, sections)
-- Error cases (invalid literals)
+| File | Token Type(s) | Description |
+|------|---------------|-------------|
+| `strings-regular.yaml` | STRING (REGULAR_STRING) | Double and single quoted strings |
+| `strings-open.yaml` | STRING (OPEN_STRING) | Unquoted strings + invalid literal fallbacks |
+| `strings-raw.yaml` | STRING (RAW_STRING) | Raw strings preserving escapes |
+| `strings-binary.yaml` | BINARY | Base64-encoded binary data |
+| `numbers.yaml` | NUMBER | Integers, floats, hex, octal, binary |
+| `bigints.yaml` | BIGINT | Arbitrary-precision integers |
+| `decimals.yaml` | DECIMAL | Arbitrary-precision decimals |
+| `datetime.yaml` | DATETIME | Date, time, and datetime literals |
+| `booleans.yaml` | BOOLEAN | true, false, T, F |
+| `nulls.yaml` | NULL | null, N |
+| `comments.yaml` | (filtered) | Comment handling with # and /* */ |
+| `whitespace.yaml` | (filtered) | Space, tab, newline handling |
+| `braces.yaml` | OPEN_BRACE, CLOSE_BRACE, etc. | Structural tokens |
+| `punctuation.yaml` | COMMA, COLON | Punctuation tokens |
+| `operators.yaml` | SPREAD, ASTERISK, TILDE, AT | Operator tokens |
+| `sections.yaml` | SECTION_SEP | Section separators |
 
 ## Token Properties
 
@@ -92,11 +99,49 @@ Each token in the expected output includes:
 - `value`: The parsed value
 - `token`: The original token text
 
-## Error Cases
+## Error Codes
 
-Error cases include:
-- `code`: Error code
-- `message`: Error message
+The Internet Object tokenizer is **intentionally lenient by design**. Most invalid inputs become valid OPEN_STRING tokens rather than throwing errors. This allows the parser (not the tokenizer) to handle semantic validation.
+
+### Tokenization Error Codes
+
+These are the **ONLY** valid error codes for tokenizer test cases (from `tokenization-error-codes.ts`):
+
+| Code (YAML test) | Code (Source) | Description |
+|------------------|---------------|-------------|
+| `stringNotClosed` | `string-not-closed` | Unterminated string literal |
+| `invalidEscapeSequence` | `invalid-escape-sequence` | Invalid escape sequence in string |
+| `unsupportedAnnotation` | `unsupported-annotation` | Unsupported string/type annotation prefix |
+| `invalidDateTime` | `invalid-datetime` | Invalid date, time, or datetime format |
+
+> **Important:** Test YAML files use camelCase for error codes (`stringNotClosed`), while the source code uses kebab-case (`string-not-closed`). Implementations should normalize these when comparing.
+
+### Lenient Tokenizer Design
+
+The tokenizer does NOT throw errors for:
+- Invalid number formats (e.g., `123abc`, `0x12G3`) → become OPEN_STRING
+- Invalid boolean-like values (e.g., `True`, `FALSE`) → become OPEN_STRING
+- Invalid null-like values (e.g., `Null`, `NULL`) → become OPEN_STRING
+- Invalid special numbers (e.g., `nan`, `inf`) → become OPEN_STRING
+- Mismatched braces → individual brace tokens (parser validates)
+- Unusual whitespace characters → separators or open strings
+- Section-related semantic errors → parser handles these
+
+### Error Case Format
+
+```yaml
+error_cases:
+  name: error_category_name
+  description: "Tests that should produce specific errors"
+  cases:
+    - name: error_case_name
+      input: "invalid input"
+      expected_error:
+        code: stringNotClosed    # Must be one of the 4 tokenizer errors
+        message: "Human readable message (informational)"
+```
+
+> **Note:** The `message` field is informational only. Cross-platform implementations should validate against the `code` field, as exact error messages may vary between implementations.
 
 ## Using the Test Suite
 

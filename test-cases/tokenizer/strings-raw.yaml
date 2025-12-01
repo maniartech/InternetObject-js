@@ -1,0 +1,173 @@
+# Raw String Token Test Cases
+# Tests for raw string literals (r"..." format)
+
+_meta:
+  suite: tokenizer
+  category: strings-raw
+  version: "1.0.0"
+  description: "Raw string token test cases"
+
+basic_raw_strings:
+  name: basic_raw_strings
+  description: Tests for basic raw string literals
+  cases:
+    - name: simple
+      input: 'r"hello"'
+      expected:
+        type: STRING
+        subType: RAW_STRING
+        value: "hello"
+        token: 'r"hello"'
+
+    - name: empty
+      input: 'r""'
+      expected:
+        type: STRING
+        subType: RAW_STRING
+        value: ""
+        token: 'r""'
+
+    - name: with_spaces
+      input: 'r"hello world"'
+      expected:
+        type: STRING
+        subType: RAW_STRING
+        value: "hello world"
+        token: 'r"hello world"'
+
+escape_preservation:
+  name: escape_preservation
+  description: Tests that escape sequences are preserved literally
+  cases:
+    - name: backslash_n
+      input: 'r"hello\nworld"'
+      expected:
+        type: STRING
+        subType: RAW_STRING
+        value: "hello\\nworld"
+        token: 'r"hello\nworld"'
+
+    - name: backslash_t
+      input: 'r"hello\tworld"'
+      expected:
+        type: STRING
+        subType: RAW_STRING
+        value: "hello\\tworld"
+        token: 'r"hello\tworld"'
+
+    - name: backslash_r
+      input: 'r"hello\rworld"'
+      expected:
+        type: STRING
+        subType: RAW_STRING
+        value: "hello\\rworld"
+        token: 'r"hello\rworld"'
+
+    - name: double_backslash
+      input: 'r"hello\\world"'
+      expected:
+        type: STRING
+        subType: RAW_STRING
+        value: "hello\\\\world"
+        token: 'r"hello\\world"'
+
+    - name: unicode_escape_preserved
+      input: 'r"hello\u0041world"'
+      expected:
+        type: STRING
+        subType: RAW_STRING
+        value: "hello\\u0041world"
+        token: 'r"hello\u0041world"'
+
+file_paths:
+  name: file_paths
+  description: Tests for file paths (common raw string use case)
+  cases:
+    - name: windows_path
+      input: 'r"C:\path\to\file"'
+      expected:
+        type: STRING
+        subType: RAW_STRING
+        value: "C:\\path\\to\\file"
+        token: 'r"C:\path\to\file"'
+
+    - name: windows_path_long
+      input: 'r"C:\Users\username\Documents\file.txt"'
+      expected:
+        type: STRING
+        subType: RAW_STRING
+        value: "C:\\Users\\username\\Documents\\file.txt"
+        token: 'r"C:\Users\username\Documents\file.txt"'
+
+    - name: network_path
+      input: 'r"\\server\share\folder"'
+      expected:
+        type: STRING
+        subType: RAW_STRING
+        value: "\\\\server\\share\\folder"
+        token: 'r"\\server\share\folder"'
+
+regex_patterns:
+  name: regex_patterns
+  description: Tests for regex patterns (common raw string use case)
+  cases:
+    - name: simple_regex
+      input: 'r"\d+\.\d+"'
+      expected:
+        type: STRING
+        subType: RAW_STRING
+        value: "\\d+\\.\\d+"
+        token: 'r"\d+\.\d+"'
+
+    - name: word_boundary
+      input: 'r"\bword\b"'
+      expected:
+        type: STRING
+        subType: RAW_STRING
+        value: "\\bword\\b"
+        token: 'r"\bword\b"'
+
+    - name: character_class
+      input: 'r"[a-zA-Z0-9_]+"'
+      expected:
+        type: STRING
+        subType: RAW_STRING
+        value: "[a-zA-Z0-9_]+"
+        token: 'r"[a-zA-Z0-9_]+"'
+
+single_quoted_raw:
+  name: single_quoted_raw
+  description: Tests for single-quoted raw strings
+  cases:
+    - name: simple
+      input: "r'hello'"
+      expected:
+        type: STRING
+        subType: RAW_STRING
+        value: "hello"
+        token: "r'hello'"
+
+    - name: with_backslash
+      input: "r'C:\\path'"
+      expected:
+        type: STRING
+        subType: RAW_STRING
+        value: "C:\\\\path"
+        token: "r'C:\\path'"
+
+# Legitimate error cases for raw strings
+error_cases:
+  name: error_cases
+  description: Legitimate tokenizer error cases for raw strings
+  cases:
+    - name: unclosed_raw_string
+      input: 'r"hello'
+      expected_error:
+        code: stringNotClosed
+        message: "String not closed"
+
+    - name: unclosed_raw_single
+      input: "r'hello"
+      expected_error:
+        code: stringNotClosed
+        message: "String not closed"

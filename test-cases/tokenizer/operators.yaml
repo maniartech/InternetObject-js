@@ -1,0 +1,77 @@
+# Operator Token Test Cases
+# Tests for operator tokens (asterisk, tilde, etc.)
+
+_meta:
+  suite: tokenizer
+  category: operators
+  version: "1.0.0"
+  description: "Operator token test cases"
+
+spread_operator:
+  name: spread_operator
+  description: Tests for spread operator tokens
+  cases:
+    - name: triple_dot
+      input: "..."
+      expected:
+        type: SPREAD
+        token: "..."
+
+    - name: spread_in_context
+      input: "...items"
+      expected:
+        - type: SPREAD
+          token: "..."
+        - type: STRING
+          subType: OPEN_STRING
+          value: "items"
+
+asterisk:
+  name: asterisk
+  description: Tests for asterisk tokens
+  cases:
+    - name: single_asterisk
+      input: "*"
+      expected:
+        type: ASTERISK
+        token: "*"
+
+tilde:
+  name: tilde
+  description: Tests for tilde tokens
+  cases:
+    - name: single_tilde
+      input: "~"
+      expected:
+        type: TILDE
+        token: "~"
+
+at_sign:
+  name: at_sign
+  description: Tests for at sign tokens
+  cases:
+    - name: single_at
+      input: "@"
+      expected:
+        type: AT
+        token: "@"
+
+    - name: at_with_identifier
+      input: "@type"
+      expected:
+        - type: AT
+          token: "@"
+        - type: STRING
+          subType: OPEN_STRING
+          value: "type"
+
+hash:
+  name: hash
+  description: Tests for hash tokens (when not starting a comment)
+  cases:
+    - name: hash_in_identifier
+      input: "item#1"
+      expected:
+        type: STRING
+        subType: OPEN_STRING
+        value: "item#1"

@@ -1,0 +1,108 @@
+# Whitespace Token Test Cases
+# Tests for whitespace and separator handling
+
+_meta:
+  suite: tokenizer
+  category: whitespace
+  version: "1.0.0"
+  description: "Whitespace token test cases"
+
+# Note: Whitespace tokens are typically filtered out during tokenization
+# These tests verify that whitespace is correctly handled as separators
+# between other tokens, not that whitespace produces its own tokens
+
+basic_whitespace:
+  name: basic_whitespace
+  description: Tests for basic whitespace handling
+  cases:
+    - name: space_separator
+      input: "a b"
+      expected:
+        - type: STRING
+          subType: OPEN_STRING
+          value: "a"
+        - type: STRING
+          subType: OPEN_STRING
+          value: "b"
+
+    - name: multiple_spaces
+      input: "a   b"
+      expected:
+        - type: STRING
+          subType: OPEN_STRING
+          value: "a"
+        - type: STRING
+          subType: OPEN_STRING
+          value: "b"
+
+    - name: tab_separator
+      input: "a\tb"
+      expected:
+        - type: STRING
+          subType: OPEN_STRING
+          value: "a"
+        - type: STRING
+          subType: OPEN_STRING
+          value: "b"
+
+    - name: newline_separator
+      input: "a\nb"
+      expected:
+        - type: STRING
+          subType: OPEN_STRING
+          value: "a"
+        - type: STRING
+          subType: OPEN_STRING
+          value: "b"
+
+    - name: crlf_separator
+      input: "a\r\nb"
+      expected:
+        - type: STRING
+          subType: OPEN_STRING
+          value: "a"
+        - type: STRING
+          subType: OPEN_STRING
+          value: "b"
+
+    - name: leading_whitespace
+      input: "  a"
+      expected:
+        - type: STRING
+          subType: OPEN_STRING
+          value: "a"
+
+    - name: trailing_whitespace
+      input: "a  "
+      expected:
+        - type: STRING
+          subType: OPEN_STRING
+          value: "a"
+
+mixed_whitespace:
+  name: mixed_whitespace
+  description: Tests for mixed whitespace characters
+  cases:
+    - name: space_and_tab
+      input: "a \t b"
+      expected:
+        - type: STRING
+          subType: OPEN_STRING
+          value: "a"
+        - type: STRING
+          subType: OPEN_STRING
+          value: "b"
+
+    - name: multiple_newlines
+      input: "a\n\nb"
+      expected:
+        - type: STRING
+          subType: OPEN_STRING
+          value: "a"
+        - type: STRING
+          subType: OPEN_STRING
+          value: "b"
+
+# Note: The tokenizer does NOT throw errors for unusual whitespace
+# characters. Non-printable or unusual characters that aren't
+# recognized become part of open strings or are treated as separators.

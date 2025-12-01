@@ -1,0 +1,66 @@
+# Section Separator Token Test Cases
+# Tests for section separator (---) handling
+
+_meta:
+  suite: tokenizer
+  category: sections
+  version: "1.0.0"
+  description: "Section separator token test cases"
+
+section_separators:
+  name: section_separators
+  description: Tests for section separator tokens
+  cases:
+    - name: basic_separator
+      input: "---"
+      expected:
+        type: SECTION_SEP
+        token: "---"
+
+    - name: separator_with_content
+      input: "a: string\n---\nvalue"
+      expected:
+        - type: STRING
+          subType: OPEN_STRING
+          value: "a"
+        - type: COLON
+          token: ":"
+        - type: STRING
+          subType: OPEN_STRING
+          value: "string"
+        - type: SECTION_SEP
+          token: "---"
+        - type: STRING
+          subType: OPEN_STRING
+          value: "value"
+
+    - name: separator_at_start
+      input: "---\nvalue"
+      expected:
+        - type: SECTION_SEP
+          token: "---"
+        - type: STRING
+          subType: OPEN_STRING
+          value: "value"
+
+    - name: multiple_separators
+      input: "a\n---\nb\n---\nc"
+      expected:
+        - type: STRING
+          subType: OPEN_STRING
+          value: "a"
+        - type: SECTION_SEP
+          token: "---"
+        - type: STRING
+          subType: OPEN_STRING
+          value: "b"
+        - type: SECTION_SEP
+          token: "---"
+        - type: STRING
+          subType: OPEN_STRING
+          value: "c"
+
+# Note: The tokenizer does NOT throw errors for section-related
+# semantic issues. Those are handled at the parser level.
+# The tokenizer only produces SECTION_SEP tokens.
+# Errors like "schemaMissing" are parsing-level errors, not tokenization errors.

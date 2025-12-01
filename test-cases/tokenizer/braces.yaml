@@ -1,0 +1,136 @@
+# Braces Token Test Cases
+# Tests for structural bracket tokens
+
+_meta:
+  suite: tokenizer
+  category: braces
+  version: "1.0.0"
+  description: "Brace and bracket token test cases"
+
+curly_braces:
+  name: curly_braces
+  description: Tests for curly brace tokens
+  cases:
+    - name: open_brace
+      input: "{"
+      expected:
+        type: OPEN_BRACE
+        token: "{"
+
+    - name: close_brace
+      input: "}"
+      expected:
+        type: CLOSE_BRACE
+        token: "}"
+
+    - name: empty_object
+      input: "{}"
+      expected:
+        - type: OPEN_BRACE
+          token: "{"
+        - type: CLOSE_BRACE
+          token: "}"
+
+    - name: nested_braces
+      input: "{{}}"
+      expected:
+        - type: OPEN_BRACE
+          token: "{"
+        - type: OPEN_BRACE
+          token: "{"
+        - type: CLOSE_BRACE
+          token: "}"
+        - type: CLOSE_BRACE
+          token: "}"
+
+square_brackets:
+  name: square_brackets
+  description: Tests for square bracket tokens
+  cases:
+    - name: open_bracket
+      input: "["
+      expected:
+        type: OPEN_BRACKET
+        token: "["
+
+    - name: close_bracket
+      input: "]"
+      expected:
+        type: CLOSE_BRACKET
+        token: "]"
+
+    - name: empty_array
+      input: "[]"
+      expected:
+        - type: OPEN_BRACKET
+          token: "["
+        - type: CLOSE_BRACKET
+          token: "]"
+
+    - name: nested_brackets
+      input: "[[]]"
+      expected:
+        - type: OPEN_BRACKET
+          token: "["
+        - type: OPEN_BRACKET
+          token: "["
+        - type: CLOSE_BRACKET
+          token: "]"
+        - type: CLOSE_BRACKET
+          token: "]"
+
+parentheses:
+  name: parentheses
+  description: Tests for parentheses tokens
+  cases:
+    - name: open_paren
+      input: "("
+      expected:
+        type: OPEN_PAREN
+        token: "("
+
+    - name: close_paren
+      input: ")"
+      expected:
+        type: CLOSE_PAREN
+        token: ")"
+
+    - name: empty_parens
+      input: "()"
+      expected:
+        - type: OPEN_PAREN
+          token: "("
+        - type: CLOSE_PAREN
+          token: ")"
+
+mixed_braces:
+  name: mixed_braces
+  description: Tests for mixed brace types
+  cases:
+    - name: array_of_objects
+      input: "[{}]"
+      expected:
+        - type: OPEN_BRACKET
+          token: "["
+        - type: OPEN_BRACE
+          token: "{"
+        - type: CLOSE_BRACE
+          token: "}"
+        - type: CLOSE_BRACKET
+          token: "]"
+
+    - name: object_with_array
+      input: "{[]}"
+      expected:
+        - type: OPEN_BRACE
+          token: "{"
+        - type: OPEN_BRACKET
+          token: "["
+        - type: CLOSE_BRACKET
+          token: "]"
+        - type: CLOSE_BRACE
+          token: "}"
+
+# Note: Mismatched braces are NOT tokenization errors.
+# The tokenizer produces individual brace tokens.
+# Matching validation happens at the parser level.

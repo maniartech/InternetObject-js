@@ -1,264 +1,212 @@
 # DateTime Token Test Cases
-# Tests for date, time, and datetime literals
+# Tests for datetime literals in various formats
 
-date_strings:
-  name: date_strings
-  description: Tests for date literals (d-prefixed)
+_meta:
+  suite: tokenizer
+  category: datetime
+  version: "1.0.0"
+  description: "DateTime token test cases"
+
+date_only:
+  name: date_only
+  description: Tests for date-only literals
   cases:
-    - name: iso_date
-      input: 'd"2024-03-20"'
+    - name: full_date
+      input: "d'2024-01-15'"
       expected:
         type: DATETIME
         subType: DATE
-        value: "2024-03-20T00:00:00.000Z"
-        token: 'd"2024-03-20"'
+        value: "2024-01-15"
+        token: "d'2024-01-15'"
 
-    - name: with_timezone
-      input: 'd"2024-03-20+05:30"'
+    - name: leap_year
+      input: "d'2024-02-29'"
       expected:
         type: DATETIME
         subType: DATE
-        value: "2024-03-19T18:30:00.000Z"
-        token: 'd"2024-03-20+05:30"'
+        value: "2024-02-29"
+        token: "d'2024-02-29'"
 
-time_strings:
-  name: time_strings
-  description: Tests for time literals (t-prefixed)
+    - name: year_start
+      input: "d'2024-01-01'"
+      expected:
+        type: DATETIME
+        subType: DATE
+        value: "2024-01-01"
+        token: "d'2024-01-01'"
+
+    - name: year_end
+      input: "d'2024-12-31'"
+      expected:
+        type: DATETIME
+        subType: DATE
+        value: "2024-12-31"
+        token: "d'2024-12-31'"
+
+time_only:
+  name: time_only
+  description: Tests for time-only literals
   cases:
-    - name: basic_time
-      input: 't"14:30:00"'
+    - name: full_time
+      input: "t'14:30:00'"
       expected:
         type: DATETIME
         subType: TIME
-        value: "1970-01-01T14:30:00.000Z"
-        token: 't"14:30:00"'
+        value: "14:30:00"
+        token: "t'14:30:00'"
 
     - name: with_milliseconds
-      input: 't"14:30:00.123"'
+      input: "t'14:30:00.123'"
       expected:
         type: DATETIME
         subType: TIME
-        value: "1970-01-01T14:30:00.123Z"
-        token: 't"14:30:00.123"'
+        value: "14:30:00.123"
+        token: "t'14:30:00.123'"
 
-    - name: with_timezone
-      input: 't"14:30:00+05:30"'
+    - name: midnight
+      input: "t'00:00:00'"
       expected:
         type: DATETIME
         subType: TIME
-        value: "1970-01-01T09:00:00.000Z"
-        token: 't"14:30:00+05:30"'
+        value: "00:00:00"
+        token: "t'00:00:00'"
 
-datetime_strings:
-  name: datetime_strings
-  description: Tests for datetime literals (dt-prefixed)
+    - name: end_of_day
+      input: "t'23:59:59'"
+      expected:
+        type: DATETIME
+        subType: TIME
+        value: "23:59:59"
+        token: "t'23:59:59'"
+
+datetime_combined:
+  name: datetime_combined
+  description: Tests for datetime literals
   cases:
-    - name: iso_datetime
-      input: 'dt"2024-03-20T14:30:00"'
+    - name: basic
+      input: "dt'2024-01-15T14:30:00'"
       expected:
         type: DATETIME
-        subType: DATETIME
-        value: "2024-03-20T14:30:00.000Z"
-        token: 'dt"2024-03-20T14:30:00"'
+        value: "2024-01-15T14:30:00"
+        token: "dt'2024-01-15T14:30:00'"
 
     - name: with_milliseconds
-      input: 'dt"2024-03-20T14:30:00.123"'
+      input: "dt'2024-01-15T14:30:00.123'"
       expected:
         type: DATETIME
-        subType: DATETIME
-        value: "2024-03-20T14:30:00.123Z"
-        token: 'dt"2024-03-20T14:30:00.123"'
+        value: "2024-01-15T14:30:00.123"
+        token: "dt'2024-01-15T14:30:00.123'"
 
-    - name: with_timezone
-      input: 'dt"2024-03-20T14:30:00+05:30"'
+    - name: with_utc_offset
+      input: "dt'2024-01-15T14:30:00Z'"
       expected:
         type: DATETIME
-        subType: DATETIME
-        value: "2024-03-20T09:00:00.000Z"
-        token: 'dt"2024-03-20T14:30:00+05:30"'
+        value: "2024-01-15T14:30:00Z"
+        token: "dt'2024-01-15T14:30:00Z'"
 
-    - name: with_utc
-      input: 'dt"2024-03-20T14:30:00Z"'
+    - name: with_positive_offset
+      input: "dt'2024-01-15T14:30:00+05:30'"
       expected:
         type: DATETIME
-        subType: DATETIME
-        value: "2024-03-20T14:30:00.000Z"
-        token: 'dt"2024-03-20T14:30:00Z"'
+        value: "2024-01-15T14:30:00+05:30"
+        token: "dt'2024-01-15T14:30:00+05:30'"
 
+    - name: with_negative_offset
+      input: "dt'2024-01-15T14:30:00-08:00'"
+      expected:
+        type: DATETIME
+        value: "2024-01-15T14:30:00-08:00"
+        token: "dt'2024-01-15T14:30:00-08:00'"
+
+# Legitimate error cases - all datetime errors use the single invalidDateTime code
 error_cases:
-  name: datetime_error_cases
-  description: Tests that should produce specific errors for datetime tokens
+  name: error_cases
+  description: Legitimate datetime tokenizer error cases
   cases:
+    # Invalid date formats
+    - name: invalid_month
+      input: "d'2024-13-15'"
+      expected_error:
+        code: invalidDateTime
+        message: "Invalid datetime"
+
+    - name: invalid_day
+      input: "d'2024-01-32'"
+      expected_error:
+        code: invalidDateTime
+        message: "Invalid datetime"
+
+    - name: invalid_leap_day
+      input: "d'2023-02-29'"
+      expected_error:
+        code: invalidDateTime
+        message: "Invalid datetime"
+
     - name: invalid_date_format
-      input: 'd"2024-13-45"'
+      input: "d'15-01-2024'"
       expected_error:
-        code: invalidDateFormat
-        message: Invalid date format
+        code: invalidDateTime
+        message: "Invalid datetime"
 
-    - name: invalid_date_year
-      input: 'd"99999-01-01"'
+    - name: missing_date_parts
+      input: "d'2024-01'"
       expected_error:
-        code: invalidDateYear
-        message: Invalid date year
+        code: invalidDateTime
+        message: "Invalid datetime"
 
-    - name: invalid_date_month
-      input: 'd"2024-13-01"'
+    # Invalid time formats
+    - name: invalid_hour
+      input: "t'25:30:00'"
       expected_error:
-        code: invalidDateMonth
-        message: Invalid date month
+        code: invalidDateTime
+        message: "Invalid datetime"
 
-    - name: invalid_date_day
-      input: 'd"2024-01-32"'
+    - name: invalid_minute
+      input: "t'14:60:00'"
       expected_error:
-        code: invalidDateDay
-        message: Invalid date day
+        code: invalidDateTime
+        message: "Invalid datetime"
 
-    - name: invalid_date_separator
-      input: 'd"2024/01/01"'
+    - name: invalid_second
+      input: "t'14:30:60'"
       expected_error:
-        code: invalidDateSeparator
-        message: Invalid date separator
+        code: invalidDateTime
+        message: "Invalid datetime"
 
-    - name: invalid_time_format
-      input: 't"25:00:00"'
+    - name: missing_time_parts
+      input: "t'14:30'"
       expected_error:
-        code: invalidTimeFormat
-        message: Invalid time format
+        code: invalidDateTime
+        message: "Invalid datetime"
 
-    - name: invalid_time_hour
-      input: 't"24:00:00"'
+    # Invalid datetime combined formats
+    - name: missing_t_separator
+      input: "dt'2024-01-15 14:30:00'"
       expected_error:
-        code: invalidTimeHour
-        message: Invalid time hour
+        code: invalidDateTime
+        message: "Invalid datetime"
 
-    - name: invalid_time_minute
-      input: 't"12:60:00"'
+    - name: invalid_timezone
+      input: "dt'2024-01-15T14:30:00+25:00'"
       expected_error:
-        code: invalidTimeMinute
-        message: Invalid time minute
+        code: invalidDateTime
+        message: "Invalid datetime"
 
-    - name: invalid_time_second
-      input: 't"12:00:61"'
+    # Unclosed datetime strings
+    - name: unclosed_date
+      input: "d'2024-01-15"
       expected_error:
-        code: invalidTimeSecond
-        message: Invalid time second
+        code: stringNotClosed
+        message: "String not closed"
 
-    - name: invalid_time_separator
-      input: 't"12.00.00"'
+    - name: unclosed_time
+      input: "t'14:30:00"
       expected_error:
-        code: invalidTimeSeparator
-        message: Invalid time separator
+        code: stringNotClosed
+        message: "String not closed"
 
-    - name: invalid_datetime_format
-      input: 'dt"2024-01-01 12:00:00"'
+    - name: unclosed_datetime
+      input: "dt'2024-01-15T14:30:00"
       expected_error:
-        code: invalidDateTimeFormat
-        message: Invalid datetime format
-
-    - name: invalid_datetime_separator
-      input: 'dt"2024-01-01T12:00:00"'
-      expected_error:
-        code: invalidDateTimeSeparator
-        message: Invalid datetime separator
-
-    - name: invalid_timezone_format
-      input: 'dt"2024-01-01T12:00:00+25:00"'
-      expected_error:
-        code: invalidTimezoneFormat
-        message: Invalid timezone format
-
-    - name: invalid_timezone_hour
-      input: 'dt"2024-01-01T12:00:00+24:00"'
-      expected_error:
-        code: invalidTimezoneHour
-        message: Invalid timezone hour
-
-    - name: invalid_timezone_minute
-      input: 'dt"2024-01-01T12:00:00+00:60"'
-      expected_error:
-        code: invalidTimezoneMinute
-        message: Invalid timezone minute
-
-    - name: invalid_timezone_separator
-      input: 'dt"2024-01-01T12:00:00+00.00"'
-      expected_error:
-        code: invalidTimezoneSeparator
-        message: Invalid timezone separator
-
-    - name: invalid_milliseconds_format
-      input: 'dt"2024-01-01T12:00:00.1234"'
-      expected_error:
-        code: invalidMillisecondsFormat
-        message: Invalid milliseconds format
-
-    - name: invalid_milliseconds_separator
-      input: 'dt"2024-01-01T12:00:00,123"'
-      expected_error:
-        code: invalidMillisecondsSeparator
-        message: Invalid milliseconds separator
-
-    - name: invalid_date_annotation
-      input: 'dx"2024-01-01"'
-      expected_error:
-        code: unsupportedAnnotation
-        message: Unsupported date annotation
-
-    - name: invalid_time_annotation
-      input: 'tx"12:00:00"'
-      expected_error:
-        code: unsupportedAnnotation
-        message: Unsupported time annotation
-
-    - name: invalid_datetime_annotation
-      input: 'dtx"2024-01-01T12:00:00"'
-      expected_error:
-        code: unsupportedAnnotation
-        message: Unsupported datetime annotation
-
-    - name: invalid_date_range
-      input: 'd"2024-02-30"'
-      expected_error:
-        code: invalidDateRange
-        message: Invalid date range
-
-    - name: invalid_time_range
-      input: 't"23:59:60"'
-      expected_error:
-        code: invalidTimeRange
-        message: Invalid time range
-
-    - name: invalid_datetime_range
-      input: 'dt"2024-02-30T12:00:00"'
-      expected_error:
-        code: invalidDateTimeRange
-        message: Invalid datetime range
-
-    - name: invalid_leap_year
-      input: 'd"2023-02-29"'
-      expected_error:
-        code: invalidLeapYear
-        message: Invalid leap year date
-
-    - name: invalid_utc_format
-      input: 'dt"2024-01-01T12:00:00UTC"'
-      expected_error:
-        code: invalidUTCFormat
-        message: Invalid UTC format
-
-    - name: invalid_timezone_abbr
-      input: 'dt"2024-01-01T12:00:00XYZ"'
-      expected_error:
-        code: invalidTimezoneAbbr
-        message: Invalid timezone abbreviation
-
-    - name: invalid_timezone_offset
-      input: 'dt"2024-01-01T12:00:00+99:99"'
-      expected_error:
-        code: invalidTimezoneOffset
-        message: Invalid timezone offset
-
-    - name: invalid_date_time_mismatch
-      input: 'dt"2024-01-01T25:00:00"'
-      expected_error:
-        code: invalidDateTimeMismatch
-        message: Invalid date-time mismatch
+        code: stringNotClosed
+        message: "String not closed"

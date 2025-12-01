@@ -1,0 +1,84 @@
+# Comment Token Test Cases
+# Tests for single-line and multi-line comments
+
+_meta:
+  suite: tokenizer
+  category: comments
+  version: "1.0.0"
+  description: "Comment token test cases"
+
+# Note: Comments are typically stripped during tokenization
+# These tests verify that comments are correctly identified and removed
+
+single_line_comments:
+  name: single_line_comments
+  description: Tests for single-line comments
+  cases:
+    - name: hash_comment
+      input: "# This is a comment"
+      expected: []  # Comments produce no tokens
+
+    - name: hash_comment_after_value
+      input: "value # comment"
+      expected:
+        - type: STRING
+          subType: OPEN_STRING
+          value: "value"
+
+    - name: hash_comment_empty
+      input: "#"
+      expected: []
+
+    - name: multiple_hash_comments
+      input: "# comment 1\n# comment 2"
+      expected: []
+
+multi_line_comments:
+  name: multi_line_comments
+  description: Tests for multi-line comments
+  cases:
+    - name: c_style_comment
+      input: "/* This is a comment */"
+      expected: []
+
+    - name: c_style_multiline
+      input: "/* line 1\n   line 2 */"
+      expected: []
+
+    - name: c_style_inline
+      input: "a /* comment */ b"
+      expected:
+        - type: STRING
+          subType: OPEN_STRING
+          value: "a"
+        - type: STRING
+          subType: OPEN_STRING
+          value: "b"
+
+    - name: nested_c_style
+      input: "/* outer /* inner */ outer */"
+      expected: []  # Parser handles nested comments
+
+comment_edge_cases:
+  name: comment_edge_cases
+  description: Edge cases for comment handling
+  cases:
+    - name: hash_in_string
+      input: '"hello # world"'
+      expected:
+        type: STRING
+        subType: QUOTED_STRING
+        value: "hello # world"
+        token: '"hello # world"'
+
+    - name: comment_markers_in_string
+      input: '"/* not a comment */"'
+      expected:
+        type: STRING
+        subType: QUOTED_STRING
+        value: "/* not a comment */"
+        token: '"/* not a comment */"'
+
+# Note: Unclosed multi-line comments may or may not produce errors
+# depending on implementation. The tokenizer specification should
+# clarify this behavior.

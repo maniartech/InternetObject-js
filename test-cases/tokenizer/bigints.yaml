@@ -1,0 +1,105 @@
+# BigInt Token Test Cases
+# Tests for bigint literals (numbers with 'n' suffix)
+
+_meta:
+  suite: tokenizer
+  category: bigints
+  version: "1.0.0"
+  description: "BigInt token test cases"
+
+basic_bigints:
+  name: basic_bigints
+  description: Tests for basic bigint literals
+  cases:
+    - name: positive_bigint
+      input: "123n"
+      expected:
+        type: BIGINT
+        value: "123"
+        token: "123n"
+
+    - name: negative_bigint
+      input: "-123n"
+      expected:
+        type: BIGINT
+        value: "-123"
+        token: "-123n"
+
+    - name: zero_bigint
+      input: "0n"
+      expected:
+        type: BIGINT
+        value: "0"
+        token: "0n"
+
+large_bigints:
+  name: large_bigints
+  description: Tests for large bigint values (beyond safe integer range)
+  cases:
+    - name: beyond_safe_integer
+      input: "9007199254740993n"
+      expected:
+        type: BIGINT
+        value: "9007199254740993"
+        token: "9007199254740993n"
+
+    - name: very_large
+      input: "123456789012345678901234567890n"
+      expected:
+        type: BIGINT
+        value: "123456789012345678901234567890"
+        token: "123456789012345678901234567890n"
+
+    - name: negative_large
+      input: "-9007199254740993n"
+      expected:
+        type: BIGINT
+        value: "-9007199254740993"
+        token: "-9007199254740993n"
+
+hex_bigints:
+  name: hex_bigints
+  description: Tests for hexadecimal bigint literals
+  cases:
+    - name: hex_bigint
+      input: "0xFFn"
+      expected:
+        type: BIGINT
+        subType: HEX
+        value: "255"
+        token: "0xFFn"
+
+    - name: hex_bigint_lowercase
+      input: "0xffn"
+      expected:
+        type: BIGINT
+        subType: HEX
+        value: "255"
+        token: "0xffn"
+
+octal_bigints:
+  name: octal_bigints
+  description: Tests for octal bigint literals
+  cases:
+    - name: octal_bigint
+      input: "0o77n"
+      expected:
+        type: BIGINT
+        subType: OCTAL
+        value: "63"
+        token: "0o77n"
+
+binary_bigints:
+  name: binary_bigints
+  description: Tests for binary bigint literals
+  cases:
+    - name: binary_bigint
+      input: "0b1010n"
+      expected:
+        type: BIGINT
+        subType: BINARY
+        value: "10"
+        token: "0b1010n"
+
+# Note: Invalid bigint formats become OPEN_STRING (see strings-open.yaml)
+# The tokenizer does NOT throw errors for invalid bigint formats
