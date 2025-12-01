@@ -5,6 +5,7 @@ import Document from '../../src/core/document';
 import Definitions from '../../src/core/definitions';
 import InternetObject from '../../src/core/internet-object';
 import Collection from '../../src/core/collection';
+import parse from '../../src/parser';
 
 describe('Document Load/Stringify', () => {
   describe('loadDocument', () => {
@@ -250,7 +251,7 @@ describe('Document Load/Stringify', () => {
       // Parse back using external schema definition
       const defs = new Definitions();
       defs.set('$User', schema);
-      const parsed = require('../../src/parser').default(text, defs);
+      const parsed = parse(text, defs);
 
       expect(parsed.sections?.length).toBe(1);
       const section = parsed.sections?.get(0);
@@ -276,7 +277,7 @@ describe('Document Load/Stringify', () => {
 
       const defs = new Definitions();
       defs.set('$User', schema);
-      const parsed = require('../../src/parser').default(text, defs);
+      const parsed = parse(text, defs);
       expect(parsed.header.definitions.get('appName')).toBe('MyApp');
       // Note: '1.0' string serializes as "1.0" (quoted) to preserve type, which parses back as string "1.0"
       expect(parsed.header.definitions.get('version')).toBe('1.0');
@@ -296,7 +297,7 @@ describe('Document Load/Stringify', () => {
 
       const defs = new Definitions();
       defs.set('$User', schema);
-      const parsed = require('../../src/parser').default(text, defs);
+      const parsed = parse(text, defs);
       expect(parsed.header.definitions.get('appName')).toBeUndefined();
       const section = parsed.sections?.get(0);
       const obj = section?.data as InternetObject;
@@ -323,7 +324,7 @@ describe('Document Load/Stringify', () => {
 
       const defs = new Definitions();
       defs.set('$User', userSchema);
-      const parsed = require('../../src/parser').default(text, defs);
+      const parsed = parse(text, defs);
 
       expect(parsed.sections?.length).toBe(2);
       const users = parsed.sections?.get('users');
@@ -349,7 +350,7 @@ describe('Document Load/Stringify', () => {
 
       const defs = new Definitions();
       defs.set('$Item', schema);
-      const parsed = require('../../src/parser').default(text, defs);
+      const parsed = parse(text, defs);
       expect(parsed.sections?.get('items1')).toBeTruthy();
       expect(parsed.sections?.get('items2')).toBeUndefined();
       expect(parsed.sections?.get('items3')).toBeTruthy();
@@ -368,7 +369,7 @@ describe('Document Load/Stringify', () => {
 
       const defs = new Definitions();
       defs.set('$User', schema);
-      const parsed = require('../../src/parser').default(text, defs);
+      const parsed = parse(text, defs);
       const section = parsed.sections?.get(0);
       const obj = section?.data as InternetObject;
       expect(obj.get('name')).toBe('Alice');

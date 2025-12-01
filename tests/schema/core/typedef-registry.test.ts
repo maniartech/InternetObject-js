@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import TypedefRegistry from '../../../src/schema/typedef-registry';
 import TypeDef from '../../../src/schema/typedef';
 import Schema from '../../../src/schema/schema';
@@ -71,7 +72,7 @@ describe('TypedefRegistry', () => {
     });
 
     test('should warn and skip duplicate registration', () => {
-      const consoleSpy = jest.spyOn(console, 'warn').mockImplementation();
+      const consoleSpy = vi.spyOn(console, 'warn').mockImplementation();
 
   // Explicitly enable warnings for this test
   TypedefRegistry.setWarnOnDuplicates(true);

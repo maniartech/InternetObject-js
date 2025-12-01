@@ -7,6 +7,7 @@ import MemberDef from '../schema/types/memberdef';
 import TypedefRegistry from '../schema/typedef-registry';
 import { quoteExtraPropertyString } from '../utils/string-formatter';
 import { IO_MARKERS } from './serialization-constants';
+import { stringifyDocument } from './stringify-document';
 
 /**
  * Stringify options for controlling output format
@@ -130,7 +131,6 @@ export function stringify(
 
   // Handle Document (IODocument) - delegate to stringifyDocument
   if (value instanceof Document) {
-    const { stringifyDocument } = require('./stringify-document');
 
     // Build document options
     let docOptions: any = opts ? { ...opts } : {};

@@ -29,7 +29,7 @@ print_info "Creating minimal import test..."
 
 # Create test file that imports only IOObject
 cat > "$TEMP_DIR/minimal.js" << 'EOF'
-import { IOObject } from '../dist/esm/index.js';
+import { IOObject } from '../dist/index.js';
 
 // Use it to ensure it's not tree-shaken
 const obj = new IOObject();

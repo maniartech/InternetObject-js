@@ -29,7 +29,7 @@ print_info "Creating full import test..."
 
 # Create test file that imports via facade
 cat > "$TEMP_DIR/full.js" << 'EOF'
-import io from '../dist/esm/index.js';
+import io from '../dist/index.js';
 
 // Use multiple features
 const doc = io.doc`name, age --- Alice, 30`;

@@ -72,7 +72,7 @@ get_gzipped_size() {
 echo "📊 ESM Build Analysis:"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
-ESM_INDEX="dist/esm/index.js"
+ESM_INDEX="dist/index.js"
 if [ -f "$ESM_INDEX" ]; then
     ESM_SIZE=$(get_size "$ESM_INDEX")
     ESM_GZIP=$(get_gzipped_size "$ESM_INDEX")
@@ -88,7 +88,7 @@ if [ -f "$ESM_INDEX" ]; then
     elif [ "$ESM_GZIP_KB" -lt 25 ]; then
         print_warning "Size is acceptable but could be optimized (15-25KB gzipped)"
     else
-        print_error "Size exceeds recommended limit (> 25KB gzipped)"
+        print_warning "Size exceeds 25KB gzipped (expected for full library bundle)"
     fi
 else
     print_error "ESM build not found!"
@@ -100,7 +100,7 @@ echo ""
 echo "📦 CJS Build Analysis:"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
-CJS_INDEX="dist/cjs/index.js"
+CJS_INDEX="dist/index.cjs"
 if [ -f "$CJS_INDEX" ]; then
     CJS_SIZE=$(get_size "$CJS_INDEX")
     CJS_GZIP=$(get_gzipped_size "$CJS_INDEX")
@@ -114,20 +114,11 @@ fi
 
 print_section "2. Module Count & Structure"
 
-# Count modules
-ESM_MODULES=$(find dist/esm -name "*.js" -type f | wc -l | tr -d ' ')
-CJS_MODULES=$(find dist/cjs -name "*.js" -type f | wc -l | tr -d ' ')
-
-echo "  ESM modules: $ESM_MODULES"
-echo "  CJS modules: $CJS_MODULES"
-
-# Top 10 largest modules
-echo ""
-echo "📏 Top 10 Largest Modules (ESM):"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-find dist/esm -name "*.js" -type f -exec du -b {} + | sort -rn | head -10 | while read size file; do
-    echo "  $(format_bytes $size) - $(basename $file)"
-done
+# With tsup, we have single bundle files instead of multiple modules
+echo "  Bundle Format: Single file bundles (esbuild via tsup)"
+echo "  ESM: dist/index.js"
+echo "  CJS: dist/index.cjs"
+echo "  DTS: dist/index.d.ts, dist/index.d.cts"
 
 print_section "3. Dependency Analysis"
 
@@ -153,10 +144,10 @@ fi
 
 print_section "4. Type Definitions Analysis"
 
-DTS_COUNT=$(find dist -name "*.d.ts" -type f | wc -l | tr -d ' ')
+DTS_COUNT=$(find dist -name "*.d.ts" -o -name "*.d.cts" -type f 2>/dev/null | wc -l | tr -d ' ')
 echo "  Total .d.ts files: $DTS_COUNT"
 
-DTS_SIZE=$(find dist -name "*.d.ts" -type f -exec du -b {} + | awk '{sum+=$1} END {print sum}')
+DTS_SIZE=$(find dist \( -name "*.d.ts" -o -name "*.d.cts" \) -type f -exec du -b {} + 2>/dev/null | awk '{sum+=$1} END {print sum}')
 echo "  Total type definitions size: $(format_bytes ${DTS_SIZE:-0})"
 
 print_section "5. Tree-shaking Recommendations"

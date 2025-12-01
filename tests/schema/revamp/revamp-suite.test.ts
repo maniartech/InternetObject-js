@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import Tokenizer from '../../../src/parser/tokenizer';
 import ASTParser from '../../../src/parser/ast-parser';
 import ObjectNode from '../../../src/parser/nodes/objects';
@@ -11,6 +12,9 @@ import ValidationError from '../../../src/errors/io-validation-error';
 import ErrorCodes from '../../../src/errors/io-error-codes';
 import processSchema from '../../../src/schema/processor';
 import compileObject from '../../../src/schema/compile-object';
+import parse from '../../../src/parser/index';
+import TypedefRegistry from '../../../src/schema/typedef-registry';
+import * as typesIndex from '../../../src/schema/types';
 
 function parseFirstChildObject(source: string): ObjectNode {
   const tokens = new Tokenizer(source).tokenize();
@@ -290,7 +294,6 @@ describe('Revamp plan coverage (non-invasive)', () => {
     });
 
     test('parses when @ variables are defined (no undefined variable test)', () => {
-      const parse = require('../../../src/parser/index').default as Function;
       const doc = `
 ~ @r: red
 ~ @g: green
@@ -322,12 +325,9 @@ describe('Revamp plan coverage (non-invasive)', () => {
 
   describe('Registry idempotency (planned)', () => {
   test('Duplicate type registration should be idempotent and produce no warnings via registerTypes()', () => {
-      const TypedefRegistry = require('../../../src/schema/typedef-registry').default as any;
-      const typesIndex = require('../../../src/schema/types');
-
       // Ensure warnings are enabled for this test and spy on console.warn locally
       TypedefRegistry.setWarnOnDuplicates(true);
-      const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
       // Capture initial count and attempt to register built-in types again
       const beforeCount = TypedefRegistry.count;

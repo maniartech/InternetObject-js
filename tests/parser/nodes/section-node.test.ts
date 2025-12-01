@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import SectionNode from "../../../src/parser/nodes/section";
 import ObjectNode from "../../../src/parser/nodes/objects";
 import CollectionNode from "../../../src/parser/nodes/collections";
@@ -300,7 +301,7 @@ describe("SectionNode", () => {
       } as any;
 
       // Spy on child's toValue method
-      const toValueSpy = jest.spyOn(objectChild, 'toValue');
+      const toValueSpy = vi.spyOn(objectChild, 'toValue');
 
       section.toValue(mockDefs);
 

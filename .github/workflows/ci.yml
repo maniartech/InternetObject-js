@@ -30,14 +30,14 @@ jobs:
       run: yarn lint
       continue-on-error: true
 
+    - name: Type check
+      run: yarn type-check
+
     - name: Run tests
       run: yarn test
 
     - name: Build project
       run: yarn build
-
-    - name: Check TypeScript compilation
-      run: yarn tsc --noEmit
 
   bundle-size:
     runs-on: ubuntu-latest
