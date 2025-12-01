@@ -1,6 +1,28 @@
 import IOCollection from "./collection";
 import IOObject from "./internet-object";
 
+/**
+ * IOSection represents a single data section within an Internet Object document.
+ *
+ * Each section can:
+ * - Have an optional name for multi-section documents
+ * - Reference a schema definition by name
+ * - Contain either a single IOObject or an IOCollection of items
+ * - Track parsing/validation errors specific to the section's data
+ *
+ * @template T The type of data items stored in the section
+ *
+ * @example
+ * ```typescript
+ * // Named section with schema reference
+ * // --- users: $person
+ * const section = new IOSection(userCollection, 'users', '$person');
+ *
+ * console.log(section.name);       // 'users'
+ * console.log(section.schemaName); // '$person'
+ * console.log(section.data);       // IOCollection of user objects
+ * ```
+ */
 class IOSection<T = any> {
   private _data: IOCollection<T> | IOObject<T> | null;
   private _name?: string;

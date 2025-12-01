@@ -1,8 +1,37 @@
-
 import IOHeader from "./header";
 import IOSection from "./section";
 import IOSectionCollection from "./section-collection";
 
+/**
+ * IODocument represents a complete Internet Object document.
+ *
+ * A document consists of:
+ * - A header containing schema definitions, variables, and metadata
+ * - Zero or more data sections, each optionally named and schema-bound
+ * - Accumulated parsing and validation errors
+ *
+ * Features:
+ * - Aggregates errors from all sections for single-pass diagnostics
+ * - JSON serialization with optional header output
+ * - Schema-aware section management
+ *
+ * @example
+ * ```typescript
+ * const doc = parse(`
+ *   ~ $person: {name: string, age: int}
+ *   ---
+ *   ~ Alice, 30
+ *   ~ Bob, 25
+ * `);
+ *
+ * console.log(doc.toJSON());
+ * // [{ name: 'Alice', age: 30 }, { name: 'Bob', age: 25 }]
+ *
+ * if (doc.errors.length > 0) {
+ *   console.error('Parsing errors:', doc.errors);
+ * }
+ * ```
+ */
 class IODocument {
   private _header: IOHeader;
   private _sections: IOSectionCollection | null;

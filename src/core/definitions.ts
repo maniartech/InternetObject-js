@@ -4,20 +4,50 @@ import TokenNode        from '../parser/nodes/tokens';
 import TokenType        from '../parser/tokenizer/token-types';
 import Schema           from '../schema/schema';
 
+/**
+ * Represents a stored definition value with metadata.
+ */
 type IODefinitionValue = {
-  isSchema: boolean,
-  isVariable: boolean,
-  value: any
+  /** True if this is a schema definition (key starts with $) */
+  isSchema: boolean;
+  /** True if this is a variable definition (key starts with @) */
+  isVariable: boolean;
+  /** The actual definition value */
+  value: any;
 };
 
 /**
- * IODefinitions manages definitions (schemas, variables, and regular definitions) for Internet Object.
+ * IODefinitions manages schema definitions, variables, and metadata for Internet Object documents.
  *
- * Definitions are accessed by key, but the order in which they are defined is important:
- * - Variables and schema references defined earlier can be used in later definitions, but not vice versa.
- * - This follows the Internet Object specification (see 'the-definitions').
+ * Key Types:
+ * - Schema definitions: Keys starting with `$` (e.g., `$person`, `$schema`)
+ * - Variables: Keys starting with `@` (e.g., `@yes`, `@baseUrl`)
+ * - Metadata: Regular keys (e.g., `version`, `page`)
  *
- * The class provides key-based access, mutation, and iteration facilities, while ensuring definition order is respected for reference resolution.
+ * Features:
+ * - Preserves insertion order (definitions can reference earlier definitions)
+ * - O(1) key-based access
+ * - Forward reference validation (throws for undefined variables/schemas)
+ * - Merge support for document composition
+ * - Iterable for processing all definitions
+ *
+ * Definition Order Rules (per Internet Object spec):
+ * - Variables and schemas defined earlier can be used in later definitions
+ * - Forward references (using definitions not yet defined) throw errors
+ *
+ * @example
+ * ```typescript
+ * const defs = new IODefinitions();
+ * defs.set('@baseUrl', 'https://api.example.com');
+ * defs.set('$person', personSchema);
+ * defs.set('$schema', mainSchema);
+ *
+ * // Variables are accessed via getV()
+ * const url = defs.getV('@baseUrl'); // 'https://api.example.com'
+ *
+ * // Schemas are accessed via get()
+ * const schema = defs.get('$person'); // Schema instance
+ * ```
  */
 class IODefinitions {
   /**

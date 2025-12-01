@@ -1,7 +1,16 @@
-// Decimal.ts
-// A high-precision decimal number implementation with controlled rounding behaviors
+/**
+ * @fileoverview High-precision decimal number implementation for Internet Object.
+ *
+ * This module provides RDBMS-compliant decimal arithmetic with controlled
+ * precision, scale, and rounding behaviors.
+ */
+
 import { alignOperands, formatBigIntAsDecimal, roundHalfUp, ceilRound, floorRound, validatePrecisionScale, calculateRdbmsArithmeticResult, scaleUp, getPow10 } from './decimal-utils';
 
+/**
+ * Error class for Decimal-specific errors.
+ * Thrown when precision/scale constraints are violated or invalid operations are attempted.
+ */
 export class DecimalError extends Error {
     constructor(message: string) {
         super(message);
@@ -11,12 +20,52 @@ export class DecimalError extends Error {
 
 /**
  * Interface representing the internal state of a Decimal.
+ * @internal
  */
 interface DecimalInit {
     coefficient: bigint;
     exponent: number;
 }
 
+/**
+ * Decimal provides arbitrary-precision decimal arithmetic with RDBMS-compliant behavior.
+ *
+ * Features:
+ * - BigInt-based internal representation for exact arithmetic
+ * - Configurable precision (total digits) and scale (decimal places)
+ * - RDBMS-standard arithmetic operations (add, sub, mul, div, mod)
+ * - Multiple rounding modes: round-half-up, ceil, floor
+ * - Scientific notation and various input format support
+ * - Immutable: all operations return new Decimal instances
+ *
+ * Precision & Scale:
+ * - Precision (M): Total number of significant digits
+ * - Scale (D): Number of digits after the decimal point
+ * - Integer digits = Precision - Scale
+ *
+ * @example
+ * ```typescript
+ * // Basic usage
+ * const price = new Decimal("19.99");
+ * const quantity = new Decimal("3");
+ * const total = price.mul(quantity); // 59.97
+ *
+ * // Explicit precision/scale
+ * const amount = new Decimal("123.456", 6, 2); // 123.46 (rounded)
+ *
+ * // Arithmetic operations
+ * const a = new Decimal("100.50");
+ * const b = new Decimal("25.25");
+ * console.log(a.add(b).toString()); // "125.75"
+ * console.log(a.sub(b).toString()); // "75.25"
+ *
+ * // Rounding modes
+ * const value = new Decimal("10.555", 5, 2);
+ * console.log(value.round(4, 2).toString()); // "10.56" (half-up)
+ * console.log(value.ceil(4, 2).toString());  // "10.56"
+ * console.log(value.floor(4, 2).toString()); // "10.55"
+ * ```
+ */
 class Decimal {
     // Initialize with default values to satisfy TypeScript
     private readonly coefficient: bigint = 0n;

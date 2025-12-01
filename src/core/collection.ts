@@ -1,10 +1,32 @@
 import assertNever from '../errors/asserts/asserts';
-import InternetObject from './internet-object';
-
 import IOObject from "./internet-object";
 
 /**
- * IOCollection is a collection of IOObject instances.
+ * IOCollection is an ordered, index-accessible collection of items.
+ *
+ * Features:
+ * - Array-like operations (push, pop, insert, deleteAt)
+ * - Functional methods (map, filter, reduce, forEach, find, some, every)
+ * - Iterable support for for..of loops
+ * - JSON serialization with error handling options
+ * - Proxy-based index access (collection[0])
+ *
+ * @template T The type of items stored in the collection (defaults to IOObject)
+ *
+ * @example
+ * ```typescript
+ * const collection = new IOCollection<Person>();
+ * collection.push({ name: 'Alice', age: 30 });
+ * collection.push({ name: 'Bob', age: 25 });
+ *
+ * // Iteration
+ * for (const person of collection) {
+ *   console.log(person.name);
+ * }
+ *
+ * // Functional operations
+ * const names = collection.map(p => p.name);
+ * ```
  */
 class IOCollection<T = IOObject> {
   private _items: T[];

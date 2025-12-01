@@ -1,6 +1,34 @@
-
 import IOSection from "./section";
 
+/**
+ * IOSectionCollection manages multiple IOSection instances within a document.
+ *
+ * Features:
+ * - Index-based access for ordered sections (collection[0])
+ * - Name-based access for named sections (collection['users'])
+ * - Proxy-based access supporting both patterns transparently
+ * - Iterable for iterating over all sections
+ *
+ * @template T The type of data items in the sections
+ *
+ * @example
+ * ```typescript
+ * const sections = new IOSectionCollection();
+ * sections.push(new IOSection(users, 'users'));
+ * sections.push(new IOSection(products, 'products'));
+ *
+ * // Access by name
+ * const usersSection = sections.get('users');
+ *
+ * // Access by index
+ * const firstSection = sections.get(0);
+ *
+ * // Iteration
+ * for (const section of sections) {
+ *   console.log(section.name);
+ * }
+ * ```
+ */
 class IOSectionCollection<T = any> {
   private _sections: Array<IOSection<T>> = [];
   private _sectionNames: { [key: string]: number } = {};

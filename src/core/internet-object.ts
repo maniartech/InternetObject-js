@@ -1,3 +1,26 @@
+/**
+ * IOObject is an ordered key-value collection that supports both keyed and positional access.
+ *
+ * Features:
+ * - Maintains insertion order of key-value pairs
+ * - Supports mixed keyed and positional (keyless) entries
+ * - Provides O(1) key-based lookups via internal Map
+ * - Implements Iterable for for..of loops
+ * - Supports sparse deletions with optional compaction
+ * - Synchronizes with object properties for dot-notation access
+ *
+ * @template T The type of values stored in the object
+ *
+ * @example
+ * ```typescript
+ * const obj = new IOObject<number>();
+ * obj.set('a', 1);
+ * obj.push(2);           // positional entry (no key)
+ * obj.set('b', 3);
+ * console.log(obj.a);    // 1 (dot notation)
+ * console.log(obj.getAt(1)); // 2
+ * ```
+ */
 class IOObject<T = any> implements Iterable<[string | undefined, T]> {
   [key: string]: any;
   private items!: ([string | undefined, T] | undefined)[];

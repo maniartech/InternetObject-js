@@ -1,7 +1,33 @@
-
 import Schema from "../schema/schema";
 import IODefinitions from './definitions';
 
+/**
+ * IOHeader contains the header section of an Internet Object document.
+ *
+ * The header stores:
+ * - Schema definitions (prefixed with $)
+ * - Variables (prefixed with @)
+ * - Regular key-value metadata
+ * - The default schema for the document's data sections
+ *
+ * Features:
+ * - Schema resolution and merging from multiple sources
+ * - Definition inheritance via merge() for document composition
+ * - JSON serialization of non-schema, non-variable definitions
+ *
+ * @example
+ * ```typescript
+ * // Header from:
+ * // ~ @yes: T
+ * // ~ $person: {name: string, age: int}
+ * // ~ $schema: {items: [$person]}
+ *
+ * const header = new IOHeader();
+ * header.definitions.set('@yes', true);
+ * header.definitions.set('$person', personSchema);
+ * header.schema = itemsSchema;
+ * ```
+ */
 class IOHeader {
   private _schema: Schema | null = null;
   private _definitions: IODefinitions;
