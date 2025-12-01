@@ -29,13 +29,14 @@ tsfmt.json
 *.swo
 .kiro/
 
-# Documentation (keep README.md)
+# Documentation (keep README.md and CHANGELOG.md)
 docs/
 planning-and-todos/
 research/
 specs/
 *.md
 !README.md
+!CHANGELOG.md
 !LICENSE
 
 # Scripts and tools
