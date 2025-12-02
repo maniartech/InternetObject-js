@@ -8,6 +8,7 @@ import TypedefRegistry from '../schema/typedef-registry';
 import { quoteExtraPropertyString } from '../utils/string-formatter';
 import { IO_MARKERS } from './serialization-constants';
 import { stringifyDocument } from './stringify-document';
+import { formatRecord, createIndentString, FormatContext } from './io-formatter';
 
 /**
  * Stringify options for controlling output format
@@ -261,9 +262,24 @@ export function stringifyObject(
   defs?: Definitions,
   options?: StringifyOptions
 ): string {
-  const parts: string[] = [];
   const indent = options?.indent;
   const includeTypes = options?.includeTypes ?? false;
+
+  // Use smart formatter for formatted output (when indent is specified)
+  // This handles proper line breaks only where needed (expanding arrays/objects)
+  if (indent !== undefined && !includeTypes) {
+    const indentStr = createIndentString(indent);
+    const ctx: FormatContext = {
+      indentStr,
+      level: 0,
+      defs: defs ?? new Definitions(),
+      isNested: false
+    };
+    return formatRecord(obj, schema, ctx);
+  }
+
+  // Fallback to original logic for compact mode or includeTypes
+  const parts: string[] = [];
   if (schema) {
     // First output members in schema order regardless of insertion order.
     const handled = new Set<string>();
@@ -350,11 +366,12 @@ export function stringifyObject(
   }
 
   // Format output
+  // Note: IO format doesn't wrap top-level objects in braces like JSON.
+  // For formatted output, we use newlines between fields but no outer braces.
   if (typeof indent === 'number' && indent > 0) {
-    const indentStr = ' '.repeat(indent);
-    return '{\n' + parts.map(p => indentStr + p).join(',\n') + '\n}';
+    return parts.join(',\n');
   } else if (typeof indent === 'string') {
-    return '{\n' + parts.map(p => indent + p).join(',\n') + '\n}';
+    return parts.join(',\n');
   } else {
     return parts.join(', ');
   }
