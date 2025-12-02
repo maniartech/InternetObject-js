@@ -9,6 +9,7 @@ import { stringifyMemberDef } from '../schema/types/memberdef-stringify';
 import { stringify, stringifyObject } from './stringify';
 import { StringifyOptions } from './stringify';
 import { IO_MARKERS, RESERVED_SECTION_NAMES, WILDCARD_KEY } from './serialization-constants';
+import { formatRecord, formatCollection, createIndentString, FormatContext } from './io-formatter';
 
 /**
  * Options for stringifying documents
@@ -287,6 +288,15 @@ function stringifySection(
   const schemaName = section.schemaName;
   const schema = schemaName ? defs.getV(schemaName) : defs.defaultSchema;
 
+  // Create formatting context
+  const indentStr = createIndentString(options.indent);
+  const ctx: FormatContext = {
+    indentStr,
+    level: 0,
+    defs,
+    isNested: false
+  };
+
   // Collections should be serialized using IO '~' items for parser compatibility
   if (data instanceof Collection) {
     const lines: string[] = [];
@@ -295,7 +305,8 @@ function stringifySection(
         continue;
       }
       if (item instanceof InternetObject) {
-        const line = stringifyObject(item, schema, defs, options);
+        // Use formatter for smart formatting
+        const line = formatRecord(item, schema, ctx);
         lines.push(`~ ${line}`);
       } else {
         // Fallback for non-IO items
@@ -305,7 +316,11 @@ function stringifySection(
     return lines.join('\n');
   }
 
-  // Single object/value: use main stringifyObject
+  // Single object/value: use formatter for smart formatting
+  if (data instanceof InternetObject) {
+    return formatRecord(data, schema, ctx);
+  }
+
   return stringifyObject(data, schema, defs, options);
 }
 
