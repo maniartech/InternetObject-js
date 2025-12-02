@@ -47,8 +47,20 @@ d'2024-06-15', d'2024-06-17'
 ```
 
 **Nested (inside array or field):**
+The key principle is: **formatting separates array items and breaks after complex top-level structures, but keeps nested objects inline for readability.**
+
+### 1. Simple Objects Stay Inline
+
+Objects containing only primitive values stay on a single line with spaces inside braces.
+
+**Compact:**
 ```io
-{ d'2024-06-15', d'2024-06-17' }
+d'2024-06-15', d'2024-06-17'
+```
+
+**Formatted:**
+```io
+d'2024-06-15', d'2024-06-17'
 ```
 
 ### 2. Complex Top-Level Objects Expand
@@ -66,6 +78,19 @@ Convention Center, { 1000 Convention Way, Las Vegas, USA }, 5000
 ```
 
 Note: The inner nested object `{ 1000 Convention Way, Las Vegas, USA }` stays inline and is wrapped in braces by the nested object formatter.
+Objects at the root level that contain nested objects or arrays expand, with content on a new indented line.
+
+**Compact:**
+```io
+Convention Center, {1000 Convention Way, Las Vegas, USA}, 5000
+```
+
+**Formatted:**
+```io
+Convention Center, { 1000 Convention Way, Las Vegas, USA }, 5000
+```
+
+Note: The inner nested object `{ 1000 Convention Way, Las Vegas, USA }` stays inline.
 
 ### 3. Arrays of Primitives Stay Inline
 
@@ -87,7 +112,7 @@ Arrays containing objects expand to multiple lines with each item on its own lin
 
 **Compact:**
 ```io
-[ { Widget A, 2, 29.99 }, { Widget B, 1, 49.99 }, { Widget C, 5, 9.99 } ]
+[{Widget A, 2, 29.99}, {Widget B, 1, 49.99}, {Widget C, 5, 9.99}]
 ```
 
 **Formatted:**
@@ -561,12 +586,14 @@ CONF-2024-TECH, TechSummit 2024, Annual technology conference, {
 When formatting documents with collections, each `~` item is output using `stringifyObject` (no braces at root level). If the item contains nested objects or arrays, those are wrapped in braces or brackets by the respective formatter.
 
 **Compact:**
+
 ```io
 ~ John Doe, 25, { Bond Street, New York }
 ~ Jane Doe, 30, { Main Street, Chicago }
 ```
 
 **Formatted (indent: 2):**
+
 ```io
 ~ John Doe, 25, { Bond Street, New York }
 ~ Jane Doe, 30, { Main Street, Chicago }
