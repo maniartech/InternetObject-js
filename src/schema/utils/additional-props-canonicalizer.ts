@@ -6,7 +6,8 @@ import TypedefRegistry from '../typedef-registry';
 
 /**
  * Converts additional property schema node to canonical MemberDef.
- * Supports: string, object, array, MemberDef with constraints, open forms.
+ * Supports: string, object, array, MemberDef with constraints, open forms,
+ * and schema variable references ($schemaName).
  */
 export function canonicalizeAdditionalProps(node: any, path: string = '*'): MemberDef {
   // Switch on node type
@@ -20,6 +21,11 @@ export function canonicalizeAdditionalProps(node: any, path: string = '*'): Memb
       if (node.value === '*') {
         return { type: 'any', path };
       }
+      // Schema variable reference: $schemaName
+      // Store the TokenNode as schema for later resolution during processing
+      if (node.value.startsWith('$')) {
+        return { type: 'object', schema: node, path };
+      }
     }
     return { type: 'any', path };
   }
@@ -32,16 +38,22 @@ export function canonicalizeAdditionalProps(node: any, path: string = '*'): Memb
     const firstChild = node.children[0] as import('../../parser/nodes/members').default;
     if (firstChild && !firstChild.key && firstChild.value instanceof TokenNode) {
       const typeToken = firstChild.value as TokenNode;
-      if (typeof typeToken.value === 'string' && TypedefRegistry.isRegisteredType(typeToken.value)) {
-        // Collect constraints from other children (MemberNode with key)
-        const memberDef: MemberDef = { type: typeToken.value, path };
-        for (let i = 1; i < node.children.length; i++) {
-          const child = node.children[i] as import('../../parser/nodes/members').default;
-          if (child && child.key && child.value instanceof TokenNode) {
-            (memberDef as any)[child.key.value as string] = (child.value as any).value;
-          }
+      if (typeof typeToken.value === 'string') {
+        // Schema variable reference in object form: { $schemaName, ... }
+        if (typeToken.value.startsWith('$')) {
+          return { type: 'object', schema: typeToken, path };
         }
-        return memberDef;
+        if (TypedefRegistry.isRegisteredType(typeToken.value)) {
+          // Collect constraints from other children (MemberNode with key)
+          const memberDef: MemberDef = { type: typeToken.value, path };
+          for (let i = 1; i < node.children.length; i++) {
+            const child = node.children[i] as import('../../parser/nodes/members').default;
+            if (child && child.key && child.value instanceof TokenNode) {
+              (memberDef as any)[child.key.value as string] = (child.value as any).value;
+            }
+          }
+          return memberDef;
+        }
       }
     }
     // MemberDef with constraints (fallback)

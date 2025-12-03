@@ -88,10 +88,41 @@ class IODefinitions {
 
   /**
    * Returns the default schema, if defined.
+   * Resolves schema variable references (e.g., $schema: $otherSchema).
    * @returns The default Schema instance or null.
    */
   public get defaultSchema(): Schema | null {
-    return this._defaultSchema || this._definitions["$schema"]?.value || null;
+    if (this._defaultSchema) {
+      return this._defaultSchema;
+    }
+
+    // Use getV to resolve any nested references (e.g., $schema: $otherSchema)
+    const schemaValue = this._definitions["$schema"]?.value;
+    if (!schemaValue) {
+      return null;
+    }
+
+    // If it's already a Schema, return it
+    if (schemaValue instanceof Schema) {
+      return schemaValue;
+    }
+
+    // If it's a TokenNode reference, resolve it
+    if (schemaValue instanceof TokenNode) {
+      try {
+        const resolved = this.getV(schemaValue);
+        if (resolved instanceof Schema) {
+          // Cache the resolved schema
+          this._definitions["$schema"].value = resolved;
+          return resolved;
+        }
+      } catch (e) {
+        // If resolution fails, return null
+        return null;
+      }
+    }
+
+    return null;
   }
 
   /**

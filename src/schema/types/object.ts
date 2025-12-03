@@ -355,7 +355,9 @@ class ObjectDef implements TypeDef {
       return value
     }
 
-    let schema = memberDef.schema
+    // Resolve schema - it might be a TokenNode reference (e.g., $schemaName)
+    let schema = this._resolveSchema(memberDef.schema, defs)
+
     if (valueNode instanceof ObjectNode === false) {
       throw new ValidationError(ErrorCodes.invalidObject, `Expecting an object value for '${memberDef.path}'`, node)
     }

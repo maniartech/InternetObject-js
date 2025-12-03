@@ -72,7 +72,9 @@ function parseObjectOrTypeDef(o: ObjectNode, path:string, defs?:Definitions) {
         const tokenValue = token.value as string;
         // Built-in type shorthand: { string, min: ..., max: ... }
         if (TypedefRegistry.isRegisteredType(tokenValue)) {
-          return parseMemberDef(tokenValue, o, defs);
+          const memberDef = parseMemberDef(tokenValue, o, defs);
+          memberDef.path = path;
+          return memberDef;
         }
         // Schema variable shorthand: { $Person, ... }
         if (tokenValue.startsWith('$')) {
@@ -107,7 +109,9 @@ function parseObjectOrTypeDef(o: ObjectNode, path:string, defs?:Definitions) {
       return { type: 'object', schema: typeNode as any, path } as MemberDef;
     }
     if (TypedefRegistry.isRegisteredType(type)) {
-      return parseMemberDef(type, o, defs);
+      const memberDef = parseMemberDef(type, o, defs);
+      memberDef.path = path;
+      return memberDef;
     }
 
     // If the type is not registered, then it is an invalid type
@@ -249,11 +253,26 @@ function parseObjectDef(o: ObjectNode, schema:Schema, path:string, defs?:Definit
 
     // Handle additional properties (dynamic fields)
     if (memberNode.key && memberNode.key.value === '*') {
-      // Use canonicalizer for additional property MemberDef
+      // Use getMemberDef for additional property to properly compile nested schemas
       if (memberNode.value) {
-        const additionalDef = canonicalizeAdditionalProps(memberNode.value, '*');
-        schema.defs['*'] = additionalDef;
-        schema.open = additionalDef;
+        // For ObjectNode values, use parseObjectOrTypeDef to properly compile the schema
+        if (memberNode.value instanceof ObjectNode) {
+          const additionalDef = parseObjectOrTypeDef(memberNode.value, '*', defs);
+          schema.defs['*'] = additionalDef;
+          schema.open = additionalDef;
+        }
+        // For ArrayNode values, use parseArrayOrTypeDef
+        else if (memberNode.value instanceof ArrayNode) {
+          const additionalDef = parseArrayOrTypeDef(memberNode.value, '*', defs);
+          schema.defs['*'] = additionalDef;
+          schema.open = additionalDef;
+        }
+        // For TokenNode (simple types or schema refs), use canonicalizer
+        else {
+          const additionalDef = canonicalizeAdditionalProps(memberNode.value, '*');
+          schema.defs['*'] = additionalDef;
+          schema.open = additionalDef;
+        }
       } else {
         schema.open = true;
       }
@@ -289,7 +308,9 @@ function parseObjectDef(o: ObjectNode, schema:Schema, path:string, defs?:Definit
     }
   }
 
-  if (schema.names.length === 0) {
+  // If there are no regular members and schema.open wasn't already set
+  // to a MemberDef (from *: constraint), then set it to true (open with any type)
+  if (schema.names.length === 0 && schema.open === false) {
     schema.open = true;
   }
 

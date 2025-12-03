@@ -14,7 +14,8 @@ describe('compileSchema - Additional Properties Validation', () => {
     expect(schema.open).toMatchObject({ type: 'object', path: '*' });
     const extra = schema.get('*');
     expect(extra).toMatchObject({ type: 'object', path: '*' });
-    expect(extra?.open).toBe(true);
+    // For empty object additional props (*: {}), the inner schema is open
+    expect(extra?.schema?.open).toBe(true);
   });
 
   test('additional properties: []', () => {

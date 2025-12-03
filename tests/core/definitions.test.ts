@@ -1,4 +1,5 @@
 import IODefinitions from '../../src/core/definitions';
+import Schema from '../../src/schema/schema';
 
 describe('IODefinitions', () => {
   it('should set and get variable values', () => {
@@ -120,8 +121,9 @@ describe('IODefinitions', () => {
 
   it('should delete definitions and update default schema', () => {
     const defs = new IODefinitions();
-    defs.set('$schema', 'myschema');
-    expect(defs.defaultSchema).toBe('myschema');
+    const mySchema = new Schema('myschema');
+    defs.set('$schema', mySchema);
+    expect(defs.defaultSchema).toBe(mySchema);
     defs.delete('$schema');
     expect(defs.defaultSchema).toBe(null);
   });

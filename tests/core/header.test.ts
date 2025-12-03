@@ -1,5 +1,6 @@
 import IOHeader from '../../src/core/header';
 import IODefinitions from '../../src/core/definitions';
+import Schema from '../../src/schema/schema';
 
 describe('IOHeader', () => {
   describe('Basic Properties', () => {
@@ -18,9 +19,10 @@ describe('IOHeader', () => {
 
     it('should return defaultSchema when schema is not set', () => {
       const header = new IOHeader();
-      header.definitions.set('$schema', 'defaultSchemaName');
+      const defaultSchema = new Schema('defaultSchemaName');
+      header.definitions.set('$schema', defaultSchema);
       // schema getter should return defaultSchema from definitions
-      expect(header.schema).toBe('defaultSchemaName');
+      expect(header.schema).toBe(defaultSchema);
     });
 
     it('should prioritize explicit schema over defaultSchema', () => {
