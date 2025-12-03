@@ -8,6 +8,7 @@ import ErrorNode from '../../parser/nodes/error';
 import processObject from '../object-processor';
 import Schema from '../schema';
 import { SchemaResolver } from '../utils/schema-resolver';
+import { ProcessingContext } from './processing-context';
 
 export default function processCollection(
   data: CollectionNode,
@@ -32,17 +33,45 @@ export default function processCollection(
     if (item instanceof ErrorNode) {
       // Push ErrorNode directly; IOCollection.toJSON handles toValue()
       // which serializes error details with positions.
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       // Also annotate the underlying error with collectionIndex for consistency
       try {
         (item as any).error.collectionIndex = i;
       } catch {}
       collection.push(item as unknown as any);
     } else {
+      // Create a ProcessingContext for this object to collect all its errors
+      const ctx = new ProcessingContext();
+
       try {
-        collection.push(processObject(item as ObjectNode, resolvedSchema, defs, i));
+        // Pass context - processObject will add ALL validation errors to it
+        const result = processObject(item as ObjectNode, resolvedSchema, defs, i, ctx);
+
+        // If there were validation errors, create an ErrorNode but still have the result
+        if (ctx.hasErrors()) {
+          const errors = ctx.getErrors();
+          // Attach collectionIndex to each error
+          for (const error of errors) {
+            (error as any).collectionIndex = i;
+            // Add to document-level error collector if provided
+            if (errorCollector) {
+              errorCollector.push(error);
+            }
+            // Add to collection's own errors
+            collection.errors.push(error);
+          }
+          // Create error node with the first error for display
+          const errorNode = new ErrorNode(
+            errors[0],
+            (item as ObjectNode).getStartPos(),
+            (item as ObjectNode).getEndPos()
+          );
+          collection.push(errorNode as unknown as any);
+        } else {
+          // No errors - push the result directly
+          collection.push(result);
+        }
       } catch (error) {
-        // Validation error occurred - convert to ErrorNode and collect the error
+        // Syntax errors and other critical errors are still thrown
         if (error instanceof Error) {
           // Attach boundary context for downstream serializers/UI
           (error as any).collectionIndex = i;
@@ -51,13 +80,12 @@ export default function processCollection(
             (item as ObjectNode).getStartPos(),
             (item as ObjectNode).getEndPos()
           );
-          // Add validation error to error collector if provided
+          // Add error to error collector if provided
           if (errorCollector) {
             errorCollector.push(error);
           }
           // Add to collection's own errors
           collection.errors.push(error);
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           collection.push(errorNode as unknown as any);
         } else {
           // Re-throw non-Error exceptions

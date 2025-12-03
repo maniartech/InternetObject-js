@@ -6,6 +6,7 @@ import ObjectNode from '../parser/nodes/objects';
 import TokenNode from '../parser/nodes/tokens';
 import processObject from './object-processor';
 import processCollection from './processing/collection-processor';
+import { ProcessingContext } from './processing/processing-context';
 import Schema from './schema';
 import { ValidationUtils } from './utils/validation-utils';
 
@@ -29,6 +30,16 @@ export default function processSchema(
 
   // Route to appropriate processor
   if (validData instanceof ObjectNode) {
+    // For single objects, create a context if errorCollector is provided
+    if (errorCollector) {
+      const ctx = new ProcessingContext();
+      const result = processObject(validData, validSchema, defs, void 0, ctx);
+      // Transfer errors to errorCollector
+      if (ctx.hasErrors()) {
+        errorCollector.push(...ctx.getErrors());
+      }
+      return result;
+    }
     return processObject(validData, validSchema, defs);
   }
 

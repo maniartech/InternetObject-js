@@ -47,10 +47,22 @@ class IOSection<T = any> {
   }
 
   public get errors(): Error[] {
-    if (this._data instanceof IOCollection || this._data instanceof IOObject) {
-      return this._data.errors;
+    const errors: Error[] = [];
+
+    if (this._data instanceof IOCollection) {
+      // Add collection's own errors
+      errors.push(...this._data.errors);
+      // Also aggregate errors from child IOObjects within the collection
+      for (const item of this._data) {
+        if (item instanceof IOObject && item.errors.length > 0) {
+          errors.push(...item.errors);
+        }
+      }
+    } else if (this._data instanceof IOObject) {
+      errors.push(...this._data.errors);
     }
-    return [];
+
+    return errors;
   }
 
   public toJSON(options?: { skipErrors?: boolean }): any {
