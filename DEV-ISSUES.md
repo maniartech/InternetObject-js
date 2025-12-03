@@ -6,6 +6,8 @@ This document lists issues found in the codebase that need to be addressed.
 
 When processing an object against a schema, if there are multiple validation errors (e.g., multiple required properties missing), only the first error is reported. The processor should collect and report all validation errors for better debugging.
 
+In case of syntax errors, this behavior is acceptable that only the first error is reported and report to the error boundary for futher document scanning/processing. But for schema validation, all errors should be collected and reported together.
+
 ## Invalid Def-inferrance for Additional Properties
 
 See the following JSON example test case:
@@ -179,3 +181,7 @@ While the output and schema is correct, it would have been better if the followi
 ```
 
 Both forms are valid, but the latter is more readable and better represents the IO and it provides isolation between the sections and records. Do you understand? Also did you notice that in the latter form, we didn't need the default $schema, becuase we are directly using specific schemas for each section?
+
+## Configurable Token Parsing
+
+Currently, the token parsing behavior is fixed and does not allow customization. It would be beneficial to have a configurable token parser that allows developers to define custom tokenization rules based on their specific requirements. This would enhance the flexibility and adaptability of the parsing process.
