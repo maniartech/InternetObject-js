@@ -8,9 +8,52 @@ The Streaming API provides transport-agnostic streaming serialization and deseri
 
 - **Transport Agnostic**: Pure serialization/deserialization - no HTTP, WebSocket, or transport layer dependencies
 - **External Schema**: Schema definitions are shared externally, not embedded in the stream
-- **Atomic Delivery**: Each item/batch is complete and self-contained
-- **Unified API**: Single API for both real-time and batch streaming
-- **Automatic Batching**: Batching is an internal optimization, transparent to the user
+- **Document-Based**: Each streamed unit is a complete `IODocument`
+- **Unified API**: Single API handles both real-time and batch streaming
+- **Developer-Friendly**: Reuses existing `IODocument`, `IOObject` classes - no new concepts
+
+---
+
+## Core Concepts
+
+### Streaming Model
+
+```
+Writer                              Reader
+  │                                   │
+  ├─ write(item) ──────────────────► push(docString)
+  │     │                             │
+  │     ▼                             ▼
+  │  IODocument string            IOStreamResult
+  │                                   │
+  │                                   ├── documents: IODocument[]
+  │                                   ├── items()
+  │                                   └── toCompleteDocument()
+```
+
+- **Writer**: Validates objects → Serializes to complete `IODocument` strings
+- **Reader**: Receives complete `IODocument` strings → Parses → Validates → Collects into `IOStreamResult`
+- **IOStreamResult**: Collection of `IODocument`s with convenience methods
+
+### Wire Format
+
+Each streamed unit is a complete IO document. Two modes:
+
+**Real-time Mode** (single items):
+```ruby
+~ John, 20, Mumbai
+```
+
+**Batch Mode** (with headers):
+```ruby
+~ batchNo: 1
+~ recordCount: 3
+~ timestamp: 1733500000
+---
+~ John, 20, Mumbai
+~ Ashok, 30, Delhi
+~ Priya, 25, Bangalore
+```
 
 ---
 
@@ -18,7 +61,7 @@ The Streaming API provides transport-agnostic streaming serialization and deseri
 
 ### IOStreamWriter
 
-Creates serialized IO stream output from JavaScript objects.
+Creates serialized IO document strings from JavaScript objects.
 
 ```typescript
 const writer = io.createStreamWriter(schema, options?);
@@ -28,7 +71,7 @@ const writer = io.createStreamWriter(schema, options?);
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
-| `schema` | `Schema \| string` | The schema definition for validation and serialization |
+| `schema` | `Schema \| string` | Schema for validation and serialization |
 | `options` | `StreamWriterOptions` | Optional configuration |
 
 #### StreamWriterOptions
@@ -36,19 +79,18 @@ const writer = io.createStreamWriter(schema, options?);
 ```typescript
 interface StreamWriterOptions {
   // Batching control
-  batchSize?: number;         // Items per batch (default: 1 = real-time mode)
-  flushInterval?: number;     // Auto-flush interval in ms (default: none)
+  batchSize?: number;           // Items per batch (default: 1 = real-time)
 
   // Resume support
-  startIndex?: number;        // Starting item index (default: 0)
-  startBatchNo?: number;      // Starting batch number (default: 1)
+  startIndex?: number;          // Starting item index (default: 0)
+  startBatchNo?: number;        // Starting batch number (default: 1)
 
   // Validation
-  validate?: boolean;         // Validate before serializing (default: true)
+  validate?: boolean;           // Validate before serializing (default: true)
 
-  // Batch header options (only applies when batchSize > 1)
-  includeTimestamp?: boolean;   // Add timestamp to header (default: true)
-  includeChecksum?: boolean;    // Add checksum to header (default: false)
+  // Batch headers (only when batchSize > 1)
+  includeTimestamp?: boolean;   // Add timestamp (default: true)
+  includeChecksum?: boolean;    // Add checksum (default: false)
 }
 ```
 
@@ -56,20 +98,20 @@ interface StreamWriterOptions {
 
 ##### `write(item: object): string | null`
 
-Serializes an item. Returns immediately in real-time mode, or buffers and returns batch when full.
+Serializes an item. Returns complete document string immediately in real-time mode, or `null` while buffering in batch mode.
 
 ```typescript
-// Real-time mode (batchSize: 1, default)
+// Real-time mode (batchSize: 1)
 const writer = io.createStreamWriter(schema);
-const chunk = writer.write({ name: "John", age: 20, city: "Mumbai" });
-// Returns: "~ John, 20, Mumbai\n"
+const doc = writer.write({ name: "John", age: 20, city: "Mumbai" });
+// Returns: "~ John, 20, Mumbai"
 
 // Batch mode (batchSize: 3)
 const writer = io.createStreamWriter(schema, { batchSize: 3 });
 writer.write({ name: "John", age: 20, city: "Mumbai" });   // null
 writer.write({ name: "Ashok", age: 30, city: "Delhi" });   // null
-const batch = writer.write({ name: "Priya", age: 25, city: "Bangalore" });
-// Returns:
+const doc = writer.write({ name: "Priya", age: 25, city: "Bangalore" });
+// Returns complete batch document:
 // ~ batchNo: 1
 // ~ recordCount: 3
 // ~ timestamp: 1733500000
@@ -81,23 +123,23 @@ const batch = writer.write({ name: "Priya", age: 25, city: "Bangalore" });
 
 ##### `writeMany(items: Iterable<object>): Generator<string>`
 
-Writes multiple items, yielding output as available.
+Writes multiple items, yielding complete documents as available.
 
 ```typescript
-const writer = io.createStreamWriter(schema, { batchSize: 2 });
+const writer = io.createStreamWriter(schema, { batchSize: 100 });
 
-for (const chunk of writer.writeMany(items)) {
-  send(chunk);
+for (const doc of writer.writeMany(items)) {
+  send(doc);
 }
 
-// Don't forget remaining items
+// Flush remaining
 const remaining = writer.flush();
 if (remaining) send(remaining);
 ```
 
 ##### `flush(): string | null`
 
-Forces any buffered items to be emitted. Returns `null` if buffer is empty.
+Forces buffered items to be emitted as a document. Returns `null` if buffer is empty.
 
 ```typescript
 const writer = io.createStreamWriter(schema, { batchSize: 100 });
@@ -105,27 +147,26 @@ const writer = io.createStreamWriter(schema, { batchSize: 100 });
 writer.write(item1);
 writer.write(item2);
 
-// Force send incomplete batch
-const batch = writer.flush();
+const doc = writer.flush();  // Emits batch with 2 items
 ```
 
 ##### `getIndex(): number`
 
-Returns the total item count written.
+Returns total item count written.
 
 ##### `getBatchNo(): number`
 
-Returns the current batch number (1-based).
+Returns current batch number (1-based).
 
 ##### `getPendingCount(): number`
 
-Returns the number of items in the current unflushed buffer.
+Returns items in unflushed buffer.
 
 ---
 
 ### IOStreamReader
 
-Parses IO stream input into fully hydrated IOObject instances.
+Parses IO document strings into `IOStreamResult`.
 
 ```typescript
 const reader = io.createStreamReader(schema, options?);
@@ -135,16 +176,13 @@ const reader = io.createStreamReader(schema, options?);
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
-| `schema` | `Schema \| string` | The schema definition for validation and deserialization |
+| `schema` | `Schema \| string` | Schema for validation and deserialization |
 | `options` | `StreamReaderOptions` | Optional configuration |
 
 #### StreamReaderOptions
 
 ```typescript
 interface StreamReaderOptions {
-  // Resume support
-  startIndex?: number;        // Expected starting index (default: 0)
-
   // Validation
   validate?: boolean;               // Validate after parsing (default: true)
   validateChecksum?: boolean;       // Validate checksum if present (default: true)
@@ -157,138 +195,173 @@ interface StreamReaderOptions {
 
 #### Methods
 
-##### `push(chunk: string): void`
+##### `push(docString: string): void`
 
-Feeds incoming data to the reader. Handles partial data by buffering.
-
-```typescript
-const reader = io.createStreamReader(schema);
-
-// Works with any chunk boundaries
-reader.push("~ John, 20, Mum");
-reader.push("bai\n~ Ashok, 30, Delhi\n");
-```
-
-##### `read(): IOObject | null`
-
-Reads the next complete item, or `null` if none available.
+Pushes a complete IO document string to the reader.
 
 ```typescript
 const reader = io.createStreamReader(schema);
-reader.push("~ John, 20, Mumbai\n~ Ashok, 30, Delhi\n");
 
-let item;
-while ((item = reader.read()) !== null) {
-  console.log(item.name, item.age, item.city);
-}
+// Push single item
+reader.push("~ John, 20, Mumbai");
+
+// Push batch
+reader.push(`
+~ batchNo: 1
+~ recordCount: 2
+---
+~ Ashok, 30, Delhi
+~ Priya, 25, Bangalore
+`);
 ```
 
-##### `[Symbol.iterator](): Iterator<IOObject>`
+##### `getResult(): IOStreamResult`
 
-Allows iteration over available items.
+Returns the accumulated stream result.
 
 ```typescript
-const reader = io.createStreamReader(schema);
-reader.push(chunk);
+const result = reader.getResult();
 
-for (const item of reader) {
-  processItem(item);
+// Iterate documents
+for (const doc of result) {
+  console.log(doc.header.get("batchNo"));
+}
+
+// Or iterate all items
+for (const item of result.items()) {
+  process(item);
 }
 ```
 
-##### `getIndex(): number`
+##### `onDocument(callback: (doc: IODocument) => void): void`
 
-Returns the total item count read.
-
-##### `getBatchNo(): number`
-
-Returns the current batch number (for batch streams).
-
-##### `getLastBatchMeta(): BatchMeta | null`
-
-Returns metadata from the last read batch.
+Registers callback for each document as it arrives (for memory-efficient processing).
 
 ```typescript
-interface BatchMeta {
-  batchNo: number;
-  recordCount: number;
-  timestamp?: number;
-  checksum?: string;
-  [key: string]: any;  // Additional custom headers
-}
+reader.onDocument((doc) => {
+  process(doc);
+  // doc can be GC'd after callback
+});
 ```
-
-##### `hasPartial(): boolean`
-
-Returns `true` if there's buffered partial data.
 
 ##### `clear(): void`
 
-Clears the internal buffer and resets state.
+Clears the accumulated result.
 
 ---
 
-## Wire Format
+### IOStreamResult
 
-### Real-time Mode (batchSize: 1)
+Collection of `IODocument`s received via streaming.
 
-Each item is sent immediately as a collection item:
+```typescript
+class IOStreamResult<T = any> implements Iterable<IODocument<T>> {
+  // Document access
+  readonly documents: IODocument<T>[];
+  getDocument(index: number): IODocument<T> | undefined;
+  lastDocument(): IODocument<T> | undefined;
 
+  // Iteration
+  [Symbol.iterator](): Iterator<IODocument<T>>;
+
+  // Flatten to items
+  items(): IterableIterator<IOObject<T>>;
+
+  // Merge into single document
+  toCompleteDocument(): IODocument<T>;
+
+  // Stats
+  readonly totalDocuments: number;
+  readonly totalItems: number;
+
+  // Errors
+  readonly errors: StreamError[];
+
+  // Conversion
+  toDocuments(): IODocument<T>[];
+  toItems(): IOObject<T>[];
+  toJSON(): any;
+}
 ```
-~ John, 20, Mumbai
-~ Ashok, 30, Delhi
-~ Priya, 25, Bangalore
+
+#### `toCompleteDocument()`
+
+Merges all received documents into a single `IODocument` with aggregated headers.
+
+```typescript
+const result = reader.getResult();
+const complete = result.toCompleteDocument();
+
+// Aggregated headers
+complete.header.get("recordCount");    // 250 (sum of all batches)
+complete.header.get("batchCount");     // 3 (total batches)
+complete.header.get("firstBatchNo");   // 1
+complete.header.get("lastBatchNo");    // 3
+complete.header.get("startTime");      // First timestamp
+complete.header.get("endTime");        // Last timestamp
+
+// All items in one collection
+for (const item of complete.body) {
+  process(item);
+}
 ```
 
-- `~` marks collection item
-- Newline terminates each item
-- Minimal overhead, lowest latency
+##### Header Aggregation Rules
 
-### Batch Mode (batchSize > 1)
+| Header | Aggregation |
+|--------|-------------|
+| `recordCount` | Sum of all batch counts |
+| `batchCount` | Number of documents |
+| `firstBatchNo` | First batch number |
+| `lastBatchNo` | Last batch number |
+| `startTime` | First timestamp |
+| `endTime` | Last timestamp |
+| `checksum` | Recomputed over all items |
+| Custom headers | Last value wins |
 
-Items are grouped with a metadata header:
+---
 
-```
+## Batch Headers
+
+When using batch mode (`batchSize > 1`), each document includes metadata headers:
+
+```ruby
 ~ batchNo: 1
-~ recordCount: 3
+~ recordCount: 100
 ~ timestamp: 1733500000
+~ checksum: a1b2c3d4
 ---
 ~ John, 20, Mumbai
 ~ Ashok, 30, Delhi
-~ Priya, 25, Bangalore
+...
 ```
 
-#### Header Fields
+### Standard Headers
 
-| Field | Type | Description |
-|-------|------|-------------|
+| Header | Type | Description |
+|--------|------|-------------|
 | `batchNo` | int | Sequential batch number (1-based) |
 | `recordCount` | int | Number of items in this batch |
 | `timestamp` | int | Unix timestamp when batch was created |
 | `checksum` | string | Optional data integrity checksum |
 
-- Standard IO document structure
-- `---` separates header from data
-- Fully compatible with `io.parse()`
-- Header accessible via `doc.header.get("batchNo")`
+### Custom Headers
 
-### Reader Auto-Detection
-
-The reader automatically detects the format:
+Add any custom headers as needed:
 
 ```typescript
-const reader = io.createStreamReader(schema);
-
-// Handles both formats transparently
-reader.push("~ John, 20, Mumbai\n");  // Real-time item
-reader.push("~ batchNo: 1\n~ recordCount: 2\n---\n~ A, 1\n~ B, 2\n");  // Batch
+const writer = io.createStreamWriter(schema, {
+  batchSize: 100,
+  customHeaders: {
+    source: "sensor-1",
+    version: "2.0",
+  }
+});
 ```
 
 ---
 
 ## Resume Mechanism
-
-The streaming API supports resumption after disconnection.
 
 ### Writer Side
 
@@ -296,7 +369,7 @@ The streaming API supports resumption after disconnection.
 // Initial stream
 const writer = io.createStreamWriter(schema, { batchSize: 100 });
 
-// After reconnect - resume from where we left off
+// After reconnect - resume from checkpoint
 const writer = io.createStreamWriter(schema, {
   batchSize: 100,
   startIndex: lastSentIndex,
@@ -309,50 +382,16 @@ const writer = io.createStreamWriter(schema, {
 ```typescript
 const reader = io.createStreamReader(schema);
 
-// On disconnect, save checkpoint
+// Save checkpoint on disconnect
+const lastDoc = reader.getResult().lastDocument();
 const checkpoint = {
-  index: reader.getIndex(),
-  batchNo: reader.getBatchNo(),
+  batchNo: lastDoc?.header.get("batchNo"),
+  index: reader.getResult().totalItems,
 };
 saveCheckpoint(checkpoint);
 
-// On reconnect, request resume from checkpoint
+// Request resume from sender
 requestResume(checkpoint);
-```
-
----
-
-## Data Integrity
-
-### Record Count Validation
-
-```typescript
-const reader = io.createStreamReader(schema, {
-  validateRecordCount: true  // default
-});
-
-// If batch header says recordCount: 10 but only 8 items arrive,
-// throws IOValidationError
-```
-
-### Checksum Validation
-
-```typescript
-const writer = io.createStreamWriter(schema, {
-  batchSize: 100,
-  includeChecksum: true
-});
-
-// Output includes checksum:
-// ~ batchNo: 1
-// ~ recordCount: 100
-// ~ checksum: "a1b2c3d4"
-// ---
-// ...
-
-const reader = io.createStreamReader(schema, {
-  validateChecksum: true  // Validates on read
-});
 ```
 
 ---
@@ -367,7 +406,7 @@ Validation errors throw immediately:
 const writer = io.createStreamWriter("name, age:int, city");
 
 try {
-  writer.write({ name: "John", age: "not a number", city: "Mumbai" });
+  writer.write({ name: "John", age: "invalid", city: "Mumbai" });
 } catch (error) {
   if (error instanceof IOValidationError) {
     console.error("Validation failed:", error.message);
@@ -377,70 +416,62 @@ try {
 
 ### Reader Errors
 
-Error handling is controlled by the `onError` option:
+Controlled by `onError` option:
 
 | Mode | Behavior |
 |------|----------|
 | `'stop'` | Throws error, stops processing (default) |
-| `'skip'` | Skips invalid item, continues to next |
-| `'emit'` | Yields error object, continues processing |
+| `'skip'` | Skips invalid document, continues |
+| `'emit'` | Adds to `result.errors`, continues |
 
 ```typescript
-// Skip invalid items
-const reader = io.createStreamReader(schema, { onError: 'skip' });
-
-// Emit errors inline
 const reader = io.createStreamReader(schema, { onError: 'emit' });
-for (const result of reader) {
-  if (result instanceof Error) {
-    console.error("Parse error:", result);
-  } else {
-    processItem(result);
-  }
-}
+
+reader.push(validDoc);
+reader.push(invalidDoc);  // Added to errors
+reader.push(validDoc);
+
+const result = reader.getResult();
+console.log(result.errors);  // [StreamError for invalidDoc]
 ```
 
 ---
 
-## Complete Example
+## Complete Examples
 
-### Sender
+### Sender (Real-time)
 
 ```typescript
 import io from 'internet-object';
 
-const schema = "id:int, name:string, email:string, active:bool";
-
-// Real-time mode for live updates
+const schema = "id:int, name:string, email:string";
 const writer = io.createStreamWriter(schema);
 
 for (const user of users) {
-  const chunk = writer.write(user);
-  sendToTransport(chunk);  // Sends immediately
+  const doc = writer.write(user);
+  sendToTransport(doc);  // Immediate send
 }
 ```
 
-### Sender (Batch Mode)
+### Sender (Batch)
 
 ```typescript
 import io from 'internet-object';
 
-const schema = "id:int, name:string, email:string, active:bool";
-
-// Batch mode for bulk transfer
+const schema = "id:int, name:string, email:string";
 const writer = io.createStreamWriter(schema, {
   batchSize: 100,
   includeTimestamp: true,
 });
 
 for (const user of users) {
-  const batch = writer.write(user);
-  if (batch) {
-    await sendToTransport(batch);
+  const doc = writer.write(user);
+  if (doc) {
+    await sendToTransport(doc);
   }
 }
 
-// Send remaining items
+// Send remaining
 const remaining = writer.flush();
 if (remaining) {
   await sendToTransport(remaining);
@@ -452,72 +483,75 @@ if (remaining) {
 ```typescript
 import io from 'internet-object';
 
-const schema = "id:int, name:string, email:string, active:bool";
+const schema = "id:int, name:string, email:string";
 const reader = io.createStreamReader(schema);
 
-transport.onData((chunk) => {
-  reader.push(chunk);
+transport.onData((docString) => {
+  reader.push(docString);
+});
 
-  for (const user of reader) {
-    // user is IOObject with full keys
-    console.log(user.id, user.name, user.email, user.active);
-    saveToDatabase(user);
+transport.onEnd(() => {
+  const result = reader.getResult();
+
+  // Option 1: Process per document
+  for (const doc of result) {
+    console.log(`Batch ${doc.header.get("batchNo")}`);
+    for (const item of doc.body) {
+      saveToDatabase(item);
+    }
   }
+
+  // Option 2: Get merged document
+  const complete = result.toCompleteDocument();
+  console.log(`Total: ${complete.header.get("recordCount")} items`);
+  console.log(`Batches: ${complete.header.get("batchCount")}`);
+});
+```
+
+### Memory-Efficient Processing
+
+```typescript
+const reader = io.createStreamReader(schema);
+
+// Process and discard each document
+reader.onDocument((doc) => {
+  for (const item of doc.body) {
+    process(item);
+  }
+  // doc is released after callback
 });
 
-transport.onDisconnect(() => {
-  saveCheckpoint({
-    index: reader.getIndex(),
-    batchNo: reader.getBatchNo(),
-  });
-});
-
-transport.onReconnect(() => {
-  const checkpoint = loadCheckpoint();
-  requestResume(checkpoint);
+transport.onData((docString) => {
+  reader.push(docString);
 });
 ```
 
 ---
 
-## Choosing Real-time vs Batch Mode
+## Choosing Real-time vs Batch
 
 | Scenario | batchSize | Why |
 |----------|-----------|-----|
 | Live updates, chat | 1 | Lowest latency |
 | Sensor data, logs | 1 | Real-time delivery |
 | Bulk data transfer | 100-1000 | Throughput optimization |
-| API pagination | Page size | Natural batch boundaries |
+| API pagination | Page size | Natural boundaries |
 | Unreliable network | 50-100 | Batch-level recovery |
-
-### Performance Comparison
-
-```
-Real-time (batchSize: 1) - 10,000 items:
-  - 10,000 send() calls
-  - Higher per-item overhead
-  - Lowest latency
-
-Batch (batchSize: 100) - 10,000 items:
-  - 100 send() calls
-  - Lower overhead
-  - 5-10x better throughput
-```
 
 ---
 
 ## Design Decisions
 
-1. **Unified API**: Single `createStreamWriter`/`createStreamReader` handles both real-time and batch modes. Batching is a configuration option, not a separate API.
+1. **Document-Based Streaming**: Each streamed unit is a complete `IODocument`, reusing existing classes.
 
-2. **External Schema**: Schema is not transmitted in the stream to minimize bandwidth. Schema versioning is handled at the application level.
+2. **Unified API**: Single `createStreamWriter`/`createStreamReader` handles both real-time and batch modes via `batchSize` option.
 
-3. **Automatic Format Detection**: Reader auto-detects real-time vs batch format, so receivers don't need to know sender's configuration.
+3. **IOStreamResult**: Collects documents, provides iteration, and merges via `toCompleteDocument()`.
 
-4. **Standard IO Document Structure**: Batch headers use standard IO syntax (`~ key: value` + `---`), making batches parseable with regular `io.parse()`.
+4. **Smart Header Aggregation**: `toCompleteDocument()` computes meaningful aggregate headers (recordCount, batchCount, time range).
 
-5. **Transparent Iteration**: Users iterate over items regardless of wire format. Batching is invisible to the consumer.
+5. **External Schema**: Schema shared out-of-band, not in stream, minimizing bandwidth.
 
-6. **Atomic Batches**: In batch mode, entire batches are atomic units. Simplifies error handling and provides natural checkpointing.
+6. **Transport Agnostic**: Works with any transport - TCP, WebSocket, HTTP, files, IPC.
 
-7. **Transport Agnostic**: Works with any transport - TCP, WebSocket, HTTP streaming, files, IPC, etc.
+7. **Consistent Mental Model**: Same patterns as `io.parse()` - developers learn once, use everywhere.
