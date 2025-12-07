@@ -8,8 +8,8 @@ The Streaming API provides transport-agnostic streaming serialization and deseri
 
 - **Transport Agnostic**: Pure serialization/deserialization - no HTTP, WebSocket, or transport layer dependencies
 - **External Schema**: Schema definitions are shared externally, not embedded in the stream
-- **Document-Based**: Each streamed unit is a complete `IODocument`
-- **Unified API**: Single API handles both real-time and batch streaming
+- **Three Modes**: Real-time (immediate), Batch (grouped with headers), Chunk (header-once, minimal bandwidth)
+- **Unified API**: Single API handles all streaming modes
 - **Developer-Friendly**: Reuses existing `IODocument`, `IOObject` classes - no new concepts
 
 ---
@@ -37,14 +37,89 @@ Writer                              Reader
 
 ### Wire Format
 
-Each streamed unit is a complete IO document. Two modes:
+The streaming API supports three modes with different bandwidth/complexity tradeoffs:
 
-**Real-time Mode** (single items):
+---
+
+#### 1. Real-time Mode (single items)
+
+Each item is sent as a complete single-item document:
+
 ```ruby
 ~ John, 20, Mumbai
 ```
 
-**Batch Mode** (with headers):
+Use when: Low latency is critical, items must be processed immediately.
+
+---
+
+#### 2. Batch Mode (with headers per batch)
+
+Items are grouped into batches, each with metadata headers:
+
+```ruby
+~ batchNo: 1
+~ recordCount: 3
+~ timestamp: 1733500000
+---
+~ John, 20, Mumbai
+~ Ashok, 30, Delhi
+~ Priya, 25, Bangalore
+```
+
+Use when: Resume support needed, checksums required, moderate batching.
+
+---
+
+#### 3. Chunk Mode (header-once, minimal bandwidth) ⭐
+
+Send header once, then stream only validated record lines:
+
+**Initial header document:**
+```ruby
+~ streamId: abc123
+~ startTime: 1733500000
+~ totalRecords: 10000
+---
+```
+
+**Then stream individual chunks (just the record lines):**
+```ruby
+~ John, 20, Mumbai
+~ Ashok, 30, Delhi
+~ Priya, 25, Bangalore
+...
+```
+
+**Final footer (optional):**
+```ruby
+---
+~ endTime: 1733500100
+~ recordCount: 10000
+~ checksum: a1b2c3d4
+```
+
+This mode minimizes bandwidth by:
+- Sending header metadata only once at the start
+- Streaming pure data lines without repeated headers
+- Optional footer for verification
+
+Use when: Maximum bandwidth efficiency is critical, large datasets.
+
+---
+
+### Mode Comparison
+
+| Mode | Overhead | Resume | Checksum | Use Case |
+|------|----------|--------|----------|----------|
+| Real-time | None | No | No | Live events, low latency |
+| Batch | Per batch | Yes | Per batch | Reliable transfer, moderate size |
+| Chunk | Once | Via footer | End only | Large datasets, bandwidth critical |
+
+---
+
+### Standard Wire Format (Batch Mode)
+
 ```ruby
 ~ batchNo: 1
 ~ recordCount: 3
@@ -78,8 +153,9 @@ const writer = io.createStreamWriter(schema, options?);
 
 ```typescript
 interface StreamWriterOptions {
-  // Batching control
-  batchSize?: number;           // Items per batch (default: 1 = real-time)
+  // Mode control
+  mode?: 'realtime' | 'batch' | 'chunk';  // Streaming mode (default: 'realtime')
+  batchSize?: number;           // Items per batch (only for 'batch' mode, default: 100)
 
   // Resume support
   startIndex?: number;          // Starting item index (default: 0)
@@ -88,37 +164,80 @@ interface StreamWriterOptions {
   // Validation
   validate?: boolean;           // Validate before serializing (default: true)
 
-  // Batch headers (only when batchSize > 1)
+  // Headers (batch and chunk modes)
   includeTimestamp?: boolean;   // Add timestamp (default: true)
   includeChecksum?: boolean;    // Add checksum (default: false)
+
+  // Chunk mode specific
+  streamId?: string;            // Unique stream identifier
+  totalRecords?: number;        // Expected total (if known)
+  customHeaders?: Record<string, any>;  // Additional headers
 }
 ```
 
 #### Methods
 
-##### `write(item: object): string | null`
+##### `getHeader(): string` (Chunk mode only)
 
-Serializes an item. Returns complete document string immediately in real-time mode, or `null` while buffering in batch mode.
+Returns the header document to send at the start of the stream.
 
 ```typescript
-// Real-time mode (batchSize: 1)
+const writer = io.createStreamWriter(schema, {
+  mode: 'chunk',
+  streamId: 'abc123',
+  totalRecords: 10000,
+  customHeaders: { source: 'database', version: 2 }
+});
+
+const header = writer.getHeader();
+// Returns:
+// ~ streamId: abc123
+// ~ startTime: 1733500000
+// ~ totalRecords: 10000
+// ~ source: database
+// ~ version: 2
+// ---
+
+send(header);
+```
+
+##### `write(item: object): string | null`
+
+Serializes an item. Behavior depends on mode:
+
+```typescript
+// Real-time mode (default)
 const writer = io.createStreamWriter(schema);
 const doc = writer.write({ name: "John", age: 20, city: "Mumbai" });
 // Returns: "~ John, 20, Mumbai"
 
-// Batch mode (batchSize: 3)
-const writer = io.createStreamWriter(schema, { batchSize: 3 });
+// Batch mode
+const writer = io.createStreamWriter(schema, { mode: 'batch', batchSize: 3 });
 writer.write({ name: "John", age: 20, city: "Mumbai" });   // null
 writer.write({ name: "Ashok", age: 30, city: "Delhi" });   // null
 const doc = writer.write({ name: "Priya", age: 25, city: "Bangalore" });
-// Returns complete batch document:
-// ~ batchNo: 1
-// ~ recordCount: 3
-// ~ timestamp: 1733500000
+// Returns complete batch document with headers
+
+// Chunk mode - returns just the record line
+const writer = io.createStreamWriter(schema, { mode: 'chunk' });
+const line = writer.write({ name: "John", age: 20, city: "Mumbai" });
+// Returns: "~ John, 20, Mumbai"
+// (Same as realtime, but use getHeader() first and getFooter() last)
+```
+
+##### `getFooter(): string` (Chunk mode only)
+
+Returns the footer document with final stats.
+
+```typescript
+const footer = writer.getFooter();
+// Returns:
 // ---
-// ~ John, 20, Mumbai
-// ~ Ashok, 30, Delhi
-// ~ Priya, 25, Bangalore
+// ~ endTime: 1733500100
+// ~ recordCount: 10000
+// ~ checksum: a1b2c3d4
+
+send(footer);
 ```
 
 ##### `writeMany(items: Iterable<object>): Generator<string>`
@@ -183,6 +302,9 @@ const reader = io.createStreamReader(schema, options?);
 
 ```typescript
 interface StreamReaderOptions {
+  // Mode
+  mode?: 'auto' | 'realtime' | 'batch' | 'chunk';  // (default: 'auto')
+
   // Validation
   validate?: boolean;               // Validate after parsing (default: true)
   validateChecksum?: boolean;       // Validate checksum if present (default: true)
@@ -195,17 +317,34 @@ interface StreamReaderOptions {
 
 #### Methods
 
+##### `pushHeader(headerString: string): void` (Chunk mode only)
+
+Pushes the initial header document. Call this first in chunk mode.
+
+```typescript
+const reader = io.createStreamReader(schema, { mode: 'chunk' });
+
+// First, push the header
+reader.pushHeader(`
+~ streamId: abc123
+~ startTime: 1733500000
+~ totalRecords: 10000
+---
+`);
+
+// Header is now available
+console.log(reader.getStreamId());  // "abc123"
+```
+
 ##### `push(docString: string): void`
 
-Pushes a complete IO document string to the reader.
+Pushes document or record lines to the reader.
 
 ```typescript
 const reader = io.createStreamReader(schema);
 
-// Push single item
+// Real-time/Batch mode: Push complete documents
 reader.push("~ John, 20, Mumbai");
-
-// Push batch
 reader.push(`
 ~ batchNo: 1
 ~ recordCount: 2
@@ -213,6 +352,30 @@ reader.push(`
 ~ Ashok, 30, Delhi
 ~ Priya, 25, Bangalore
 `);
+
+// Chunk mode: Push individual record lines
+const reader = io.createStreamReader(schema, { mode: 'chunk' });
+reader.pushHeader(headerDoc);
+reader.push("~ John, 20, Mumbai");
+reader.push("~ Ashok, 30, Delhi");
+reader.push("~ Priya, 25, Bangalore");
+```
+
+##### `pushFooter(footerString: string): void` (Chunk mode only)
+
+Pushes the final footer document with verification.
+
+```typescript
+reader.pushFooter(`
+---
+~ endTime: 1733500100
+~ recordCount: 10000
+~ checksum: a1b2c3d4
+`);
+
+// Footer validates:
+// - recordCount matches items received
+// - checksum matches computed checksum
 ```
 
 ##### `getResult(): IOStreamResult`
@@ -358,6 +521,150 @@ const writer = io.createStreamWriter(schema, {
   }
 });
 ```
+
+---
+
+## Chunk Mode (Bandwidth Optimized)
+
+Chunk mode sends the header once at the start, then streams only validated record lines, with an optional footer for verification. This is the most bandwidth-efficient mode.
+
+### Wire Format
+
+```
+┌─────────────────────────────────┐
+│  Header (once at start)         │
+│  ~ streamId: abc123             │
+│  ~ startTime: 1733500000        │
+│  ~ totalRecords: 10000          │
+│  ---                            │
+└─────────────────────────────────┘
+           ↓
+┌─────────────────────────────────┐
+│  Record chunks (streamed)       │
+│  ~ John, 20, Mumbai             │
+│  ~ Ashok, 30, Delhi             │
+│  ~ Priya, 25, Bangalore         │
+│  ... (thousands more)           │
+└─────────────────────────────────┘
+           ↓
+┌─────────────────────────────────┐
+│  Footer (optional, at end)      │
+│  ---                            │
+│  ~ endTime: 1733500100          │
+│  ~ recordCount: 10000           │
+│  ~ checksum: a1b2c3d4           │
+└─────────────────────────────────┘
+```
+
+### Chunk Mode Writer
+
+```typescript
+import io from 'internet-object';
+
+const schema = "id:int, name:string, email:string, active:bool";
+
+const writer = io.createStreamWriter(schema, {
+  mode: 'chunk',
+  streamId: 'user-export-2024',
+  totalRecords: users.length,  // Optional: if known upfront
+  includeChecksum: true,
+  customHeaders: {
+    source: 'database',
+    exportVersion: 1
+  }
+});
+
+// 1. Send header first
+const header = writer.getHeader();
+send(header);
+// Sends:
+// ~ streamId: user-export-2024
+// ~ startTime: 1733500000
+// ~ totalRecords: 10000
+// ~ source: database
+// ~ exportVersion: 1
+// ---
+
+// 2. Stream record lines
+for (const user of users) {
+  const line = writer.write(user);  // Returns "~ 1, John, john@example.com, T"
+  send(line);
+}
+
+// 3. Send footer with verification
+const footer = writer.getFooter();
+send(footer);
+// Sends:
+// ---
+// ~ endTime: 1733500100
+// ~ recordCount: 10000
+// ~ checksum: a1b2c3d4
+```
+
+### Chunk Mode Reader
+
+```typescript
+import io from 'internet-object';
+
+const schema = "id:int, name:string, email:string, active:bool";
+
+const reader = io.createStreamReader(schema, { mode: 'chunk' });
+
+// Register callback for each record
+reader.onItem((item) => {
+  console.log(`Received: ${item.name}`);
+  processUser(item);
+});
+
+// 1. Receive and push header
+reader.pushHeader(headerString);
+console.log(`Stream ${reader.getStreamId()} started`);
+console.log(`Expecting ${reader.getExpectedTotal()} records`);
+
+// 2. Receive and push record lines
+for await (const line of receiveLines()) {
+  reader.push(line);
+}
+
+// 3. Receive and push footer (validates count and checksum)
+reader.pushFooter(footerString);
+
+// Get final result
+const result = reader.getResult();
+console.log(`Received ${result.totalItems} items`);
+console.log(`Stream header:`, result.header);  // Original header values
+console.log(`Stream footer:`, result.footer);  // Footer values (endTime, etc.)
+```
+
+### Bandwidth Comparison
+
+For 10,000 records with 100-record batches:
+
+| Mode | Header Bytes | Per-Record | Footer | Total Overhead |
+|------|--------------|------------|--------|----------------|
+| Batch | 100 × ~50 = 5KB | 0 | 0 | ~5KB |
+| Chunk | ~100 | 0 | ~50 | ~150 bytes |
+
+**Chunk mode reduces overhead by ~97%** for large datasets.
+
+### Chunk Mode Headers
+
+**Header Document (start):**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `streamId` | string | Unique stream identifier |
+| `startTime` | int | Unix timestamp when stream started |
+| `totalRecords` | int | Expected total (if known) |
+| Custom fields | any | Application-specific metadata |
+
+**Footer Document (end):**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `endTime` | int | Unix timestamp when stream ended |
+| `recordCount` | int | Actual records sent |
+| `checksum` | string | Checksum of all records (optional) |
 
 ---
 
@@ -528,15 +835,254 @@ transport.onData((docString) => {
 
 ---
 
-## Choosing Real-time vs Batch
+## Choosing the Right Mode
 
-| Scenario | batchSize | Why |
-|----------|-----------|-----|
-| Live updates, chat | 1 | Lowest latency |
-| Sensor data, logs | 1 | Real-time delivery |
-| Bulk data transfer | 100-1000 | Throughput optimization |
-| API pagination | Page size | Natural boundaries |
-| Unreliable network | 50-100 | Batch-level recovery |
+| Scenario | Mode | Options | Why |
+|----------|------|---------|-----|
+| Live updates, chat | realtime | - | Lowest latency |
+| Sensor data, logs | realtime | - | Real-time delivery |
+| Bulk data, moderate size | batch | batchSize: 100-1000 | Resume support, checksums |
+| API pagination | batch | batchSize: page size | Natural boundaries |
+| Unreliable network | batch | batchSize: 50-100 | Batch-level recovery |
+| Large exports (100K+ records) | **chunk** | includeChecksum: true | Minimal bandwidth |
+| Database migrations | **chunk** | totalRecords: count | Header-once efficiency |
+| File downloads | **chunk** | - | No per-record overhead |
+
+---
+
+## Real-World Examples
+
+### 1. Bulk Data Export (HTTP)
+
+**Scenario**: A user wants to download their complete transaction history (100,000+ records).
+**Why Streaming?**
+- **Memory Efficiency**: The server cannot load 100k records into RAM at once.
+- **Time-to-First-Byte**: The download starts immediately, not after the query finishes.
+- **Bandwidth**: Chunk mode minimizes overhead for the large dataset.
+
+#### Server (Node.js / Express)
+
+```typescript
+import express from 'express';
+import io from 'internet-object';
+
+const app = express();
+
+// Schema for export
+const transactionSchema = "id:int, date:date, amount:decimal, merchant:string, status:string";
+
+app.get('/api/export/transactions', async (req, res) => {
+  // Set headers for file download
+  res.setHeader('Content-Type', 'application/x-internet-object');
+  res.setHeader('Content-Disposition', 'attachment; filename="transactions.io"');
+  res.setHeader('Transfer-Encoding', 'chunked');
+
+  const totalRecords = await db.transactions.count({ userId: req.user.id });
+
+  // Use Chunk Mode for maximum efficiency
+  const writer = io.createStreamWriter(transactionSchema, {
+    mode: 'chunk',
+    streamId: `export-${req.user.id}-${Date.now()}`,
+    totalRecords: totalRecords,
+    includeChecksum: true
+  });
+
+  // 1. Write Header
+  res.write(writer.getHeader());
+
+  // 2. Stream Records (Memory efficient: one record at a time)
+  const cursor = db.transactions.find({ userId: req.user.id }).cursor();
+
+  for await (const txn of cursor) {
+    // Returns minimal string: "~ 123, 2023-12-01, 50.00, Amazon, COMPLETED"
+    const line = writer.write(txn);
+    res.write(line + '\n');
+  }
+
+  // 3. Write Footer
+  res.write(writer.getFooter());
+
+  res.end();
+});
+```
+
+#### Client (Node.js Script / Service)
+
+```typescript
+import io from 'internet-object';
+import { pipeline } from 'stream/promises';
+import fs from 'fs';
+
+// Service consuming the stream
+async function downloadExport() {
+  const response = await fetch('https://api.example.com/export/transactions');
+  const reader = io.createStreamReader(transactionSchema, { mode: 'chunk' });
+
+  const fileStream = fs.createWriteStream('./local-transactions.io');
+
+  // Process stream
+  const streamReader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+
+  while (true) {
+    const { done, value } = await streamReader.read();
+    if (done) break;
+
+    const chunk = decoder.decode(value, { stream: true });
+
+    // 1. Save raw data to file immediately
+    fileStream.write(chunk);
+
+    // 2. Parse for validation/progress (optional)
+    buffer += chunk;
+    const lines = buffer.split('\n');
+    buffer = lines.pop() || '';
+
+    for (const line of lines) {
+      if (line.trim() === '---') {
+        // Handle header/footer boundaries
+        if (!reader.hasHeader()) reader.pushHeader(buffer + '---');
+        else reader.pushFooter(buffer + '---');
+        buffer = '';
+      } else if (line.trim()) {
+        reader.push(line);
+      }
+    }
+  }
+
+  console.log(`Download complete: ${reader.getResult().totalItems} records verified.`);
+}
+```
+
+---
+
+### 2. Live System Monitoring (WebSocket)
+
+**Scenario**: A dashboard displaying real-time CPU and memory usage from a server cluster.
+**Why Streaming?**
+- **Latency**: Updates must be pushed immediately.
+- **Overhead**: Real-time mode sends minimal bytes per update.
+
+#### Server (Node.js)
+
+```typescript
+import { WebSocketServer } from 'ws';
+import io from 'internet-object';
+
+const wss = new WebSocketServer({ port: 8080 });
+const metricSchema = "host:string, cpu:decimal, mem:int, ts:int";
+
+wss.on('connection', (ws) => {
+  // Real-time mode: No batching, immediate send
+  const writer = io.createStreamWriter(metricSchema, { mode: 'realtime' });
+
+  const interval = setInterval(() => {
+    const metrics = getSystemMetrics(); // { host: 'web-1', cpu: 45.2, ... }
+
+    // Serializes to: "~ web-1, 45.2, 1024, 1733500123"
+    const doc = writer.write(metrics);
+    ws.send(doc);
+  }, 1000);
+
+  ws.on('close', () => clearInterval(interval));
+});
+```
+
+#### Client (Dashboard)
+
+```typescript
+import io from 'internet-object';
+
+const metricSchema = "host:string, cpu:decimal, mem:int, ts:int";
+
+function connectDashboard() {
+  const ws = new WebSocket('ws://monitoring-api');
+  const reader = io.createStreamReader(metricSchema, { mode: 'realtime' });
+
+  reader.onDocument((doc) => {
+    // Update UI immediately
+    const metric = doc.body[0];
+    updateChart(metric.host, metric.cpu);
+  });
+
+  ws.onmessage = (event) => {
+    reader.push(event.data);
+  };
+}
+```
+
+---
+
+### 3. Batch Processing Pipeline (File)
+
+**Scenario**: Processing a massive log file uploaded by a client.
+**Why Streaming?**
+- **Processing**: Parse and process logs in chunks to avoid blocking the event loop.
+
+#### Worker (Node.js)
+
+```typescript
+import { createReadStream } from 'fs';
+import { createInterface } from 'readline';
+import io from 'internet-object';
+
+const logSchema = "level:string, msg:string, ts:int";
+
+async function processLogFile(filePath: string) {
+  const reader = io.createStreamReader(logSchema);
+  const fileStream = createReadStream(filePath);
+  const rl = createInterface({ input: fileStream });
+
+  let processedCount = 0;
+
+  // Process line-by-line
+  for await (const line of rl) {
+    // Reader handles buffering and batch detection automatically
+    reader.push(line);
+
+    // Check if we have complete documents ready
+    const result = reader.getResult();
+    if (result.totalDocuments > 0) {
+      for (const doc of result) {
+        await insertToDatabase(doc.body); // Bulk insert
+        processedCount += doc.header.get("recordCount");
+      }
+      reader.clear(); // Free memory
+    }
+  }
+  console.log(`Processed ${processedCount} logs`);
+}
+```
+
+---
+
+## Schema Sharing Best Practices
+
+**Recommended**: Define schema separately at both ends.
+
+```typescript
+// shared/schemas.ts (if using shared package)
+export const userSchema = "id:int, name:string, email:string, active:bool";
+
+// Or define in API documentation / contract
+// Server and client both use the same schema string
+```
+
+**Not Recommended** (but supported): Embedding schema in document header.
+
+```io
+~ $schema: { id:int, name:string, email:string, active:bool }
+---
+~ 1, John, john@example.com, T
+~ 2, Jane, jane@example.com, T
+```
+
+**Why separate schemas are better**:
+1. Reduces bandwidth - schema not repeated in every batch
+2. Enables schema versioning at application level
+3. Allows compile-time type checking (TypeScript)
+4. Clear contract between client and server
 
 ---
 
