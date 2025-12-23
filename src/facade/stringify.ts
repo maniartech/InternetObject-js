@@ -2,6 +2,7 @@ import Definitions from '../core/definitions';
 import InternetObject from '../core/internet-object';
 import Collection from '../core/collection';
 import Document from '../core/document';
+import Decimal from '../core/decimal/decimal';
 import Schema from '../schema/schema';
 import MemberDef from '../schema/types/memberdef';
 import TypedefRegistry from '../schema/typedef-registry';
@@ -192,6 +193,11 @@ function stringifyAnyValue(val: any, defs?: Definitions): string {
   // Handle number
   if (typeof val === 'number') {
     return String(val);
+  }
+
+  // Handle Decimal
+  if (val instanceof Decimal) {
+    return val.toString() + 'm';
   }
 
   // Handle string - use auto format for smart quoting
