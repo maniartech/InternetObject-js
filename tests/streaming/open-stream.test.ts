@@ -82,7 +82,7 @@ describe('openStream', () => {
     expect((items[0].data as any).toJSON()).toEqual({ emoji: emoji });
   });
 
-  it('demonstrates failure with multi-line strings', async () => {
+it('handles multi-line strings correctly', async () => {
     const source = stringSource([
       '---\n',
       '~ { name: "Multi", bio: "Line 1\nLine 2" }\n'
@@ -93,14 +93,45 @@ describe('openStream', () => {
       items.push(item);
     }
 
-    // Ideally, this should be 1 item.
-    // Currently, it splits at \n, so it tries to parse:
-    // 1. '~ { name: "Multi", bio: "Line 1' -> Error (Unclosed string)
-    // 2. 'Line 2" }' -> Error (Invalid syntax)
-    
-    // Let's verify it actually fails as expected (returns 2 error items)
+    expect(items).toHaveLength(1);
+    expect(items[0].error).toBeUndefined();
+    expect((items[0].data as any).toJSON()).toEqual({
+      name: "Multi",
+      bio: "Line 1\nLine 2"
+    });
+  });
+
+  it('handles multi-line strings containing tilde at start of line', async () => {
+    const source = stringSource([
+      '---\n',
+      '~ "Start\n',
+      '~ Middle\n',
+      'End"\n'
+    ]);
+
+    const items: StreamItem[] = [];
+    for await (const item of openStream(source)) {
+      items.push(item);
+    }
+
+    expect(items).toHaveLength(1);
+    expect(items[0].error).toBeUndefined();
+    expect((items[0].data as any).toJSON()).toEqual({ '0': "Start\n~ Middle\nEnd" });
+  });
+
+  it('handles multiple records on a single line', async () => {
+    const source = stringSource([
+      '---\n',
+      '~ John, 50 ~ Jane, 45\n'
+    ]);
+
+    const items: StreamItem[] = [];
+    for await (const item of openStream(source)) {
+      items.push(item);
+    }
+
     expect(items).toHaveLength(2);
-    expect(items[0].error).toBeDefined();
-    expect(items[1].error).toBeDefined();
+    expect((items[0].data as any).toJSON()).toEqual({ '0': 'John', '1': 50 });
+    expect((items[1].data as any).toJSON()).toEqual({ '0': 'Jane', '1': 45 });
   });
 });

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { ChunkDecoder } from '../../src/streaming/text';
+import { ChunkDecoder, updateStringState } from '../../src/streaming/text';
 
 describe('ChunkDecoder', () => {
   it('should decode simple strings passed as strings', () => {
@@ -48,5 +48,29 @@ describe('ChunkDecoder', () => {
 
     const decoded2 = decoder.decode(chunk2);
     expect(decoded2).toBe('🌍 World 🚀');
+  });
+});
+
+describe('updateStringState', () => {
+  it('toggles state on quotes', () => {
+    expect(updateStringState('"', false)).toBe(true);
+    expect(updateStringState('"', true)).toBe(false);
+    expect(updateStringState('abc', false)).toBe(false);
+    expect(updateStringState('abc', true)).toBe(true);
+  });
+
+  it('handles escaped quotes', () => {
+    expect(updateStringState('\\"', false)).toBe(false);
+    expect(updateStringState('a\\"b', true)).toBe(true);
+  });
+
+  it('handles complex strings', () => {
+    let state = false;
+    state = updateStringState('Start "', state);
+    expect(state).toBe(true);
+    state = updateStringState('Middle', state);
+    expect(state).toBe(true);
+    state = updateStringState('" End', state);
+    expect(state).toBe(false);
   });
 });

@@ -1,7 +1,7 @@
 import Definitions from '../core/definitions';
 import Schema from '../schema/schema';
 import parse from '../parser/index';
-import { ChunkDecoder, normalizeNewlines, splitLinesKeepRemainder } from './text';
+import { ChunkDecoder, normalizeNewlines, splitLinesKeepRemainder, updateStringState } from './text';
 import { toAsyncIterable } from './source';
 import { IOStreamSource, OpenStreamOptions, StreamItem } from './types';
 import IODocument from '../core/document';
@@ -30,6 +30,7 @@ export async function* openStream(
   // Data parsing state
   let currentSectionHeaderLine: string | null = null; // e.g. '--- $order'
   let pendingLines: string[] = [];
+  let inString = false;
   let remainder = '';
   const decoder = new ChunkDecoder();
 
@@ -42,6 +43,8 @@ export async function* openStream(
       pendingLines.join('\n'),
       '\n'
     ].join('');
+
+    // console.log('Flushing:', JSON.stringify(sectionText));
 
     pendingLines = [];
 
@@ -174,31 +177,34 @@ export async function* openStream(
       }
 
       // Data section handling
-      if (trimmed.length === 0) {
-        // keep empty lines (can be ignored safely)
-        continue;
-      }
-
       if (trimmed.startsWith('---')) {
         // flush previous section before switching
         const flushed = await flushPending();
         for (const item of flushed) yield item;
 
         currentSectionHeaderLine = trimmed === '---' ? null : trimmed;
+        inString = false;
         continue;
       }
 
-      // Collect data and comment lines.
-      // This is intentionally line-oriented for now; signature/buffering can evolve.
-      pendingLines.push(line);
+      if (trimmed.length === 0) {
+        // keep empty lines only if inside a string
+        if (inString) {
+          pendingLines.push(line);
+        }
+        continue;
+      }
 
-      // If we are in the default section (no explicit section header), we can flush per item line.
-      // This keeps memory bounded for common streaming patterns.
-      // Update: We now allow flushing for named sections too, assuming single-line records.
-      if (trimmed.startsWith('~') || trimmed.startsWith('#')) {
+      // If this line starts a new record (or comment), flush the accumulated previous record.
+      if (!inString && (trimmed.startsWith('~') || trimmed.startsWith('#'))) {
         const flushed = await flushPending();
         for (const item of flushed) yield item;
       }
+
+      inString = updateStringState(line, inString);
+
+      // Collect data and comment lines.
+      pendingLines.push(line);
     }
   }
 
@@ -207,10 +213,17 @@ export async function* openStream(
     // treat remainder as a last line
     if (!headerDone) {
       headerLines.push(remainder);
-      headerDone = true;
     } else {
       pendingLines.push(remainder);
     }
+  }
+
+  // If we reached EOF and never saw a section separator,
+  // everything in headerLines is actually data (or mixed).
+  if (!headerDone && headerLines.length > 0) {
+    pendingLines = headerLines;
+    headerLines = [];
+    headerDone = true;
   }
 
   const flushed = await flushPending();
