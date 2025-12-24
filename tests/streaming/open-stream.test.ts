@@ -48,4 +48,59 @@ describe('openStream', () => {
 
     expect((items[2].data as any).toJSON()).toEqual({ id: 2 });
   });
+
+  it('handles multi-byte characters split across chunks', async () => {
+    const emoji = '🚀'; // F0 9F 86 80
+    // Use an object structure to make verification easier and consistent with other tests
+    const jsonStr = `{ "emoji": "${emoji}" }`;
+    const streamStr = `---\n~ ${jsonStr}\n`;
+    const bytes = new TextEncoder().encode(streamStr);
+
+    // We want to split inside the emoji.
+    // Calculate offset to the emoji.
+    // "---\n~ { "emoji": "" is the prefix.
+    const prefix = '---\n~ { "emoji": "';
+    const prefixLen = prefix.length; // Should be 17
+
+    // Split 2 bytes into the emoji
+    const splitIndex = prefixLen + 2;
+
+    const chunk1 = bytes.slice(0, splitIndex);
+    const chunk2 = bytes.slice(splitIndex);
+
+    async function* byteSource() {
+      yield chunk1;
+      yield chunk2;
+    }
+
+    const items: StreamItem[] = [];
+    for await (const item of openStream(byteSource())) {
+      items.push(item);
+    }
+
+    expect(items).toHaveLength(1);
+    expect((items[0].data as any).toJSON()).toEqual({ emoji: emoji });
+  });
+
+  it('demonstrates failure with multi-line strings', async () => {
+    const source = stringSource([
+      '---\n',
+      '~ { name: "Multi", bio: "Line 1\nLine 2" }\n'
+    ]);
+
+    const items: StreamItem[] = [];
+    for await (const item of openStream(source)) {
+      items.push(item);
+    }
+
+    // Ideally, this should be 1 item.
+    // Currently, it splits at \n, so it tries to parse:
+    // 1. '~ { name: "Multi", bio: "Line 1' -> Error (Unclosed string)
+    // 2. 'Line 2" }' -> Error (Invalid syntax)
+    
+    // Let's verify it actually fails as expected (returns 2 error items)
+    expect(items).toHaveLength(2);
+    expect(items[0].error).toBeDefined();
+    expect(items[1].error).toBeDefined();
+  });
 });

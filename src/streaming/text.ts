@@ -1,12 +1,13 @@
 import { StreamChunk } from './types';
 
-export function decodeChunk(chunk: StreamChunk): string {
-  if (typeof chunk === 'string') return chunk;
-  if (chunk instanceof ArrayBuffer) {
-    return new TextDecoder().decode(new Uint8Array(chunk));
+export class ChunkDecoder {
+  private decoder = new TextDecoder('utf-8');
+
+  decode(chunk: StreamChunk): string {
+    if (typeof chunk === 'string') return chunk;
+    const bytes = chunk instanceof ArrayBuffer ? new Uint8Array(chunk) : chunk;
+    return this.decoder.decode(bytes, { stream: true });
   }
-  // Uint8Array
-  return new TextDecoder().decode(chunk);
 }
 
 export function normalizeNewlines(s: string): string {

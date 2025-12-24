@@ -1,7 +1,7 @@
 import Definitions from '../core/definitions';
 import Schema from '../schema/schema';
 import parse from '../parser/index';
-import { decodeChunk, normalizeNewlines, splitLinesKeepRemainder } from './text';
+import { ChunkDecoder, normalizeNewlines, splitLinesKeepRemainder } from './text';
 import { toAsyncIterable } from './source';
 import { IOStreamSource, OpenStreamOptions, StreamItem } from './types';
 import IODocument from '../core/document';
@@ -31,6 +31,7 @@ export async function* openStream(
   let currentSectionHeaderLine: string | null = null; // e.g. '--- $order'
   let pendingLines: string[] = [];
   let remainder = '';
+  const decoder = new ChunkDecoder();
 
   async function flushPending(): Promise<StreamItem[]> {
     if (pendingLines.length === 0) return [];
@@ -124,7 +125,7 @@ export async function* openStream(
   }
 
   for await (const chunk of toAsyncIterable(source)) {
-    const text = normalizeNewlines(decodeChunk(chunk));
+    const text = normalizeNewlines(decoder.decode(chunk));
     // console.log('openStream chunk:', text.length, 'chars');
     remainder += text;
 
