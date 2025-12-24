@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Legacy XHR Client Example</title>
+    <style>
+        body { font-family: sans-serif; padding: 20px; }
+        #output { background: #f0f0f0; padding: 10px; border: 1px solid #ccc; white-space: pre-wrap; height: 300px; overflow-y: auto; }
+        button { padding: 10px 20px; font-size: 16px; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <h1>Legacy XHR Client Example</h1>
+    <p>This example uses <code>XMLHttpRequest</code> and <code>createPushSource</code> to stream data from the server.</p>
+    <button id="startBtn">Start Streaming</button>
+    <div id="status">Ready</div>
+    <pre id="output"></pre>
+
+    <script type="module">
+        import { openStream, createPushSource } from '/dist/index.js';
+
+        const startBtn = document.getElementById('startBtn');
+        const output = document.getElementById('output');
+        const status = document.getElementById('status');
+
+        function log(msg) {
+            output.textContent += msg + '\n';
+            output.scrollTop = output.scrollHeight;
+        }
+
+        startBtn.addEventListener('click', () => {
+            startBtn.disabled = true;
+            output.textContent = '';
+            status.textContent = 'Streaming...';
+            runStream();
+        });
+
+        async function runStream() {
+            // 1. Create the bridge
+            const { source, push, close } = createPushSource();
+
+            // 2. Start the parser with the source
+            const stream = openStream(source);
+
+            // 3. Consume the stream (async loop)
+            // We start this immediately so it's ready to receive data pushed from XHR
+            const consumerPromise = (async () => {
+                try {
+                    for await (const item of stream) {
+                        // Use a replacer to handle BigInts if present
+                        const json = JSON.stringify(item.data, (key, value) =>
+                            typeof value === 'bigint' ? value.toString() : value
+                        );
+                        log(`Received: ${json} (Schema: ${item.schemaName})`);
+                    }
+                    log('Stream finished');
+                    status.textContent = 'Finished';
+                    startBtn.disabled = false;
+                } catch (err) {
+                    console.error('Stream error:', err);
+                    log(`Stream error: ${err.message}`);
+                    status.textContent = 'Error';
+                    startBtn.disabled = false;
+                }
+            })();
+
+            // 4. Drive the source with XHR events
+            const xhr = new XMLHttpRequest();
+            xhr.open('GET', '/stream');
+
+            // Track how much data we've processed
+            let seenBytes = 0;
+
+            xhr.onprogress = () => {
+                // Extract only the new part of the response
+                const newData = xhr.responseText.substring(seenBytes);
+                seenBytes = xhr.responseText.length;
+
+                if (newData) {
+                    // LINK: Push the new data into the stream source
+                    push(newData);
+                }
+            };
+
+            xhr.onload = () => {
+                close(); // Signal stream completion
+            };
+
+            xhr.onerror = () => {
+                close(new Error('Network Error')); // Signal error
+            };
+
+            xhr.send();
+
+            await consumerPromise;
+        }
+    </script>
+</body>
+</html>

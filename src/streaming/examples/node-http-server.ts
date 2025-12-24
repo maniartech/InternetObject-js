@@ -9,10 +9,17 @@
 */
 
 import http from 'node:http';
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import io from '../../facade';
 import Decimal from '../../core/decimal/decimal';
 import { createStreamWriter } from '../writer';
 import { nodeHttpTransport } from '../transports';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const projectRoot = path.resolve(__dirname, '../../../');
 
 const schemaDefs = io.defs`
   ~ $user: {id:int, name:{string, minLen:50}}
@@ -22,7 +29,38 @@ const schemaDefs = io.defs`
 const port = Number(process.env.PORT ?? '8787');
 
 http.createServer(async (req, res) => {
-  if (!req.url?.startsWith('/stream')) {
+  // CORS headers
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+
+  if (req.method === 'OPTIONS') {
+    res.writeHead(204);
+    res.end();
+    return;
+  }
+
+  const url = req.url || '/';
+
+  // Serve legacy client HTML
+  if (url === '/legacy-client') {
+    res.writeHead(200, { 'content-type': 'text/html' });
+    fs.createReadStream(path.join(__dirname, 'legacy-xhr-client.html')).pipe(res);
+    return;
+  }
+
+  // Serve dist files
+  if (url.startsWith('/dist/')) {
+    const filePath = path.join(projectRoot, url);
+    if (fs.existsSync(filePath)) {
+        const ext = path.extname(filePath);
+        const contentType = ext === '.js' ? 'application/javascript' : 'text/plain';
+        res.writeHead(200, { 'content-type': contentType });
+        fs.createReadStream(filePath).pipe(res);
+        return;
+    }
+  }
+
+  if (!url.startsWith('/stream')) {
     res.writeHead(404);
     res.end('not found');
     return;
@@ -58,4 +96,5 @@ http.createServer(async (req, res) => {
   res.end();
 }).listen(port, () => {
   console.log(`Streaming server on http://127.0.0.1:${port}/stream`);
+  console.log(`Legacy client on http://127.0.0.1:${port}/legacy-client`);
 });

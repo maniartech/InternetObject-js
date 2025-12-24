@@ -38,7 +38,7 @@ export { stringify                                  } from './facade/stringify';
 export { stringifyDocument, documentToObject        } from './facade/stringify-document';
 
 // Streaming
-export { openStream, createStreamWriter }           from './streaming';
+export { openStream, createStreamWriter, createPushSource, BufferTransport } from './streaming';
 export type { IOStreamTransport, IOStreamSource, StreamItem, OpenStreamOptions, StreamWriterOptions } from './streaming';
 
 // Main tag functions (also tree-shakable)
