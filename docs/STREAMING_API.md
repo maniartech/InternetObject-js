@@ -13,6 +13,22 @@ The Streaming API provides a robust, transport-agnostic protocol for streaming I
 
 ---
 
+## Comparison with JSON Streaming (NDJSON / JSONL)
+
+While JSON Streaming (NDJSON) is popular, Internet Object Streaming offers significant advantages for robust, production-grade systems:
+
+| Feature | Internet Object Streaming | JSON Streaming (NDJSON) |
+| :--- | :--- | :--- |
+| **Bandwidth Efficiency** | **High**. Keys are defined once in the header. Data rows are compact values (CSV-like). | **Low**. Keys are repeated for every single record. |
+| **Type Safety** | **Native**. Data is validated against schemas automatically during parsing. | **None**. Validation requires a separate step/library after parsing. |
+| **Multi-Type Streams** | **Native**. Can switch between User, Order, and Log records in one stream. | **Manual**. Requires a wrapper object (e.g. `{"type": "user", "data": ...}`) or complex logic. |
+| **Keep-Alive / Padding** | **Native**. Supports comments (`#`) which are ignored by the parser. | **Hack**. Requires sending empty objects `{}` or whitespace hacks. |
+| **Metadata** | **Header-First**. Metadata is separated from data in the header. | **Mixed**. Metadata usually mixed with data records. |
+| **Error Handling** | **Resilient**. Can emit typed `$error` records mid-stream without breaking the parser. | **Fragile**. Malformed JSON crashes the parser. Custom error objects require manual checks. |
+| **Batch Performance** | **Optimized**. Compact format reduces CPU/Memory usage for large batches. | **Heavy**. JSON parsing is CPU intensive and verbose for large datasets. |
+
+---
+
 ## Protocol Structure
 
 The stream consists of a **Header Chunk** (sent once) followed by a continuous flow of **Data Chunks**.
@@ -93,9 +109,42 @@ The client provides a high-level `AsyncIterable` interface. It handles buffering
 Opens a stream from a source (Response body, WebSocket, Node stream, etc.).
 
 #### Parameters
--   `source`: The data source (e.g., `fetch` response body).
+-   `source`: The data source. Can be:
+    -   `AsyncIterable<string | Uint8Array>` (e.g., Node.js Readable stream)
+    -   `ReadableStream<Uint8Array>` (e.g., Fetch API response body)
+    -   `string` (Raw string data)
 -   `definitions`: (Optional) Pre-shared schema definitions. Allows streaming without sending schemas in the header (useful for obfuscation/bandwidth).
 -   `options`: Configuration options.
+    -   `defaultSchema`: (string) Default schema name if not specified in header.
+    -   `maxBufferedChars`: (number) Safety limit for line buffering (default: 2MB).
+
+#### Buffering & Latency
+The parser buffers input until it encounters a complete line.
+-   **Data Lines (`~`)**: Flushed immediately to the application.
+-   **Comments (`#`)**: Flushed immediately (useful for keep-alive/padding).
+-   **Section Headers (`---`)**: Flushed immediately.
+
+This ensures low-latency delivery for live streams while maintaining efficient parsing for batch data.
+
+### `io.createPushSource()`
+
+A helper to bridge event-based sources (like `XMLHttpRequest` or `WebSocket` events) to the `AsyncIterable` required by `openStream`.
+
+> **Note**: This helper buffers data in memory. If the producer pushes faster than the consumer reads, memory usage will grow. For high-throughput scenarios, use streams with built-in backpressure (like Node.js `Readable` or WHATWG `ReadableStream`).
+
+```typescript
+const { source, push, close } = io.createPushSource();
+const stream = io.openStream(source);
+
+// Bridge XHR events
+xhr.onprogress = () => {
+  const newText = xhr.responseText.substring(seenBytes);
+  push(newText);
+  seenBytes = xhr.responseText.length;
+};
+xhr.onload = () => close();
+xhr.onerror = () => close(new Error("Network Error"));
+```
 
 ### Usage Examples
 
@@ -138,10 +187,26 @@ The iterator yields objects with this structure:
 
 ```typescript
 interface StreamItem<T = any> {
-  data: T;          // The parsed and validated object
+  data: T | null;   // The parsed object (null if error)
   schemaName: string;   // The schema name (e.g., 'user', 'order')
   index: number;    // Global index in the stream
   error?: Error;    // Present if validation failed
+}
+```
+
+### Handling Validation Errors
+
+When the server emits an error (or the client fails to validate a record), the stream does not throw. Instead, it yields an item with the `error` property set.
+
+```typescript
+for await (const item of stream) {
+  if (item.error) {
+    console.error(`Row ${item.index} failed:`, item.error.message);
+    // You can choose to stop or continue
+    continue;
+  }
+
+  processRecord(item.data);
 }
 ```
 
@@ -169,7 +234,9 @@ const header = io.defs`
 // Initialize writer with or without external definitions. External definitions
 // allows you to reuse schema definitions across multiple streams and across
 // server/client without including them in every stream.
-const writer = io.createStreamWriter(transport, externalSchemaDef);
+// Options:
+// - onError: 'throw' (default) | 'ignore' | 'emit' (sends $error record)
+const writer = io.createStreamWriter(transport, externalSchemaDef, { onError: 'emit' });
 
 
 // Now we have created a writer that includes schema definitions, we dont need
@@ -277,6 +344,22 @@ End-of-stream is handled by the transport layer (e.g., closing the socket or HTT
 ---
 
 ## Best Practices
+
+### Live Streaming Latency
+For real-time applications (tickers, logs), browsers may buffer response data (e.g., up to 1KB) before firing events. To ensure immediate delivery of the first record:
+1.  Send **padding** immediately upon connection.
+2.  Use a **comment** (`#`) for padding so it is ignored by the parser but triggers a flush.
+
+```typescript
+// Server-side example
+const padding = '# ' + ' '.repeat(1024) + '\n';
+transport.send(padding);
+```
+
+### Performance & Batching
+For high-throughput batch processing (e.g., database exports):
+1.  **Chunking**: The server should buffer records and send them in chunks (e.g., 16KB - 64KB) rather than writing to the socket for every single record. This reduces syscall overhead.
+2.  **Compression**: Enable GZIP/Brotli compression at the transport layer (HTTP). The repetitive nature of the data (even without keys) compresses extremely well.
 
 ### Stream IDs
 
