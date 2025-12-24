@@ -13,7 +13,14 @@
 <body>
     <h1>Legacy XHR Client Example</h1>
     <p>This example uses <code>XMLHttpRequest</code> and <code>createPushSource</code> to stream data from the server.</p>
-    <button id="startBtn">Start Streaming</button>
+    <div style="margin-bottom: 10px;">
+        <button id="startBtn">Default Stream</button>
+        <button id="batchBtn">Batch Stream</button>
+        <button id="liveBtn">Live Stream</button>
+        <button id="liveBatchBtn">Live Batch (5/s)</button>
+        <button id="liveErrBtn">Live Stream (w/ Errors)</button>
+        <button id="stopBtn" disabled>Stop</button>
+    </div>
     <div id="status">Ready</div>
     <pre id="output"></pre>
 
@@ -21,22 +28,54 @@
         import { openStream, createPushSource } from '/dist/index.js';
 
         const startBtn = document.getElementById('startBtn');
+        const batchBtn = document.getElementById('batchBtn');
+        const liveBtn = document.getElementById('liveBtn');
+        const liveBatchBtn = document.getElementById('liveBatchBtn');
+        const liveErrBtn = document.getElementById('liveErrBtn');
+        const stopBtn = document.getElementById('stopBtn');
         const output = document.getElementById('output');
         const status = document.getElementById('status');
+
+        let activeXhr = null;
 
         function log(msg) {
             output.textContent += msg + '\n';
             output.scrollTop = output.scrollHeight;
         }
 
-        startBtn.addEventListener('click', () => {
-            startBtn.disabled = true;
-            output.textContent = '';
-            status.textContent = 'Streaming...';
-            runStream();
+        function setRunningState(running) {
+            startBtn.disabled = running;
+            batchBtn.disabled = running;
+            liveBtn.disabled = running;
+            liveBatchBtn.disabled = running;
+            liveErrBtn.disabled = running;
+            stopBtn.disabled = !running;
+            if (running) {
+                output.textContent = '';
+                status.textContent = 'Streaming...';
+            } else {
+                activeXhr = null;
+            }
+        }
+
+        startBtn.addEventListener('click', () => runStream('/stream'));
+        batchBtn.addEventListener('click', () => runStream('/stream/batch'));
+        liveBtn.addEventListener('click', () => runStream('/stream/live'));
+        liveBatchBtn.addEventListener('click', () => runStream('/stream/live?batch=true'));
+        liveErrBtn.addEventListener('click', () => runStream('/stream/live?error=true'));
+
+        stopBtn.addEventListener('click', () => {
+            if (activeXhr) {
+                activeXhr.abort();
+                log('Stream aborted by user');
+                status.textContent = 'Aborted';
+                setRunningState(false);
+            }
         });
 
-        async function runStream() {
+        async function runStream(url) {
+            setRunningState(true);
+
             // 1. Create the bridge
             const { source, push, close } = createPushSource();
 
@@ -52,22 +91,31 @@
                         const json = JSON.stringify(item.data, (key, value) =>
                             typeof value === 'bigint' ? value.toString() : value
                         );
-                        log(`Received: ${json} (Schema: ${item.schemaName})`);
+
+                        let latency = '';
+                        if (item.data && item.data.ts) {
+                            const sent = new Date(item.data.ts);
+                            const now = new Date();
+                            latency = ` (Latency: ${now - sent}ms)`;
+                        }
+
+                        log(`Received: ${json} (Schema: ${item.schemaName})${latency}`);
                     }
                     log('Stream finished');
                     status.textContent = 'Finished';
-                    startBtn.disabled = false;
                 } catch (err) {
                     console.error('Stream error:', err);
                     log(`Stream error: ${err.message}`);
                     status.textContent = 'Error';
-                    startBtn.disabled = false;
+                } finally {
+                    setRunningState(false);
                 }
             })();
 
             // 4. Drive the source with XHR events
             const xhr = new XMLHttpRequest();
-            xhr.open('GET', '/stream');
+            activeXhr = xhr;
+            xhr.open('GET', url);
 
             // Track how much data we've processed
             let seenBytes = 0;
@@ -78,8 +126,11 @@
                 seenBytes = xhr.responseText.length;
 
                 if (newData) {
+                    console.log(`XHR Progress: ${newData.length} bytes. Total: ${seenBytes}. First 20 chars: ${newData.substring(0, 20).replace(/\n/g, '\\n')}`);
                     // LINK: Push the new data into the stream source
                     push(newData);
+                } else {
+                    console.log('XHR Progress fired but no new data');
                 }
             };
 
@@ -89,6 +140,10 @@
 
             xhr.onerror = () => {
                 close(new Error('Network Error')); // Signal error
+            };
+
+            xhr.onabort = () => {
+                close(new Error('Aborted'));
             };
 
             xhr.send();

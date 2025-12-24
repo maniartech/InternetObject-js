@@ -125,6 +125,7 @@ export async function* openStream(
 
   for await (const chunk of toAsyncIterable(source)) {
     const text = normalizeNewlines(decodeChunk(chunk));
+    // console.log('openStream chunk:', text.length, 'chars');
     remainder += text;
 
     if (remainder.length > maxBufferedChars) {
@@ -137,6 +138,7 @@ export async function* openStream(
     for (const rawLine of lines) {
       const line = rawLine; // already normalized
       const trimmed = line.trim();
+      // console.log('openStream line:', trimmed);
       if (!headerDone) {
         // Header ends at the first section separator line.
         // In this protocol, header content often starts with `~` (definitions),
@@ -191,7 +193,8 @@ export async function* openStream(
 
       // If we are in the default section (no explicit section header), we can flush per item line.
       // This keeps memory bounded for common streaming patterns.
-      if (!currentSectionHeaderLine && trimmed.startsWith('~')) {
+      // Update: We now allow flushing for named sections too, assuming single-line records.
+      if (trimmed.startsWith('~') || trimmed.startsWith('#')) {
         const flushed = await flushPending();
         for (const item of flushed) yield item;
       }

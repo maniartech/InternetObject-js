@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fetch API Client Example</title>
+    <style>
+        body { font-family: sans-serif; padding: 20px; }
+        #output { background: #f0f0f0; padding: 10px; border: 1px solid #ccc; white-space: pre-wrap; height: 300px; overflow-y: auto; }
+        button { padding: 10px 20px; font-size: 16px; cursor: pointer; }
+        .controls { margin-bottom: 10px; display: flex; gap: 10px; flex-wrap: wrap; }
+    </style>
+</head>
+<body>
+    <h1>Fetch API Client Example</h1>
+    <p>This example uses the modern <code>fetch</code> API and <code>ReadableStream</code> to consume data.</p>
+
+    <div class="controls">
+        <button id="startBtn">Default Stream</button>
+        <button id="batchBtn">Batch Stream</button>
+        <button id="liveBtn">Live Stream</button>
+        <button id="liveBatchBtn">Live Batch (5/s)</button>
+        <button id="liveErrBtn">Live Stream (w/ Errors)</button>
+        <button id="stopBtn" disabled>Stop</button>
+    </div>
+
+    <div id="status">Ready</div>
+    <pre id="output"></pre>
+
+    <script type="module">
+        import { openStream } from '/dist/index.js';
+
+        const startBtn = document.getElementById('startBtn');
+        const batchBtn = document.getElementById('batchBtn');
+        const liveBtn = document.getElementById('liveBtn');
+        const liveBatchBtn = document.getElementById('liveBatchBtn');
+        const liveErrBtn = document.getElementById('liveErrBtn');
+        const stopBtn = document.getElementById('stopBtn');
+        const output = document.getElementById('output');
+        const status = document.getElementById('status');
+
+        let abortController = null;
+
+        function log(msg) {
+            output.textContent += msg + '\n';
+            output.scrollTop = output.scrollHeight;
+        }
+
+        function setRunningState(running) {
+            startBtn.disabled = running;
+            batchBtn.disabled = running;
+            liveBtn.disabled = running;
+            liveBatchBtn.disabled = running;
+            liveErrBtn.disabled = running;
+            stopBtn.disabled = !running;
+            if (running) {
+                output.textContent = '';
+                status.textContent = 'Streaming...';
+            } else {
+                abortController = null;
+            }
+        }
+
+        startBtn.addEventListener('click', () => runStream('/stream'));
+        batchBtn.addEventListener('click', () => runStream('/stream/batch'));
+        liveBtn.addEventListener('click', () => runStream('/stream/live'));
+        liveBatchBtn.addEventListener('click', () => runStream('/stream/live?batch=true'));
+        liveErrBtn.addEventListener('click', () => runStream('/stream/live?error=true'));
+
+        stopBtn.addEventListener('click', () => {
+            if (abortController) {
+                abortController.abort();
+                log('Stream aborted by user');
+                status.textContent = 'Aborted';
+                setRunningState(false);
+            }
+        });
+
+        async function runStream(url) {
+            setRunningState(true);
+            abortController = new AbortController();
+
+            try {
+                const response = await fetch(url, {
+                    signal: abortController.signal
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                if (!response.body) {
+                    throw new Error('Response body is null');
+                }
+
+                // Create a generator that yields chunks from the ReadableStream
+                async function* streamGenerator() {
+                    const reader = response.body.getReader();
+                    const decoder = new TextDecoder();
+
+                    try {
+                        while (true) {
+                            const { done, value } = await reader.read();
+                            if (done) break;
+                            const text = decoder.decode(value, { stream: true });
+                            // console.log('Fetch chunk:', text.length, 'bytes');
+                            yield text;
+                        }
+                    } finally {
+                        reader.releaseLock();
+                    }
+                }
+
+                // Pass the generator to openStream
+                const stream = openStream(streamGenerator());
+
+                for await (const item of stream) {
+                    const json = JSON.stringify(item.data, (key, value) =>
+                        typeof value === 'bigint' ? value.toString() : value
+                    );
+
+                    let latency = '';
+                    if (item.data && item.data.ts) {
+                        const sent = new Date(item.data.ts);
+                        const now = new Date();
+                        latency = ` (Latency: ${now - sent}ms)`;
+                    }
+
+                    log(`Received: ${json} (Schema: ${item.schemaName})${latency}`);
+                }
+
+                log('Stream finished');
+                status.textContent = 'Finished';
+
+            } catch (err) {
+                if (err.name === 'AbortError') {
+                    // Handled in stopBtn click
+                } else {
+                    console.error('Stream error:', err);
+                    log(`Stream error: ${err.message}`);
+                    status.textContent = 'Error';
+                }
+            } finally {
+                setRunningState(false);
+            }
+        }
+    </script>
+</body>
+</html>
