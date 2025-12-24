@@ -139,6 +139,10 @@ vulnerability-report.json
 scripts/.bundle-history.csv
 bundle-report.txt
 
+# Accidental build output in src/ (can break ESM tooling)
+src/**/*.js
+src/**/*.js.map
+
 # IDE and editor files
 .vscode/settings.json
 .idea/

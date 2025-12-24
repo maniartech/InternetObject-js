@@ -2,7 +2,7 @@
 export { default as Schema } from './schema';
 export { SchemaBuilder } from './schema';
 export { default as TypedefRegistry } from './typedef-registry';
-export { default as TypeDef } from './typedef';
+export type { default as TypeDef } from './typedef';
 
 // Processing
 export { default as processSchema } from './processor';
@@ -13,7 +13,8 @@ export { MemberProcessorFactory } from './processing/member-processor-factory';
 export { processMember } from './processing/member-processor';
 
 // Utilities
-export { SchemaUtils, SchemaMetrics } from './schema-utils';
+export { SchemaUtils } from './schema-utils';
+export type { SchemaMetrics } from './schema-utils';
 export { SchemaResolver } from './utils/schema-resolver';
 export { ValidationUtils, ProcessingResult } from './utils/validation-utils';
 export { SchemaValidator, ValidationResult } from './validation/schema-validator';
@@ -21,8 +22,8 @@ export { canonicalizeAdditionalProps } from './utils/additional-props-canonicali
 export { normalizeKeyToken } from './utils/member-utils';
 
 // Types
-export { MemberMap, SchemaConstructorArg } from './schema-types';
-export { default as MemberDef } from './types/memberdef';
+export type { MemberMap, SchemaConstructorArg } from './schema-types';
+export type { default as MemberDef } from './types/memberdef';
 
 // Backward compatibility - Main API
 import Schema from './schema';

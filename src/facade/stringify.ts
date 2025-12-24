@@ -361,9 +361,9 @@ export function stringifyObject(
   } else {
     // No schema: fall back to insertion order
     for (const [key, val] of obj.entries()) {
-      if (!key) continue;
+      // if (!key) continue; // Allow positional arguments
       const strValue = stringifyAnyValue(val, defs);
-      if (includeTypes) {
+      if (includeTypes && key) {
         parts.push(`${key}: ${strValue}`);
       } else {
         parts.push(strValue);

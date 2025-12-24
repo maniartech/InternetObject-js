@@ -988,6 +988,12 @@ class Decimal {
 
     // (roundCoefficientToScale removed; use roundHalfUp from utils instead)
 
+    /**
+     * Returns the string representation of the Decimal for JSON serialization.
+     */
+    toJSON(): string {
+        return this.toString();
+    }
 }
 
 

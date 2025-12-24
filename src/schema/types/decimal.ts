@@ -66,9 +66,9 @@ class DecimalDef implements TypeDef {
 
   stringify(value: any, memberDef: MemberDef): string {
     // Validate before stringifying
-    this.validate(memberDef, value)
+    const valD = this.validate(memberDef, value)
 
-    return value.toString()
+    return valD.toString() + 'm'
   }
 
   /**

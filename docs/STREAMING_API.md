@@ -1,4 +1,4 @@
-# Internet Object Streaming API
+# Internet Object Streaming Protocol and API
 
 ## Overview
 
@@ -19,12 +19,11 @@ The stream consists of a **Header Chunk** (sent once) followed by a continuous f
 
 ### 1. Header Chunk (The Contract)
 
-Sent once at the very beginning. It establishes:
--   **Metadata**: Stream ID, total records, etc.
--   **Schemas**: Definitions for the objects being streamed (optional if pre-shared).
--   **Default Schema**: The schema to apply when none is specified.
+Sent once at the very beginning. It establishes metadata and optionally defines schemas.
 
-**Example Header:**
+**Option A: With Schemas (Self-Describing)**
+Useful for public APIs or when schemas change frequently.
+
 ```ruby
 ~ streamId: "export-2024-001"
 ~ totalRecords: 50000
@@ -34,32 +33,56 @@ Sent once at the very beginning. It establishes:
 ---
 ```
 
+**Option B: Without Schemas (Pre-Shared/Obfuscated)**
+Useful for internal systems, bandwidth optimization, or obfuscation. The client must provide definitions.
+
+```ruby
+~ streamId: "secure-feed"
+---
+```
+
+The header must end with a section separator `---` to indicate the end of the header. When schemas are not included, the client must have pre-shared definitions to decode the data.
+
 ### 2. Data Chunks (The Content)
 
 Data follows standard Internet Object syntax. Context switching is handled natively using the section separator `---`.
 
-**Using Default Schema (`$user`):**
+#### Using Default Schema
+
+When no schema is specified, the parser uses the default schema  (if available) to decode items. The default schema can be set in the header or provided via client options. If the default schema is not defined, items are deserialized without validation. You may access the members of the data items as per their index or key (if named).
+
 ```ruby
-~ 1, John, john@example.com
-~ 2, Jane, jane@example.com
+# If the default schema is not provided, the following items are deserialized
+# without validation. The id and name fields can be accessed by their index.
+# While the email field can be accessed by its key or index both.
+~ 1, John, email: john@example.com
+~ 2, Jane, email: jane@example.com
 ```
 
-**Switching Schema (`$order`):**
+#### Switching Schema (`$order`)
+
 ```ruby
 --- $order
 ~ 101, 1, 99.99
 ~ 102, 1, 45.50
 ```
 
-**Mixed Content:**
-A single transmission can contain multiple types.
-```ruby
-~ 3, Bob, bob@example.com
---- $order
-~ 103, 2, 12.00
-```
+#### Mixed Content
 
----
+A single transmission can contain multiple kinds of data items. To indicate a schema switch, use the section separator followed by the schema name. In the absence of a schema name, the parser reverts to the default schema. As in the case of the example below:
+
+```ruby
+# This data section is validated against the default schema ($user)
+~ 3, Bob, bob@example.com
+~ 4, Alice, alice@example.com
+~ 23, Charlie, charlie@example.com
+
+--- $order
+# This data section is validated against the $order schema
+~ 103, 2, 12.00
+~ 104, 3, 7.25
+~ 105, 1, 150.00
+```
 
 ## Client API (`IOStream`)
 
@@ -74,37 +97,38 @@ Opens a stream from a source (Response body, WebSocket, Node stream, etc.).
 -   `definitions`: (Optional) Pre-shared schema definitions. Allows streaming without sending schemas in the header (useful for obfuscation/bandwidth).
 -   `options`: Configuration options.
 
-### Usage Example
+### Usage Examples
+
+#### Scenario A: Schemas in Stream (Self-Describing)
+When the stream header includes schema definitions, the client doesn't need pre-shared definitions.
 
 ```typescript
-// 1. Open the stream
-// Optional: Provide local definitions if not sent in header
+// 1. Open the stream (no definitions needed)
+const stream = io.openStream(response.body);
+
+// 2. Iterate Items
+for await (const item of stream) {
+  if (item.schemaName === '$user') {
+    console.log("User:", item.data);
+  }
+}
+```
+
+#### Scenario B: Schemas Pre-Shared (Obfuscated)
+When the stream header omits schemas, the client must provide them.
+
+```typescript
+// 1. Define schemas locally
 const defs = io.defs`
-  ~ $users: {id:int, name:string}
-  ~ $orders: {id:int, total:decimal}`
+  ~ $user: {id:int, name:string}
+  ~ $order: {id:int, total:decimal}`;
 
+// 2. Open stream with definitions
 const stream = io.openStream(response.body, defs);
-
-// 2. Access Metadata (available after header is parsed)
-console.log(`Stream ID: ${stream.header.get('streamId')}`);
 
 // 3. Iterate Items
 for await (const item of stream) {
-  // Handle errors (e.g., validation failure for a specific row)
-  if (item.error) {
-    console.error(`Row ${item.index} invalid:`, item.error);
-    continue;
-  }
-
-  // Handle different data types
-  if (item.schema === 'user') {
-    // item.data is typed as User
-    await db.users.save(item.data);
-  }
-  else if (item.schema === 'order') {
-    // item.data is typed as Order
-    await db.orders.save(item.data);
-  }
+  // ...
 }
 ```
 
@@ -115,43 +139,81 @@ The iterator yields objects with this structure:
 ```typescript
 interface StreamItem<T = any> {
   data: T;          // The parsed and validated object
-  schema: string;   // The schema name (e.g., 'user', 'order')
+  schemaName: string;   // The schema name (e.g., 'user', 'order')
   index: number;    // Global index in the stream
   error?: Error;    // Present if validation failed
 }
 ```
 
----
-
 ## Server API (`IOStreamWriter`)
 
-Helper class to generate the protocol format.
+Helper class to generate the protocol format. The server sends the header once, followed by data items.
+
+### Usage Examples
+
+#### Scenario A: Sending Schemas in Header
+
+The default behavior includes schemas in the header.
 
 ```typescript
+const externalSchemaDef = io.defs`
+  ~ $user: {id:int, name:string}
+  ~ $order: {id:int, total:decimal}
+  ~ $schema: $user`;
 
+// Define stream-specific metadata
+const header = io.defs`
+  ~ streamId: "export-2024-001"
+  ~ totalRecords: 1000`;
+
+// Initialize writer with or without external definitions. External definitions
+// allows you to reuse schema definitions across multiple streams and across
+// server/client without including them in every stream.
+const writer = io.createStreamWriter(transport, externalSchemaDef);
+
+
+// Now we have created a writer that includes schema definitions, we dont need
+// to add them again to the header. If you want to add metadata, you can set the
+// header as below:
+const metaHeader = io.defs`
+  ~ streamId: "export-2024-001"
+  ~ totalRecords: 1000`;
+
+
+// Remember, header must be sent once at the start of the stream. It is not sent
+// automatically.
+writer.setHeader(metaHeader)
+transport.send(writer.getHeader());
+
+
+// 2. Send Data
+transport.send(writer.write({ id: 1, name: "John" }));
+```
+
+#### Scenario B: Excluding Schemas from Header
+Use options to prevent schemas from being written to the stream.
+
+```typescript
 const defs = io.defs`
   ~ $user: {id:int, name:string}
   ~ $order: {id:int, total:decimal}
   ~ $schema: $user`;
 
-const writer = io.createStreamWriter(defs, options); // This includes external defs which wont be sent, but for validating and serializing
+// Initialize with 'includeSchemas: false'
+const writer = io.createStreamWriter(defs, { includeSchemas: false });
 
-// You need to explicitly set header metadata
-const clientHeader = io.defs`
+// Define stream-specific metadata
+const header = io.defs`
   ~ streamId: "export-2024-001"
-  ~ totalRecords: 1000
-`
+  ~ totalRecords: 1000`;
 
-// 1. Send Header
-writer.setHeader(clientHeader);
+// 1. Set and Send Header
+// (Contains only metadata, no schema defs)
+writer.setHeader(header);
 transport.send(writer.getHeader());
 
 // 2. Send Data
-// Uses default schema ($user)
-transport.send(writer.write({ id: 1, name: "John" }));  // Implicitly uses $user to validate and serialize
-
-// Switch schema explicitly
-transport.send(writer.write({ id: 101, total: 99.99 }, 'order')); // Uses $order schema
+transport.send(writer.write({ id: 1, name: "John" }));
 ```
 
 ---
@@ -186,7 +248,7 @@ const stream = io.openStream(source, defs);
 If the stream data does not specify a schema (no `--- $name`), the parser uses:
 1.  The `$schema` defined in the Header.
 2.  The `defaultSchema` passed in `options` (if header doesn't specify).
-3.  If neither exists, the item is marked as an error.
+3.  If neither exists, the item is deserialized without schema validation.
 
 **Example Stream:**
 ```ruby
@@ -203,7 +265,7 @@ If the stream data does not specify a schema (no `--- $name`), the parser uses:
 
 ## Transport Compatibility
 
-This protocol is purely text-based and works over any transport that preserves order.
+This protocol is purely text-based and works over any transport that preserves order. It will also work with any framework that allows streaming text data.
 
 -   **HTTP/1.1 Chunked**: Each chunk adds to the buffer.
 -   **WebSocket**: Messages are pushed to the parser.
@@ -211,3 +273,16 @@ This protocol is purely text-based and works over any transport that preserves o
 -   **File System**: Read streams pipe directly.
 
 End-of-stream is handled by the transport layer (e.g., closing the socket or HTTP response ending). The `IOStream` iterator finishes automatically.
+
+---
+
+## Best Practices
+
+### Stream IDs
+
+While `streamId` is optional in the header, it is **highly recommended** for:
+1.  **Debugging**: Tracing data flows across distributed systems.
+2.  **Multiplexing**: Distinguishing multiple logical streams if sent over a single connection.
+3.  **Logging**: Correlating server logs with client-side errors.
+
+The protocol does not enforce any specific format for `streamId`, though UUIDs are commonly used.

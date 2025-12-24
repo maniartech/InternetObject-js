@@ -16,6 +16,7 @@ import { ioDefinitions, ioDocument, ioObject } from './template-funcs';
 import parse                  from './parser/index';
 import { load, loadObject }   from './facade/load';
 import { stringify }          from './facade/stringify';
+import { createStreamWriter, openStream } from './streaming';
 
 
 // Short aliases
@@ -25,6 +26,10 @@ const io = {
   load,
   loadObject,
   stringify,
+
+  // Streaming
+  openStream,
+  createStreamWriter,
 
   // Short aliases for template functions
   doc:    ioDocument,

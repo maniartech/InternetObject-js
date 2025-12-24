@@ -4,6 +4,7 @@ import { loadObject, loadCollection } from '../../src/facade/load';
 import InternetObject from '../../src/core/internet-object';
 import Collection from '../../src/core/collection';
 import Definitions from '../../src/core/definitions';
+import Decimal from '../../src/core/decimal/decimal';
 
 /**
  * Helper to create definitions with a schema as the default
@@ -39,6 +40,29 @@ describe('High-level stringify() API', () => {
 
       expect(result).toContain('Bob');
       expect(result).toContain('T');  // Boolean as IO format T
+    });
+
+    it('stringifies object with Decimal', () => {
+      const obj = new InternetObject();
+      obj.set('name', 'Dave');
+      obj.set('score', new Decimal('99.95'));
+
+      const defs = createDefsWithSchema('User', '{ name: string, score: decimal }');
+      const result = stringify(obj, defs);
+
+      expect(result).toContain('Dave');
+      expect(result).toContain('99.95m');
+    });
+
+    it('stringifies object with Decimal (schema-less)', () => {
+      const obj = new InternetObject();
+      obj.set('name', 'Eve');
+      obj.set('score', new Decimal('12.50'));
+
+      const result = stringify(obj);
+
+      expect(result).toContain('Eve');
+      expect(result).toContain('12.50m');
     });
 
     it('stringifies object with optional undefined fields', () => {
