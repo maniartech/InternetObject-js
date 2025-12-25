@@ -30,7 +30,8 @@ export async function* openStream(
   // Data parsing state
   let currentSectionHeaderLine: string | null = null; // e.g. '--- $order'
   let pendingLines: string[] = [];
-  let inString = false;
+  let pendingSize = 0;
+  let inString: string | null = null;
   let remainder = '';
   const decoder = new ChunkDecoder();
 
@@ -44,7 +45,8 @@ export async function* openStream(
       '\n'
     ].join('');
 
-    // console.log('Flushing:', JSON.stringify(sectionText));
+    pendingLines = [];
+    pendingSize = 0;
 
     pendingLines = [];
 
@@ -183,28 +185,33 @@ export async function* openStream(
         for (const item of flushed) yield item;
 
         currentSectionHeaderLine = trimmed === '---' ? null : trimmed;
-        inString = false;
+        inString = null;
         continue;
       }
 
       if (trimmed.length === 0) {
         // keep empty lines only if inside a string
-        if (inString) {
+        if (inString !== null) {
           pendingLines.push(line);
         }
         continue;
       }
 
       // If this line starts a new record (or comment), flush the accumulated previous record.
-      if (!inString && (trimmed.startsWith('~') || trimmed.startsWith('#'))) {
+      if (inString === null && (trimmed.startsWith('~') || trimmed.startsWith('#'))) {
         const flushed = await flushPending();
         for (const item of flushed) yield item;
       }
 
+      // console.log('Calling updateStringState for:', line);
       inString = updateStringState(line, inString);
 
       // Collect data and comment lines.
       pendingLines.push(line);
+      pendingSize += line.length;
+      if (pendingSize > maxBufferedChars) {
+        throw new Error(`openStream exceeded maxBufferedChars (${maxBufferedChars}) in pending lines.`);
+      }
     }
   }
 

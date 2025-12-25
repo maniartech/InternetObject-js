@@ -134,4 +134,22 @@ it('handles multi-line strings correctly', async () => {
     expect((items[0].data as any).toJSON()).toEqual({ '0': 'John', '1': 50 });
     expect((items[1].data as any).toJSON()).toEqual({ '0': 'Jane', '1': 45 });
   });
+
+  it('handles multi-line strings with single quotes', async () => {
+    const source = stringSource([
+      '---\n',
+      "~ 'Start\n",
+      "~ Middle\n",
+      "End'\n"
+    ]);
+
+    const items: StreamItem[] = [];
+    for await (const item of openStream(source)) {
+      items.push(item);
+    }
+
+    expect(items).toHaveLength(1);
+    expect(items[0].error).toBeUndefined();
+    expect((items[0].data as any).toJSON()).toEqual({ '0': "Start\n~ Middle\nEnd" });
+  });
 });

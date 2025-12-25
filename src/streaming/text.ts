@@ -23,18 +23,25 @@ export function splitLinesKeepRemainder(buffer: string): { lines: string[]; rema
   return { lines: head.split('\n'), remainder };
 }
 
-export function updateStringState(line: string, inString: boolean): boolean {
+export function updateStringState(line: string, inString: string | null): string | null {
   let state = inString;
   for (let i = 0; i < line.length; i++) {
-    if (line[i] === '"') {
-      // Check if it's escaped
-      let backslashes = 0;
-      for (let j = i - 1; j >= 0; j--) {
-        if (line[j] === '\\') backslashes++;
-        else break;
+    const char = line[i];
+    if (state === null) {
+      if (char === '"' || char === "'") {
+        state = char;
       }
-      if (backslashes % 2 === 0) {
-        state = !state;
+    } else {
+      if (char === state) {
+        // Check if it's escaped
+        let backslashes = 0;
+        for (let j = i - 1; j >= 0; j--) {
+          if (line[j] === '\\') backslashes++;
+          else break;
+        }
+        if (backslashes % 2 === 0) {
+          state = null;
+        }
       }
     }
   }
