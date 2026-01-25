@@ -1,5 +1,5 @@
 // Core classes
-export { default as Schema } from './schema';
+export { default as IOSchema } from './schema';
 export { SchemaBuilder } from './schema';
 export { default as TypedefRegistry } from './typedef-registry';
 export type { default as TypeDef } from './typedef';

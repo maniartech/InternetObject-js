@@ -1,8 +1,8 @@
-import { Schema } from '../../../src';
+import { IOSchema } from '../../../src';
 
 describe('Schema Architecture Example', () => {
   test('basic schema creation and member access', () => {
-    const schema = Schema.create('Person')
+    const schema = IOSchema.create('Person')
       .addMember('name', { type: 'string' })
       .addMember('age', { type: 'number' })
       .addMember('isActive', { type: 'boolean' })
@@ -21,7 +21,7 @@ describe('Schema Architecture Example', () => {
   });
 
   test('immutability of names and defs', () => {
-    const schema = Schema.create('Test')
+    const schema = IOSchema.create('Test')
       .addMember('field', { type: 'string' })
       .build();
     expect(Object.isFrozen(schema.names)).toBe(true);
@@ -35,7 +35,7 @@ describe('Schema Architecture Example', () => {
   });
 
   test('complex schema with sample data', () => {
-    const schema = Schema.create('Employee')
+    const schema = IOSchema.create('Employee')
       .addMember('id', { type: 'number' })
       .addMember('name', { type: 'string' })
       .addMember('roles', { type: 'array', itemType: 'string' })

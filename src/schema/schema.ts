@@ -3,7 +3,7 @@ import ErrorCodes from '../errors/io-error-codes'
 import MemberDef from "./types/memberdef";
 import { MemberMap } from "./schema-types";
 
-export default class Schema {
+export default class IOSchema {
   /** Name of the schema */
   public name: string;
 
@@ -29,7 +29,7 @@ export default class Schema {
   [key: string]: any;
 
   /**
-   * Creates a new instance of Internet Object Schema.
+   * Creates a new instance of Internet Object IOSchema.
    * Backward-compatible with legacy constructor usage that passes member objects.
    * @param name The name of the schema
    * @param o Optional member definition objects (legacy)
@@ -37,7 +37,7 @@ export default class Schema {
   constructor(name: string, ...o: { [key: string]: MemberDef }[]) {
     this.name = name;
 
-    // Legacy varargs support: new Schema('Name', { field: def }, { field2: def })
+    // Legacy varargs support: new IOSchema('Name', { field: def }, { field2: def })
     if (o && o.length > 0) {
       o.forEach((item) => {
         const key = Object.keys(item)[0];
@@ -70,8 +70,8 @@ export default class Schema {
   }
 
   /** Legacy helper for creating from varargs member objects */
-  static fromLegacy(name: string, ...memberObjects: { [key: string]: MemberDef }[]): Schema {
-    return new Schema(name, ...memberObjects);
+  static fromLegacy(name: string, ...memberObjects: { [key: string]: MemberDef }[]): IOSchema {
+    return new IOSchema(name, ...memberObjects);
   }
 }
 
@@ -96,8 +96,8 @@ export class SchemaBuilder {
     return this;
   }
 
-  build(): Schema {
-    const schema = new Schema(this.name);
+  build(): IOSchema {
+    const schema = new IOSchema(this.name);
     // Populate mutable structure to keep backward compatibility
     for (const n of this.names) {
       schema.names.push(n);

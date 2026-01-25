@@ -10,6 +10,7 @@ import { stringify, stringifyObject } from './stringify';
 import { StringifyOptions } from './stringify';
 import { IO_MARKERS, RESERVED_SECTION_NAMES, WILDCARD_KEY } from './serialization-constants';
 import { formatRecord, formatCollection, createIndentString, FormatContext } from './io-formatter';
+import { toJSON } from './to-json';
 
 /**
  * Options for stringifying documents
@@ -411,6 +412,8 @@ function stringifyHeaderValue(value: any): string {
 /**
  * Convert document to plain JavaScript object (for JSON serialization)
  *
+ * @deprecated Use `io.toJSON(value)` / `toJSON(value)` instead.
+ *
  * @param doc - IODocument to convert
  * @param options - Conversion options
  * @returns Plain JavaScript object
@@ -425,7 +428,7 @@ export function documentToObject(
   doc: Document,
   options?: { skipErrors?: boolean }
 ): any {
-  return doc.toJSON(options);
+  return toJSON(doc, options);
 }
 
 /**

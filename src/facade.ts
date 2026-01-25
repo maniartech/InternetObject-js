@@ -6,18 +6,20 @@ import IOObject               from './core/internet-object';
 import IOSection              from './core/section';
 import IOSectionCollection    from './core/section-collection';
 import IOHeader               from './core/header';
-import IODefinitionValue      from './core/definitions';
 import IOError                from './errors/io-error';
 import ErrorCodes             from './errors/io-error-codes';
 import IOSyntaxError          from './errors/io-syntax-error';
 import IOValidationError      from './errors/io-validation-error';
 import Schema                 from './schema/schema';
-import { ioDefinitions, ioDocument, ioObject } from './template-funcs';
+import { ioDefinitions, ioDocument, ioObject, ioSchema } from './template-funcs';
 import parse                  from './parser/index';
 import parseDefinitions       from './parser/parse-defs';
+import parseSchema            from './schema/parse-schema';
 import { load, loadObject }   from './facade/load';
 import { stringify }          from './facade/stringify';
 import { createStreamWriter, openStream } from './streaming';
+import { toJSON } from './facade/to-json';
+import { validate, validateCollection, validateObject } from './facade/validate';
 
 
 // Short aliases
@@ -26,9 +28,14 @@ const io = {
   parse,
   parseDefs: parseDefinitions,      // Short alias
   parseDefinitions,                 // Full name
+  parseSchema,
   load,
   loadObject,
   stringify,
+  toJSON,
+  validate,
+  validateObject,
+  validateCollection,
 
   // Streaming
   openStream,
@@ -38,6 +45,7 @@ const io = {
   doc:    ioDocument,
   object: ioObject,
   defs:   ioDefinitions,
+  schema: ioSchema,
 
   // Full names for template functions
   document: ioDocument,
@@ -51,8 +59,7 @@ const io = {
   IOCollection,
   IOObject,
   IOHeader,
-  IODefinitionValue,
-  Schema,
+  IOSchema: Schema,
   Decimal,
   IOError,
   ErrorCodes,
@@ -63,7 +70,8 @@ const io = {
 
 export {
   ioDefinitions, ioDocument,
-  ioObject
+  ioObject,
+  ioSchema
 };
 
 export default io;

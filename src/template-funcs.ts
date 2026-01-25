@@ -6,6 +6,7 @@ import parse            from './parser/index';
 import parseDefinitions from './parser/parse-defs';
 import Tokenizer from './parser/tokenizer';
 import Schema from './schema/schema';
+import parseSchema from './schema/parse-schema';
 
 /**
  * Parses a string (template literal) as an Internet Object document and returns a Document instance.
@@ -125,6 +126,41 @@ export function ioDefinitions(strings: TemplateStringsArray, ...args: any[]): De
 }
 
 /**
+ * Parses an inline schema (template literal) and returns a Schema instance.
+ *
+ * @example
+ *   const schema = ioSchema`{ name: string, age: int }`;
+ *
+ * @param {TemplateStringsArray} strings - Template string segments.
+ * @param {...any} args - Interpolated values.
+ * @returns {Schema} Parsed Schema instance.
+ */
+export function ioSchema(strings: TemplateStringsArray, ...args: any[]): Schema {
+  const input = strings.reduce((acc, str, i) => {
+    return acc + str + (args[i] === undefined ? '' : args[i]);
+  }, '');
+
+  return parseSchema(input, null);
+}
+
+/**
+ * Parses a schema with external/parent definitions to allow $schema references.
+ *
+ * @example
+ *   const defs = ioDefinitions`~ $Address: { street: string }`;
+ *   const schema = ioSchema.with(defs)`{ addresses: [$Address] }`;
+ */
+ioSchema.with = (parentDefs: Definitions | null): (strings: TemplateStringsArray, ...args: any[]) => Schema => {
+  return (strings: TemplateStringsArray, ...args: any[]) => {
+    const input = strings.reduce((acc, str, i) => {
+      return acc + str + (args[i] === undefined ? '' : args[i]);
+    }, '');
+
+    return parseSchema(input, parentDefs);
+  }
+}
+
+/**
  * Parses definitions with external/parent definitions to extend or merge.
  *
  * @example
@@ -173,6 +209,7 @@ const io = {
   doc: ioDocument,
   object: ioObject,
   defs: ioDefinitions,
+  schema: ioSchema,
 
   // Full names for discoverability
   document: ioDocument,
