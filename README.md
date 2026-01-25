@@ -4,11 +4,6 @@ Welcome to the official JavaScript repository for Internet Object, a lean, robus
 
 For specification and more information, visit [InternetObject.org Docs](https://docs.internetobject.org).
 
-See also:
-
-- Decimal design, semantics, and usage: `docs/decimal.md`.
-- Performance harness: `yarn perf` (parser) and `yarn perf:decimal` (Decimal operations).
-
 ## 📦 Installation
 
 ```bash
@@ -17,145 +12,217 @@ npm install internet-object
 yarn add internet-object
 ```
 
+## 🏷️ Releases: `latest` vs `next`
+
+- Default installs use `latest`: `npm i internet-object`
+- Early adopters can opt into `next`: `npm i internet-object@next`
+
+Publishing (from Git Bash):
+
+```bash
+bash scripts/publish-latest.sh
+bash scripts/publish-next.sh
+```
+
 ## 🚀 Quick Start
 
-Internet Object is a schema-first data format. You can load plain JavaScript objects and validate them against a schema, or parse Internet Object strings.
+Start here (template literals), then move to parsing strings and loading JS data.
 
-### Loading and Validating Data
+### Coming from JSON?
 
-Use `load()` to validate JavaScript objects against a schema and get a `Document`.
+This library intentionally feels familiar:
+
+| If you use… | Use… |
+| --- | --- |
+| `JSON.parse(text)` | `parse(ioText).toJSON()` |
+| `JSON.stringify(value)` | `stringify(load(value, defs))` |
+| “Validate without throwing” | `validate*()` (returns `ValidationResult`) |
+
+Example (IO → JS data):
 
 ```ts
-import { load, loadObject, loadCollection, parseDefinitions } from 'internet-object';
+import { parse } from 'internet-object';
 
-// 1. Create definitions with a schema
-const defs = parseDefinitions('~ $schema: { name: string, age: int, email?: string }');
+const doc = parse(ioText);
+const data = doc.toJSON();
+```
 
-// 2. Load and validate a single object
-const data = { name: 'Alice', age: 30, email: 'alice@example.com' };
-const doc = load(data, defs);
-console.log(doc.toJSON()); // { name: 'Alice', age: 30, email: 'alice@example.com' }
+Access values by key or index (useful when exploring/transforming data):
 
-// 3. Or use loadObject for direct InternetObject access
-const obj = loadObject(data, defs);
-console.log(obj.get('name')); // 'Alice'
+```ts
+import { loadObject, loadCollection, parseDefinitions } from 'internet-object';
 
-// 4. Load collections with loadCollection
-const users = [
+const defs = parseDefinitions('~ $schema: { name: string, age: int }');
+
+// IOObject: access by key
+const user = loadObject({ name: 'Alice', age: 30 }, defs);
+console.log(user.get('name')); // 'Alice'
+console.log(user.name);        // 'Alice' (dot-notation)
+
+// IOObject: access by index (in insertion order)
+console.log(user.getAt(0));    // 'Alice'
+
+// IOCollection: access items by index
+const users = loadCollection([
   { name: 'Alice', age: 30 },
-  { name: 'Bob', age: 25 }
-];
-const collection = loadCollection(users, defs);
-console.log(collection.length); // 2
+  { name: 'Bob', age: 25 },
+], defs);
+
+console.log(users.getAt(1).get('name')); // 'Bob'
 ```
 
-### Schema-less Loading
+### 1) Parse IO using template literals
 
-Load data without validation when you don't need schema enforcement:
+The fastest way to get started in JS/TS is to embed Internet Object directly in code. This is great for examples, fixtures, tests, and “copy/paste a sample document and tweak it”.
 
 ```ts
-import { loadObject, loadCollection } from 'internet-object';
+import io from 'internet-object';
 
-// Schema-less loading - no validation
-const obj = loadObject({ name: 'Alice', anything: 'goes' });
-const col = loadCollection([{ a: 1 }, { b: 2 }]);
+const doc = io.doc`
+  ~ $schema: { name: string, age: int }
+  ---
+  Alice, 30
+  Bob, 25
+`;
+
+console.log(doc.toJSON());
 ```
 
-### Using Named Schemas
+Use this when you want the document inline (and you don’t want to manage escaping/indentation yourself).
+
+### 2) Parse an IO string → JSON
+
+Use this when you already have Internet Object text (from a file, API, clipboard, etc). You get a `Document`, and you can convert it to plain JS with `doc.toJSON()`.
+
+```ts
+import { parse } from 'internet-object';
+
+const ioText = `
+~ $schema: { name: string, age: int }
+---
+Alice, 30
+Bob, 25
+`;
+
+const doc = parse(ioText);
+console.log(doc.toJSON());
+```
+
+Use this for “read IO text and consume it in JS”.
+
+### 3) Load JS data (validate) → stringify
+
+Use this when your source-of-truth is already JavaScript data (objects/arrays) and you want to validate it against a schema, then emit Internet Object text.
+
+```ts
+import { load, parseDefinitions, stringify } from 'internet-object';
+
+const defs = parseDefinitions('~ $schema: { name: string, age: int }');
+const doc = load({ name: 'Alice', age: 30 }, defs);
+
+console.log(doc.toJSON());
+console.log(stringify(doc));
+```
+
+Use this for “produce IO output safely” (validate first, then serialize).
+
+### API cheat sheet (what to reach for)
+
+| Goal | Use |
+| ------ | ----- |
+| Parse IO quickly (template literals) | `io.doc\`...\`` / `io.defs\`...\`` |
+| Parse full IO text | `parse(ioText, defsOrSchema?, errors?, options?)` |
+| Parse only header definitions | `parseDefinitions(headerText, externalDefs?, options?)` |
+| Create a schema quickly | `parseSchema(schemaText, parentDefs?)` / `io.schema\`...\`` |
+| Load JS data (throws on invalid) | `load` / `loadObject` / `loadCollection` / `loadInferred` |
+| Validate without throwing | `validate` / `validateObject` / `validateCollection` |
+| Convert IO values to JSON | `toJSON(value)` / `io.toJSON(value)` |
+| Convert values to IO text | `stringify(value, defsOrOptions?, options?)` |
+| Advanced document output | `stringifyDocument(doc, options)` |
+
+<details>
+<summary><strong>Common recipes</strong> (expand)</summary>
+
+### Validate without throwing
+
+```ts
+import { validateObject, parseDefinitions } from 'internet-object';
+
+const defs = parseDefinitions('~ $schema: { name: string, age: int }');
+const result = validateObject({ name: 'Alice', age: 30 }, defs);
+
+if (result.valid) {
+  console.log(result.data);
+} else {
+  console.error(result.errors);
+}
+```
+
+### Named schemas
 
 ```ts
 import { load, parseDefinitions } from 'internet-object';
 
-// Define multiple schemas
 const defs = parseDefinitions(`
   ~ $User: { name: string, age: int }
   ~ $Product: { title: string, price: number }
   ~ $schema: $User
 `);
 
-// Use specific schema via options
-const userData = { name: 'Alice', age: 30 };
-const doc = load(userData, defs, { schemaName: '$User' });
+const doc = load({ name: 'Alice', age: 30 }, defs, { schemaName: '$User' });
 ```
 
-### Parsing IO Strings
-
-Use `parse()` to parse Internet Object formatted strings.
+### Create schemas quickly
 
 ```ts
-import { parse } from 'internet-object';
+import io, { parseSchema } from 'internet-object';
 
-const ioString = `
-  ~ $schema: { name, age }
-  ---
-  Alice, 30
-  ---
-  Bob, 25
-`;
-
-const doc = parse(ioString);
-console.log(doc.toJSON());
-// Output: [{ name: 'Alice', age: 30 }, { name: 'Bob', age: 25 }]
+const s1 = parseSchema('{ name: string, age: int }');
+const s2 = io.schema`{ name: string, age: int }`;
 ```
 
-### Stringifying Data
-
-Use `stringify()` to convert data back to Internet Object format.
+### Convert any IO value to JSON
 
 ```ts
-import { stringify, load, parseDefinitions } from 'internet-object';
+import io, { toJSON } from 'internet-object';
 
-const defs = parseDefinitions('~ $schema: { name: string, age: int }');
-const doc = load({ name: 'Alice', age: 30 }, defs);
-
-const ioString = stringify(doc);
-// Output: Alice, 30
-
-// Round-trip (idempotent after first stringify):
-// const normalized = stringify(parse(ioText), { includeHeader: true, includeSectionNames: true });
-// const normalized2 = stringify(parse(normalized), { includeHeader: true, includeSectionNames: true });
-// normalized2 === normalized
+const doc = io.doc`~ $schema: { name: string } --- Alice`;
+console.log(toJSON(doc));
+console.log(io.toJSON(doc));
 ```
 
-### Inferring Schema from Data
-
-Use `loadInferred()` to automatically generate a schema from your data structure:
+### Advanced document stringify
 
 ```ts
-import { loadInferred } from 'internet-object';
+import { parse, stringifyDocument } from 'internet-object';
 
-const data = {
-  name: 'Alice',
-  age: 30,
-  address: { city: 'NYC', zip: '10001' }
-};
+const doc = parse(ioText);
 
-const doc = loadInferred(data);
+// Stable, explicit document output
+const full = stringifyDocument(doc, { includeHeader: true, includeSectionNames: true });
 
-// Access the inferred schema
-console.log(doc.header.schema);
-// Inferred: { name: string, age: number, address: $address }
-// With $address: { city: string, zip: string }
+// Filter to specific named sections
+const usersOnly = stringifyDocument(doc, { sectionsFilter: ['users'] });
 ```
+
+### Round-trip normalization
+
+If you need stable output across parse/stringify cycles, stringify with explicit document options:
+
+```ts
+import { parse, stringify } from 'internet-object';
+
+const normalized = stringify(parse(ioText), { includeHeader: true, includeSectionNames: true });
+const normalized2 = stringify(parse(normalized), { includeHeader: true, includeSectionNames: true });
+console.log(normalized2 === normalized);
+```
+
+</details>
 
 ## 📚 API Reference
 
-### Choosing the Right Function
-
-| Goal | Use | Notes |
-|------|-----|------|
-| Parse full IO text (header + sections) | `parse(ioText, defsOrSchema?, errorCollector?, options?)` | Accepts `IODefinitions`, `IOSchema`, a schema name string, or `null`.
-| Parse only header definitions | `parseDefinitions(headerText, externalDefs?, options?)` | Use for reusable schemas/variables/metadata.
-| Create a schema quickly | `parseSchema(schemaText, parentDefs?)` or `io.schema\`...\`` | One-step schema creation.
-| Validate without loading IO classes | `validate*()` | Returns `ValidationResult` instead of throwing.
-| Load JS data into IO classes | `load*()` | Throws on validation errors (unless configured otherwise).
-| Convert IO classes to plain JSON | `toJSON(value)` / `io.toJSON(value)` | Works with any `Jsonable`.
-
-### When to use `load()` vs `loadObject()` vs `loadCollection()`
-
-- Use `load()` when you want a `Document` (header + sections) that’s ready to `stringify()` back to IO.
-- Use `loadObject()` when you only need the validated `IOObject` (no document wrapper).
-- Use `loadCollection()` when you only need the validated `IOCollection`.
+<details>
+<summary><strong>Full reference</strong> (expand)</summary>
 
 ### Core Functions
 
@@ -224,26 +291,7 @@ Serializes an `IOObject`, `IOCollection`, or `Document` to Internet Object forma
 
 Parses IO header text into a Definitions object.
 
-### Advanced Document Stringify
-
-Use `stringifyDocument()` when you need document-specific controls such as section filtering or section name output.
-
-```ts
-import { stringifyDocument, parse } from 'internet-object';
-
-const doc = parse(ioText);
-
-// 1) Include header and section names (stable, explicit document output)
-const out = stringifyDocument(doc, {
-  includeHeader: true,
-  includeSectionNames: true,
-});
-
-// 2) Only include specific named sections
-const usersOnly = stringifyDocument(doc, {
-  sectionsFilter: ['users'],
-});
-```
+</details>
 
 ### Options
 
@@ -301,27 +349,23 @@ const doc2 = io.doc.with(defs)`
 
 ## ✅ Feature Status
 
-- [x] Tokenizer
-- [x] AST Parser
-- [x] Schema
-  - [x] Parsing & Compilation
-  - [x] Validation
-  - [x] Schema Inference (`loadInferred`)
-- [x] Data Types
-  - [x] Numbers (int, uint, int8-32, uint8-32, number, decimal, bigint)
-  - [x] Strings (open, regular, raw)
-  - [x] Boolean and Nulls
-  - [x] DateTime (datetime, date, time)
-  - [x] Arrays and Objects
-  - [x] Base64 Binary Data
-- [x] IOCollections with error handling
-- [x] IODefinitions with variables
-- [x] Load API (`load`, `loadObject`, `loadCollection`, `loadInferred`)
-- [x] Stringify API
-- [x] Parse API
-- [x] Error Standardization (IOError, IOValidationError, IOSyntaxError)
+<details>
+<summary><strong>Feature status</strong> (expand)</summary>
+
+- Tokenizer: ✅
+- AST parser: ✅
+- Schema parsing/compilation: ✅
+- Validation: ✅
+- Schema inference (`loadInferred`): ✅
+- Types: ✅ (numbers, strings, booleans/nulls, datetime, arrays/objects, base64)
+- Load API: ✅ (`load`, `loadObject`, `loadCollection`, `loadInferred`)
+- Parse API: ✅
+- Stringify API: ✅
+- Errors: ✅ (IOError, IOValidationError, IOSyntaxError)
 - Optimization: ongoing
 - Documentation: ongoing
+
+</details>
 
 ## 🛠️ Development
 
@@ -339,6 +383,11 @@ yarn perf
 yarn perf:decimal
 ```
 
+Notes:
+
+- Decimal design, semantics, and usage: `docs/decimal.md`.
+- Performance harness: `yarn perf` (parser) and `yarn perf:decimal` (Decimal operations).
+
 For a comprehensive understanding of Internet Object, refer to the official specification at [docs.InternetObject.org](https://docs.internetobject.org).
 
-**ISC License:** © 2018-2025 ManiarTech® - All rights reserved.
+**ISC License:** © 2018-2026 ManiarTech® - All rights reserved.

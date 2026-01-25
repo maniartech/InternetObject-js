@@ -682,4 +682,4 @@ io.defs.with(parentDefs)`...`            // → with parent definitions
 
 ---
 
-*Document generated for Internet Object JS v1.0.0-beta.1*
+*Document generated for Internet Object JS v0.2.0*

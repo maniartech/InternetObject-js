@@ -1,6 +1,6 @@
 {
   "name": "internet-object",
-  "version": "1.0.0-beta.1",
+  "version": "0.2.0",
   "description": "A lean, robust, and schema-first data interchange format for the Internet",
   "keywords": [
     "internet-object",
