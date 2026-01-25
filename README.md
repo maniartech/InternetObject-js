@@ -29,7 +29,7 @@ Use `load()` to validate JavaScript objects against a schema and get a `Document
 import { load, loadObject, loadCollection, parseDefinitions } from 'internet-object';
 
 // 1. Create definitions with a schema
-const defs = parseDefinitions('~ $schema: { name: string, age: int, email?: string }', null);
+const defs = parseDefinitions('~ $schema: { name: string, age: int, email?: string }');
 
 // 2. Load and validate a single object
 const data = { name: 'Alice', age: 30, email: 'alice@example.com' };
@@ -71,7 +71,7 @@ const defs = parseDefinitions(`
   ~ $User: { name: string, age: int }
   ~ $Product: { title: string, price: number }
   ~ $schema: $User
-`, null);
+`);
 
 // Use specific schema via options
 const userData = { name: 'Alice', age: 30 };
@@ -105,11 +105,16 @@ Use `stringify()` to convert data back to Internet Object format.
 ```ts
 import { stringify, load, parseDefinitions } from 'internet-object';
 
-const defs = parseDefinitions('~ $schema: { name: string, age: int }', null);
+const defs = parseDefinitions('~ $schema: { name: string, age: int }');
 const doc = load({ name: 'Alice', age: 30 }, defs);
 
 const ioString = stringify(doc);
 // Output: Alice, 30
+
+// Round-trip (idempotent after first stringify):
+// const normalized = stringify(parse(ioText), { includeHeader: true, includeSectionNames: true });
+// const normalized2 = stringify(parse(normalized), { includeHeader: true, includeSectionNames: true });
+// normalized2 === normalized
 ```
 
 ### Inferring Schema from Data
@@ -134,6 +139,23 @@ console.log(doc.header.schema);
 ```
 
 ## 📚 API Reference
+
+### Choosing the Right Function
+
+| Goal | Use | Notes |
+|------|-----|------|
+| Parse full IO text (header + sections) | `parse(ioText, defsOrSchema?, errorCollector?, options?)` | Accepts `IODefinitions`, `IOSchema`, a schema name string, or `null`.
+| Parse only header definitions | `parseDefinitions(headerText, externalDefs?, options?)` | Use for reusable schemas/variables/metadata.
+| Create a schema quickly | `parseSchema(schemaText, parentDefs?)` or `io.schema\`...\`` | One-step schema creation.
+| Validate without loading IO classes | `validate*()` | Returns `ValidationResult` instead of throwing.
+| Load JS data into IO classes | `load*()` | Throws on validation errors (unless configured otherwise).
+| Convert IO classes to plain JSON | `toJSON(value)` / `io.toJSON(value)` | Works with any `Jsonable`.
+
+### When to use `load()` vs `loadObject()` vs `loadCollection()`
+
+- Use `load()` when you want a `Document` (header + sections) that’s ready to `stringify()` back to IO.
+- Use `loadObject()` when you only need the validated `IOObject` (no document wrapper).
+- Use `loadCollection()` when you only need the validated `IOCollection`.
 
 ### Core Functions
 
@@ -172,17 +194,56 @@ loadCollection(data, defs, { errorCollector: errors })
 
 Loads data with automatically inferred schema.
 
-#### `parse(ioString, defs?, options?): Document`
+#### `parse(ioString, defsOrSchema?, errorCollector?, options?): Document`
 
-Parses an Internet Object string into a Document.
+Parses an Internet Object string into a `Document`.
 
-#### `stringify(doc, options?): string`
+```ts
+import { parse, parseDefinitions, parseSchema } from 'internet-object';
 
-Serializes a Document to Internet Object format.
+parse(text); // simplest
 
-#### `parseDefinitions(source, externalDefs?): Definitions`
+// Provide definitions (for variables and named schemas)
+const defs = parseDefinitions('~ $schema: { name: string, age: int }');
+parse(text, defs);
+
+// Provide an explicit schema (compiled) without embedding a header
+const schema = parseSchema('{ name: string, age: int }');
+parse(text, schema);
+
+// Collect parse/validation errors instead of throwing
+const errors: Error[] = [];
+parse(text, defs, errors);
+```
+
+#### `stringify(value, defsOrOptions?, options?): string`
+
+Serializes an `IOObject`, `IOCollection`, or `Document` to Internet Object format.
+
+#### `parseDefinitions(source, externalDefs?, options?): IODefinitions`
 
 Parses IO header text into a Definitions object.
+
+### Advanced Document Stringify
+
+Use `stringifyDocument()` when you need document-specific controls such as section filtering or section name output.
+
+```ts
+import { stringifyDocument, parse } from 'internet-object';
+
+const doc = parse(ioText);
+
+// 1) Include header and section names (stable, explicit document output)
+const out = stringifyDocument(doc, {
+  includeHeader: true,
+  includeSectionNames: true,
+});
+
+// 2) Only include specific named sections
+const usersOnly = stringifyDocument(doc, {
+  sectionsFilter: ['users'],
+});
+```
 
 ### Options
 
@@ -204,7 +265,7 @@ import {
   IODefinitions, // Schema definitions and variables
   IOSection,     // Document section
   IOHeader,      // Document header
-  Schema,        // Schema definition
+  IOSchema,      // Schema definition
   IOError,       // Base error class
   IOValidationError,  // Validation errors
   IOSyntaxError       // Parsing errors
@@ -259,8 +320,8 @@ const doc2 = io.doc.with(defs)`
 - [x] Stringify API
 - [x] Parse API
 - [x] Error Standardization (IOError, IOValidationError, IOSyntaxError)
-- [ ] Optimization (ongoing)
-- [ ] Documentation (ongoing)
+- Optimization: ongoing
+- Documentation: ongoing
 
 ## 🛠️ Development
 

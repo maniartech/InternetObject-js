@@ -26,12 +26,12 @@ The Internet Object API is **functional and well-typed**. After review, most iss
 
 | Category | Status | Notes |
 |----------|--------|-------|
-| Signature Mismatches | ✅ Resolved | All 4 reviewed - well designed, need docs |
+| Signature Mismatches | ✅ Resolved | All 4 reviewed - docs updated |
 | Naming Inconsistencies | ✅ Resolved | 1 fix (`documentToObject` → deprecate) |
-| Missing Function Pairs | 🔧 TODO | `validate*` family, `io.toJSON()` |
-| Essential Functions Missing | 🔧 TODO | `parseSchema`/`io.schema`, `validate*` |
-| Parameter Awkwardness | 🔧 Partial | `parseDefinitions` needs optional param |
-| Export Organization | 🔧 TODO | Remove duplicate, rename `Schema` → `IOSchema` |
+| Missing Function Pairs | ✅ Resolved | Added round-trip tests + docs note |
+| Essential Functions Missing | ✅ Resolved | `parseSchema`/`io.schema`, `validate*`, `toJSON` implemented |
+| Parameter Awkwardness | ✅ Resolved | `parseDefinitions(source)` works without `null` |
+| Export Organization | ✅ Resolved | `Schema` renamed to `IOSchema` (no duplicate export) |
 | Streaming API | ⏳ Deferred | API still volatile |
 
 **Overall API Score: 8.3/10** - Good for beta, improvements recommended post-launch.
@@ -46,10 +46,10 @@ The Internet Object API is **functional and well-typed**. After review, most iss
 
 ```typescript
 // parse() - parses full IO document, returns Document wrapper
-function parse(input: string, defs: Definitions | Schema | null, errors?: Error[]): Document;
+function parse(input: string, defs: IODefinitions | IOSchema | null, errors?: Error[]): IODocument;
 
-// parseDefinitions() - parses definitions only, returns Definitions
-function parseDefinitions(input: string, defs: Definitions | null, errors?: Error[]): Definitions;
+// parseDefinitions() - parses definitions only, returns IODefinitions
+function parseDefinitions(input: string, defs?: IODefinitions | null, options?: ParserOptions): IODefinitions;
 ```
 
 | Function | Purpose | Returns | When to Use |
@@ -58,10 +58,9 @@ function parseDefinitions(input: string, defs: Definitions | null, errors?: Erro
 | `parseDefinitions()` | Parse schema/variable definitions only | `Definitions` | Creating reusable schemas to pass to other functions |
 
 **Parameter difference explained**:
-- `parse()` accepts `Schema | null` because you can pass an inline schema for validation
-- `parseDefinitions()` only accepts `Definitions | null` because it's creating definitions, not consuming them
+- `parse()` accepts `IOSchema | null` because you can pass an inline schema for validation
+- `parseDefinitions()` creates/extends `IODefinitions` (and supports `parseDefinitions(text)` with no `null`)
 
-**📝 Documentation needed**: Add a "Choosing the Right Function" guide to README.
 
 ---
 
@@ -102,7 +101,6 @@ function loadCollection(data: any[], defs: Definitions, options: LoadCollectionO
 
 **Verdict**: ✅ Good layered design - provides both convenience (`load`) and precision (`loadObject`/`loadCollection`).
 
-**📝 Documentation needed**: Add usage examples showing when to pick each function.
 
 ---
 
@@ -146,7 +144,6 @@ if (value instanceof Document) {
 - `stringify()` = convenience API (universal)
 - `stringifyDocument()` = power-user API (document-specific options)
 
-**📝 Documentation needed**: Add examples showing advanced `stringifyDocument()` options.
 
 ---
 
@@ -208,7 +205,7 @@ The `load*` functions form a coherent family with distinct purposes:
 
 ## Missing Function Pairs
 
-### 1. 🔧 `parse()` ↔ `stringify()` Round-Trip - TODO: IMPLEMENT
+### 1. ✅ `parse()` ↔ `stringify()` Round-Trip - IMPLEMENTED
 
 ```typescript
 // Forward
@@ -223,10 +220,10 @@ const text2 = stringify(doc);
 const doc2 = parse(text2);  // Should equal doc
 ```
 
-**Implementation needed**:
-1. Document the round-trip guarantee in README
-2. Add round-trip tests to ensure `parse(stringify(doc))` ≈ `doc`
-3. Ensure consistent formatting options for deterministic output
+**Implemented**:
+1. Added round-trip/idempotence tests under `tests/ergonomics/roundtrip.test.ts`
+2. Added a short README note showing how to get stable normalized output
+3. Recommendation: for full document round-trips, use explicit `stringify(doc, { includeHeader: true, includeSectionNames: true })`
 
 ---
 
@@ -270,14 +267,14 @@ io.toJSON(section);     // Section → JS object
 
 ---
 
-### 3. 🔧 Schema Validation Family - TODO: IMPLEMENT
+### 3. ✅ Schema Validation Family - IMPLEMENTED
 
 ```typescript
 // Current: Load with validation (throws if invalid)
 const obj = loadObject(data, defs);  // throws ValidationError
 
 // MISSING: Validate without loading - returns ValidationResult
-const result = validate(data, schema);  // ❌ Does not exist
+const result = validate(data, schemaOrDefs);  // ✅ returns ValidationResult
 ```
 
 **Implementation Plan**: Mirror the `load*` family pattern:
@@ -291,13 +288,13 @@ interface ValidationResult<T = any> {
 }
 
 // validate() - auto-detect object or array
-function validate(data: any, schema: Schema | Definitions): ValidationResult;
+function validate(data: any, schema: IOSchema | IODefinitions): ValidationResult;
 
 // validateObject() - explicit single object
-function validateObject(data: object, schema: Schema | Definitions): ValidationResult<object>;
+function validateObject(data: object, schema: IOSchema | IODefinitions): ValidationResult<object>;
 
 // validateCollection() - explicit array
-function validateCollection(data: any[], schema: Schema | Definitions): ValidationResult<any[]>;
+function validateCollection(data: any[], schema: IOSchema | IODefinitions): ValidationResult<any[]>;
 ```
 
 **Usage**:
@@ -321,7 +318,7 @@ if (result.valid) {
 
 ## Essential Functions Missing
 
-### 1. 🔧 `validate*()` Family - TODO: IMPLEMENT
+### 1. ✅ `validate*()` Family - IMPLEMENTED
 
 Mirrors the `load*` family for validation without wrapping:
 
@@ -333,13 +330,13 @@ interface ValidationResult<T = any> {
 }
 
 // Auto-detect (handles object or array)
-function validate(data: any, schema: Schema | Definitions): ValidationResult;
+function validate(data: any, schema: IOSchema | IODefinitions): ValidationResult;
 
 // Explicit object (stricter TypeScript types)
-function validateObject(data: object, schema: Schema | Definitions): ValidationResult<object>;
+function validateObject(data: object, schema: IOSchema | IODefinitions): ValidationResult<object>;
 
 // Explicit array (stricter TypeScript types)
-function validateCollection(data: any[], schema: Schema | Definitions): ValidationResult<any[]>;
+function validateCollection(data: any[], schema: IOSchema | IODefinitions): ValidationResult<any[]>;
 ```
 
 **Use Case**: Form validation, API validation, data pipeline validation.
@@ -352,7 +349,7 @@ function validateCollection(data: any[], schema: Schema | Definitions): Validati
 
 ---
 
-### 3. 🔧 `io.toJSON()` - Universal JSON Conversion - TODO: IMPLEMENT
+### 3. ✅ `io.toJSON()` - Universal JSON Conversion - IMPLEMENTED
 
 ```typescript
 // MISSING at top level - only exists as instance methods
@@ -371,11 +368,11 @@ function toJSON(value: Jsonable, options?: { skipErrors?: boolean }): any;
 - Enables functional composition: `items.map(io.toJSON)`
 - Deprecates awkward `documentToObject()` function
 
-**Current Workaround**: `doc.toJSON()`, `obj.toJSON()` - methods exist but no standalone function.
+**Status**: Available as both `toJSON(value)` and `io.toJSON(value)`.
 
 ---
 
-### 4. 🔧 `io.schema` / `parseSchema()` - Quick Schema Creation - TODO: IMPLEMENT
+### 4. ✅ `io.schema` / `parseSchema()` - Quick Schema Creation - IMPLEMENTED
 
 Follow the same pattern as `parseDefinitions` / `io.defs`:
 
@@ -422,15 +419,15 @@ function omit(obj: InternetObject, keys: string[]): InternetObject;
 
 ## Parameter Awkwardness
 
-### 1. 🔧 Required `null` for Optional Parameters - PARTIAL FIX NEEDED
+### 1. ✅ Required `null` for Optional Parameters - FIXED
 
 ```typescript
 // parse() - already works! ✅
 const doc = parse(text);  // Works without null
 
-// parseDefinitions() - requires null ❌
-const defs = parseDefinitions(text, null);  // Awkward
-const defs = parseDefinitions(text);        // Should work!
+// parseDefinitions() - no null needed ✅
+const defs = parseDefinitions(text);
+const defs2 = parseDefinitions(text, null); // still supported for backward-compat
 ```
 
 **Fix needed**: Make `externalDefs` parameter optional in `parseDefinitions()`:
@@ -491,19 +488,18 @@ ioDocument.with(defs, errors)`...`;
 
 ## Export Organization Issues
 
-### 1. 🔧 Duplicate Exports - TODO: FIX
+### 1. ✅ Duplicate Exports - VERIFIED CLEAN
 
 ```typescript
 // index.ts exports the SAME class twice with different names!
-export { default as IODefinitions      } from './core/definitions';
-export { default as IODefinitionValue  } from './core/definitions';  // ❌ DUPLICATE!
+export { default as IODefinitions } from './core/definitions';
 ```
 
-**Fix**: Remove `IODefinitionValue` - it's redundant and confusing.
+**Status**: No duplicate export in current `src/index.ts`.
 
 ---
 
-### 2. 🔧 Class Naming - Partial Fix Needed
+### 2. ✅ Class Naming - FIXED FOR SCHEMA
 
 | Class | Current | Recommendation |
 |-------|---------|----------------|
@@ -512,7 +508,7 @@ export { default as IODefinitionValue  } from './core/definitions';  // ❌ DUPL
 | `IODefinitions` | ✅ Has IO prefix | Keep |
 | `IOCollection` | ✅ Has IO prefix | Keep |
 | `IOObject` | ✅ Has IO prefix | Keep |
-| `Schema` | ❌ No IO prefix | **Rename to `IOSchema`** |
+| `IOSchema` | ✅ Has IO prefix | Keep |
 | `Decimal` | ❌ No IO prefix | ✅ **Keep as-is** |
 
 **Rationale**:
@@ -572,19 +568,19 @@ function streamCount(stream): Promise<number>;
 
 | Issue | Recommendation | Status |
 |-------|----------------|--------|
-| Missing `validate()` family | Add `validate`, `validateObject`, `validateCollection` → `ValidationResult` | 🔧 TODO |
-| `io.toJSON(Jsonable)` | Universal JSON conversion for all types | 🔧 TODO |
-| `parseSchema` / `io.schema` | Quick schema creation (function + template tag) | 🔧 TODO |
-| `parseDefinitions` requires `null` | Make `externalDefs` optional | 🔧 TODO |
-| Remove `IODefinitionValue` duplicate | Clean up exports | 🔧 TODO |
-| Rename `Schema` → `IOSchema` | Avoid generic name collision | 🔧 TODO |
-| Deprecate `documentToObject` | Replace with `io.toJSON()` | 🔧 TODO |
+| Missing `validate()` family | Add `validate`, `validateObject`, `validateCollection` → `ValidationResult` | ✅ Resolved |
+| `io.toJSON(Jsonable)` | Universal JSON conversion for all types | ✅ Resolved |
+| `parseSchema` / `io.schema` | Quick schema creation (function + template tag) | ✅ Resolved |
+| `parseDefinitions` requires `null` | Make `externalDefs` optional | ✅ Resolved |
+| Remove `IODefinitionValue` duplicate | Clean up exports | ✅ Verified clean |
+| Rename `Schema` → `IOSchema` | Avoid generic name collision | ✅ Resolved |
+| Deprecate `documentToObject` | Replace with `io.toJSON()` | ✅ Resolved |
 
 ### 🟡 Medium Priority - POST-BETA
 
 | Issue | Recommendation | Status |
 |-------|----------------|--------|
-| Round-trip tests | Verify parse → stringify preserves data | 🔧 TODO |
+| Round-trip tests | Verify parse → stringify preserves data | ✅ Resolved |
 | Consistent error collection | Standardize on options object pattern | ⏳ Deferred |
 
 ### 🟢 Low Priority - FUTURE
@@ -678,7 +674,7 @@ io.doc`...`                              // → Document (alias: ioDocument)
 io.doc.with(defs)`...`                   // → Document with defs
 io.object`...`                           // → InternetObject (alias: ioObject)
 io.object.with(defs)`...`                // → with validation
-io.schema`...`                           // → Schema (alias: ioSchema) 🔧 TODO
+io.schema`...`                           // → Schema (alias: ioSchema)
 io.schema.with(defs)`...`                // → with parent definitions
 io.defs`...`                             // → Definitions (alias: ioDefinitions)
 io.defs.with(parentDefs)`...`            // → with parent definitions

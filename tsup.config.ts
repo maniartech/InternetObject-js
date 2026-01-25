@@ -9,10 +9,8 @@ export default defineConfig({
   clean: true,
   sourcemap: true,
   splitting: false,
-  treeshake: {
-    preset: 'recommended',
-    moduleSideEffects: false,
-  },
+  // NOTE: tsup/esbuild already performs tree-shaking.
+  // We avoid the optional Rollup-based extra treeshaking here to keep builds warning-free.
   minify: true, // Minify for smaller bundles (~42% gzip reduction)
   target: 'es2022',
   outDir: 'dist',
