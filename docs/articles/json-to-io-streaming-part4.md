@@ -10,6 +10,16 @@ In this article, we’ll explore why your next streaming API should be built wit
 
 ---
 
+## Why IO Streaming?
+
+Internet Object (IO) streaming is a powerful alternative to traditional NDJSON (Newline Delimited JSON) for streaming data. It offers a more efficient, robust, and flexible way to handle real-time data transfer. Here’s why you should consider IO streaming for your next project:
+
+- **Efficiency**: IO streaming reduces data overhead by separating the schema from the data. This means you don’t have to repeat keys in every single record, resulting in significant bandwidth savings and faster parsing.
+- **Type Safety**: With IO, you define the data schema upfront. This contract-first approach ensures that data is validated on the fly, preventing type-related errors and making your application more reliable.
+- **Human-Readability**: Unlike binary formats like Protobuf or Avro, IO streams are human-readable. You can easily inspect the data in a text editor, which simplifies debugging and development.
+- **Error Resilience**: IO streaming is designed to handle errors gracefully. If a record fails validation or a server-side issue occurs, the stream can emit a typed error without crashing the client, ensuring a seamless user experience.
+- **Flexibility**: IO supports multi-type streams, allowing you to send different data structures in the same stream. This is handled natively using sections, which makes it easy to manage complex data flows.
+
 ## The Problem with JSON Streaming
 
 Let’s look at a typical NDJSON stream for a list of users:
@@ -81,22 +91,26 @@ One of the biggest limitations of NDJSON is handling mixed data types. How do yo
 {"type": "order", "data": {"id": 101, "total": 99.99}}
 ```
 
-Internet Object handles this natively using **Sections**. You can switch the active schema mid-stream using the `---` separator.
+Internet Object handles this natively using **Sections**. You can define all schemas in the header and then switch the active schema mid-stream using the `---` separator followed by the schema name.
+
+This way, the schema is sent only once, and the stream itself contains only pure data, making it highly efficient.
 
 ```ruby
+// Header (sent once)
 ~ $user: { id:int, name:string }
 ~ $order: { id:int, userId:int, total:decimal }
-~ $schema: $user
 ---
+// Payload (streamed)
+$user
 ~ 1, Alice
 ~ 2, Bob
-
---- $order
+---
+$order
 ~ 101, 1, 99.99
 ~ 102, 2, 45.50
 ```
 
-The parser automatically switches context. When it sees `--- $order`, it knows that subsequent lines should be validated against the `$order` schema.
+The parser automatically switches context. When it sees `---` followed by `$order`, it knows that subsequent lines should be validated against the `$order` schema.
 
 ## Real-World Implementation
 
@@ -104,37 +118,60 @@ Implementing this in Node.js or the browser is incredibly simple with the `inter
 
 ### Server (Node.js)
 
+A `Node.js` server can stream real-time data, for example, from a stock ticker. In this example, we'll use a generator to simulate a live feed of stock prices.
+
 ```typescript
-import io from 'internet-object';
+import io from "internet-object";
 
 // 1. Define the contract
 const defs = io.defs`
-  ~ $stock: { symbol:string, price:decimal, ts:string }
-  ~ $schema: $stock`;
+  ~ $stock: { symbol:string, price:decimal, ts:datetime }
+  ~ $schema: $stock
+`;
 
+// 2. Create a stream writer
 const writer = io.createStreamWriter(response, defs);
 
-// 2. Send Header
+// 3. Send the header
 writer.sendHeader();
 
-// 3. Stream Data
-setInterval(() => {
-  const data = { symbol: "AAPL", price: 150.25, ts: new Date() };
-  response.write(writer.write(data));
-}, 1000);
+// 4. Stream data from a generator
+async function* stockTicker() {
+  while (true) {
+    // Simulate fetching stock prices
+    yield { symbol: "AAPL", price: 150.25 + Math.random() * 2 - 1, ts: new Date() };
+    yield { symbol: "GOOGL", price: 2800.50 + Math.random() * 10 - 5, ts: new Date() };
+
+    // Wait for 1 second before sending the next update
+    await new Promise(resolve => setTimeout(resolve, 1000));
+  }
+}
+
+// Use the generator to stream data
+for await (const record of stockTicker()) {
+  response.write(writer.write(record));
+}
+
+response.end();
 ```
 
 ### Client (Browser Fetch API)
 
-```typescript
-import { openStream } from 'internet-object';
+The client uses the `fetch` API to get the stream and the `internet-object` library to parse it.
 
-const response = await fetch('/api/stocks');
+```typescript
+import { openStream } from "internet-object";
+
+const response = await fetch("/api/stocks");
 const stream = openStream(response.body);
 
 for await (const item of stream) {
-  console.log(item.data);
-  // Output: { symbol: "AAPL", price: 150.25, ts: "..." }
+  if (item.isData) {
+    console.log(item.data);
+    // Output: { symbol: "AAPL", price: 150.25, ts: "..." }
+  } else if (item.isError) {
+    console.error(item.error);
+  }
 }
 ```
 
@@ -142,13 +179,11 @@ The client automatically handles buffering, parsing, and validation. You just co
 
 ## Conclusion
 
-JSON was designed for storage, not streaming. While it works, it is inefficient at scale.
+While `JSON` is a versatile format for data interchange, it falls short in high-performance streaming scenarios. `NDJSON` is a step in the right direction, but it carries the baggage of `JSON's` verbosity and lack of a schema.
 
-Internet Object Streaming offers a modern alternative that respects your bandwidth, your CPU, and your need for type safety, without sacrificing the developer experience of a text-based format.
+Internet Object Streaming offers a modern, efficient, and robust alternative. By separating the schema from the data, it achieves significant performance gains while maintaining readability. Its built-in type safety, error resilience, and flexibility make it an ideal choice for a wide range of streaming applications, from real-time data feeds to large-scale data exports.
 
-It changes the mental model of API design from "sending objects" to "opening a channel".
-
-If you are building the next generation of real-time apps, it’s time to look beyond NDJSON.
+If you're building the next generation of real-time apps, it’s time to look beyond NDJSON and embrace the power of Internet Object.
 
 ---
 

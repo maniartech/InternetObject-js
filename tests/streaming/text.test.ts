@@ -53,24 +53,26 @@ describe('ChunkDecoder', () => {
 
 describe('updateStringState', () => {
   it('toggles state on quotes', () => {
-    expect(updateStringState('"', false)).toBe(true);
-    expect(updateStringState('"', true)).toBe(false);
-    expect(updateStringState('abc', false)).toBe(false);
-    expect(updateStringState('abc', true)).toBe(true);
+    expect(updateStringState('"', null)).toBe('"');
+    expect(updateStringState('"', '"')).toBe(null);
+    expect(updateStringState('abc', null)).toBe(null);
+    expect(updateStringState('abc', '"')).toBe('"');
   });
 
   it('handles escaped quotes', () => {
-    expect(updateStringState('\\"', false)).toBe(false);
-    expect(updateStringState('a\\"b', true)).toBe(true);
+    // When outside a string, \" opens a string (escape only matters inside strings)
+    expect(updateStringState('\\"', null)).toBe('"');
+    // When inside a string, escaped quote doesn't close it
+    expect(updateStringState('a\\"b', '"')).toBe('"');
   });
 
   it('handles complex strings', () => {
-    let state = false;
+    let state: string | null = null;
     state = updateStringState('Start "', state);
-    expect(state).toBe(true);
+    expect(state).toBe('"');
     state = updateStringState('Middle', state);
-    expect(state).toBe(true);
+    expect(state).toBe('"');
     state = updateStringState('" End', state);
-    expect(state).toBe(false);
+    expect(state).toBe(null);
   });
 });

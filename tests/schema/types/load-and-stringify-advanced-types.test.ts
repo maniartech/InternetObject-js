@@ -124,12 +124,12 @@ describe('load() and stringify() - advanced types', () => {
 
     test('stringifies decimal values', () => {
       const memberDef: any = { type: 'decimal', path: 'value' }
-      expect(decimal.stringify(new Decimal('42.50', 4, 2), memberDef)).toBe('42.50')
+      expect(decimal.stringify(new Decimal('42.50', 4, 2), memberDef)).toBe('42.50m')
     })
 
     test('preserves scale', () => {
       const memberDef: any = { type: 'decimal', path: 'value' }
-      expect(decimal.stringify(new Decimal('42.500', 5, 3), memberDef)).toBe('42.500')
+      expect(decimal.stringify(new Decimal('42.500', 5, 3), memberDef)).toBe('42.500m')
     })
 
     test('validates before stringifying', () => {

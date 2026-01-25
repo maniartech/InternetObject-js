@@ -14,6 +14,7 @@ import IOValidationError      from './errors/io-validation-error';
 import Schema                 from './schema/schema';
 import { ioDefinitions, ioDocument, ioObject } from './template-funcs';
 import parse                  from './parser/index';
+import parseDefinitions       from './parser/parse-defs';
 import { load, loadObject }   from './facade/load';
 import { stringify }          from './facade/stringify';
 import { createStreamWriter, openStream } from './streaming';
@@ -23,6 +24,8 @@ import { createStreamWriter, openStream } from './streaming';
 const io = {
   // Facade methods
   parse,
+  parseDefs: parseDefinitions,      // Short alias
+  parseDefinitions,                 // Full name
   load,
   loadObject,
   stringify,

@@ -125,6 +125,28 @@ export function ioDefinitions(strings: TemplateStringsArray, ...args: any[]): De
 }
 
 /**
+ * Parses definitions with external/parent definitions to extend or merge.
+ *
+ * @example
+ *   const baseDefs = ioDefinitions`~ $base: { id: int }`;
+ *   const extendedDefs = ioDefinitions.with(baseDefs)`
+ *     ~ $user: { $base, name: string }
+ *   `;
+ *
+ * @param {Definitions | null} parentDefs - Parent definitions to extend.
+ * @returns {function(TemplateStringsArray, ...any[]): Definitions | null} A tag function for parsing with parent definitions.
+ */
+ioDefinitions.with = (parentDefs: Definitions | null): (strings: TemplateStringsArray, ...args: any[]) => Definitions | null => {
+  return (strings: TemplateStringsArray, ...args: any[]) => {
+    const input = strings.reduce((acc, str, i) => {
+      return acc + str + (args[i] === undefined ? '' : args[i]);
+    }, '');
+
+    return parseDefinitions(input, parentDefs);
+  }
+}
+
+/**
  * ## Internet Object Facade
  *
  * Unified API for all core Internet Object functionality.
