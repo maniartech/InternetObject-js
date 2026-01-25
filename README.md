@@ -184,7 +184,7 @@ const doc = load({
   address: { street: '123 Main St', city: 'NYC' }
 }, defs);
 
-console.log(doc.toJSON());
+console.log(doc.toJSON()); 
 ```
 
 Schemas starting with `$` are named. `$schema` is the default schema used for validation.
