@@ -9,11 +9,15 @@ export interface IOStreamTransport {
  * Client-side: a source of bytes/text chunks.
  *
  * Supported shapes:
+ * - string
+ * - Iterable<StreamChunk>
  * - AsyncIterable<StreamChunk>
  * - Web ReadableStream<Uint8Array>
  * - Node.js Readable (AsyncIterable<Uint8Array|string>)
  */
 export type IOStreamSource =
+  | string
+  | Iterable<StreamChunk>
   | AsyncIterable<StreamChunk>
   | ReadableStream<Uint8Array>
   | AsyncIterable<Uint8Array | string>;
@@ -25,7 +29,7 @@ export interface StreamItem<T = any> {
   error?: Error;
 }
 
-export interface OpenStreamOptions {
+export interface StreamReaderOptions {
   /** Optional default schema name if header does not provide $schema. */
   defaultSchema?: string;
 

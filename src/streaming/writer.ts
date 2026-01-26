@@ -142,12 +142,60 @@ export class IOStreamWriter {
       return '';
     }
   }
+
+  /**
+   * Writes a batch of items.
+   * Efficiently handles schema switching (only switches once if all items share schema).
+   */
+  writeBatch(items: object[], schemaName?: string): string {
+    let out = '';
+    for (const item of items) {
+      out += this.write(item, schemaName);
+    }
+    return out;
+  }
+
+  /**
+   * Serializes and sends one item via the transport.
+   */
+  async send(data: object, schemaName?: string): Promise<void> {
+    const chunk = this.write(data, schemaName);
+    if (chunk) {
+      await this.transport.send(chunk);
+    }
+  }
+
+  /**
+   * Serializes and sends a batch of items via the transport.
+   */
+  async sendBatch(items: object[], schemaName?: string): Promise<void> {
+    const chunk = this.writeBatch(items, schemaName);
+    if (chunk) {
+      await this.transport.send(chunk);
+    }
+  }
 }
 
 export function createStreamWriter(
-  transport: IOStreamTransport,
+  transport: IOStreamTransport | { write: (chunk: any) => boolean | void },
   defs?: Definitions | null,
   options?: StreamWriterOptions
 ): IOStreamWriter {
-  return new IOStreamWriter(transport, defs ?? null, options);
+  // Duck-type check for Node.js Writable stream
+  if (transport && typeof (transport as any).write === 'function' && typeof (transport as any).send !== 'function') {
+    const writable = transport as any;
+    transport = {
+      send: (chunk: string | Uint8Array) => {
+        const ok = writable.write(chunk);
+        // Handle backpressure if needed? For now we just write.
+        if (!ok) {
+           // simple drain handler could be async but send() result is void|Promise<void>
+           // Implementing proper backpressure requires async send().
+           // For now, we fire and forget or trust the stream buffers.
+        }
+      }
+    };
+  }
+
+  return new IOStreamWriter(transport as IOStreamTransport, defs ?? null, options);
 }

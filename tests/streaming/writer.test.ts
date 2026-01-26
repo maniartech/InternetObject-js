@@ -61,4 +61,50 @@ describe('IOStreamWriter', () => {
     expect(validOutput).toContain('--- $user');
     expect(validOutput).toContain('Alice');
   });
+
+  describe('writeBatch and send usage', () => {
+    it('accepts a duck-typed Writable (Node.js style)', async () => {
+      const wrote: string[] = [];
+      const mockWritable = {
+        write: (chunk: string) => {
+          wrote.push(chunk);
+          return true;
+        },
+        end: () => {}
+      };
+
+      const writer = createStreamWriter(mockWritable as any);
+      // Use send() to trigger use of wrapper
+      await writer.send({ a: 1 });
+
+      expect(wrote.length).toBeGreaterThan(0);
+      expect(wrote.join('')).toContain('~ 1');
+    });
+
+    it('supports writeBatch and sendBatch', async () => {
+        const output: string[] = [];
+        const transport: IOStreamTransport = {
+            send: (c) => { output.push(c.toString()) }
+        };
+        const writer = createStreamWriter(transport);
+
+        // schemaName 'users'
+        const batch1 = writer.writeBatch([
+            { name: 'A' },
+            { name: 'B' }
+        ], 'users');
+
+        expect(batch1).toContain('--- users');
+        expect(batch1).toContain('~ A');
+        expect(batch1).toContain('~ B');
+
+        // Check sendBatch (updates state)
+        await writer.sendBatch([{ name: 'C' }], 'users');
+        const lastOutput = output[output.length - 1];
+
+        expect(lastOutput).toContain('~ C');
+        // 'users' matches 'users', so NO new header
+        expect(lastOutput).not.toContain('--- users');
+    });
+  });
 });

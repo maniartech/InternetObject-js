@@ -1,5 +1,5 @@
 export * from './types';
-export { openStream } from './open-stream';
+export { createStreamReader, IOStreamReader } from './reader';
 export { createStreamWriter, IOStreamWriter } from './writer';
 export { createPushSource, BufferTransport } from './adapters';
 
