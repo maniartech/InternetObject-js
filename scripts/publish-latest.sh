@@ -34,10 +34,47 @@ if command -v git >/dev/null 2>&1; then
   fi
 fi
 
-# Ensure npm auth is configured.
-if ! npm whoami >/dev/null 2>&1; then
-  echo "Not logged in to npm. Run: npm login" >&2
-  exit 1
+# Auth Configuration
+TEMP_NPMRC=""
+
+cleanup() {
+  if [ -n "$TEMP_NPMRC" ] && [ -f "$TEMP_NPMRC" ]; then
+    rm -f "$TEMP_NPMRC"
+  fi
+}
+trap cleanup EXIT
+
+# 1. Try loading token from .env
+NPM_PUBLISH_TOKEN=""
+if [ -f .env ]; then
+  # Extract token, handling potential quotes and Windows line endings
+  NPM_PUBLISH_TOKEN=$(grep "^NPM_PUBLISH_TOKEN=" .env | cut -d '=' -f2- | tr -d '"' | tr -d "'" | tr -d '\r')
+fi
+
+if [ -n "${NPM_PUBLISH_TOKEN:-}" ]; then
+  echo "🔑 Found NPM_PUBLISH_TOKEN in .env"
+
+  # create temp npmrc
+  TEMP_NPMRC=$(mktemp)
+  echo "//registry.npmjs.org/:_authToken=${NPM_PUBLISH_TOKEN}" > "$TEMP_NPMRC"
+
+  # Validate token
+  if ! npm whoami --userconfig "$TEMP_NPMRC" >/dev/null 2>&1; then
+    echo "❌ Error: The NPM_PUBLISH_TOKEN in .env is invalid or expired." >&2
+    echo "   Please regenerate the token." >&2
+    exit 1
+  fi
+
+  echo "✅ Token validated. User: $(npm whoami --userconfig "$TEMP_NPMRC")"
+  export NPM_CONFIG_USERCONFIG="$TEMP_NPMRC"
+
+else
+  # 2. Fallback to interactive login
+  if ! npm whoami >/dev/null 2>&1; then
+    echo "Not logged in to npm. Run: npm login" >&2
+    exit 1
+  fi
+  echo "👤 Using active npm login: $(npm whoami)"
 fi
 
 echo "Running prepublish checks (clean + build + test)…"
