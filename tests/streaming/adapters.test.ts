@@ -1,18 +1,19 @@
 import { describe, it, expect } from 'vitest';
 import { createPushSource, BufferTransport } from '../../src/streaming/adapters';
-import { openStream } from '../../src/streaming/open-stream';
+import { createStreamReader } from '../../src/streaming/reader';
 import { createStreamWriter } from '../../src/streaming/writer';
 import io from '../../src/facade';
 
 describe('Streaming Adapters', () => {
   describe('createPushSource', () => {
-    it('bridges manual pushes to openStream', async () => {
+    it('bridges manual pushes to createStreamReader', async () => {
       const { source, push, close } = createPushSource();
 
       // Start consumer
       const items: any[] = [];
       const consumer = (async () => {
-        for await (const item of openStream(source)) {
+        const reader = createStreamReader(source);
+        for await (const item of reader) {
           items.push(item.data);
         }
       })();
@@ -36,7 +37,8 @@ describe('Streaming Adapters', () => {
 
       const consumer = (async () => {
         try {
-          for await (const _ of openStream(source)) { /* noop */ }
+          const reader = createStreamReader(source);
+          for await (const _ of reader) { /* noop */ }
         } catch (e) {
           return e;
         }
