@@ -1,5 +1,10 @@
 # <img src="https://unpkg.com/internet-object@latest/logo/internet-object-logo.png" height="24px" alt="Internet Object" title="Internet Object"> Internet Object
 
+[![npm version](https://img.shields.io/npm/v/internet-object?style=flat-square)](https://www.npmjs.com/package/internet-object)
+[![License](https://img.shields.io/npm/l/internet-object?style=flat-square)](https://github.com/maniartech/InternetObject-js/blob/master/LICENSE)
+[![Downloads](https://img.shields.io/npm/dm/internet-object?style=flat-square)](https://www.npmjs.com/package/internet-object)
+[![Build Status](https://img.shields.io/github/actions/workflow/status/maniartech/internetobject-js/ci.yml?branch=main&style=flat-square)](https://github.com/maniartech/InternetObject-js/actions)
+
 A compact, human-readable data format with built-in schema validation — like JSON, but smaller and type-safe.
 
 ```ruby
@@ -11,13 +16,20 @@ name: string, age: int
 
 This is Internet Object. The `~` lines define a schema; `---` separates data sections. Values are comma-separated and validated automatically.
 
-## 📦 Install
+## Why Internet Object?
+
+- **Schema-First**: Validation is built-in, not an afterthought. define structure types once, ensure data integrity everywhere.
+- **Type-Safe**: Supports rich types like `int`, `bool`, `date`, `datetime`, and `email` out of the box.
+- **Compact**: Removes repetitive keys using a CSV-like structure for collections, reducing payload size significantly.
+- **Human-Friendly**: Cleaner syntax than JSON, more structured than YAML.
+
+## Install
 
 ```bash
 npm install internet-object
 ```
 
-## 🚀 Learn by Example
+## Learn by Example
 
 Each section builds on the previous one. Start at the top and work your way down.
 
@@ -82,24 +94,45 @@ console.log(doc.toJSON());
 
 This is handy for tests, fixtures, and quick prototyping.
 
-### 4. Validate your JavaScript data
+### 4. Create IO objects from JavaScript
 
-You already have JS objects and want to validate them against a schema:
+Wrap plain JavaScript objects into IO structures (`IODocument` or `IOObject`). This is useful for building data programmatically before serialization or validation.
+
+```ts
+import { load, loadObject, IODocument, IOObject } from 'internet-object';
+
+// 1. Create a full document
+const doc = load({ title: 'User List', count: 10 });
+console.log(doc instanceof IODocument); // true
+
+// 2. Create a single IOObject
+const user = loadObject({ name: 'Alice', active: true });
+console.log(user instanceof IOObject); // true
+console.log(user.get('name')); // 'Alice'
+```
+
+### 5. Validate JavaScript Data
+
+Check your existing JavaScript objects against an IO schema.
+
+**Method A: `load()` (Strict)**
+Throws an error if validation fails. Use this when you need an `IODocument` instance or expect valid data.
 
 ```ts
 import { load, parseDefinitions } from 'internet-object';
 
-// 1. Define a schema
 const defs = parseDefinitions('~ $schema: { name: string, age: int }');
 
-// 2. Validate your data
-const doc = load({ name: 'Alice', age: 30 }, defs);
-
-console.log(doc.toJSON());
-// { name: 'Alice', age: 30 }
+try {
+  const doc = load({ name: 'Alice', age: 30 }, defs);
+  console.log(doc.toJSON());
+} catch (e) {
+  console.error('Validation failed:', e.message);
+}
 ```
 
-If validation fails, `load()` throws an error. Use `validate()` if you prefer a result object instead:
+**Method B: `validateObject()` (Safe)**
+Returns a result object with `valid` flag and errors. Great for form inputs.
 
 ```ts
 import { validateObject, parseDefinitions } from 'internet-object';
@@ -108,14 +141,14 @@ const defs = parseDefinitions('~ $schema: { name: string, age: int }');
 const result = validateObject({ name: 'Alice', age: 'thirty' }, defs);
 
 if (result.valid) {
-  console.log(result.data);
+  console.log('Valid:', result.data);
 } else {
-  console.error(result.errors);
+  console.error('Errors:', result.errors);
   // Error: expected int, got string
 }
 ```
 
-### 5. Convert JS data → IO text
+### 6. Convert JS data → IO text
 
 Once you have validated data, you can serialize it back to IO format:
 
@@ -131,7 +164,7 @@ console.log(stringify(doc));
 
 This is the reverse of `parse()`. Round-trip: `parse()` → `toJSON()` → `load()` → `stringify()`.
 
-### 6. Access values by key or index
+### 7. Access values by key or index
 
 IO objects support both key-based and positional access:
 
@@ -165,7 +198,7 @@ console.log(users.getAt(0).get('name')); // 'Alice'
 console.log(users.getAt(1).name);        // 'Bob'
 ```
 
-### 7. Named schemas (reusable types)
+### 8. Named schemas (reusable types)
 
 Define multiple schemas and reference them by name:
 
@@ -173,9 +206,9 @@ Define multiple schemas and reference them by name:
 import { load, parseDefinitions } from 'internet-object';
 
 const defs = parseDefinitions(`
-  ~ $Address: { street: string, city: string }
-  ~ $User: { name: string, age: int, address: $Address }
-  ~ $schema: $User
+  ~ $address: { street: string, city: string }
+  ~ $user: { name: string, age: int, address: $address }
+  ~ $schema: $user
 `);
 
 const doc = load({
@@ -184,12 +217,31 @@ const doc = load({
   address: { street: '123 Main St', city: 'NYC' }
 }, defs);
 
-console.log(doc.toJSON()); 
+console.log(doc.toJSON());
 ```
 
 Schemas starting with `$` are named. `$schema` is the default schema used for validation.
 
-## 📋 Quick Reference
+### 9. Streaming API (Chunked I/O)
+
+For large datasets or network streams, use `createStreamReader`:
+
+```ts
+import { createStreamReader } from 'internet-object';
+
+const input = getSomeReadStream(); // Fetch Response, ReadableStream, Generator...
+const reader = createStreamReader(input);
+
+for await (const item of reader) {
+  if (item.data) {
+    console.log('Received:', item.data.toJSON());
+  }
+}
+```
+
+Works with Node.js streams, WHATWG streams, `AsyncIterable`, or simple strings.
+
+## Quick Reference
 
 | I want to… | Use this |
 |------------|----------|
@@ -198,9 +250,10 @@ Schemas starting with `$` are named. `$schema` is the default schema used for va
 | Convert JS to IO text | `stringify(load(data, defs))` |
 | Embed IO in code | ``io.doc`...` `` |
 | Create a schema | `parseDefinitions('~ $schema: {...}')` or ``io.schema`{...}` `` |
+| Read stream | `createStreamReader(source)` |
 
 <details>
-<summary><strong>📚 More Features</strong></summary>
+<summary><strong>More Features</strong></summary>
 
 ### Parse with external definitions
 
@@ -248,7 +301,7 @@ const output = stringifyDocument(doc, {
 </details>
 
 <details>
-<summary><strong>🏗️ Core Classes</strong></summary>
+<summary><strong>Core Classes</strong></summary>
 
 ```ts
 import {
@@ -266,7 +319,7 @@ import {
 </details>
 
 <details>
-<summary><strong>✅ Feature Status</strong></summary>
+<summary><strong>Feature Status</strong></summary>
 
 - Parsing: ✅
 - Schema validation: ✅
@@ -275,12 +328,12 @@ import {
 - Stringify API: ✅
 - Error handling: ✅
 - Schema inference: ✅
-- Streaming: ✅ (experimental)
+- Streaming: ✅ (Beta 0.2.0)
 - Documentation: ongoing
 
 </details>
 
-## 🛠️ Development
+## Development
 
 ```bash
 yarn install   # Install dependencies
@@ -288,12 +341,22 @@ yarn test      # Run tests
 yarn build     # Build for production
 ```
 
-## 🏷️ Releases
+## Releases
 
 ```bash
 npm install internet-object          # stable (latest)
 npm install internet-object@next     # preview (next)
 ```
+## Contributing & Community
+
+We welcome contributions! Please see our [CONTRIBUTING.md](CONTRIBUTING.md) for details on how to get started, report issues, or propose new features.
+
+- **Issues**: [Report a bug](https://github.com/maniartech/InternetObject-js/issues)
+- **Discussions**: [Join the conversation](https://github.com/maniartech/InternetObject-js/discussions)
+- **Twitter**: [@maniartech](https://twitter.com/maniartech)
+
+## License
+
 
 Maintainers: publish via `bash scripts/publish-latest.sh` or `bash scripts/publish-next.sh`.
 
