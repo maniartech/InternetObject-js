@@ -3,15 +3,16 @@ import { defineConfig } from 'tsup';
 const isProd = process.env.NODE_ENV === 'production';
 
 export default defineConfig({
-  entry: ['src/index.ts'],
+  entry: ['src/**/*.ts', '!src/**/*.test.ts', '!src/test-parser-crash.ts', '!src/examples/**/*'],
   format: ['cjs', 'esm'],
   dts: true,
   clean: true,
+  bundle: false,
   sourcemap: true,
   splitting: false,
   // NOTE: tsup/esbuild already performs tree-shaking.
   // We avoid the optional Rollup-based extra treeshaking here to keep builds warning-free.
-  minify: true, // Minify for smaller bundles (~42% gzip reduction)
+  minify: false, // Don't minify individual files for library
   target: 'es2022',
   outDir: 'dist',
   // Generate separate folders for ESM and CJS

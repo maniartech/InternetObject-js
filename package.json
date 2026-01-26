@@ -69,6 +69,7 @@
     "perf:decimal": "tsx performance.decimal.ts",
     "stream:server:http": "tsx src/streaming/examples/node-http-server.ts",
     "stream:client:http": "tsx src/streaming/examples/node-http-client.ts",
+    "check-release": "bash scripts/pre-publish-check.sh",
     "bundle:analyze": "bash scripts/bundle-analyze.sh",
     "bundle:test-minimal": "bash scripts/bundle-test-minimal.sh",
     "bundle:test-full": "bash scripts/bundle-test-full.sh",

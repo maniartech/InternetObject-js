@@ -19,11 +19,12 @@ import { canonicalizeAdditionalProps } from './utils/additional-props-canonicali
 import { normalizeKeyToken } from './utils/member-utils';
 
 // Register built-in types
-
-registerTypes();
+// registerTypes();
 
 export default function compileObject(
   name:string, node: Node, defs?:Definitions): Schema | TokenNode {
+  registerTypes();
+
   // Check if the node is a string token and starts with $. If yes, then
   // it is a schema variable. In this case, just return the node as it is
   // to be processed later.
