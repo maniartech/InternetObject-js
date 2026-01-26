@@ -28,7 +28,7 @@
     <pre id="output"></pre>
 
     <script type="module">
-        import { openStream } from '/dist/index.js';
+        import { createStreamReader } from '/dist/index.js';
 
         const startBtn = document.getElementById('startBtn');
         const batchBtn = document.getElementById('batchBtn');
@@ -111,8 +111,8 @@
                     }
                 }
 
-                // Pass the generator to openStream
-                const stream = openStream(streamGenerator());
+                // Pass the generator to createStreamReader
+                const stream = createStreamReader(streamGenerator());
 
                 for await (const item of stream) {
                     const json = JSON.stringify(item.data, (key, value) =>

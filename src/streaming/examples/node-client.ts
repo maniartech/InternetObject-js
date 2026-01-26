@@ -1,6 +1,6 @@
 
 import http from 'node:http';
-import { openStream } from '../../index'; // Adjust path to src/index.ts or dist/index.js
+import { createStreamReader } from '../../index'; // Adjust path to src/index.ts or dist/index.js
 
 // Simple CLI argument parser
 const args = process.argv.slice(2);
@@ -25,10 +25,10 @@ http.get(url, (res) => {
     }
   }
 
-  // Consume the stream using openStream
+  // Consume the stream using createStreamReader
   (async () => {
     try {
-      const stream = openStream(nodeStreamToIterator(res));
+      const stream = createStreamReader(nodeStreamToIterator(res));
 
       for await (const item of stream) {
         if (item.error) {

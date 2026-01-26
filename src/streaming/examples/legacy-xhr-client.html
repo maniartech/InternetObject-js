@@ -25,7 +25,7 @@
     <pre id="output"></pre>
 
     <script type="module">
-        import { openStream, createPushSource } from '/dist/index.js';
+        import { createStreamReader, createPushSource } from '/dist/index.js';
 
         const startBtn = document.getElementById('startBtn');
         const batchBtn = document.getElementById('batchBtn');
@@ -80,7 +80,7 @@
             const { source, push, close } = createPushSource();
 
             // 2. Start the parser with the source
-            const stream = openStream(source);
+            const stream = createStreamReader(source);
 
             // 3. Consume the stream (async loop)
             // We start this immediately so it's ready to receive data pushed from XHR

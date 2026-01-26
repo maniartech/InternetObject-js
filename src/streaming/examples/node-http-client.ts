@@ -8,7 +8,7 @@
 */
 
 import io from '../../facade';
-import { openStream } from '../open-stream';
+import { createStreamReader } from '../reader';
 
 const schemaDefs = io.defs`
   ~ $user: {id:int, name:string}
@@ -21,7 +21,7 @@ const res = await fetch(url);
 
 // Server sends schemas in header by default, so defs are optional.
 // Pass defs anyway to demonstrate the pre-shared path and to validate types.
-const stream = openStream(res.body!, schemaDefs);
+const stream = createStreamReader(res.body!, schemaDefs);
 
 for await (const item of stream) {
   if (item.schemaName === '$user') {
