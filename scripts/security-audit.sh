@@ -41,21 +41,16 @@ echo "📊 Checking for vulnerabilities..."
 if yarn audit --level moderate; then
     print_status "No moderate or higher vulnerabilities found!"
 else
-    print_warning "Vulnerabilities found. Attempting to fix..."
+    print_warning "Vulnerabilities found."
 
-    # Step 2: Try to fix vulnerabilities
+    # Step 2: Report needed fixes
+    print_error "Vulnerabilities require manual intervention."
     echo ""
-    echo "🔧 Attempting to fix vulnerabilities..."
-    if yarn audit fix; then
-        print_status "Vulnerabilities fixed automatically!"
-    else
-        print_error "Some vulnerabilities require manual intervention."
-        echo ""
-        echo "Manual steps required:"
-        echo "1. Review the audit output above"
-        echo "2. Update dependencies manually if needed"
-        echo "3. Consider using 'yarn upgrade' for major updates"
-    fi
+    echo "Manual steps required:"
+    echo "1. Review the audit output above"
+    echo "2. Update dependencies manually if needed"
+    echo "3. Consider using 'yarn upgrade' for major updates"
+    exit 1
 fi
 
 # Step 3: Check for outdated packages
