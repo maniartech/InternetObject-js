@@ -20,6 +20,9 @@ import { stringify }          from './facade/stringify';
 import { createStreamWriter, createStreamReader } from './streaming';
 import { toJSON } from './facade/to-json';
 import { validate, validateCollection, validateObject } from './facade/validate';
+import registerTypes from './schema/types';
+
+registerTypes();
 
 
 // Short aliases
