@@ -410,28 +410,6 @@ function stringifyHeaderValue(value: any): string {
 }
 
 /**
- * Convert document to plain JavaScript object (for JSON serialization)
- *
- * @deprecated Use `io.toJSON(value)` / `toJSON(value)` instead.
- *
- * @param doc - IODocument to convert
- * @param options - Conversion options
- * @returns Plain JavaScript object
- *
- * @example
- * ```typescript
- * const obj = documentToObject(doc, { skipErrors: true });
- * const json = JSON.stringify(obj, null, 2);
- * ```
- */
-export function documentToObject(
-  doc: Document,
-  options?: { skipErrors?: boolean }
-): any {
-  return toJSON(doc, options);
-}
-
-/**
  * Create document from plain JavaScript object
  * Alias for loadDocument for consistency
  *

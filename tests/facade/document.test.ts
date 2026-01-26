@@ -376,7 +376,7 @@ describe('Document Load/Stringify', () => {
     });
   });
 
-  describe('documentToObject', () => {
+  describe('doc.toJSON()', () => {
     it('converts document to plain JavaScript object', () => {
       const schema = compileSchema('User', '{ name: string, age: number }');
       const data: DocumentData = {
@@ -390,7 +390,7 @@ describe('Document Load/Stringify', () => {
       };
 
       const doc = loadDocument(data, { defaultSchema: schema });
-      const obj = documentToObject(doc);
+      const obj = doc.toJSON();
 
       expect(obj).toHaveProperty('header');
       expect(obj.header).toHaveProperty('app', 'MyApp');
@@ -414,7 +414,7 @@ describe('Document Load/Stringify', () => {
         strict: false
       });
 
-      const obj = documentToObject(doc, { skipErrors: true });
+      const obj = doc.toJSON({ skipErrors: true });
 
       // Document contains collection, so check the data array
       expect(Array.isArray(obj)).toBe(true);
@@ -422,6 +422,21 @@ describe('Document Load/Stringify', () => {
       expect(obj.length).toBeLessThanOrEqual(3);
       // Valid items should be present
       expect(obj.some((item: any) => item.name === 'Alice')).toBe(true);
+    });
+
+    it('also works with standalone toJSON() function', () => {
+      const schema = compileSchema('User', '{ name: string, age: number }');
+      const data: DocumentData = {
+        data: [{ name: 'Alice', age: 28 }]
+      };
+
+      const doc = loadDocument(data, { defaultSchema: schema });
+
+      // Both should produce identical results
+      const obj1 = doc.toJSON();
+      const obj2 = toJSON(doc);
+
+      expect(obj1).toEqual(obj2);
     });
   });
 
@@ -452,7 +467,7 @@ describe('Document Load/Stringify', () => {
       expect(text).toContain('Alice');
 
       // Convert to object for re-loading
-      const obj = documentToObject(doc1);
+      const obj = doc1.toJSON();
 
       // Re-load
       const doc2 = loadDocument({ data: obj.data }, { defaultSchema: schema });

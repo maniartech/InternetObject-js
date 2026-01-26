@@ -36,7 +36,7 @@ export { loadObject, LoadObjectOptions              } from './facade/load';
 export { loadCollection                             } from './facade/load';
 export { loadInferred, LoadInferredOptions          } from './facade/load-inferred';
 export { stringify                                  } from './facade/stringify';
-export { stringifyDocument, documentToObject        } from './facade/stringify-document';
+export { stringifyDocument                          } from './facade/stringify-document';
 export { toJSON } from './facade/to-json';
 export type { Jsonable } from './facade/to-json';
 export { validate, validateObject, validateCollection } from './facade/validate';
