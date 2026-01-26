@@ -157,3 +157,6 @@ src/**/*.js.map
 .Trashes
 ehthumbs.db
 Thumbs.db
+
+
+docs
