@@ -1,5 +1,6 @@
 import { loadDocument, LoadDocumentOptions, DocumentData } from '../../src/facade/load-document';
-import { stringifyDocument, documentToObject } from '../../src/facade/stringify-document';
+import { stringifyDocument } from '../../src/facade/stringify-document';
+import { toJSON } from '../../src/facade/to-json';
 import { compileSchema } from '../../src/schema';
 import Document from '../../src/core/document';
 import Definitions from '../../src/core/definitions';
