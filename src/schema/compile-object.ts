@@ -258,14 +258,14 @@ function parseObjectDef(o: ObjectNode, schema:Schema, path:string, defs?:Definit
         // For ObjectNode values, use parseObjectOrTypeDef to properly compile the schema
         if (memberNode.value instanceof ObjectNode) {
           const additionalDef = parseObjectOrTypeDef(memberNode.value, '*', defs);
-          schema.defs['*'] = additionalDef;
-          schema.open = additionalDef;
+          schema.defs['*'] = additionalDef as MemberDef;
+          schema.open = additionalDef as MemberDef;
         }
         // For ArrayNode values, use parseArrayOrTypeDef
         else if (memberNode.value instanceof ArrayNode) {
           const additionalDef = parseArrayOrTypeDef(memberNode.value, '*', defs);
-          schema.defs['*'] = additionalDef;
-          schema.open = additionalDef;
+          schema.defs['*'] = additionalDef as MemberDef;
+          schema.open = additionalDef as MemberDef;
         }
         // For TokenNode (simple types or schema refs), use canonicalizer
         else {
@@ -366,8 +366,10 @@ function parseMemberDef(type:string, o: ObjectNode, defs?: Definitions) {
 
   const typeDef = TypedefRegistry.get(type);
   // Pass defs to processSchema so it can resolve variables during validation
-  const memberDef = processSchema(o, typeDef.schema, defs)
-  return memberDef;
+  const result = processSchema(o, typeDef.schema, defs);
+  return (result && typeof (result as any).toObject === 'function')
+    ? (result as any).toObject()
+    : result;
 }
 
 function addMemberDef(memberDef: MemberDef, schema: Schema, path:string) {

@@ -376,6 +376,11 @@ class ObjectDef implements TypeDef {
 
     // valueNode fetched from defs. Hence, in case of an error, replace the
     // error position with the original node.
+    if (!schema) {
+      schema = new Schema(memberDef.path || "")
+      schema.open = true
+    }
+
     try {
       return processObject(valueNode as ObjectNode, schema, defs)
     } catch (err) {
@@ -384,8 +389,6 @@ class ObjectDef implements TypeDef {
       }
       throw err
     }
-
-    return processObject(valueNode as ObjectNode, schema, defs)
   }
 }
 
