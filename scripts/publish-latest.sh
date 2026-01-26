@@ -54,18 +54,29 @@ fi
 if [ -n "${NPM_PUBLISH_TOKEN:-}" ]; then
   echo "🔑 Found NPM_PUBLISH_TOKEN in .env"
 
-  # create temp npmrc
-  TEMP_NPMRC=$(mktemp)
-  echo "//registry.npmjs.org/:_authToken=${NPM_PUBLISH_TOKEN}" > "$TEMP_NPMRC"
+  # Use a local file for compatibility with Windows npm (avoids /tmp path issues)
+  TEMP_NPMRC_NAME=".npmrc-publish-temp"
+  echo "//registry.npmjs.org/:_authToken=${NPM_PUBLISH_TOKEN}" > "$TEMP_NPMRC_NAME"
 
-  # Validate token
-  if ! npm whoami --userconfig "$TEMP_NPMRC" >/dev/null 2>&1; then
+  # Determine the path format for the environment variable
+  if command -v cygpath >/dev/null 2>&1; then
+    # Git Bash on Windows - convert to Windows path for the env var
+    TEMP_NPMRC=$(cygpath -w "$PWD/$TEMP_NPMRC_NAME")
+  else
+    # Standard - use absolute unix path
+    TEMP_NPMRC="$PWD/$TEMP_NPMRC_NAME"
+  fi
+
+  # Validate token (using local file name for bash command to be safe)
+  if ! npm whoami --userconfig "$TEMP_NPMRC_NAME" >/dev/null 2>&1; then
     echo "❌ Error: The NPM_PUBLISH_TOKEN in .env is invalid or expired." >&2
     echo "   Please regenerate the token." >&2
     exit 1
   fi
 
-  echo "✅ Token validated. User: $(npm whoami --userconfig "$TEMP_NPMRC")"
+  echo "✅ Token validated. User: $(npm whoami --userconfig "$TEMP_NPMRC_NAME")"
+
+  # Export the OS-appropriate path for the sub-process
   export NPM_CONFIG_USERCONFIG="$TEMP_NPMRC"
 
 else
