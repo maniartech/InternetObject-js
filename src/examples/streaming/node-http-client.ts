@@ -8,7 +8,7 @@
 */
 
 import io from '../../facade';
-import { createStreamReader } from '../reader';
+import { createStreamReader } from '../../streaming/reader';
 
 const schemaDefs = io.defs`
   ~ $user: {id:int, name:string}

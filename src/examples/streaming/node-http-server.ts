@@ -14,8 +14,8 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import io from '../../facade';
 import Decimal from '../../core/decimal/decimal';
-import { createStreamWriter } from '../writer';
-import { nodeHttpTransport } from '../transports';
+import { createStreamWriter } from '../../streaming/writer';
+import { nodeHttpTransport } from '../../streaming/transports';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
