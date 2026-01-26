@@ -39,6 +39,7 @@ describe('Streaming Adapters', () => {
         try {
           const reader = createStreamReader(source);
           for await (const _ of reader) { /* noop */ }
+          return undefined;
         } catch (e) {
           return e;
         }

@@ -43,8 +43,9 @@ export { validate, validateObject, validateCollection } from './facade/validate'
 export type { ValidationResult } from './facade/validate';
 
 // Streaming
-export { openStream, createStreamWriter, createPushSource, BufferTransport } from './streaming';
-export type { IOStreamTransport, IOStreamSource, StreamItem, OpenStreamOptions, StreamWriterOptions } from './streaming';
+export { createStreamReader, createStreamWriter, createPushSource, BufferTransport } from './streaming';
+export { IOStreamReader } from './streaming';
+export type { IOStreamTransport, IOStreamSource, StreamItem, StreamReaderOptions, StreamWriterOptions } from './streaming';
 
 // Main tag functions (also tree-shakable)
 export { ioDefinitions, ioDocument, ioObject, ioSchema } from './facade';

@@ -17,7 +17,7 @@ import parseDefinitions       from './parser/parse-defs';
 import parseSchema            from './schema/parse-schema';
 import { load, loadObject }   from './facade/load';
 import { stringify }          from './facade/stringify';
-import { createStreamWriter, openStream } from './streaming';
+import { createStreamWriter, createStreamReader } from './streaming';
 import { toJSON } from './facade/to-json';
 import { validate, validateCollection, validateObject } from './facade/validate';
 
@@ -38,7 +38,7 @@ const io = {
   validateCollection,
 
   // Streaming
-  openStream,
+  createStreamReader,
   createStreamWriter,
 
   // Short aliases for template functions

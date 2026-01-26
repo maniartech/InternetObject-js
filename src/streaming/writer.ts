@@ -84,7 +84,7 @@ export class IOStreamWriter {
    * Serializes one item.
    * If schemaName changes, prepends a section switch marker automatically.
    */
-  write(data: object, schemaName?: string): string {
+  write(data: any, schemaName?: string): string {
     const effectiveSchema = schemaName ?? '$schema';
     const parts: string[] = [];
 
