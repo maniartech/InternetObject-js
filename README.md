@@ -383,7 +383,7 @@ We welcome contributions! Please see our [CONTRIBUTING.md](CONTRIBUTING.md) for 
 
 - **Issues**: [Report a bug](https://github.com/maniartech/InternetObject-js/issues)
 - **Discussions**: [Join the conversation](https://github.com/maniartech/InternetObject-js/discussions)
-- **Twitter**: [@maniartech](https://twitter.com/maniartech)
+- **X**: [@internetobject](https://x.com/internetobject)
 
 ## License
 
