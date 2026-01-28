@@ -206,10 +206,12 @@ class IOCollection<T = IOObject> {
   }
 
   /**
-   * Converts the IOCollection to a JSON-compatible representation.
-   * @param options Optional configuration for JSON conversion
+   * Converts the collection to a plain JavaScript array.
+   * Recursively calls `toObject()` on items that support it.
+   *
+   * @param options Optional configuration for conversion
    * @param options.skipErrors If true, excludes error objects from output (default: false)
-   * @returns An array of JSON-compatible representations of the items.
+   * @returns An array of plain JavaScript values.
    */
   public toObject(options?: { skipErrors?: boolean }): any {
     const skipErrors = options?.skipErrors ?? false;
@@ -249,6 +251,10 @@ class IOCollection<T = IOObject> {
       });
   }
 
+  /**
+   * Alias for `toObject()`.
+   * Provides compatibility with `JSON.stringify()`.
+   */
   public toJSON(options?: { skipErrors?: boolean }): any {
     return this.toObject(options);
   }

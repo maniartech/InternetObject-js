@@ -460,15 +460,13 @@ class IOObject<T = any> implements Iterable<[string | undefined, T]> {
   }
 
   /**
-   * Converts the InternetObject to a JSON object. If the items do not have keys,
-   * use the index as the key. If the value has toJSON method, it will be called.
-   * Used when calling JSON.stringify.
-   * @returns An array of entries.
-   */
-  /**
    * Converts the InternetObject to a plain JavaScript object.
-   * If the items do not have keys, use the index as the key.
-   * If the value has toObject or toJSON method, it will be called.
+   *
+   * Logic:
+   * - Recursively calls `toObject()` (or `toJSON()`) on child values if they exist.
+   * - Uses keys where available; otherwise uses numeric indices.
+   *
+   * @returns A plain JavaScript object.
    */
   toObject(): any {
     const obj:any = {}

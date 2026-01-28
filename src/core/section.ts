@@ -65,6 +65,14 @@ class IOSection<T = any> {
     return errors;
   }
 
+  /**
+   * Converts the section data to a plain JavaScript object.
+   * Delegates to the underlying data's `toObject` method if available.
+   *
+   * @param options - Conversion options.
+   * @param options.skipErrors - If true, excludes error objects from collection output.
+   * @returns The plain object representation of the section data.
+   */
   public toObject(options?: { skipErrors?: boolean }): any {
     // IOObject
     if (this._data instanceof IOObject) {
@@ -81,6 +89,10 @@ class IOSection<T = any> {
     return null;
   }
 
+  /**
+   * Alias for `toObject()`.
+   * Provides compatibility with `JSON.stringify()`.
+   */
   public toJSON(options?: { skipErrors?: boolean }): any {
     return this.toObject(options);
   }

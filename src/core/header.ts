@@ -36,18 +36,37 @@ class IOHeader {
     this._definitions = new IODefinitions();
   }
 
+  /**
+   * Gets the active schema for the document.
+   * If a specific schema is set, it is returned.
+   * Otherwise, returns the default schema ($schema) from definitions.
+   */
   get schema(): Schema | null {
     return this._schema || this._definitions.defaultSchema;
   }
 
+  /**
+   * Explicitly sets the schema for the document.
+   * This overrides the default schema found in definitions.
+   * @param value - The Schema instance to set.
+   */
   set schema(value: Schema | null) {
     this._schema = value;
   }
 
+  /**
+   * Gets the Definitions object managed by this header.
+   */
   get definitions(): IODefinitions {
     return this._definitions;
   }
 
+  /**
+   * Merges another IOHeader into this one.
+   *
+   * @param other - The other IOHeader to merge from.
+   * @param override - If true, definitions and schema from 'other' overwrite existing ones.
+   */
   merge(other: IOHeader, override: boolean = false) {
     if (override && other.schema) {
       this._schema = other.schema;
@@ -57,10 +76,21 @@ class IOHeader {
     }
   }
 
+  /**
+   * Converts the header definitions to a plain JavaScript object.
+   * Note: Variables (@) and schemas ($) are conceptually metadata/definitions
+   * and are typically included in the output object structure.
+   *
+   * @returns A plain JavaScript object representing the header definitions.
+   */
   toObject() {
     return this._definitions.toObject();
   }
 
+  /**
+   * Alias for `toObject()`.
+   * Provides compatibility with `JSON.stringify()`.
+   */
   toJSON() {
     return this.toObject();
   }
