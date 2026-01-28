@@ -37,7 +37,7 @@ class IOHeader {
   }
 
   /**
-   * Gets the active schema for the document.
+   * Gets the active default schema for the document.
    * If a specific schema is set, it is returned.
    * Otherwise, returns the default schema ($schema) from definitions.
    */
@@ -46,7 +46,7 @@ class IOHeader {
   }
 
   /**
-   * Explicitly sets the schema for the document.
+   * Explicitly sets the default schema for the document.
    * This overrides the default schema found in definitions.
    * @param value - The Schema instance to set.
    */
