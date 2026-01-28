@@ -48,13 +48,13 @@ Alice, 30
 `;
 
 const doc = parse(text);
-console.log(doc.toJSON());
+console.log(doc.toObject());
 // { name: 'Alice', age: 30 }
 ```
 
 **What happened?**
 - `parse()` reads the text and validates it against the embedded schema
-- `doc.toJSON()` gives you a plain JavaScript object
+- `doc.toObject()` gives you a plain JavaScript object
 
 ### 2. Multiple records (a collection)
 
@@ -70,7 +70,7 @@ name: string, age: int
 `;
 
 const doc = parse(text);
-console.log(doc.toJSON());
+console.log(doc.toObject());
 // [{ name: 'Alice', age: 30 }, { name: 'Bob', age: 25 }, { name: 'Carol', age: 28 }]
 ```
 
@@ -90,7 +90,7 @@ const doc = io.doc`
   ~ Bob, 25
 `;
 
-console.log(doc.toJSON());
+console.log(doc.toObject());
 ```
 
 This is handy for tests, fixtures, and quick prototyping.
@@ -160,7 +160,7 @@ const defs = parseDefinitions('~ $schema: { name: string, age: int }');
 
 try {
   const doc = load({ name: 'Alice', age: 30 }, defs);
-  console.log(doc.toJSON());
+  console.log(doc.toObject());
 } catch (e) {
   console.error('Validation failed:', e.message);
 }
@@ -197,7 +197,7 @@ console.log(stringify(doc));
 // Alice, 30
 ```
 
-This is the reverse of `parse()`. Round-trip: `parse()` → `toJSON()` → `load()` → `stringify()`.
+This is the reverse of `parse()`. Round-trip: `parse()` → `toObject()` → `load()` → `stringify()`.
 
 ### 7. Access values by key or index
 
@@ -252,7 +252,7 @@ const doc = load({
   address: { street: '123 Main St', city: 'NYC' }
 }, defs);
 
-console.log(doc.toJSON());
+console.log(doc.toObject());
 ```
 
 Schemas starting with `$` are named. `$schema` is the default schema used for validation.
@@ -269,7 +269,7 @@ const reader = createStreamReader(input);
 
 for await (const item of reader) {
   if (item.data) {
-    console.log('Received:', item.data.toJSON());
+    console.log('Received:', item.data.toObject());
   }
 }
 ```
@@ -280,7 +280,7 @@ Works with Node.js streams, WHATWG streams, `AsyncIterable`, or simple strings.
 
 | I want to… | Use this |
 |------------|----------|
-| Parse IO text to JS | `parse(text).toJSON()` |
+| Parse IO text to JS | `parse(text).toObject()` |
 | Validate JS data | `load(data, defs)` or `validateObject(data, defs)` |
 | Convert JS to IO text | `stringify(load(data, defs))` |
 | Embed IO in code | ``io.doc`...` `` |
