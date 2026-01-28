@@ -211,7 +211,7 @@ class IOCollection<T = IOObject> {
    * @param options.skipErrors If true, excludes error objects from output (default: false)
    * @returns An array of JSON-compatible representations of the items.
    */
-  public toJSON(options?: { skipErrors?: boolean }): any {
+  public toObject(options?: { skipErrors?: boolean }): any {
     const skipErrors = options?.skipErrors ?? false;
 
     return this._items
@@ -229,20 +229,28 @@ class IOCollection<T = IOObject> {
       })
       .map((item) => {
         if (item instanceof IOObject) {
-          return item.toJSON();
+          return item.toObject();
         } else if (typeof item === 'object' && item !== null) {
           // Check if item has toValue method (e.g., ErrorNode)
           if (typeof (item as any).toValue === 'function') {
             return (item as any).toValue();
           }
+           // Check if item has toObject method
+          if (typeof (item as any).toObject === 'function') {
+            return (item as any).toObject();
+          }
           // Check if item has toJSON method
           if (typeof (item as any).toJSON === 'function') {
             return (item as any).toJSON();
           }
-          return JSON.stringify(item);
+          return JSON.stringify(item); // TODO: Should this be parsed back to object or left as string?
         }
         return item;
       });
+  }
+
+  public toJSON(options?: { skipErrors?: boolean }): any {
+    return this.toObject(options);
   }
 
   /**

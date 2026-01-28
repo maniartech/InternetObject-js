@@ -10,7 +10,7 @@ import { stringify, stringifyObject } from './stringify';
 import { StringifyOptions } from './stringify';
 import { IO_MARKERS, RESERVED_SECTION_NAMES, WILDCARD_KEY } from './serialization-constants';
 import { formatRecord, formatCollection, createIndentString, FormatContext } from './io-formatter';
-import { toJSON } from './to-json';
+import { toObject } from './to-object';
 
 /**
  * Options for stringifying documents

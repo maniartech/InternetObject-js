@@ -92,26 +92,26 @@ class IODocument {
 
   /**
    * Converts the data sections into a JavaScript object.
-   * @param options Optional configuration for JSON conversion
+   * @param options Optional configuration for object conversion
    * @param options.skipErrors If true, excludes error objects from collections (default: false)
    */
-  public toJSON(options?: { skipErrors?: boolean }): any {
+  public toObject(options?: { skipErrors?: boolean }): any {
     const sectionsLen = this._sections?.length || 0;
     let data: any = null;
 
     if (sectionsLen === 1) {
       const section = this._sections?.get(0) as IOSection;
-      data = section.toJSON(options);
+      data = section.toObject(options);
     } else if (sectionsLen > 1) {
       data = {};
       for (let i = 0; i < sectionsLen; i++) {
         const section = this._sections?.get(i) as IOSection;
-        data[section.name as string] = section.toJSON(options);
+        data[section.name as string] = section.toObject(options);
       }
     }
 
     // Only return header+data if header has non-empty definitions
-    const headerObject = this.header.toJSON();
+    const headerObject = this.header.toObject();
     if (headerObject && Object.keys(headerObject).length > 0) {
       return {
         header: headerObject,
@@ -123,11 +123,11 @@ class IODocument {
   }
 
   /**
-   * Alias for toJSON() method for backward compatibility
+   * Alias for toObject() method for JSON compatibility
    * @param options Optional configuration for JSON conversion
    */
-  public toObject(options?: { skipErrors?: boolean }): any {
-    return this.toJSON(options);
+  public toJSON(options?: { skipErrors?: boolean }): any {
+    return this.toObject(options);
   }
 }
 

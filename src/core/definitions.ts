@@ -251,7 +251,7 @@ class IODefinitions {
     }
   }
 
-  public toJSON() {
+  public toObject() {
     const obj: any = {};
     let keysCount = 0;
     for (let i = 0; i < this.length; i++) {
@@ -271,6 +271,10 @@ class IODefinitions {
     }
 
     return null;
+  }
+
+  public toJSON() {
+    return this.toObject();
   }
 
   /**

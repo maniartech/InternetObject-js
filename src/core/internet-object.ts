@@ -465,18 +465,38 @@ class IOObject<T = any> implements Iterable<[string | undefined, T]> {
    * Used when calling JSON.stringify.
    * @returns An array of entries.
    */
-  toJSON(): any {
+  /**
+   * Converts the InternetObject to a plain JavaScript object.
+   * If the items do not have keys, use the index as the key.
+   * If the value has toObject or toJSON method, it will be called.
+   */
+  toObject(): any {
     const obj:any = {}
     this.forEach((value:any, key:string | undefined, index:number) => {
       if (typeof value === "undefined") return
 
-      obj[key || index] =
-        typeof value === 'object' && typeof value?.toJSON === 'function'
-          ? value.toJSON()
-          : value;
+      if (typeof value === 'object') {
+        if (typeof value?.toObject === 'function') {
+           obj[key || index] = value.toObject();
+        } else if (typeof value?.toJSON === 'function') {
+           obj[key || index] = value.toJSON();
+        } else {
+           obj[key || index] = value;
+        }
+      } else {
+        obj[key || index] = value;
+      }
     });
 
     return obj;
+  }
+
+  /**
+   * Alias for toObject().
+   * Used when calling JSON.stringify.
+   */
+  toJSON(): any {
+    return this.toObject();
   }
 }
 

@@ -18,7 +18,7 @@ import parseSchema            from './schema/parse-schema';
 import { load, loadObject }   from './facade/load';
 import { stringify }          from './facade/stringify';
 import { createStreamWriter, createStreamReader } from './streaming';
-import { toJSON } from './facade/to-json';
+import { toObject, toJSON } from './facade/to-object';
 import { validate, validateCollection, validateObject } from './facade/validate';
 import registerTypes from './schema/types';
 
@@ -35,6 +35,7 @@ const io = {
   load,
   loadObject,
   stringify,
+  toObject,
   toJSON,
   validate,
   validateObject,

@@ -94,7 +94,7 @@ describe('beta ergonomic APIs', () => {
   test('toJSON() throws for null/undefined and non-Jsonable', () => {
     expect(() => toJSON(null as any)).toThrow(/null\/undefined/i);
     expect(() => toJSON(undefined as any)).toThrow(/null\/undefined/i);
-    expect(() => toJSON({} as any)).toThrow(/object with toJSON/i);
+    expect(() => toJSON({} as any)).toThrow(/object with toObject\(\) or toJSON\(\)/i);
   });
 
   test('validateObject()/validateCollection()/validate() return ValidationResult', () => {

@@ -65,20 +65,24 @@ class IOSection<T = any> {
     return errors;
   }
 
-  public toJSON(options?: { skipErrors?: boolean }): any {
+  public toObject(options?: { skipErrors?: boolean }): any {
     // IOObject
     if (this._data instanceof IOObject) {
-      return this._data.toJSON();
+      return this._data.toObject();
     }
     // IOCollection
     else if (this._data instanceof IOCollection) {
-      return this._data.toJSON(options);
+      return this._data.toObject(options);
     }
     // Plain object
     else if (this._data && typeof this._data === 'object') {
       return this._data;
     }
     return null;
+  }
+
+  public toJSON(options?: { skipErrors?: boolean }): any {
+    return this.toObject(options);
   }
 }
 

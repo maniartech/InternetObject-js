@@ -57,8 +57,12 @@ class IOHeader {
     }
   }
 
+  toObject() {
+    return this._definitions.toObject();
+  }
+
   toJSON() {
-    return this._definitions.toJSON();
+    return this.toObject();
   }
 }
 
