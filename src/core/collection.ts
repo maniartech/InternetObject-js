@@ -260,6 +260,14 @@ class IOCollection<T = IOObject> {
   }
 
   /**
+   * Custom inspector for Node.js `console.log`.
+   * Returns the plain object representation for better readability.
+   */
+  [Symbol.for('nodejs.util.inspect.custom')]() {
+    return this.toObject();
+  }
+
+  /**
    * Returns all Error objects contained within this collection's ErrorNodes.
    *
    * Note: This method is primarily useful when working with collections directly.

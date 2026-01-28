@@ -989,6 +989,13 @@ class Decimal {
     // (roundCoefficientToScale removed; use roundHalfUp from utils instead)
 
     /**
+     * Return a clean object for nodejs console logging.
+     */
+    [Symbol.for('nodejs.util.inspect.custom')]() {
+        return this.toString();
+    }
+
+    /**
      * Returns the string representation of the Decimal for JSON serialization.
      */
     toJSON(): string {

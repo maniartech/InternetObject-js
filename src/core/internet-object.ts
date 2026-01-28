@@ -496,6 +496,14 @@ class IOObject<T = any> implements Iterable<[string | undefined, T]> {
   toJSON(): any {
     return this.toObject();
   }
+
+  /**
+   * Custom inspector for Node.js `console.log`.
+   * Returns the plain object representation for better readability.
+   */
+  [Symbol.for('nodejs.util.inspect.custom')]() {
+    return this.toObject();
+  }
 }
 
 export default IOObject;

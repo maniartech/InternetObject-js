@@ -77,6 +77,16 @@ class IOHeader {
   }
 
   /**
+   * Return a clean object for nodejs console logging.
+   */
+  [Symbol.for('nodejs.util.inspect.custom')]() {
+    return {
+      definitions: this._definitions,
+      schema: this._schema
+    }
+  }
+
+  /**
    * Converts the header definitions to a plain JavaScript object.
    * Note: Variables (@) and schemas ($) are conceptually metadata/definitions
    * and are typically included in the output object structure.

@@ -91,6 +91,17 @@ class IODocument {
   }
 
   /**
+   * Return a clean object for nodejs console logging.
+   */
+  [Symbol.for('nodejs.util.inspect.custom')]() {
+    return {
+      header: this._header,
+      sections: this._sections,
+      ...(this._ownErrors.length > 0 ? { errors: this._ownErrors } : {})
+    }
+  }
+
+  /**
    * Converts the data sections into a JavaScript object.
    * @param options Optional configuration for object conversion
    * @param options.skipErrors If true, excludes error objects from collections (default: false)

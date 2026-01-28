@@ -66,6 +66,17 @@ class IOSection<T = any> {
   }
 
   /**
+   * Return a clean object for nodejs console logging.
+   */
+  [Symbol.for('nodejs.util.inspect.custom')]() {
+    return {
+      name: this._name,
+      schema: this._schemaName,
+      data: this._data
+    }
+  }
+
+  /**
    * Converts the section data to a plain JavaScript object.
    * Delegates to the underlying data's `toObject` method if available.
    *

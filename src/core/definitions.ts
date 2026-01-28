@@ -251,6 +251,18 @@ class IODefinitions {
     }
   }
 
+  /**
+   * Return a clean object for nodejs console logging.
+   */
+  [Symbol.for('nodejs.util.inspect.custom')]() {
+    const obj: any = {};
+    for (const key of this.keys) {
+      const def = this._definitions[key];
+      obj[key] = def.value;
+    }
+    return obj;
+  }
+
   public toObject() {
     const obj: any = {};
     let keysCount = 0;

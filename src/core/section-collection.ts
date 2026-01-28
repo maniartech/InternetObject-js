@@ -59,6 +59,13 @@ class IOSectionCollection<T = any> {
     return this._sections[nameOrIndex];
   }
 
+  /**
+   * Return a clean object for nodejs console logging.
+   */
+  [Symbol.for('nodejs.util.inspect.custom')]() {
+    return this._sections;
+  }
+
   public push(section: IOSection<T>) {
     if (section.name !== undefined) {
       this._sectionNames[section.name] = this._sections.length;
