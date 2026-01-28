@@ -463,7 +463,7 @@ class IOObject<T = any> implements Iterable<[string | undefined, T]> {
    * Converts the InternetObject to a plain JavaScript object.
    *
    * Logic:
-   * - Recursively calls `toObject()` (or `toJSON()`) on child values if they exist.
+   * - Recursively calls `toObject()` on child values if they exist.
    * - Uses keys where available; otherwise uses numeric indices.
    *
    * @returns A plain JavaScript object.

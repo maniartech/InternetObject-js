@@ -11,6 +11,16 @@ import compileObject from './compile-object';
  *
  * This is intended for dynamic schema strings (non-template-literal usage).
  * For template literals, prefer `io.schema` / `ioSchema`.
+ *
+ * @param schemaText - The schema string to parse (e.g., `{ name: string, age: int }`).
+ * @param parentDefs - Optional parent definitions for resolving references.
+ * @returns The parsed Schema instance.
+ * @throws {Error} If the input string is empty or invalid.
+ *
+ * @example
+ * ```typescript
+ * const schema = parseSchema('{ name: string, age: int }');
+ * ```
  */
 export default function parseSchema(schemaText: string, parentDefs?: Definitions | null): Schema {
   const input = schemaText.trim();

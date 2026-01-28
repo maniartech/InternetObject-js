@@ -22,6 +22,25 @@ import Node from './nodes/nodes';
 import ErrorNode from './nodes/error';
 
 
+/**
+ * Parses an Internet Object document string into a Document instance.
+ *
+ * @param source - The IO document string to parse.
+ * @param defs - Optional definitions to use for resolving schemas and variables.
+ * @param errorCollector - Optional array to collect errors instead of throwing (for some error types).
+ * @param options - Parser options configuration.
+ * @returns The parsed IODocument.
+ *
+ * @example
+ * ```typescript
+ * // Simple parse
+ * const doc = parse('Alice, 20');
+ *
+ * // Parse with definitions
+ * const defs = parseDefinitions('~ $schema: { name: string, age: int }');
+ * const doc = parse('Alice, 20', defs);
+ * ```
+ */
 export default function parse(source: string, options?: ParserOptions): Document;
 export default function parse(source: string, defs?: Definitions | null, options?: ParserOptions): Document;
 export default function parse(source: string, defs?: Definitions | Schema | string | null, errorCollector?: Error[], options?: ParserOptions): Document;

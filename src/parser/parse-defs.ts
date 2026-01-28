@@ -2,6 +2,26 @@ import parse          from "."
 import ParserOptions  from "./parser-options"
 import Definitions    from "../core/definitions"
 
+/**
+ * Parses a string containing schema, variable, or metadata definitions.
+ * Returns a Definitions object containing the parsed definitions.
+ *
+ * Useful for pre-loading schemas that will be used across multiple documents.
+ *
+ * @param source - The definition string (e.g., `~ $Person: { name: string }`).
+ * @param externalDefs - Optional base definitions to extend/inherit from.
+ * @param options - Parser options.
+ * @returns The parsed Definitions object, or null if input is empty.
+ *
+ * @example
+ * ```typescript
+ * const defs = parseDefinitions(`
+ *   ~ $Person: { name: string, age: int }
+ *   ~ @baseUrl: https://api.example.com
+ * `);
+ * const schema = defs.get('$Person');
+ * ```
+ */
 export default function parseDefinitions(source: string): Definitions | null;
 export default function parseDefinitions(
   source: string,
