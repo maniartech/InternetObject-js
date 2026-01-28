@@ -156,9 +156,10 @@ Throws an error if validation fails. Use this when you need an `IODocument` inst
 ```ts
 import { load, parseDefinitions } from 'internet-object';
 
-const defs = parseDefinitions('~ $schema: { name: string, age: int }');
+const defs = parseDefinitions('name: string, age: {int, min: 30}');
 
 try {
+  // changing age to less than 30 will throw an error
   const doc = load({ name: 'Alice', age: 30 }, defs);
   console.log(doc.toObject());
 } catch (e) {
