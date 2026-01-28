@@ -2,7 +2,7 @@
  * Memory and stress tests for defs-inferrer
  */
 import { inferDefs } from '../../../src/schema/utils/defs-inferrer';
-import { loadInferred } from '../../../src/facade/load-inferred';
+import { loadInferred } from '../../../src/loader/load-inferred';
 import { stringify, loadObject, load, parse } from '../../../src';
 
 describe('Defs Inferrer - Memory and Stress Tests', () => {

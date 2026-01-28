@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { formatRecord, formatCollection, createIndentString, FormatContext } from '../../src/facade/io-formatter';
+import { formatRecord, formatCollection, createIndentString, FormatContext } from '../../src/serializer/io-formatter';
 import InternetObject from '../../src/core/internet-object';
 import { loadInferred, stringify, parse } from '../../src/index';
 

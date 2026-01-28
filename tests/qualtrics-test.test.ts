@@ -1,5 +1,5 @@
 import { inferDefs } from '../src/schema/utils/defs-inferrer';
-import { loadInferred } from '../src/facade/load-inferred';
+import { loadInferred } from '../src/loader/load-inferred';
 import { stringify } from '../src/index';
 
 describe('Qualtrics Survey Structure', () => {

@@ -1,7 +1,7 @@
 import { loadObject } from '../../../src/schema/load-processor'
 import { compileSchema } from '../../../src/schema'
 import InternetObject from '../../../src/core/internet-object'
-import { stringify, stringifyObject } from '../../../src/facade/stringify'
+import { stringify, stringifyObject } from '../../../src/serializer/stringify'
 import ValidationError from '../../../src/errors/io-validation-error'
 import Definitions from '../../../src/core/definitions'
 

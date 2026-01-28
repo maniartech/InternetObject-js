@@ -1,5 +1,5 @@
-import { loadObject, load, loadCollection, LoadObjectOptions, LoadOptions } from '../../src/facade/load';
-import { loadInferred, LoadInferredOptions } from '../../src/facade/load-inferred';
+import { loadObject, load, loadCollection, LoadObjectOptions, LoadOptions } from '../../src/loader/load';
+import { loadInferred, LoadInferredOptions } from '../../src/loader/load-inferred';
 import parseDefinitions from '../../src/parser/parse-defs';
 import Definitions from '../../src/core/definitions';
 import InternetObject from '../../src/core/internet-object';

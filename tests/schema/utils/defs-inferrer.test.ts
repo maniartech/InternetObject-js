@@ -1,6 +1,6 @@
 import { inferDefs, InferredDefs } from '../../../src/schema/utils/defs-inferrer';
-import { load, loadObject } from '../../../src/facade/load';
-import { loadInferred } from '../../../src/facade/load-inferred';
+import { load, loadObject } from '../../../src/loader/load';
+import { loadInferred } from '../../../src/loader/load-inferred';
 import { stringify, parse } from '../../../src/index';
 
 describe('Definition Inference (inferDefs)', () => {

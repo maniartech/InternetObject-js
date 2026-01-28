@@ -1,4 +1,4 @@
-import { loadCollection } from '../src/facade/load';
+import { loadCollection } from '../src/loader/load';
 import { compileSchema } from '../src/schema';
 import Definitions from '../src/core/definitions';
 

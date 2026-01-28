@@ -1,6 +1,6 @@
-import { stringify } from '../../src/facade/stringify';
+import { stringify } from '../../src/serializer/stringify';
 import { compileSchema } from '../../src/schema';
-import { loadObject, loadCollection } from '../../src/facade/load';
+import { loadObject, loadCollection } from '../../src/loader/load';
 import InternetObject from '../../src/core/internet-object';
 import Collection from '../../src/core/collection';
 import Definitions from '../../src/core/definitions';
