@@ -74,6 +74,11 @@ class DateTimeDef implements TypeDef {
     // Already a Date instance (min/max from schema are already Date objects)
     if (v instanceof Date) return v
 
+    if (typeof v === 'string') {
+      const d = new Date(v)
+      return isNaN(d.getTime()) ? undefined : d
+    }
+
     // Resolve TokenNode to underlying value
     if (v instanceof TokenNode) {
       if (v.value instanceof Date) return v.value
