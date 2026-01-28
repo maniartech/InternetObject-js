@@ -149,7 +149,7 @@ console.log(users.getAt(1).name);        // 'Bob'
 ### 6. Validate JavaScript Data
 
 Check your existing JavaScript objects against an IO schema.
-7
+
 **Method A: `load()` (Strict)**
 Throws an error if validation fails. Use this when you need an `IODocument` instance or expect valid data.
 
@@ -183,7 +183,7 @@ if (result.valid) {
 }
 ```
 
-### 6. Convert JS data → IO text
+### 7. Convert JS data → IO text
 
 Once you have validated data, you can serialize it back to IO format:
 
@@ -198,40 +198,6 @@ console.log(stringify(doc));
 ```
 
 This is the reverse of `parse()`. Round-trip: `parse()` → `toObject()` → `load()` → `stringify()`.
-
-### 7. Access values by key or index
-
-IO objects support both key-based and positional access:
-
-```ts
-import { loadObject, parseDefinitions } from 'internet-object';
-
-const defs = parseDefinitions('~ $schema: { name: string, age: int }');
-const user = loadObject({ name: 'Alice', age: 30 }, defs);
-
-// By key
-console.log(user.get('name')); // 'Alice'
-console.log(user.name);        // 'Alice' (dot notation works too)
-
-// By position (insertion order)
-console.log(user.getAt(0));    // 'Alice'
-console.log(user.getAt(1));    // 30
-```
-
-For collections:
-
-```ts
-import { loadCollection, parseDefinitions } from 'internet-object';
-
-const defs = parseDefinitions('~ $schema: { name: string, age: int }');
-const users = loadCollection([
-  { name: 'Alice', age: 30 },
-  { name: 'Bob', age: 25 },
-], defs);
-
-console.log(users.getAt(0).get('name')); // 'Alice'
-console.log(users.getAt(1).name);        // 'Bob'
-```
 
 ### 8. Named schemas (reusable types)
 
