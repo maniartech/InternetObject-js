@@ -15,11 +15,15 @@
  */
 
 import Definitions from '../core/definitions';
-import InternetObject from '../core/internet-object';
+// import InternetObject from '../core/internet-object';
 import Schema from '../schema/schema';
 import MemberDef from '../schema/types/memberdef';
 import TypedefRegistry from '../schema/typedef-registry';
 import { IO_MARKERS } from './serialization-constants';
+
+function isInternetObject(val: any): boolean {
+  return val && typeof val === 'object' && typeof val.get === 'function' && typeof val.toObject === 'function';
+}
 
 /**
  * Formatting context passed through recursive calls
@@ -90,7 +94,7 @@ function hasNestedStructure(obj: any): boolean {
   if (Array.isArray(obj)) return isArrayOfObjects(obj);
 
   // Check all values - handle both InternetObject and plain objects
-  const entries = obj instanceof InternetObject ? obj.entries() : Object.entries(obj);
+  const entries = isInternetObject(obj) ? obj.entries() : Object.entries(obj);
   for (const [key, val] of entries) {
     if (!key) continue;
     // Check if this value is a non-primitive (object or array)
@@ -200,7 +204,7 @@ function formatNestedObject(obj: any, ctx: FormatContext, schema?: Schema): stri
   const parts: string[] = [];
 
   // Handle InternetObject
-  if (obj instanceof InternetObject) {
+  if (isInternetObject(obj)) {
     if (schema && schema.names && Array.isArray(schema.names)) {
       for (const name of schema.names) {
         if (!obj.has(name)) continue;
@@ -243,7 +247,7 @@ function formatComplexObject(obj: any, ctx: FormatContext, schema?: Schema): str
   const parts: string[] = [];
 
   // Handle InternetObject
-  if (obj instanceof InternetObject) {
+  if (isInternetObject(obj)) {
     if (schema && schema.names && Array.isArray(schema.names)) {
       for (const name of schema.names) {
         if (!obj.has(name)) continue;
@@ -355,7 +359,7 @@ interface FieldPart {
  * - Complex objects (containing arrays of objects) expand with content indented
  */
 export function formatRecord(
-  obj: InternetObject | any,
+  obj: any,
   schema: Schema | undefined,
   ctx: FormatContext
 ): string {
@@ -368,7 +372,7 @@ export function formatRecord(
   // Helper to check if schema is valid
   const hasValidSchema = schema && schema.names && Array.isArray(schema.names);
 
-  if (obj instanceof InternetObject) {
+  if (isInternetObject(obj)) {
     if (hasValidSchema) {
       for (const name of schema!.names) {
         const memberDef = schema!.defs[name];
@@ -511,7 +515,7 @@ export function formatCollection(
   const parts: string[] = [];
 
   for (const item of items) {
-    if (item instanceof InternetObject || (typeof item === 'object' && item !== null)) {
+    if (isInternetObject(item) || (typeof item === 'object' && item !== null)) {
       parts.push(formatRecord(item, schema, ctx));
     } else {
       parts.push(formatValue(item, ctx));

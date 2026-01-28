@@ -1,3 +1,5 @@
+import { stringify, StringifyOptions } from '../serializer/stringify';
+
 /**
  * IOObject is an ordered key-value collection that supports both keyed and positional access.
  *
@@ -457,6 +459,14 @@ class IOObject<T = any> implements Iterable<[string | undefined, T]> {
       index++;
     }
     return result;
+  }
+
+  /**
+   * Serializes the InternetObject to a string in IO format.
+   * @param options Serialization options
+   */
+  toString(options?: StringifyOptions): string {
+    return stringify(this, options);
   }
 
   /**

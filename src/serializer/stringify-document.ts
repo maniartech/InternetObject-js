@@ -1,6 +1,6 @@
 import Document from '../core/document';
 import Definitions from '../core/definitions';
-import InternetObject from '../core/internet-object';
+// import InternetObject from '../core/internet-object';
 import Collection from '../core/collection';
 import Section from '../core/section';
 import TypedefRegistry from '../schema/typedef-registry';
@@ -11,6 +11,10 @@ import { StringifyOptions } from './stringify';
 import { IO_MARKERS, RESERVED_SECTION_NAMES, WILDCARD_KEY } from './serialization-constants';
 import { formatRecord, formatCollection, createIndentString, FormatContext } from './io-formatter';
 import { toObject } from './to-object';
+
+function isInternetObject(val: any): boolean {
+  return val && typeof val === 'object' && typeof val.get === 'function' && typeof val.toObject === 'function';
+}
 
 /**
  * Options for stringifying documents
@@ -305,7 +309,7 @@ function stringifySection(
       if (options.skipErrors && item && typeof item === 'object' && (item as any).__error === true) {
         continue;
       }
-      if (item instanceof InternetObject) {
+      if (isInternetObject(item)) {
         // Use formatter for smart formatting
         const line = formatRecord(item, schema, ctx);
         lines.push(`~ ${line}`);
@@ -318,7 +322,7 @@ function stringifySection(
   }
 
   // Single object/value: use formatter for smart formatting
-  if (data instanceof InternetObject) {
+  if (isInternetObject(data)) {
     return formatRecord(data, schema, ctx);
   }
 
@@ -417,4 +421,4 @@ function stringifyHeaderValue(value: any): string {
  * @param options - Load options
  * @returns IODocument
  */
-export { loadDocument as documentFromObject } from './load-document';
+export { loadDocument as documentFromObject } from '../loader/load-document';

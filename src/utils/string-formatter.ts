@@ -6,7 +6,7 @@
 
 import TypedefRegistry from '../schema/typedef-registry';
 import MemberDef from '../schema/types/memberdef';
-import { STRING_ENCLOSERS } from '../facade/serialization-constants';
+import { STRING_ENCLOSERS } from '../serializer/serialization-constants';
 
 /**
  * String format types supported by Internet Object

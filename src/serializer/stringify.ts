@@ -1,7 +1,8 @@
 import Definitions from '../core/definitions';
-import InternetObject from '../core/internet-object';
-import Collection from '../core/collection';
-import Document from '../core/document';
+// Use type imports or remove explicit dependencies to avoid circular refs
+// import InternetObject from '../core/internet-object';
+// import Collection from '../core/collection';
+// import Document from '../core/document';
 import Decimal from '../core/decimal/decimal';
 import Schema from '../schema/schema';
 import MemberDef from '../schema/types/memberdef';
@@ -10,6 +11,21 @@ import { quoteExtraPropertyString } from '../utils/string-formatter';
 import { IO_MARKERS } from './serialization-constants';
 import { stringifyDocument } from './stringify-document';
 import { formatRecord, createIndentString, FormatContext } from './io-formatter';
+
+// Helper to check for InternetObject without importing it
+function isInternetObject(val: any): boolean {
+  return val && typeof val === 'object' && typeof val.get === 'function' && typeof val.toObject === 'function';
+}
+
+// Helper to check for Collection without importing it
+function isCollection(val: any): boolean {
+  return val && typeof val === 'object' && Array.isArray(val) === false && typeof val.length === 'number' && val.constructor.name === 'IOCollection';
+}
+
+// Helper to check for Document
+function isDocument(val: any): boolean {
+  return val && typeof val === 'object' && val.constructor.name === 'IODocument'; // Simple check
+}
 
 /**
  * Stringify options for controlling output format
@@ -50,6 +66,12 @@ export interface StringifyOptions {
    * Default: false (data only)
    */
   includeHeader?: boolean;
+
+  /**
+   * Whether to treat the object as the root (unwrapped) or nested (wrapped with {})
+   * Default: true (unwrapped key: value)
+   */
+  isRoot?: boolean;
 }
 
 /**
@@ -132,7 +154,7 @@ export function stringify(
   }
 
   // Handle Document (IODocument) - delegate to stringifyDocument
-  if (value instanceof Document) {
+  if (isDocument(value)) {
 
     // Build document options
     let docOptions: any = opts ? { ...opts } : {};
@@ -160,13 +182,15 @@ export function stringify(
   }
 
   // Handle Collection
-  if (value instanceof Collection) {
+  if (isCollection(value)) {
     return stringifyCollection(value, schema, defs, opts);
   }
 
   // Handle InternetObject
-  if (value instanceof InternetObject) {
-    return stringifyObject(value, schema, defs, opts);
+  if (isInternetObject(value)) {
+    const effectiveOpts = { isRoot: true, ...opts };
+    if (opts?.isRoot !== undefined) effectiveOpts.isRoot = opts.isRoot;
+    return stringifyObject(value, schema, defs, effectiveOpts);
   }
 
   // Handle plain values
@@ -238,9 +262,8 @@ function stringifyAnyValue(val: any, defs?: Definitions): string {
   }
 
   // Handle object (including InternetObject)
-  if (val instanceof InternetObject) {
-    const objContent = stringifyObject(val, undefined, defs, {});
-    return `{${objContent}}`;  // Wrap in braces
+  if (isInternetObject(val)) {
+    return stringifyObject(val, undefined, defs, { isRoot: false });
   }
 
   // Handle plain object - output values only in order, like {val1, val2, val3}
@@ -374,13 +397,19 @@ export function stringifyObject(
   // Format output
   // Note: IO format doesn't wrap top-level objects in braces like JSON.
   // For formatted output, we use newlines between fields but no outer braces.
+  let result = '';
   if (typeof indent === 'number' && indent > 0) {
-    return parts.join(',\n');
+    result = parts.join(',\n');
   } else if (typeof indent === 'string') {
-    return parts.join(',\n');
+    result = parts.join(',\n');
   } else {
-    return parts.join(', ');
+    result = parts.join(', ');
   }
+
+  if (options?.isRoot === false) {
+    return `{${result}}`;
+  }
+  return result;
 }
 
 /**
@@ -402,7 +431,7 @@ export function stringifyCollection(
       continue;
     }
 
-    if (item instanceof InternetObject) {
+    if (isInternetObject(item)) {
       parts.push(stringifyObject(item, schema, defs, options));
     } else {
       // Handle error objects or other items

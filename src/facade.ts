@@ -15,11 +15,11 @@ import { ioDefinitions, ioDocument, ioObject, ioSchema } from './template-funcs'
 import parse                  from './parser/index';
 import parseDefinitions       from './parser/parse-defs';
 import parseSchema            from './schema/parse-schema';
-import { load, loadObject }   from './facade/load';
-import { stringify }          from './facade/stringify';
+import { load, loadObject }   from './loader/load';
+import { stringify }          from './serializer/stringify';
 import { createStreamWriter, createStreamReader } from './streaming';
-import { toObject, toJSON } from './facade/to-object';
-import { validate, validateCollection, validateObject } from './facade/validate';
+import { toObject, toJSON } from './serializer/to-object';
+import { validate, validateCollection, validateObject } from './schema/validate';
 import registerTypes from './schema/types';
 
 registerTypes();

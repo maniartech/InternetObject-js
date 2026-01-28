@@ -2,9 +2,9 @@ import Definitions from '../core/definitions';
 import Document from '../core/document';
 import Header from '../core/header';
 import SectionCollection from '../core/section-collection';
-import { loadObject } from '../facade/load';
-import { stringify } from '../facade/stringify';
-import { stringifyDocument } from '../facade/stringify-document';
+import { loadObject } from '../loader/load';
+import { stringify } from '../serializer/stringify';
+import { stringifyDocument } from '../serializer/stringify-document';
 import { IOStreamTransport, StreamWriterOptions } from './types';
 
 export class IOStreamWriter {

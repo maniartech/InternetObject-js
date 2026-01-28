@@ -1,5 +1,5 @@
 import MemberDef from './memberdef';
-import { STANDARD_MEMBERDEF_PROPS, IO_MARKERS } from '../../facade/serialization-constants';
+import { STANDARD_MEMBERDEF_PROPS, IO_MARKERS } from '../../serializer/serialization-constants';
 import TokenNode from '../../parser/nodes/tokens';
 
 /**
