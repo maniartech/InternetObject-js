@@ -1,8 +1,8 @@
 import Definitions from '../core/definitions';
 // Use type imports or remove explicit dependencies to avoid circular refs
-// import InternetObject from '../core/internet-object';
-// import Collection from '../core/collection';
-// import Document from '../core/document';
+import type InternetObject from '../core/internet-object';
+import type Collection from '../core/collection';
+import type Document from '../core/document';
 import Decimal from '../core/decimal/decimal';
 import Schema from '../schema/schema';
 import MemberDef from '../schema/types/memberdef';
@@ -133,7 +133,7 @@ export function stringify(value: InternetObject | Collection<InternetObject> | D
 // Overload 2: With definitions (uses defs.defaultSchema)
 export function stringify(value: InternetObject | Collection<InternetObject> | Document | any, defs: Definitions): string;
 // Overload 3: Schema-less with options
-export function stringify(value: InternetObject | Collection<InternetObject> | Document | any, options: StringifyOptions): string;
+export function stringify(value: InternetObject | Collection<InternetObject> | Document | any, options?: StringifyOptions): string;
 // Overload 4: Full control with definitions and options
 export function stringify(value: InternetObject | Collection<InternetObject> | Document | any, defs: Definitions, options: StringifyOptions): string;
 export function stringify(
