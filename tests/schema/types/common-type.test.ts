@@ -1,5 +1,7 @@
 import doCommonTypeCheck from '../../../src/schema/types/common-type'
 import MemberDef from '../../../src/schema/types/memberdef'
+import TokenNode from '../../../src/parser/nodes/tokens'
+import TokenType from '../../../src/parser/tokenizer/token-types'
 
 describe('doCommonTypeCheck', () => {
   describe('Undefined value handling', () => {
@@ -198,6 +200,45 @@ describe('doCommonTypeCheck', () => {
       const obj = { name: 'Alice', age: 30 }
       const result = doCommonTypeCheck(memberDef, obj)
       expect(result).toEqual({ value: obj, changed: false })
+    })
+  })
+
+  describe('Choice Index Handling', () => {
+    test('should resolve choice index @0', () => {
+      const memberDef: MemberDef = { type: 'string', path: 'color', choices: ['red', 'green', 'blue'] }
+      // Mocking a TokenNode for @0
+      const token = new TokenNode({ type: TokenType.STRING, value: '@0', col: 0, row: 0, pos: 0, token: '@0' } as any)
+
+      // We pass a mock definitions object that would throw if @0 was accessed as a variable
+      const mockDefs = {
+        getV: (key: string) => {
+          if (key === '@0') throw new Error('Variable @0 is not defined')
+          return undefined
+        }
+      } as any
+
+      const result = doCommonTypeCheck(memberDef, token, undefined, mockDefs)
+      expect(result).toEqual({ value: 'red', changed: true })
+    })
+
+     test('should resolve choice index @2', () => {
+      const memberDef: MemberDef = { type: 'string', path: 'color', choices: ['red', 'green', 'blue'] }
+      const token = new TokenNode({ type: TokenType.STRING, value: '@2', col: 0, row: 0, pos: 0, token: '@2' } as any)
+      const mockDefs = {
+        getV: (key: string) => {
+          if (key === '@2') throw new Error('Variable @2 is not defined')
+          return undefined
+        }
+      } as any
+      const result = doCommonTypeCheck(memberDef, token, undefined, mockDefs)
+      expect(result).toEqual({ value: 'blue', changed: true })
+    })
+
+    test('should throw error for out of bound index @5', () => {
+      const memberDef: MemberDef = { type: 'string', path: 'color', choices: ['red', 'green', 'blue'] }
+      const token = new TokenNode({ type: TokenType.STRING, value: '@5', col: 0, row: 0, pos: 0, token: '@5' } as any)
+       // This will bypass index logic and try to validate "@5" against choices, failing validation, NOT throwing variable error
+      expect(() => doCommonTypeCheck(memberDef, token)).toThrow(/must be one of/)
     })
   })
 })

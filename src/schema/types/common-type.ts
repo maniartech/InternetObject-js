@@ -46,12 +46,54 @@ function doCommonTypeCheck(memberDef: MemberDef, value: any, node?: Node, defs?:
     throw new InternetObjectValidationError(ErrorCodes.nullNotAllowed, msg, node)
   }
 
-  value = (typeof value === 'object' && value.toValue) ? value.toValue(defs) : value
+  // Pre-check for choice index to avoid variable resolution error
+  // If the value is a variable token like @0, @1, and we have choices,
+  // we treat it as an index FIRST, avoiding 'Variable @0 is not defined' error.
+  let isChoiceIndexRef = false
+  if (memberDef.choices && value instanceof TokenNode && typeof value.value === 'string') {
+    if (/^@\d+$/.test(value.value)) {
+      isChoiceIndexRef = true
+      value = value.value // Unwrap the string value directly, bypassing defs.getV
+    }
+  }
+
+  if (!isChoiceIndexRef) {
+    value = (typeof value === 'object' && value.toValue) ? value.toValue(defs) : value
+  }
 
   // Validate choices
   if (memberDef.choices !== undefined) {
     let val = value instanceof TokenNode ? value.value : value
     let found = false
+    // Check if the value is a direct reference to a choice index (e.g., @0, @1).
+    // This allows selecting a choice by its position in the choices array.
+    // We use a strict regex (^@(\d+)$) to ensure we matching explicit index references
+    // and avoid loose parsing (e.g., "@0abc" should not be interpreted as index 0).
+    let choiceIndex = -1
+    const indexMatch = typeof val === 'string' ? val.match(/^@(\d+)$/) : null
+
+    if (indexMatch) {
+      const index = parseInt(indexMatch[1], 10)
+
+      // Ensure the index is within the valid bounds of the choices array
+      if (index >= 0 && index < memberDef.choices.length) {
+        choiceIndex = index
+      }
+    }
+
+    // If a valid choice index was found, resolve and return that specific choice.
+    if (choiceIndex !== -1) {
+      let choice = memberDef.choices[choiceIndex]
+
+      // If the selected choice is itself a variable reference (e.g., choices: ["@A", "@B"]),
+      // resolve it using the definitions (defs).
+      if (typeof choice === 'string' && choice[0] === '@' && defs) {
+        choice = defs.getV(choice)
+        choice = (choice as any) instanceof TokenNode ? choice.value : choice
+      }
+      return { value: choice, changed: true }
+    }
+
     for (let choice of memberDef.choices) {
       if (typeof choice === 'string' && choice[0] === '@') {
         choice = defs?.getV(choice)
