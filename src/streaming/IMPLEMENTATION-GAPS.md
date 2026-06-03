@@ -538,7 +538,13 @@ Implements ADR [0006](./specs/decisions/0006-tokenizestream-token-level-boundari
 
 ### Gap 19: Tokenizer Is Not Chunk-Feedable (`tokenizeStream`)
 
-Status: Open
+Status: Done — added `StreamTokenizer` (`src/parser/tokenizer/stream-tokenizer.ts`) that wraps the batch
+tokenizer **without modifying it**: it buffers, re-tokenizes the retained tail, commits all tokens except
+the provisional tail, retains an in-flight section header as a unit, and rebases positions to
+stream-absolute coordinates. Proven equivalent to `tokenize(whole)` token-for-token and
+position-for-position across every 2-way split and per-character feed in
+[../../tests/parser/tokenizer/features/stream-tokenizer.test.ts](../../tests/parser/tokenizer/features/stream-tokenizer.test.ts).
+Existing tokenizer behavior and tests are untouched (full suite green). Wiring it into the reader is Gap 21.
 
 Contract impact:
 
