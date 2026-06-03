@@ -22,12 +22,25 @@ export type IOStreamSource =
   | ReadableStream<Uint8Array>
   | AsyncIterable<Uint8Array | string>;
 
-export interface StreamItem<T = any> {
-  data: T;
-  schemaName: string;
-  index: number;
-  error?: Error;
-}
+/**
+ * The frozen v1 stream item (PROTOCOL.md §5). The reader yields exactly these two
+ * shapes; the discriminant names the protocol event, not the payload type.
+ */
+export type StreamItem<T = any> =
+  | {
+      kind: 'record';
+      recordIndex: number;
+      schemaName?: string;
+      data: T;
+      error?: undefined;
+    }
+  | {
+      kind: 'record-error';
+      recordIndex: number;
+      schemaName?: string;
+      data: null;
+      error: Error;
+    };
 
 export interface StreamReaderOptions {
   /** Optional default schema name if header does not provide $schema. */

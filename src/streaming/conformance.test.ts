@@ -5,11 +5,9 @@
  * streaming reader, across multiple chunkings, and checks emitted items + fatal
  * outcome vs. the fixture's `expected`. See specs/conformance/README.md.
  *
- * This is the executable form of the protocol. It is GATED behind RUN_CONFORMANCE
- * so the default suite stays green while the runtime is still being brought up to
- * the frozen contract (see IMPLEMENTATION-GAPS.md). Run on demand:
- *
- *   RUN_CONFORMANCE=1 npx vitest run src/streaming/conformance.test.ts
+ * This is the executable form of the protocol and runs as part of the default suite —
+ * the runtime now conforms to the frozen contract, so the corpus is a permanent
+ * regression guard. (Set RUN_CONFORMANCE=0 to skip it locally if ever needed.)
  */
 import { describe, it, expect } from 'vitest';
 import fs from 'node:fs';
@@ -101,7 +99,7 @@ function normalizeExpected(c: any) {
 
 const files = fs.readdirSync(CASES_DIR).filter(f => f.endsWith('.json'));
 
-describe.skipIf(!process.env.RUN_CONFORMANCE)('streaming conformance corpus', () => {
+describe.skipIf(process.env.RUN_CONFORMANCE === '0')('streaming conformance corpus', () => {
   for (const file of files) {
     const c = JSON.parse(fs.readFileSync(path.join(CASES_DIR, file), 'utf8'));
     const expected = normalizeExpected(c);

@@ -135,7 +135,10 @@ Associated tests:
 
 ### Gap 5: Runtime Types And Behavior Are Not Yet Aligned With The Frozen `StreamItem` Contract
 
-Status: Open
+Status: Done — `types.ts` now exports the frozen two-shape `StreamItem` union (`kind`, `recordIndex`,
+`schemaName?`, `data`/`error`) and the reader emits it: success → `{ kind: 'record', data, error: undefined }`,
+recoverable failure → `{ kind: 'record-error', data: null, error }`. Verified by the conformance corpus
+(now run in the default suite) and the existing reader tests.
 
 Contract impact:
 
@@ -196,7 +199,12 @@ Associated tests:
 
 ### Gap 7: Recoverable Core Error Shapes Are Not Yet Normalized At The Streaming Boundary
 
-Status: Open
+Status: Done — the reader normalizes recoverable failures to one `record-error` per record, extracting the
+underlying `IOError` from either an `ErrorNode` or an `__error`-flagged value (preserving its core class/code,
+so category derives correctly). An unknown schema switch is now FATAL — `applySectionHeader` resolves the
+explicit `$Schema` via `defs.getV` (or throws `schema-not-defined` when undefined), rejecting the iterator
+rather than emitting a record-error. Verified by the conformance corpus (recoverable-parse-error,
+multi-validation-error, unknown-schema-switch-fatal).
 
 Contract impact:
 
@@ -226,7 +234,13 @@ Associated tests:
 
 ### Gap 8: Initial State And Header-Only Definition Rules Are Not Yet Enforced Rigorously
 
-Status: Open
+Status: Done (core rules) — `schemaName` is now emitted only for an explicit `--- $Schema` selector and is
+absent for implicit default-schema records (no more synthesized `$schema`); the default schema is still
+applied (records validate and receive defaults) by resolving and passing the active schema object to the
+core parser. In-stream `$schema` overrides the fallback `defaultSchema`. Verified by the conformance corpus
+(single-object-section, implicit-default-schema, preloaded-definitions-default-schema, explicit-schema-switch).
+Remaining sub-items (strict header-termination enforcement, rejecting midstream definition mutation) are still
+tracked here and not yet enforced.
 
 Contract impact:
 

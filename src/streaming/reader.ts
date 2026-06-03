@@ -3,9 +3,14 @@ import Schema from '../schema/schema';
 import parse from '../parser/index';
 import StreamTokenizer from '../parser/tokenizer/stream-tokenizer';
 import TokenType from '../parser/tokenizer/token-types';
+import IOValidationError from '../errors/io-validation-error';
+import ErrorCodes from '../errors/io-error-codes';
+import ErrorNode from '../parser/nodes/error';
 import { ChunkDecoder, normalizeNewlines } from './text';
 import { toAsyncIterable } from './source';
 import { IOStreamSource, StreamReaderOptions, StreamItem } from './types';
+
+const SCHEMA_NAME_RE = /\$[\p{L}\p{M}\p{N}\-_]+/u;
 
 /**
  * A streaming reader for Internet Object data.
@@ -48,8 +53,11 @@ export class IOStreamReader implements AsyncIterable<StreamItem> {
     let defs: Definitions | null = this.definitions;
     let defaultSchemaName: string | undefined = this.options.defaultSchema;
     let headerDone = false;
-    let currentSectionHeader: string | null = null; // e.g. '--- $User'
     let depth = 0; // brace/bracket nesting; boundaries only count at depth 0
+
+    // Active schema context for the current section.
+    let activeSchema: Schema | null = null;        // schema to validate records against
+    let activeSchemaName: string | undefined;       // explicit selector name, else undefined
 
     const decoder = new ChunkDecoder();
     const st = new StreamTokenizer();
@@ -68,10 +76,34 @@ export class IOStreamReader implements AsyncIterable<StreamItem> {
       }
     };
 
-    const defaultName = (): string =>
-      currentSectionHeader
-        ? currentSectionHeader.replace('---', '').trim() || '$schema'
-        : (defaultSchemaName ?? '$schema');
+    // Resolve the active default schema (the fallback context), if any. A missing
+    // default is not fatal — it just means schemaless default context (PROTOCOL §6).
+    const resolveDefaultSchema = (): Schema | null => {
+      if (!defs || !defaultSchemaName) return null;
+      try {
+        const s = defs.getV(defaultSchemaName);
+        return s instanceof Schema ? s : null;
+      } catch {
+        return null;
+      }
+    };
+
+    // Apply a `--- ...` section header. An explicit `$Schema` selector must resolve —
+    // an unknown one is a FATAL stream error (PROTOCOL §7) and rejects the iterator.
+    const applySectionHeader = (line: string | null): void => {
+      const explicit = line ? line.match(SCHEMA_NAME_RE)?.[0] : undefined;
+      if (explicit) {
+        if (!defs) {
+          throw new IOValidationError(ErrorCodes.schemaNotDefined, `Schema ${explicit} is not defined.`);
+        }
+        const resolved = defs.getV(explicit); // throws schema-not-defined (fatal) if unknown
+        activeSchema = resolved instanceof Schema ? resolved : resolveDefaultSchema();
+        activeSchemaName = explicit;
+      } else {
+        activeSchema = resolveDefaultSchema();
+        activeSchemaName = undefined;
+      }
+    };
 
     const processHeader = (headerText: string): void => {
       const content = headerText.trimEnd();
@@ -79,9 +111,8 @@ export class IOStreamReader implements AsyncIterable<StreamItem> {
       const headerErrors: Error[] = [];
       const headerDoc = defs ? parse(text, defs, headerErrors) : parse(text, null, headerErrors);
       defs = headerDoc.header?.definitions ?? defs;
-      if (!defaultSchemaName && headerDoc.header?.schema instanceof Schema) {
-        defaultSchemaName = '$schema';
-      }
+      // An in-stream $schema becomes the default context, overriding any fallback.
+      if (headerDoc.header?.schema instanceof Schema) defaultSchemaName = '$schema';
     };
 
     // Read the `--- ...` section-header line starting at absolute pos P. Returns the
@@ -93,60 +124,62 @@ export class IOStreamReader implements AsyncIterable<StreamItem> {
       return { header: line === '---' ? null : line, next: nlRel === -1 ? nlAbs : nlAbs + 1 };
     };
 
-    // Parse one frame's text [a, b) as a section and emit its records.
+    // A failed record surfaces either as an ErrorNode (schema/parse failure within a
+    // collection) or as an `__error`-flagged value; both carry the underlying IOError.
+    const isErrorItem = (x: any): boolean =>
+      x instanceof ErrorNode || !!(x && x.__error);
+    const errorOf = (x: any): Error => {
+      if (x instanceof ErrorNode) return x.error;
+      if (x?.originalError instanceof Error) return x.originalError;
+      return x;
+    };
+    const withName = (item: Partial<StreamItem>): any =>
+      activeSchemaName !== undefined ? { ...item, schemaName: activeSchemaName } : item;
+    const mkRecord = (data: any): StreamItem =>
+      withName({ kind: 'record', recordIndex: streamIndex++, data }) as StreamItem;
+    const mkError = (err: any): StreamItem =>
+      withName({ kind: 'record-error', recordIndex: streamIndex++, data: null, error: errorOf(err) }) as StreamItem;
+
+    // Parse one frame's text [a, b) as a section under the active schema and emit records.
     const emitFrame = (a: number, b: number): StreamItem[] => {
       const recordText = sliceAbs(a, b);
       if (recordText.trim().length === 0) return [];
 
-      const sectionText = `${currentSectionHeader ? `${currentSectionHeader}\n` : ''}${recordText}\n`;
+      const text = `${recordText}\n`;
       const errors: Error[] = [];
       let doc: any;
       try {
-        doc = defs ? parse(sectionText, defs, errors) : parse(sectionText, null, errors);
+        doc = activeSchema
+          ? parse(text, activeSchema, errors)
+          : (defs ? parse(text, defs, errors) : parse(text, null, errors));
       } catch (err: any) {
-        return [{ data: null, schemaName: defaultName(), index: streamIndex++, error: err }];
+        return [mkError(err)];
       }
-
-      const sections = doc.sections;
-      if ((!sections || sections.length === 0) && errors.length > 0) {
-        return [{ data: null, schemaName: defaultName(), index: streamIndex++, error: errors[0] }];
-      }
-      if (!sections || sections.length === 0) return [];
 
       const out: StreamItem[] = [];
-      for (let si = 0; si < sections.length; si++) {
-        const section = sections.get(si);
-        if (!section) continue;
-
-        const schemaName = section.schemaName
-          ? (section.schemaName.startsWith('$') ? section.schemaName : `$${section.schemaName}`)
-          : (defaultSchemaName ?? '$schema');
-
-        const data = section.data as any;
-        if (data && typeof data[Symbol.iterator] === 'function' && typeof data.toJSON === 'function') {
-          for (const item of data as any) {
-            if (item && (item as any).__error) {
-              out.push({ data: null, schemaName, index: streamIndex++, error: item });
-            } else {
-              out.push({ data: item, schemaName, index: streamIndex++, error: undefined });
+      let emitted = false;
+      const sections = doc.sections;
+      if (sections) {
+        for (let si = 0; si < sections.length; si++) {
+          const data = sections.get(si)?.data as any;
+          if (data == null) continue;
+          if (typeof data[Symbol.iterator] === 'function' && typeof data.toJSON === 'function') {
+            for (const item of data as any) {
+              out.push(isErrorItem(item) ? mkError(item) : mkRecord(item));
+              emitted = true;
             }
-          }
-        } else if (data) {
-          if ((data as any).__error) {
-            out.push({ data: null, schemaName, index: streamIndex++, error: data });
           } else {
-            out.push({ data, schemaName, index: streamIndex++, error: undefined });
+            out.push(isErrorItem(data) ? mkError(data) : mkRecord(data));
+            emitted = true;
           }
         }
       }
-
-      if (errors.length > 0 && out.length > 0) {
-        out[out.length - 1].error = errors[0];
-      }
+      // Parse failure that produced no record (e.g. truncated/broken syntax).
+      if (!emitted && errors.length > 0) out.push(mkError(errors[0]));
       return out;
     };
 
-    // Handle one committed token; returns any items to emit.
+    // Handle one committed token; returns any items to emit. May throw (fatal).
     const handleToken = (t: any): StreamItem[] => {
       const type = t.type;
 
@@ -160,7 +193,7 @@ export class IOStreamReader implements AsyncIterable<StreamItem> {
           processHeader(sliceAbs(frameStart, t.pos));
           headerDone = true;
           const { header, next } = readSectionHeaderLine(t.pos);
-          currentSectionHeader = header;
+          applySectionHeader(header); // may throw (fatal) on unknown explicit schema
           frameStart = next;
           advanceWindow(next);
         }
@@ -177,7 +210,7 @@ export class IOStreamReader implements AsyncIterable<StreamItem> {
       if (type === TokenType.SECTION_SEP) {
         const out = emitFrame(frameStart, t.pos);
         const { header, next } = readSectionHeaderLine(t.pos);
-        currentSectionHeader = header;
+        applySectionHeader(header); // may throw (fatal) on unknown explicit schema
         frameStart = next;
         advanceWindow(next);
         return out;
