@@ -504,7 +504,11 @@ from the conformance corpus.
 
 ### Gap 18: Tokenizer Section-Separator Lookahead Is Unbounded
 
-Status: Open
+Status: Done — `parseSectionSeparator` now bounds the schema/name lookahead to the current line instead of
+copying the whole remaining input. Behavior-preserving (the regex never matches across a newline); full
+suite and conformance counts unchanged. Coverage added in
+[../../tests/parser/tokenizer/features/section-separators.test.ts](../../tests/parser/tokenizer/features/section-separators.test.ts)
+("Bounded section-header lookahead (Gap 18)").
 
 Contract impact:
 

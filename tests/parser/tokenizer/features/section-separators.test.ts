@@ -337,4 +337,83 @@ describe("Section Separator Parsing", () => {
       expect(numberToken?.value).toBe(123);
     });
   });
+
+  describe("Bounded section-header lookahead (Gap 18)", () => {
+    // The name/schema lookahead is bounded to the current line instead of copying
+    // the whole remaining input. These cases lock in that it stays behavior-preserving:
+    // the EOF window path, non-greediness across newlines, and correctness at scale.
+
+    it("parses name + schema when the header is the last line with no trailing newline", () => {
+      const input = `--- name: $Schema`; // no '\n' -> lineEnd === inputLength path
+      const tokens = new Tokenizer(input).tokenize();
+
+      const nameToken = tokens.find(t => t.subType === TokenType.SECTION_NAME);
+      const schemaToken = tokens.find(t => t.subType === TokenType.SECTION_SCHEMA);
+      expect(nameToken?.value).toBe("name");
+      expect(schemaToken?.value).toBe("$Schema");
+    });
+
+    it("parses a schema-only header at end of input (no trailing newline)", () => {
+      const input = `--- $OnlySchema`;
+      const tokens = new Tokenizer(input).tokenize();
+
+      const schemaToken = tokens.find(t => t.subType === TokenType.SECTION_SCHEMA);
+      expect(schemaToken?.value).toBe("$OnlySchema");
+      expect(tokens.find(t => t.subType === TokenType.SECTION_NAME)).toBeUndefined();
+    });
+
+    it("does NOT pull a $-token on the next line into the section schema", () => {
+      // The schema must be same-line after the name; a '$X' on the following line
+      // is ordinary content, never the section's schema.
+      const input = `--- name\n$X`;
+      const tokens = new Tokenizer(input).tokenize();
+
+      const nameToken = tokens.find(t => t.subType === TokenType.SECTION_NAME);
+      expect(nameToken?.value).toBe("name");
+      expect(tokens.find(t => t.subType === TokenType.SECTION_SCHEMA)).toBeUndefined();
+
+      const openString = tokens.find(t => t.subType === "OPEN_STRING" && t.value === "$X");
+      expect(openString).toBeDefined();
+    });
+
+    it("does not consume the next line's content into the header window", () => {
+      const input = `--- $User\n~ Alice`;
+      const tokens = new Tokenizer(input).tokenize();
+
+      const schemaToken = tokens.find(t => t.subType === TokenType.SECTION_SCHEMA);
+      expect(schemaToken?.value).toBe("$User");
+      // The '~' collection marker on the next line must survive as its own token.
+      expect(tokens.find(t => t.type === TokenType.COLLECTION_START)).toBeDefined();
+    });
+
+    it("tokenizes names/schemas correctly across many sections", () => {
+      const N = 50;
+      const lines: string[] = [];
+      for (let i = 0; i < N; i++) lines.push(`--- sec_${i}: $Schema_${i}`, `~ a, ${i}`);
+      const tokens = new Tokenizer(lines.join("\n")).tokenize();
+
+      const seps = tokens.filter(t => t.type === TokenType.SECTION_SEP);
+      const names = tokens.filter(t => t.subType === TokenType.SECTION_NAME);
+      const schemas = tokens.filter(t => t.subType === TokenType.SECTION_SCHEMA);
+      expect(seps).toHaveLength(N);
+      expect(names).toHaveLength(N);
+      expect(schemas).toHaveLength(N);
+      expect(names[0].value).toBe("sec_0");
+      expect(schemas[0].value).toBe("$Schema_0");
+      expect(names[N - 1].value).toBe(`sec_${N - 1}`);
+      expect(schemas[N - 1].value).toBe(`$Schema_${N - 1}`);
+    });
+
+    it("matches whole-input behavior whether or not a trailing newline is present", () => {
+      const withNl = new Tokenizer(`--- name: $Schema\n`).tokenize();
+      const withoutNl = new Tokenizer(`--- name: $Schema`).tokenize();
+
+      const pick = (toks: ReturnType<Tokenizer["tokenize"]>) => ({
+        name: toks.find(t => t.subType === TokenType.SECTION_NAME)?.value,
+        schema: toks.find(t => t.subType === TokenType.SECTION_SCHEMA)?.value,
+      });
+      expect(pick(withNl)).toEqual(pick(withoutNl));
+      expect(pick(withoutNl)).toEqual({ name: "name", schema: "$Schema" });
+    });
+  });
 });

@@ -1022,7 +1022,15 @@ class Tokenizer {
     this.advance(3); // Advance past the "---"
     this.skipWhitespaces(true);
 
-    const match = reSectionSchemaName.exec(this.input.substring(this.pos));
+    // Bound the schema/name lookahead to the current line rather than copying the
+    // entire remaining input. A section header's name/schema always sits on the
+    // same line as `---`, and reSectionSchemaName never matches across a newline,
+    // so this is behavior-preserving while keeping lookahead bounded — it avoids
+    // O(n^2) substring copies on large multi-section documents and unblocks
+    // incremental (chunk-fed) tokenization. See IMPLEMENTATION-GAPS.md Gap 18.
+    const newlineIdx = this.input.indexOf('\n', this.pos);
+    const lineEnd = newlineIdx === -1 ? this.inputLength : newlineIdx;
+    const match = reSectionSchemaName.exec(this.input.substring(this.pos, lineEnd));
 
     if (match) {
       let schema: string | undefined;
