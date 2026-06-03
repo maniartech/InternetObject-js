@@ -570,7 +570,12 @@ Associated tests:
 
 ### Gap 20: No Per-Record Parse Seam On `ASTParser`
 
-Status: Open
+Status: Done — added `ASTParser.parseSection(tokens)` (additive static method) that parses a token group as
+one section's content via the existing `parseSectionContent`/`processCollection`/`processObject` and returns
+`{ node, errors }`. The reader resolves the header once, then parses each record frame through this seam and
+runs the normal `processSchema`. Proven value-for-value identical to the whole-document path in
+[../../tests/parser/ast-parser/parse-section.test.ts](../../tests/parser/ast-parser/parse-section.test.ts).
+Existing parser behavior untouched.
 
 Contract impact:
 

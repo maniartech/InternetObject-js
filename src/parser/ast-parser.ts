@@ -94,6 +94,25 @@ class ASTParser {
   }
 
   /**
+   * Parse a standalone token group as a single section's content — a `~` collection
+   * or a single object — reusing the exact same logic as full-document parsing
+   * (`parseSectionContent` → `processCollection`/`processObject`). Returns the content
+   * node and any accumulated parse errors.
+   *
+   * This is the per-record parse seam used by streaming (IMPLEMENTATION-GAPS.md Gap 20):
+   * the reader resolves the header once, then parses each record's token frame here and
+   * runs the normal schema processor over the result. Behavior is identical to the
+   * corresponding section in a whole-document parse.
+   */
+  public static parseSection(
+    tokens: readonly Token[]
+  ): { node: ObjectNode | CollectionNode | null; errors: ReadonlyArray<Error> } {
+    const parser = new ASTParser(tokens);
+    const node = parser.parseSectionContent();
+    return { node, errors: parser.errors };
+  }
+
+  /**
    * Creates a syntax error with proper range spanning the entire construct.
    *
    * @remarks
