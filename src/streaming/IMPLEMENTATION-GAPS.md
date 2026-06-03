@@ -600,7 +600,15 @@ Associated tests:
 
 ### Gap 21: Reader Uses An Ad-Hoc Scanner Instead Of Token-Level Framing
 
-Status: Open
+Status: Done — the reader now detects record/section boundaries from `StreamTokenizer` tokens (top-level
+`~`/`---` at brace/bracket depth 0), slicing each frame's text from a sliding raw window and parsing it via
+the core `parse()` path. The reader no longer imports or uses `updateStringState`/line-scanning, so the
+second hand-rolled lexer is gone; `~`/`---` inside strings, comments, and nested containers can no longer be
+mistaken for boundaries (the tokenizer is the sole lexical authority). Behavior preserved: all existing
+reader/adapter tests pass and conformance is unchanged at 12/27 (the StreamItem shape, `schemaName` absence,
+and fatal-vs-record-error remain Gaps 5/7/8). The `text.ts` helpers remain exported with their own tests;
+removing them is a separate cleanup. Note: emitting through the Gap 20 token seam (instead of re-parsing
+sliced text) is a follow-up optimization.
 
 Contract impact:
 

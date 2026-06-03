@@ -1,14 +1,22 @@
 import Definitions from '../core/definitions';
 import Schema from '../schema/schema';
 import parse from '../parser/index';
-import { ChunkDecoder, normalizeNewlines, splitLinesKeepRemainder, updateStringState } from './text';
+import StreamTokenizer from '../parser/tokenizer/stream-tokenizer';
+import TokenType from '../parser/tokenizer/token-types';
+import { ChunkDecoder, normalizeNewlines } from './text';
 import { toAsyncIterable } from './source';
 import { IOStreamSource, StreamReaderOptions, StreamItem } from './types';
-import IODocument from '../core/document';
 
 /**
  * A streaming reader for Internet Object data.
- * Reads chunked data from a source and parses it into IO objects.
+ *
+ * Record boundaries are detected at the token level via {@link StreamTokenizer}
+ * (IMPLEMENTATION-GAPS.md Gap 21 / ADR 0006): a top-level `~` (COLLECTION_START) or
+ * `---` (SECTION_SEP) token marks a frame boundary. The tokenizer is the single
+ * lexical authority, so `~`/`---` inside strings, comments, or nested containers are
+ * never mistaken for boundaries — there is no second hand-rolled scanner. Each frame's
+ * text is then parsed by the existing core `parse()` path, preserving full
+ * type/schema/validation semantics.
  */
 export class IOStreamReader implements AsyncIterable<StreamItem> {
   private readonly source: AsyncIterable<any>;
@@ -33,102 +41,95 @@ export class IOStreamReader implements AsyncIterable<StreamItem> {
     return items;
   }
 
-  /**
-   * Iterates over the stream, yielding parsed items (data, error, schemaName, etc.)
-   */
   async *[Symbol.asyncIterator](): AsyncIterator<StreamItem> {
     const maxBufferedChars = this.options.maxBufferedChars ?? 2_000_000;
 
     let streamIndex = 0;
-    let headerLines: string[] = [];
-    let headerDone = false;
-
     let defs: Definitions | null = this.definitions;
     let defaultSchemaName: string | undefined = this.options.defaultSchema;
+    let headerDone = false;
+    let currentSectionHeader: string | null = null; // e.g. '--- $User'
+    let depth = 0; // brace/bracket nesting; boundaries only count at depth 0
 
-    // Data parsing state
-    let currentSectionHeaderLine: string | null = null; // e.g. '--- $order'
-    let pendingLines: string[] = [];
-    let pendingSize = 0;
-    let inString: string | null = null;
-    let remainder = '';
     const decoder = new ChunkDecoder();
+    const st = new StreamTokenizer();
 
-    // Helper to flush pending lines as a parsed section
-    const flushPending = async (): Promise<StreamItem[]> => {
-      if (pendingLines.length === 0) return [];
+    // Sliding raw-text window: raw holds text from absolute offset `windowBase`.
+    let raw = '';
+    let windowBase = 0;
+    let frameStart = 0; // absolute offset where the current pending frame begins
 
-      const sectionText = [
-        // If no explicit section header has been seen, omit it (default section)
-        currentSectionHeaderLine ? `${currentSectionHeaderLine}\n` : '',
-        pendingLines.join('\n'),
-        '\n'
-      ].join('');
+    const sliceAbs = (a: number, b?: number): string =>
+      raw.slice(a - windowBase, b === undefined ? undefined : b - windowBase);
+    const advanceWindow = (toAbs: number): void => {
+      if (toAbs > windowBase) {
+        raw = raw.slice(toAbs - windowBase);
+        windowBase = toAbs;
+      }
+    };
 
-      pendingLines = [];
-      pendingSize = 0;
+    const defaultName = (): string =>
+      currentSectionHeader
+        ? currentSectionHeader.replace('---', '').trim() || '$schema'
+        : (defaultSchemaName ?? '$schema');
 
+    const processHeader = (headerText: string): void => {
+      const content = headerText.trimEnd();
+      const text = content.length ? `${content}\n---\n` : '---\n';
+      const headerErrors: Error[] = [];
+      const headerDoc = defs ? parse(text, defs, headerErrors) : parse(text, null, headerErrors);
+      defs = headerDoc.header?.definitions ?? defs;
+      if (!defaultSchemaName && headerDoc.header?.schema instanceof Schema) {
+        defaultSchemaName = '$schema';
+      }
+    };
+
+    // Read the `--- ...` section-header line starting at absolute pos P. Returns the
+    // header string (or null for a bare `---`) and the absolute offset just past the line.
+    const readSectionHeaderLine = (P: number): { header: string | null; next: number } => {
+      const nlRel = raw.indexOf('\n', P - windowBase);
+      const nlAbs = nlRel === -1 ? windowBase + raw.length : windowBase + nlRel;
+      const line = sliceAbs(P, nlAbs).trim();
+      return { header: line === '---' ? null : line, next: nlRel === -1 ? nlAbs : nlAbs + 1 };
+    };
+
+    // Parse one frame's text [a, b) as a section and emit its records.
+    const emitFrame = (a: number, b: number): StreamItem[] => {
+      const recordText = sliceAbs(a, b);
+      if (recordText.trim().length === 0) return [];
+
+      const sectionText = `${currentSectionHeader ? `${currentSectionHeader}\n` : ''}${recordText}\n`;
       const errors: Error[] = [];
-      let doc: IODocument;
+      let doc: any;
       try {
-        // parse() will merge external defs into header.definitions
         doc = defs ? parse(sectionText, defs, errors) : parse(sectionText, null, errors);
       } catch (err: any) {
-        // If parse throws (e.g. syntax error), yield an error item
-        return [{
-          data: null,
-          schemaName: currentSectionHeaderLine ? (currentSectionHeaderLine.replace('---', '').trim() || '$schema') : (defaultSchemaName ?? '$schema'),
-          index: streamIndex++,
-          error: err
-        }];
+        return [{ data: null, schemaName: defaultName(), index: streamIndex++, error: err }];
       }
+
+      const sections = doc.sections;
+      if ((!sections || sections.length === 0) && errors.length > 0) {
+        return [{ data: null, schemaName: defaultName(), index: streamIndex++, error: errors[0] }];
+      }
+      if (!sections || sections.length === 0) return [];
 
       const out: StreamItem[] = [];
-      const sections = doc.sections;
-
-      // If parse produced errors but no sections (or empty sections), yield error
-      if ((!sections || sections.length === 0) && errors.length > 0) {
-         return [{
-          data: null,
-          schemaName: currentSectionHeaderLine ? (currentSectionHeaderLine.replace('---', '').trim() || '$schema') : (defaultSchemaName ?? '$schema'),
-          index: streamIndex++,
-          error: errors[0]
-        }];
-      }
-
-      if (!sections || sections.length === 0) return out;
-
       for (let si = 0; si < sections.length; si++) {
         const section = sections.get(si);
         if (!section) continue;
 
-        const schemaName = (section.schemaName
+        const schemaName = section.schemaName
           ? (section.schemaName.startsWith('$') ? section.schemaName : `$${section.schemaName}`)
-          : (defaultSchemaName ?? '$schema'));
+          : (defaultSchemaName ?? '$schema');
 
         const data = section.data as any;
-
-        // For collections, yield each item. For single objects, yield once.
-        if (data && typeof (data as any)[Symbol.iterator] === 'function' && typeof data.toJSON === 'function') {
-          // Likely IOCollection
-          let idxInSection = 0;
+        if (data && typeof data[Symbol.iterator] === 'function' && typeof data.toJSON === 'function') {
           for (const item of data as any) {
             if (item && (item as any).__error) {
-              out.push({
-                data: null,
-                schemaName,
-                index: streamIndex++,
-                error: item,
-              });
+              out.push({ data: null, schemaName, index: streamIndex++, error: item });
             } else {
-              out.push({
-                data: item,
-                schemaName,
-                index: streamIndex++,
-                error: undefined,
-              });
+              out.push({ data: item, schemaName, index: streamIndex++, error: undefined });
             }
-            idxInSection++;
           }
         } else if (data) {
           if ((data as any).__error) {
@@ -139,101 +140,71 @@ export class IOStreamReader implements AsyncIterable<StreamItem> {
         }
       }
 
-      // If parse produced errors, attach them to the last yielded item as a signal.
       if (errors.length > 0 && out.length > 0) {
         out[out.length - 1].error = errors[0];
       }
-
       return out;
     };
 
-    // --- Main Loop ---
+    // Handle one committed token; returns any items to emit.
+    const handleToken = (t: any): StreamItem[] => {
+      const type = t.type;
+
+      // Track container nesting so `~`/`---` only count as boundaries at top level.
+      if (type === TokenType.CURLY_OPEN || type === TokenType.BRACKET_OPEN) { depth++; return []; }
+      if (type === TokenType.CURLY_CLOSE || type === TokenType.BRACKET_CLOSE) { if (depth > 0) depth--; return []; }
+      if (depth !== 0) return [];
+
+      if (!headerDone) {
+        if (type === TokenType.SECTION_SEP) {
+          processHeader(sliceAbs(frameStart, t.pos));
+          headerDone = true;
+          const { header, next } = readSectionHeaderLine(t.pos);
+          currentSectionHeader = header;
+          frameStart = next;
+          advanceWindow(next);
+        }
+        // Header content (including `~` definition records) accumulates; ignore it.
+        return [];
+      }
+
+      if (type === TokenType.COLLECTION_START) {
+        const out = emitFrame(frameStart, t.pos);
+        frameStart = t.pos;
+        advanceWindow(t.pos);
+        return out;
+      }
+      if (type === TokenType.SECTION_SEP) {
+        const out = emitFrame(frameStart, t.pos);
+        const { header, next } = readSectionHeaderLine(t.pos);
+        currentSectionHeader = header;
+        frameStart = next;
+        advanceWindow(next);
+        return out;
+      }
+      return [];
+    };
+
+    // --- Main loop ---
     for await (const chunk of this.source) {
       const text = normalizeNewlines(decoder.decode(chunk));
-      remainder += text;
-
-      if (remainder.length > maxBufferedChars) {
+      if (!text) continue;
+      raw += text;
+      if (raw.length > maxBufferedChars) {
         throw new Error(`Stream reader exceeded maxBufferedChars (${maxBufferedChars}).`);
       }
-
-      const { lines, remainder: newRemainder } = splitLinesKeepRemainder(remainder);
-      remainder = newRemainder;
-
-      for (const rawLine of lines) {
-        const line = rawLine;
-        const trimmed = line.trim();
-
-        if (!headerDone) {
-            if (trimmed.startsWith('---')) {
-            headerDone = true;
-
-            const headerText = headerLines.length ? `${headerLines.join('\n')}\n---\n` : `---\n`;
-            headerLines = [];
-
-            const headerErrors: Error[] = [];
-            const headerDoc = defs ? parse(headerText, defs, headerErrors) : parse(headerText, null, headerErrors);
-
-            defs = headerDoc.header?.definitions ?? defs;
-            const schema = headerDoc.header?.schema;
-            if (!defaultSchemaName && schema instanceof Schema) {
-                defaultSchemaName = '$schema';
-            }
-
-            currentSectionHeaderLine = trimmed === '---' ? null : trimmed;
-            continue;
-            }
-
-            headerLines.push(line);
-            continue;
-        }
-
-        if (trimmed.startsWith('---')) {
-            const flushed = await flushPending();
-            for (const item of flushed) yield item;
-
-            currentSectionHeaderLine = trimmed === '---' ? null : trimmed;
-            inString = null;
-            continue;
-        }
-
-        if (trimmed.length === 0) {
-            if (inString !== null) {
-            pendingLines.push(line);
-            }
-            continue;
-        }
-
-        if (inString === null && (trimmed.startsWith('~') || trimmed.startsWith('#'))) {
-            const flushed = await flushPending();
-            for (const item of flushed) yield item;
-        }
-
-        inString = updateStringState(line, inString);
-
-        pendingLines.push(line);
-        pendingSize += line.length;
-        if (pendingSize > maxBufferedChars) {
-            throw new Error(`Stream reader exceeded maxBufferedChars (${maxBufferedChars}) in pending lines.`);
-        }
+      for (const t of st.feed(text)) {
+        for (const item of handleToken(t)) yield item;
       }
     }
-
-    if (remainder.trim().length > 0) {
-      if (!headerDone) {
-        headerLines.push(remainder);
-      } else {
-        pendingLines.push(remainder);
-      }
+    for (const t of st.end()) {
+      for (const item of handleToken(t)) yield item;
     }
 
-    if (!headerDone && headerLines.length > 0) {
-      pendingLines = headerLines;
-      headerLines = [];
-      headerDone = true;
-    }
-
-    const flushed = await flushPending();
-    for (const item of flushed) yield item;
+    // Flush the final pending frame. If no `---` was ever seen, the accumulated
+    // content is headerless data (it is reinterpreted as records here).
+    const end = windowBase + raw.length;
+    for (const item of emitFrame(frameStart, end)) yield item;
   }
 }
 
@@ -241,7 +212,7 @@ export class IOStreamReader implements AsyncIterable<StreamItem> {
  * Creates a new IOStreamReader instance.
  * @param source The source to read from (string, Iterable, AsyncIterable, ReadableStream).
  * @param definitions Optional initial definitions.
- * @param options Optional strictness and buffer settings.
+ * @param options Optional default-schema and buffer settings.
  */
 export function createStreamReader(
   source: IOStreamSource,
