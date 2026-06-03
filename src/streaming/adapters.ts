@@ -2,17 +2,17 @@ import { IOStreamSource, IOStreamTransport, StreamChunk } from './types';
 
 /**
  * A helper to bridge event-based or callback-based data sources to the AsyncIterable
- * required by `openStream`.
+ * consumed by `createStreamReader`.
  *
  * @returns An object containing:
- * - `source`: The AsyncIterable to pass to `openStream`.
+ * - `source`: The AsyncIterable to pass to `createStreamReader`.
  * - `push`: A function to push a new chunk of data.
  * - `close`: A function to signal the end of the stream (or an error).
  *
  * @example
  * ```ts
  * const { source, push, close } = createPushSource();
- * openStream(source);
+ * const reader = createStreamReader(source);
  *
  * xhr.onprogress = () => push(xhr.responseText.substring(seen));
  * xhr.onload = () => close();

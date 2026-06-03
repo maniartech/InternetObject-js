@@ -1,0 +1,13 @@
+{
+  "name": "unknown-schema-switch-fatal",
+  "description": "Switching to an undefined schema is a fatal stream error, not a record-error.",
+  "protocol": ["§6", "§7"],
+  "definitions": null,
+  "options": { "defaultSchema": null },
+  "input": "--- $Missing\n~ Alice\n",
+  "chunkings": ["whole", "per-line"],
+  "expected": {
+    "items": [],
+    "fatal": { "category": "validation", "code": "schema-not-defined" }
+  }
+}

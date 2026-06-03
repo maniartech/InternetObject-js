@@ -1,0 +1,16 @@
+{
+  "name": "preloaded-definitions-default-schema",
+  "description": "Preloaded definitions plus fallback default schema; headerless data opened by bare ---; implicit default-schema records (schemaName absent) with a default applied.",
+  "protocol": ["§6"],
+  "definitions": "~ $User: { name: string, active: { bool, default: T } }",
+  "options": { "defaultSchema": "$User" },
+  "input": "---\n~ Alice\n~ Bob\n",
+  "chunkings": ["whole", "per-line", "per-byte"],
+  "expected": {
+    "items": [
+      { "kind": "record", "recordIndex": 0, "value": { "name": "Alice", "active": true } },
+      { "kind": "record", "recordIndex": 1, "value": { "name": "Bob", "active": true } }
+    ],
+    "fatal": null
+  }
+}

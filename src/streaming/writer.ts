@@ -5,7 +5,8 @@ import SectionCollection from '../core/section-collection';
 import { loadObject } from '../facade/load';
 import { stringify } from '../facade/stringify';
 import { stringifyDocument } from '../facade/stringify-document';
-import { IOStreamTransport, StreamWriterOptions } from './types';
+import { toAsyncIterable } from './source';
+import { IOStreamSource, IOStreamTransport, StreamChunk, StreamWriterOptions } from './types';
 
 export class IOStreamWriter {
   private readonly transport: IOStreamTransport;
@@ -172,6 +173,56 @@ export class IOStreamWriter {
     const chunk = this.writeBatch(items, schemaName);
     if (chunk) {
       await this.transport.send(chunk);
+    }
+  }
+
+  /**
+   * Forwards raw pre-formatted IO text to the transport without serialization.
+   *
+   * Use this when you already have valid IO-formatted text and want to send it
+   * without going through JS object serialization.
+   *
+   * Two patterns:
+   *
+   * **With header** — the text is a complete IO document (definitions + `---` + records).
+   * Do not call `sendHeader()` first; the full document is forwarded as-is.
+   *
+   * ```ts
+   * await writer.sendRaw(
+   *   '~ $User: { name: string, age: int }\n--- $User\n~ Alice, 30\n~ Bob, 25\n'
+   * )
+   * ```
+   *
+   * **Records only** — the text contains only data records (no header definitions).
+   * Call `sendHeader()` first so the receiver has the schema context.
+   *
+   * ```ts
+   * await writer.sendHeader()
+   * await writer.sendRaw('~ Alice, 30\n~ Bob, 25\n~ Carol, 28\n')
+   * ```
+   */
+  async sendRaw(ioText: string): Promise<void> {
+    if (ioText) {
+      await this.transport.send(ioText);
+    }
+  }
+
+  /**
+   * Forwards raw IO text from any `IOStreamSource` to the transport chunk by chunk.
+   * Useful for proxying an incoming IO stream directly to an outgoing transport.
+   *
+   * ```ts
+   * // Proxy an incoming HTTP response body to a WebSocket transport
+   * await writer.pipeRaw(incomingReadableStream)
+   * ```
+   */
+  async pipeRaw(source: IOStreamSource): Promise<void> {
+    for await (const chunk of toAsyncIterable(source)) {
+      if (chunk instanceof ArrayBuffer) {
+        await this.transport.send(new Uint8Array(chunk));
+      } else {
+        await this.transport.send(chunk as string | Uint8Array);
+      }
     }
   }
 }

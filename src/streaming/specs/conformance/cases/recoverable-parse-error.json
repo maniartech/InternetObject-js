@@ -1,0 +1,17 @@
+{
+  "name": "recoverable-parse-error",
+  "description": "A malformed record between two valid ones yields one record-error and iteration continues.",
+  "protocol": ["§7"],
+  "definitions": null,
+  "options": { "defaultSchema": null },
+  "input": "---\n~ { id: 1 }\n~ { BROKEN\n~ { id: 2 }\n",
+  "chunkings": ["whole", "per-line"],
+  "expected": {
+    "items": [
+      { "kind": "record", "recordIndex": 0, "value": { "id": 1 } },
+      { "kind": "record-error", "recordIndex": 1, "error": { "category": "syntax", "code": "expecting-bracket" } },
+      { "kind": "record", "recordIndex": 2, "value": { "id": 2 } }
+    ],
+    "fatal": null
+  }
+}

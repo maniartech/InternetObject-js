@@ -34,10 +34,18 @@ export interface StreamReaderOptions {
   defaultSchema?: string;
 
   /**
-   * Soft guardrails for streaming buffers.
-   * This is not a security boundary, but prevents accidental unbounded growth.
+   * Hard cap on a single pending logical frame, in characters. Default 2_000_000.
+   * Exceeding it is a fatal stream error that rejects the iterator (not a record-error).
+   * It bounds one in-flight frame, not cumulative stream history.
    */
   maxBufferedChars?: number;
+
+  /**
+   * Optional AbortSignal. When it aborts, iteration rejects at the next pull
+   * boundary with the abort reason and the underlying source is released.
+   * Aborting is fatal to the stream and does not emit a record-error.
+   */
+  signal?: AbortSignal;
 }
 
 export interface StreamWriterOptions {
