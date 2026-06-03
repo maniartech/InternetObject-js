@@ -1,5 +1,5 @@
 import Definitions          from '../../core/definitions'
-import ValidationError      from '../../errors/io-error'
+import ValidationError      from '../../errors/io-validation-error'
 import ErrorCodes           from '../../errors/io-error-codes'
 import Node                 from '../../parser/nodes/nodes'
 import TokenNode            from '../../parser/nodes/tokens'
