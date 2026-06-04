@@ -26,6 +26,29 @@ describe('IOStreamWriter', () => {
     expect(transport.chunks[1]).toContain('~ 1, Alice');
   });
 
+  it('includeSchemas: false omits schema definitions from the header', () => {
+    const defs = io.defs`~ $User: { name: string }`;
+    const writer = createStreamWriter(new MockTransport(), defs, { includeSchemas: false });
+    expect(writer.getHeader()).not.toContain('$User');
+  });
+
+  it('getHeader() caches and returns the same text on repeated calls', () => {
+    const writer = createStreamWriter(new MockTransport());
+    const h1 = writer.getHeader();
+    expect(writer.getHeader()).toBe(h1);
+  });
+
+  it('emits a bare --- for the default schema after a raw reset', async () => {
+    const out: string[] = [];
+    const writer = createStreamWriter({ send: (c) => { out.push(c.toString()); } });
+    await writer.send({ a: 1 }); // header + ~ 1 (default schema)
+    await writer.sendRaw('~ x\n'); // resets schema tracking
+    await writer.send({ b: 2 }); // default schema again => section(undefined) => '---'
+    const last = out[out.length - 1];
+    expect(last).toContain('---');
+    expect(last).toContain('~ 2');
+  });
+
   it('throws on a validation error during write() (Gap 16: no onError modes)', () => {
     const transport = new MockTransport();
     const schemaDefs = io.defs`~ $user: { name: {string, minLen: 5} }`;
