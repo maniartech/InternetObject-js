@@ -291,7 +291,11 @@ Associated tests:
 
 ### Gap 9: Performance Guarantees Are Not Yet Proved By Implementation And Tests
 
-Status: Open
+Status: Done — `tests/streaming/performance.test.ts` proves: the section schema is resolved once per
+section, not per record (1000-record stream → ≤2 resolutions); records emit incrementally as data arrives
+via a push source (not buffered to end); a 10,000-record single-schema stream processes correctly; and
+per-record flushing holds under chunked feeding at scale. Transport backpressure is proved separately in
+`tests/streaming/writer.test.ts` (Gap 3).
 
 Contract impact:
 
