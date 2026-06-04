@@ -101,6 +101,22 @@ describe('IOStreamWriter', () => {
       const switches = joined.split('--- $User').length - 1;
       expect(switches).toBe(2); // before Alice, and again after the raw reset before Bob
     });
+
+    it('pipeRaw forwards every chunk from a source, including ArrayBuffer chunks', async () => {
+      const out: string[] = [];
+      const writer = createStreamWriter({
+        send: (c) => { out.push(typeof c === 'string' ? c : new TextDecoder().decode(c as Uint8Array)); },
+      });
+      async function* src() {
+        yield '---\n';
+        yield new TextEncoder().encode('~ { id: 1 }\n'); // Uint8Array
+        yield new TextEncoder().encode('~ { id: 2 }\n').buffer; // ArrayBuffer
+      }
+      await writer.pipeRaw(src() as any);
+      const joined = out.join('');
+      expect(joined).toContain('~ { id: 1 }');
+      expect(joined).toContain('~ { id: 2 }');
+    });
   });
 
   describe('poisoning after transport failure (Gap 15)', () => {

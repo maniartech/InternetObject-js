@@ -6,6 +6,7 @@ import TokenType from '../parser/tokenizer/token-types';
 import IOValidationError from '../errors/io-validation-error';
 import ErrorCodes from '../errors/io-error-codes';
 import ErrorNode from '../parser/nodes/error';
+import InternetObject from '../core/internet-object';
 import { ChunkDecoder, normalizeNewlines, stripLeadingBom } from './text';
 import { toAsyncIterable } from './source';
 import { streamError, StreamErrorCode } from './errors';
@@ -174,13 +175,19 @@ export class IOStreamReader implements AsyncIterable<StreamItem> {
         for (let si = 0; si < sections.length; si++) {
           const data = sections.get(si)?.data as any;
           if (data == null) continue;
-          if (typeof data[Symbol.iterator] === 'function' && typeof data.toJSON === 'function') {
+          // A single record is one IOObject. Branch on the actual type, not generic
+          // iterability — an IOObject is itself iterable over [key, value] entries, so a
+          // heuristic would wrongly explode a single object into tuple "records" (Gap 1).
+          if (data instanceof InternetObject || isErrorItem(data)) {
+            out.push(isErrorItem(data) ? mkError(data) : mkRecord(data));
+            emitted = true;
+          } else if (typeof data[Symbol.iterator] === 'function') {
             for (const item of data as any) {
               out.push(isErrorItem(item) ? mkError(item) : mkRecord(item));
               emitted = true;
             }
           } else {
-            out.push(isErrorItem(data) ? mkError(data) : mkRecord(data));
+            out.push(mkRecord(data));
             emitted = true;
           }
         }

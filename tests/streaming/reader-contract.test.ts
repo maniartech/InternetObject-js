@@ -20,6 +20,13 @@ describe('reader contract (Group A: Gaps 1, 6, 10, 12, 14)', () => {
       expect(items.map((i) => i.kind)).toEqual(['record', 'record', 'record']);
       expect(items.map((i) => (i as any).data.toJSON())).toEqual([{ id: 1 }, { id: 2 }, { id: 3 }]);
     });
+
+    it('single-object section (no ~) emits one record', async () => {
+      const items = await collect('---\n{ id: 1, name: "Alice" }\n');
+      expect(items).toHaveLength(1);
+      expect(items[0].kind).toBe('record');
+      expect((items[0] as any).data.toJSON()).toEqual({ id: 1, name: 'Alice' });
+    });
   });
 
   describe('Gap 6 — streamed record equals the non-streaming parse', () => {

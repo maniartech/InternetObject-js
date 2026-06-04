@@ -23,9 +23,11 @@ Do not use this file to redefine the public contract.
 
 ### Gap 1: Reader Can Misclassify An `IOObject` As A Collection
 
-Status: Done — the token-driven reader parses each frame via core `parse()` and emits one item per
-section record; a single-object section yields exactly one complete `IOObject` (no `[key,value]` tuples).
-Verified by the conformance corpus (single-object-section) and `tests/streaming/reader-contract.test.ts`.
+Status: Done — the reader branches on the actual runtime type (`data instanceof InternetObject`) rather than
+generic iterability, so a single object — which is itself iterable over `[key, value]` entries — is emitted as
+exactly one `IOObject` and never exploded into tuple "records". This holds for both `~`-framed and `~`-less
+single-object sections. Verified by the conformance corpus (single-object-section) and
+`tests/streaming/reader-contract.test.ts` (including a `~`-less single-object section).
 
 Contract impact:
 
