@@ -54,7 +54,10 @@ Associated tests:
 
 ### Gap 2: `BufferTransport` Is Not UTF-8 Safe Across Split Byte Chunks
 
-Status: Open
+Status: Done — `BufferTransport` now uses a single persistent streaming `TextDecoder`, so a multibyte code
+point split across `send()` calls decodes correctly; `getOutput()` flushes any pending bytes and is
+idempotent. Verified in `tests/streaming/adapters.test.ts` (emoji split across calls, every byte-boundary
+split, byte-at-a-time feeding, mixed string/bytes, parity with direct decoding).
 
 Contract impact:
 

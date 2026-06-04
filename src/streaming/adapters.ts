@@ -97,17 +97,22 @@ export function createPushSource(): {
  */
 export class BufferTransport implements IOStreamTransport {
   private chunks: string[] = [];
+  // A single streaming decoder preserves multibyte UTF-8 state across send() calls,
+  // so a code point split across two byte chunks decodes correctly (IMPLEMENTATION-GAPS Gap 2).
+  private decoder = new TextDecoder('utf-8');
 
   send(chunk: string | Uint8Array): void {
     if (typeof chunk === 'string') {
       this.chunks.push(chunk);
     } else {
-      // Best effort text decoding
-      this.chunks.push(new TextDecoder().decode(chunk));
+      this.chunks.push(this.decoder.decode(chunk, { stream: true }));
     }
   }
 
   getOutput(): string {
+    // Flush any bytes the decoder is still holding for an incomplete code point.
+    const tail = this.decoder.decode();
+    if (tail) this.chunks.push(tail);
     return this.chunks.join('');
   }
 }
