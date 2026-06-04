@@ -23,7 +23,9 @@ Do not use this file to redefine the public contract.
 
 ### Gap 1: Reader Can Misclassify An `IOObject` As A Collection
 
-Status: Open
+Status: Done — the token-driven reader parses each frame via core `parse()` and emits one item per
+section record; a single-object section yields exactly one complete `IOObject` (no `[key,value]` tuples).
+Verified by the conformance corpus (single-object-section) and `tests/streaming/reader-contract.test.ts`.
 
 Contract impact:
 
@@ -170,7 +172,10 @@ Associated tests:
 
 ### Gap 6: Core Validation Semantics Must Be Inherited, Including Current Warts
 
-Status: Open
+Status: Done — the reader routes every record through the core `parse()`/`processSchema` path and never
+re-implements type, default, or validation rules. A streamed record's value equals the non-streaming parse
+of the same text and definitions. Verified by the conformance equivalence cases and the explicit
+non-streaming-vs-streamed comparison in `tests/streaming/reader-contract.test.ts`.
 
 Contract impact:
 
@@ -306,7 +311,10 @@ Associated tests:
 
 ### Gap 10: Partial Frame At EOF Is Not Yet Normalized
 
-Status: Open
+Status: Done — on clean end of stream the reader flushes the final pending frame; a truncated record
+(unterminated object/string) parses to a core syntax error and is emitted as one `record-error`, with
+earlier complete records emitted normally. Verified in `tests/streaming/reader-contract.test.ts`
+(unterminated object at EOF, unterminated string at EOF).
 
 Contract impact:
 
@@ -357,7 +365,10 @@ Associated tests:
 
 ### Gap 12: Degenerate And Empty Inputs Are Not Specified In Runtime
 
-Status: Open
+Status: Done — empty, whitespace-only, and header-only streams emit zero items and complete normally
+(conformance: empty-stream, header-only-stream). Bare `~` is delegated to core per PROTOCOL §12 (corrected
+to align with §2 equivalence): under a schema it is a `record-error` (missing member), schemaless it is
+core's empty record — not a stream-only forced error. Verified in `tests/streaming/reader-contract.test.ts`.
 
 Contract impact:
 
@@ -406,7 +417,10 @@ Associated tests:
 
 ### Gap 14: `maxBufferedChars` Overflow Semantics Are Not Aligned
 
-Status: Open
+Status: Done (disposition) — the sliding-window reader bounds buffering to the current pending frame, and
+exceeding `maxBufferedChars` throws fatally (rejects the iterator) rather than emitting a `record-error`.
+Verified in `tests/streaming/reader-contract.test.ts`. Note: tagging the failure with the `stream-buffer-exceeded`
+code / `IOStreamError` class is tracked under Gap 17.
 
 Contract impact:
 

@@ -297,8 +297,11 @@ See ADR [0009](./decisions/0009-reader-lifecycle-and-cancellation.md).
 - A whitespace-only or blank-line-only source MUST emit zero items and complete normally.
 - A header-only stream (definitions, then `---`, then end of stream with no records) MUST emit zero
   items and complete normally.
-- A bare `~` with no payload (or `~` followed only by whitespace) MUST produce one record-error item
-  using core's identity for a missing record value. It MUST NOT emit an empty success record.
+- A bare `~` with no payload (or `~` followed only by whitespace) is delegated to core like any other
+  record (per §2 equivalence): under an active schema it yields whatever core produces — typically a
+  validation failure, hence one `record-error` — and with no active schema it yields core's empty record.
+  Streaming MUST NOT special-case it into a stream-only error, as that would diverge from the
+  non-streaming parse of the same input.
 - A trailing bare `---` with no following records MUST NOT emit an item and MUST NOT error.
 
 ## 13. Performance and backpressure
