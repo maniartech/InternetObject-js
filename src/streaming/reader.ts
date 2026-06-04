@@ -8,6 +8,7 @@ import ErrorCodes from '../errors/io-error-codes';
 import ErrorNode from '../parser/nodes/error';
 import { ChunkDecoder, normalizeNewlines, stripLeadingBom } from './text';
 import { toAsyncIterable } from './source';
+import { streamError, StreamErrorCode } from './errors';
 import { IOStreamSource, StreamReaderOptions, StreamItem } from './types';
 
 const SCHEMA_NAME_RE = /\$[\p{L}\p{M}\p{N}\-_]+/u;
@@ -27,6 +28,7 @@ export class IOStreamReader implements AsyncIterable<StreamItem> {
   private readonly source: AsyncIterable<any>;
   private readonly definitions: Definitions | null;
   private readonly options: StreamReaderOptions;
+  private consumed = false;
 
   constructor(source: IOStreamSource, definitions?: Definitions | null, options?: StreamReaderOptions) {
     this.source = toAsyncIterable(source);
@@ -47,7 +49,16 @@ export class IOStreamReader implements AsyncIterable<StreamItem> {
   }
 
   async *[Symbol.asyncIterator](): AsyncIterator<StreamItem> {
+    if (this.consumed) {
+      throw new Error('IOStreamReader is single-consumption; create a new reader to read the source again.');
+    }
+    this.consumed = true;
+
     const maxBufferedChars = this.options.maxBufferedChars ?? 2_000_000;
+    const signal = this.options.signal;
+    const checkAbort = () => {
+      if (signal?.aborted) throw streamError(StreamErrorCode.aborted, 'Stream reading was aborted.');
+    };
 
     let streamIndex = 0;
     let defs: Definitions | null = this.definitions;
@@ -219,30 +230,53 @@ export class IOStreamReader implements AsyncIterable<StreamItem> {
     };
 
     // --- Main loop ---
+    // Drive the source via its explicit iterator so we can (a) wrap source/transport
+    // failures as `stream-source-error`, and (b) release the source on any exit
+    // (normal, error, abort, or early `break`) via the finally below (Gap 11).
+    checkAbort();
+    const iter = this.source[Symbol.asyncIterator]();
     let firstChunk = true;
-    for await (const chunk of this.source) {
-      let text = normalizeNewlines(decoder.decode(chunk));
-      if (!text) continue;
-      if (firstChunk) {
-        text = stripLeadingBom(text); // strip a leading BOM on string sources (byte sources: decoder already did)
-        firstChunk = false;
+    try {
+      while (true) {
+        checkAbort();
+        let res: IteratorResult<any>;
+        try {
+          res = await iter.next();
+        } catch (srcErr) {
+          throw streamError(StreamErrorCode.sourceError, 'Stream source failed.', srcErr);
+        }
+        if (res.done) break;
+        checkAbort();
+
+        let text = normalizeNewlines(decoder.decode(res.value));
+        if (!text) continue;
+        if (firstChunk) {
+          text = stripLeadingBom(text); // strip a leading BOM on string sources (byte sources: decoder already did)
+          firstChunk = false;
+        }
+        raw += text;
+        if (raw.length > maxBufferedChars) {
+          throw streamError(
+            StreamErrorCode.bufferExceeded,
+            `Stream reader exceeded maxBufferedChars (${maxBufferedChars}).`
+          );
+        }
+        for (const t of st.feed(text)) {
+          for (const item of handleToken(t)) yield item;
+        }
       }
-      raw += text;
-      if (raw.length > maxBufferedChars) {
-        throw new Error(`Stream reader exceeded maxBufferedChars (${maxBufferedChars}).`);
-      }
-      for (const t of st.feed(text)) {
+      for (const t of st.end()) {
         for (const item of handleToken(t)) yield item;
       }
-    }
-    for (const t of st.end()) {
-      for (const item of handleToken(t)) yield item;
-    }
 
-    // Flush the final pending frame. If no `---` was ever seen, the accumulated
-    // content is headerless data (it is reinterpreted as records here).
-    const end = windowBase + raw.length;
-    for (const item of emitFrame(frameStart, end)) yield item;
+      // Flush the final pending frame. If no `---` was ever seen, the accumulated
+      // content is headerless data (it is reinterpreted as records here).
+      const end = windowBase + raw.length;
+      for (const item of emitFrame(frameStart, end)) yield item;
+    } finally {
+      // Release the underlying source on early termination / error / completion.
+      try { await iter.return?.(); } catch { /* ignore release errors */ }
+    }
   }
 }
 

@@ -341,7 +341,12 @@ Associated tests:
 
 ### Gap 11: Reader Lifecycle, Single-Consumption, And Cancellation Are Not Enforced
 
-Status: Open
+Status: Done — the reader is single-consumption (a second iteration throws), supports cooperative
+cancellation via `StreamReaderOptions.signal` (rejects with `stream-aborted` at the next pull boundary,
+emitting no record-error), and releases the underlying source on any exit — normal completion, early
+`break`, fatal error, or abort — via a `finally` that calls the source iterator's `return()`. Verified in
+`tests/streaming/lifecycle.test.ts` (single-consumption, pre-/mid-stream abort, source release on early
+break and on fatal error).
 
 Contract impact:
 
@@ -505,7 +510,14 @@ Associated tests:
 
 ### Gap 17: Streaming Fatal Error Codes And `IOStreamError` Are Not Implemented
 
-Status: Open
+Status: Done (reader side) — added `IOStreamError` (`src/errors/io-stream-error`, category name
+`InternetObject(StreamError)`) and the `StreamErrorCode` enum (`stream-buffer-exceeded`,
+`stream-source-error`, `stream-aborted`) with a `streamError()` factory (`src/streaming/errors`). The reader
+raises them: buffer overflow → `stream-buffer-exceeded`; source/transport failure → `stream-source-error`
+(original attached as `cause`); abort → `stream-aborted`. Fatal core failures (unknown schema switch) still
+preserve their core identity (`validation`/`schema-not-defined`) rather than being wrapped. Exported from the
+package root. Verified in `tests/streaming/lifecycle.test.ts`. The writer side (raising `IOStreamError` on a
+poisoned transport) is handled with Gap 15.
 
 Contract impact:
 

@@ -47,6 +47,7 @@ export type { ValidationResult } from './facade/validate';
 // Streaming
 export { createStreamReader, createStreamWriter, createPushSource, BufferTransport } from './streaming';
 export { IOStreamReader } from './streaming';
+export { IOStreamError, StreamErrorCode } from './streaming';
 export type { IOStreamTransport, IOStreamSource, StreamItem, StreamReaderOptions, StreamWriterOptions } from './streaming';
 
 // Main tag functions (also tree-shakable)

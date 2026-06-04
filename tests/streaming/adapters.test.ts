@@ -50,7 +50,9 @@ describe('Streaming Adapters', () => {
 
       const err = await consumer;
       expect(err).toBeInstanceOf(Error);
-      expect((err as Error).message).toBe('Network Fail');
+      // Source/transport failures surface as stream-source-error with the original as cause (Gap 17).
+      expect((err as any).errorCode).toBe('stream-source-error');
+      expect((err as any).cause?.message).toBe('Network Fail');
     });
   });
 
