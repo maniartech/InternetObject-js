@@ -25,35 +25,3 @@ export function stripLeadingBom(s: string): string {
   return s.charCodeAt(0) === 0xfeff ? s.slice(1) : s;
 }
 
-export function splitLinesKeepRemainder(buffer: string): { lines: string[]; remainder: string } {
-  const idx = buffer.lastIndexOf('\n');
-  if (idx === -1) return { lines: [], remainder: buffer };
-  const head = buffer.slice(0, idx);
-  const remainder = buffer.slice(idx + 1);
-  return { lines: head.split('\n'), remainder };
-}
-
-export function updateStringState(line: string, inString: string | null): string | null {
-  let state = inString;
-  for (let i = 0; i < line.length; i++) {
-    const char = line[i];
-    if (state === null) {
-      if (char === '"' || char === "'") {
-        state = char;
-      }
-    } else {
-      if (char === state) {
-        // Check if it's escaped
-        let backslashes = 0;
-        for (let j = i - 1; j >= 0; j--) {
-          if (line[j] === '\\') backslashes++;
-          else break;
-        }
-        if (backslashes % 2 === 0) {
-          state = null;
-        }
-      }
-    }
-  }
-  return state;
-}
