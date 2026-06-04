@@ -15,6 +15,16 @@ export function normalizeNewlines(s: string): string {
   return s.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
 }
 
+/**
+ * Strip a single leading UTF-8 byte-order mark (U+FEFF) from the very start of the
+ * stream. A BOM-like character anywhere else is ordinary content and is preserved
+ * (PROTOCOL §11). For byte sources the streaming TextDecoder already removes a leading
+ * BOM; this covers string/text sources that carry one.
+ */
+export function stripLeadingBom(s: string): string {
+  return s.charCodeAt(0) === 0xfeff ? s.slice(1) : s;
+}
+
 export function splitLinesKeepRemainder(buffer: string): { lines: string[]; remainder: string } {
   const idx = buffer.lastIndexOf('\n');
   if (idx === -1) return { lines: [], remainder: buffer };

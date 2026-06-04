@@ -395,7 +395,11 @@ Associated tests:
 
 ### Gap 13: Encoding Rules (BOM, Newlines) Are Not Fully Enforced
 
-Status: Open
+Status: Done — a leading BOM is stripped (byte sources via the streaming `TextDecoder`; string sources via
+`stripLeadingBom` applied to the first chunk), interior BOM-like chars are preserved, `\r\n`/`\r` are
+normalized to `\n` for framing, and multibyte code points decode correctly across chunk boundaries.
+Verified in `tests/streaming/encoding.test.ts` (string/byte/split BOM, interior BOM preserved, CRLF/CR
+framing parity, every-byte-boundary multibyte split).
 
 Contract impact:
 

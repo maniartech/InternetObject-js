@@ -6,7 +6,7 @@ import TokenType from '../parser/tokenizer/token-types';
 import IOValidationError from '../errors/io-validation-error';
 import ErrorCodes from '../errors/io-error-codes';
 import ErrorNode from '../parser/nodes/error';
-import { ChunkDecoder, normalizeNewlines } from './text';
+import { ChunkDecoder, normalizeNewlines, stripLeadingBom } from './text';
 import { toAsyncIterable } from './source';
 import { IOStreamSource, StreamReaderOptions, StreamItem } from './types';
 
@@ -219,9 +219,14 @@ export class IOStreamReader implements AsyncIterable<StreamItem> {
     };
 
     // --- Main loop ---
+    let firstChunk = true;
     for await (const chunk of this.source) {
-      const text = normalizeNewlines(decoder.decode(chunk));
+      let text = normalizeNewlines(decoder.decode(chunk));
       if (!text) continue;
+      if (firstChunk) {
+        text = stripLeadingBom(text); // strip a leading BOM on string sources (byte sources: decoder already did)
+        firstChunk = false;
+      }
       raw += text;
       if (raw.length > maxBufferedChars) {
         throw new Error(`Stream reader exceeded maxBufferedChars (${maxBufferedChars}).`);
