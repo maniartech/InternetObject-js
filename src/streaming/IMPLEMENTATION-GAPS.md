@@ -84,7 +84,9 @@ Associated tests:
 
 ### Gap 3: Node Writable Backpressure Is Not Honored
 
-Status: Open
+Status: Done — the Node-Writable adapter in `createStreamWriter` now returns a promise that resolves on the
+`drain` event when `write()` returns `false` (rejecting on `error`), so `send()`/`sendBatch()` await transport
+acceptance. Verified in `tests/streaming/writer.test.ts` (send awaits drain when write() returns false).
 
 Contract impact:
 
@@ -112,7 +114,10 @@ Associated tests:
 
 ### Gap 4: Header Lifecycle Is Still Too Manual
 
-Status: Open
+Status: Done — `send()`/`sendBatch()` auto-emit the header on first use if it has not been sent, and
+`sendHeader()` is idempotent (emits at most once). Callers can no longer accidentally send a record before
+the header. Verified in `tests/streaming/writer.test.ts` (auto-emit on first send; header emitted at most
+once across sendHeader()+send()).
 
 Contract impact:
 
@@ -454,7 +459,11 @@ Associated tests:
 
 ### Gap 15: Writer Concurrency, Poisoning, And Raw Schema-Tracking Are Not Guarded
 
-Status: Open
+Status: Done — concurrent transport-writing calls throw (an `inCall` guard enforces sequential awaiting); a
+transport `send()` rejection poisons the writer so further calls throw; and `sendRaw()`/`pipeRaw()` reset the
+active schema to unknown so the next structured `send()` re-emits a section marker (no dropped schema switch).
+Verified in `tests/streaming/writer.test.ts` (overlapping calls rejected, poisoned-after-failure, raw forward
+forces the next section marker).
 
 Contract impact:
 
@@ -484,7 +493,11 @@ Associated tests:
 
 ### Gap 16: Writer Options Drift From The Frozen Surface
 
-Status: Open
+Status: Done — `StreamWriterOptions` is now exactly `{ includeSchemas?: boolean }`, matching the frozen
+surface. The contract-violating `onError: 'emit'` (which emitted a `--- $error` section) is removed along with
+`onError: 'ignore'` and the undocumented `defsId`; `write()` now always throws on a serialization/validation
+error (error handling belongs to the application). Verified in `tests/streaming/writer.test.ts`; the
+`node-http-server` example was updated to drop the removed option.
 
 Contract impact:
 

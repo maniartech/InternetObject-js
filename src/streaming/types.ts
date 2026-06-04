@@ -62,17 +62,6 @@ export interface StreamReaderOptions {
 }
 
 export interface StreamWriterOptions {
-  /** Default: true. If false, schemas are not written into the header. */
+  /** Default: true. If false, schema definitions are not written into the header. */
   includeSchemas?: boolean;
-
-  /** If set, inserts a stable hash/id into header metadata (design hook). */
-  defsId?: string;
-
-  /**
-   * How to handle validation/serialization errors during write().
-   * - 'throw': Throw the error (default).
-   * - 'ignore': Return empty string (skip the record).
-   * - 'emit': Emit an error record (e.g. `!error { ... }`).
-   */
-  onError?: 'throw' | 'ignore' | 'emit';
 }
