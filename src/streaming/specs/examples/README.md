@@ -6,6 +6,11 @@ These documents explain how the frozen streaming contract is intended to be used
 These files are explanatory, not normative.
 If an example and [../PROTOCOL.md](../PROTOCOL.md) or [../bindings/javascript.md](../bindings/javascript.md) ever disagree, the normative protocol wins (see [../README.md](../README.md#normative-precedence)).
 
+**These examples are executed in CI.** `tests/streaming/doc-examples.test.ts` harvests every `io` wire-shape
+block here and streams it through the real reader across multiple chunkings (whole / per-line / per-byte),
+asserting identical results; it also scans every `ts` snippet for removed/renamed API. So an example that
+drifts from the implementation fails the test. Run them on demand with `npm run test:streaming`.
+
 Use [../../IMPLEMENTATION-GAPS.md](../../IMPLEMENTATION-GAPS.md) for current runtime status and test-closure tracking.
 
 ## How To Use These Examples

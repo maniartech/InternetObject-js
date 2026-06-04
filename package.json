@@ -59,6 +59,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
+    "test:streaming": "vitest run tests/streaming src/streaming/conformance.test.ts tests/parser/tokenizer/features/stream-tokenizer.test.ts tests/parser/ast-parser/parse-section.test.ts",
     "test:ui": "vitest --ui",
     "clean": "rm -rf dist coverage",
     "type-check": "tsc --noEmit",
