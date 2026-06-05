@@ -332,9 +332,9 @@ import {
 - Schema inference: ✅
 - Streaming: ✅
 
-For per-feature **stability tiers** (Stable / Experimental / Deprecated) and the versioning policy, see
-[versioning/FEATURE-STATUS.md](versioning/FEATURE-STATUS.md). The current published version is shown by the
-npm badge at the top.
+Per-feature **stability tiers** and the versioning policy live in the Internet Object **specification**
+([docs.internetobject.org](https://docs.internetobject.org)). The current published implementation version is
+shown by the npm badge at the top.
 
 </details>
 
@@ -345,16 +345,6 @@ yarn install   # Install dependencies
 yarn test      # Run tests
 yarn build     # Build for production
 ```
-
-
-## Versioning & Stability
-
-Internet Object versions the spec and the package on separate clocks, and tracks stability **per feature**
-(Experimental / Stable / Deprecated) so a stable core can ship while a few features keep evolving. See:
-
-- [versioning/README.md](versioning/README.md) — overview of the versioning section
-- [versioning/VERSIONING.md](versioning/VERSIONING.md) — the policy: SemVer, stability tiers, deprecation & graduation, 1.0 checklist
-- [versioning/FEATURE-STATUS.md](versioning/FEATURE-STATUS.md) — status of every feature (types, validation, format, streaming)
 
 
 ## Contributing & Community
