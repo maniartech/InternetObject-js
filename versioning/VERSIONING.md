@@ -37,16 +37,21 @@ Every feature carries exactly one tier. Tiers are tracked **per feature**, not p
 | Tier | Guarantee | May change… | Conformance |
 |---|---|---|---|
 | **Experimental** | None. Use at your own risk. | in **any** release (incl. patch) | tested but **not** guaranteed |
+| **Beta / Preview** | Feature-complete and intended to become Stable; suitable for evaluation, **not** yet under the SemVer guarantee. | in a **MINOR**, with a changelog notice | tested; guarantee **pending** graduation |
 | **Stable** | Covered by SemVer and the spec contract | only in a **MAJOR** release | **guaranteed** by the conformance suite |
 | **Deprecated** | Still works; scheduled for removal | removed in the next **MAJOR**; warns meanwhile | guaranteed until removal |
 | **Reserved** | Syntax reserved, not yet implemented | may be defined in any release | n/a |
 
-Analogues: Experimental ≈ Kubernetes *alpha* / TC39 *Stage 1–3*; Stable ≈ *GA* / *Stage 4*; Deprecated ≈
-*deprecated*. Node.js's stability index (0/1/2) is the same idea.
+Analogues: Experimental ≈ Kubernetes *alpha* / TC39 *Stage 1–2*; Beta ≈ Kubernetes *beta* / TC39 *Stage 3
+(candidate)*; Stable ≈ *GA* / *Stage 4*; Deprecated ≈ *deprecated*. (Node.js's stability index 0/1/2 is the
+same idea with two active tiers.)
 
 ## 4. Core rules
 
 - A **Stable** feature MUST NOT change incompatibly except in a major version.
+- A **Beta** feature is feature-complete and SHOULD be treated as near-final, but MAY still receive a
+  breaking change (announced in the changelog) before it graduates to Stable. It is not yet under the full
+  SemVer guarantee.
 - An **Experimental** feature MAY change or be removed at any time; it MUST be clearly marked as such.
 - A feature MUST be **Deprecated for at least one major cycle** (with a warning where feasible) before
   removal. Removal happens in a major.
@@ -58,13 +63,14 @@ Analogues: Experimental ≈ Kubernetes *alpha* / TC39 *Stage 1–3*; Stable ≈ 
 ## 5. Graduation & deprecation lifecycle
 
 ```
-(proposed) → Experimental → Stable → Deprecated → Removed
-                    │                     ▲
-                    └─────── may be removed while Experimental
+(proposed) → Experimental → Beta → Stable → Deprecated → Removed
+                    │           │
+                    └───────────┴── may still change/break while Experimental or Beta
 ```
 
-- **Experimental → Stable:** the feature's behavior is final, it has guaranteed conformance cases, and its
-  errors/codes are finalized. Graduation is **additive** (a MINOR bump) and announced in the changelog.
+- **Experimental → Beta:** the feature is feature-complete and tested; only edge refinements expected.
+- **Beta → Stable:** behavior is final, it has guaranteed conformance cases, and its errors/codes are
+  finalized. Graduation is **additive** (a MINOR bump) and announced in the changelog.
 - **Stable → Deprecated:** announced in the changelog with a replacement and a target removal major.
 - **Deprecated → Removed:** in the next major.
 

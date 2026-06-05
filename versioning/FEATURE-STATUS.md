@@ -3,77 +3,138 @@
 The stability tier of every Internet Object feature. Tiers and their guarantees are defined in
 [`VERSIONING.md`](./VERSIONING.md) §3.
 
-**Legend:** 🟢 **Stable** (SemVer-guaranteed, breaks only in a major, conformance-guaranteed) ·
-🧪 **Experimental** (may change in any release, not guaranteed) · 🟡 **Deprecated** (removed next major) ·
-⚪ **Reserved** (syntax reserved, not implemented).
+**Legend:** 🟢 **Stable** · 🔵 **Beta** (feature-complete, under testing, not yet guaranteed) ·
+🧪 **Experimental** (may change any release) · 🟡 **Deprecated** · ⚪ **Reserved** (syntax reserved, not built).
 
-> ⚠️ **Working draft.** This table is the first pass of statuses and is **provisional pending owner
-> confirmation**, especially the 🧪 rows. It will be made machine-verified against the code (see
-> *Maintenance* below) so it can never silently drift. Exact "since" versions and spec-section links are to
-> be backfilled as the format spec documents land.
+> ⚠️ **All tiers below are conservative provisional defaults.** Nothing is treated as 🟢 Stable until the
+> owner confirms it. The **Confirmed** column is `—` (pending sign-off) for every row; change it to ✅ when
+> a row's tier is reviewed and locked. Promote tiers (Experimental → Beta → Stable) only on confirmation.
+> This table is the living index of where things stand — it will grow as features land.
+>
+> **Planned: machine-verification.** A `stability` marker on the typedef/error registries plus a sync test
+> will assert this table matches the code (the doc-as-tests approach used for streaming). Until then, update
+> this table in the same change as any status change.
 
-## Format constructs
+## 1. Format constructs (syntax)
 
-| Feature | Status | Conformance | Notes |
+| Feature | Tier | Confirmed | Notes |
 |---|---|---|---|
-| Document / header / `---` sections | 🟢 Stable | ✅ tested | |
-| Collections (`~` records) | 🟢 Stable | ✅ tested | |
-| Objects `{ … }`, open objects | 🟢 Stable | ✅ tested | |
-| Arrays `[ … ]` | 🟢 Stable | ✅ tested | |
-| Quoted strings, multiline strings, escapes | 🟢 Stable | ✅ tested | |
-| Open strings | 🟢 Stable | ✅ tested | |
-| Comments (`#`) | 🟢 Stable | ✅ tested | |
-| Header definitions: `$schema`, `$Name` schemas, `@` variables | 🟢 Stable | ✅ tested | |
-| Annotated strings: `r"…"` (raw), `b"…"` (binary/base64) | 🟢 Stable | ✅ tested | |
-| Annotated datetime: `dt"…"`, `d"…"`, `t"…"` | 🟢 Stable | ✅ tested | |
+| Document, header, `---` sections | 🔵 Beta | — | parses & tested; grammar finalization ongoing |
+| Collections (`~` records) | 🔵 Beta | — | |
+| Objects `{ … }`, open objects | 🔵 Beta | — | |
+| Arrays `[ … ]` | 🔵 Beta | — | |
+| Quoted / multiline strings, escapes | 🔵 Beta | — | |
+| Open strings | 🔵 Beta | — | edge rules (merges, trimming) under review |
+| Comments (`#`) | 🔵 Beta | — | |
+| Annotated strings `r"…"`, `b"…"` | 🔵 Beta | — | raw, binary/base64 |
+| Annotated datetime `dt"…"`, `d"…"`, `t"…"` | 🔵 Beta | — | |
 
-## Types
+## 2. Types — core
 
-| Type | Status | Conformance | Notes |
+| Type | Tier | Confirmed | Notes |
 |---|---|---|---|
-| `string` | 🟢 Stable | ✅ tested | |
-| `bool` | 🟢 Stable | ✅ tested | |
-| `number`, `float` | 🟢 Stable | ✅ tested | |
-| `int` | 🟢 Stable | ✅ tested | |
-| `bigint` | 🟢 Stable | ✅ tested | |
-| `decimal` | 🟢 Stable | ✅ tested | base type stable; `precision`/`scale` see Validation |
-| `datetime`, `date`, `time` | 🟢 Stable | ✅ tested | |
-| `object`, `array` | 🟢 Stable | ✅ tested | |
-| `any` | 🟢 Stable | ✅ tested | |
-| **Sized integers** `int8` `int16` `int32` `int64` | 🧪 Experimental | partial | range/overflow semantics not finalized |
-| **Sized integers** `uint` `uint8` `uint16` `uint32` `uint64` | 🧪 Experimental | partial | range/overflow semantics not finalized |
+| `string` | 🔵 Beta | — | base type works; option set see §4/§5 |
+| `bool` | 🔵 Beta | — | |
+| `number`, `float` | 🔵 Beta | — | |
+| `int` | 🔵 Beta | — | |
+| `bigint` | 🔵 Beta | — | |
+| `decimal` | 🧪 Experimental | — | `precision`/`scale` semantics not finalized |
+| `datetime`, `date`, `time` | 🔵 Beta | — | |
+| `object`, `array` | 🔵 Beta | — | |
+| `any` | 🧪 Experimental | — | semantics/finalization pending |
 
-## Validation
+## 3. Types — subtypes & aliases
 
-| Feature | Status | Conformance | Notes |
+| Feature | Tier | Confirmed | Notes |
 |---|---|---|---|
-| `optional`, `null`, `default` | 🟢 Stable | ✅ tested | |
-| `choices` | 🟢 Stable | ✅ tested | |
-| String: `minLength`, `maxLength`, `length` | 🟢 Stable | ✅ tested | canonical spellings |
-| String: `pattern` | 🟢 Stable | ✅ tested | |
-| String formats: `email`, `url` | 🟢 Stable | ✅ tested | |
-| Number range: `min`, `max` | 🟢 Stable | ✅ tested | |
-| **Validation alias spellings** `len`, `minLen`, `maxLen` | 🧪 Experimental | partial | alias naming not finalized vs `length`/`minLength`/`maxLength` |
-| **Decimal** `precision`, `scale` | 🧪 Experimental | partial | semantics/finalization pending |
+| Sized ints `int8` `int16` `int32` `int64` | 🧪 Experimental | — | range/overflow semantics not finalized |
+| Unsigned ints `uint` `uint8` `uint16` `uint32` `uint64` | 🧪 Experimental | — | not finalized |
+| Validation alias spellings `len` / `minLen` / `maxLen` | 🧪 Experimental | — | vs canonical `length`/`minLength`/`maxLength` |
+| Type aliases (any other short forms) | 🧪 Experimental | — | naming/coverage not finalized |
 
-## Streaming
+## 4. Member definitions (modifiers)
 
-| Feature | Status | Conformance | Notes |
+The universal memberdef modifiers (apply to all types).
+
+| Feature | Tier | Confirmed | Notes |
 |---|---|---|---|
-| Streaming Protocol **v1** (framing, `StreamItem`, error model) | 🟢 Stable | ✅ guaranteed | [PROTOCOL.md](../src/streaming/specs/PROTOCOL.md); 27-case corpus across chunkings |
-| Reader (`createStreamReader`), Writer (`createStreamWriter`) | 🟢 Stable | ✅ tested | |
-| Adapters: `createPushSource`, `BufferTransport`, `nodeHttpTransport`, `webSocketTransport` | 🟢 Stable | ✅ tested | |
-| `IOStreamError` + `stream-*` codes | 🟢 Stable | ✅ tested | |
+| `optional` | 🔵 Beta | — | |
+| `null` | 🔵 Beta | — | |
+| `default` | 🔵 Beta | — | |
+| `choices` | 🔵 Beta | — | |
+| Overall memberdef grammar/model | 🧪 Experimental | — | finalization of the memberdef shape in progress |
 
-## Errors
+## 5. Type definitions — per-type option contract (finalization)
 
-Error codes are part of the contract for the features that raise them. Their finalization (registry, freeze
-policy, the validation codes tied to the Experimental aliases above) is tracked in
-[`../src/errors/FINALIZATION.md`](../src/errors/FINALIZATION.md). Codes for 🧪 features inherit that tier.
+Whether each type's accepted options/constraints (its typedef contract) are finalized.
+
+| Type's option contract | Tier | Confirmed | Notes |
+|---|---|---|---|
+| `string` (length/pattern/format options) | 🧪 Experimental | — | option set & alias naming not finalized |
+| `number`/`int`/`float` (range/precision options) | 🧪 Experimental | — | |
+| `decimal` (`precision`, `scale`) | 🧪 Experimental | — | |
+| sized integers | 🧪 Experimental | — | |
+| `array` (element type, length options) | 🧪 Experimental | — | |
+| `object` (open/closed, nested schema options) | 🧪 Experimental | — | |
+| `datetime`/`date`/`time` options | 🧪 Experimental | — | |
+
+## 6. Variables & references
+
+| Feature | Tier | Confirmed | Notes |
+|---|---|---|---|
+| `@variable` definitions (header) | 🧪 Experimental | — | handling/finalization in progress |
+| `@variable` references (in data/schema) | 🧪 Experimental | — | resolution rules under review |
+| `$Name` schema definitions | 🧪 Experimental | — | |
+| `$Name` schema references (e.g. `address: $address`) | 🧪 Experimental | — | |
+| `$schema` (default schema) | 🧪 Experimental | — | |
+| Nested / recursive schema references | 🧪 Experimental | — | |
+| Forward references within the header | 🧪 Experimental | — | order-independence to confirm per type |
+| External / preloaded definitions (`parse(text, defs)`) | 🧪 Experimental | — | precedence rules to confirm |
+| Variable resolution / scoping | 🧪 Experimental | — | |
+
+## 7. Validation & constraints
+
+| Feature | Tier | Confirmed | Notes |
+|---|---|---|---|
+| String `minLength`, `maxLength`, `length` | 🔵 Beta | — | canonical spellings |
+| String `pattern` | 🔵 Beta | — | |
+| String formats `email`, `url` | 🔵 Beta | — | |
+| Number `min`, `max` | 🔵 Beta | — | |
+| `choices` | 🔵 Beta | — | |
+| Decimal `precision`, `scale` | 🧪 Experimental | — | |
+| Alias spellings (`len`/`minLen`/`maxLen`) | 🧪 Experimental | — | see §3 |
+
+## 8. Streaming
+
+| Feature | Tier | Confirmed | Notes |
+|---|---|---|---|
+| Streaming **Protocol v1** (framing, `StreamItem`, error model) | 🔵 Beta | — | implementation conformance-tested (27-case corpus across chunkings); protocol **under real-world testing** before GA |
+| Reader (`createStreamReader`) | 🔵 Beta | — | |
+| Writer (`createStreamWriter`) | 🔵 Beta | — | |
+| Adapters (`createPushSource`, `BufferTransport`, `nodeHttpTransport`, `webSocketTransport`) | 🔵 Beta | — | |
+| `IOStreamError` + `stream-*` codes | 🔵 Beta | — | |
+
+## 9. Errors
+
+| Feature | Tier | Confirmed | Notes |
+|---|---|---|---|
+| Error classes (`IOError`, `IOSyntaxError`, `IOValidationError`, `IOStreamError`) | 🔵 Beta | — | class model settled; see FINALIZATION |
+| Error-code registry (codes + categories) | 🧪 Experimental | — | not finalized — [`../src/errors/FINALIZATION.md`](../src/errors/FINALIZATION.md) |
+| Codes for 🧪 features (sized-int range, alias validation, …) | 🧪 Experimental | — | inherit their feature's tier |
+
+## 10. Planned / Reserved (things to come)
+
+Not yet built, or reserved for future definition. (List grows as the roadmap firms up.)
+
+| Item | Tier | Notes |
+|---|---|---|
+| Sub-record (intra-record) incremental streaming parser | ⚪ Reserved | only record-granularity streaming today (ADR 0005) |
+| Midstream definition mutation in streams | ⚪ Reserved | disallowed in Protocol v1; may be defined later |
+| Additional types / formats | ⚪ Reserved | TBD |
+| `defsId` / stable definitions identity | ⚪ Reserved | removed for now (Gap 16); may return, specified |
+| _(add roadmap items here)_ | | |
 
 ## Maintenance
 
-This table MUST stay truthful (VERSIONING.md §7). Planned: a `stability` marker on the typedef and
-error-code registries plus a sync test asserting this table matches the code — the same doc-as-tests
-approach used for the streaming examples (`tests/streaming/doc-examples.test.ts`). Until that lands, update
-this table in the same PR as any change to a feature's status.
+See [`VERSIONING.md`](./VERSIONING.md) §7. Update this table in the same change as any status change; a
+machine-sync test against the registries is planned to keep it honest automatically.
