@@ -330,8 +330,11 @@ import {
 - Stringify API: ✅
 - Error handling: ✅
 - Schema inference: ✅
-- Streaming: ✅ (Beta 0.2.0)
-- Documentation: ongoing
+- Streaming: ✅
+
+For per-feature **stability tiers** (Stable / Experimental / Deprecated) and the versioning policy, see
+[versioning/FEATURE-STATUS.md](versioning/FEATURE-STATUS.md). The current published version is shown by the
+npm badge at the top.
 
 </details>
 
