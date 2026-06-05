@@ -344,6 +344,16 @@ yarn build     # Build for production
 ```
 
 
+## Versioning & Stability
+
+Internet Object versions the spec and the package on separate clocks, and tracks stability **per feature**
+(Experimental / Stable / Deprecated) so a stable core can ship while a few features keep evolving. See:
+
+- [versioning/README.md](versioning/README.md) — overview of the versioning section
+- [versioning/VERSIONING.md](versioning/VERSIONING.md) — the policy: SemVer, stability tiers, deprecation & graduation, 1.0 checklist
+- [versioning/FEATURE-STATUS.md](versioning/FEATURE-STATUS.md) — status of every feature (types, validation, format, streaming)
+
+
 ## Contributing & Community
 
 We welcome contributions! Please see our [CONTRIBUTING.md](CONTRIBUTING.md) for details on how to get started, report issues, or propose new features.
