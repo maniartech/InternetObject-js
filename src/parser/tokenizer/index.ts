@@ -581,7 +581,7 @@ class Tokenizer {
           subType = "HEX";
           prefix = this.input[this.pos] + this.input[this.pos + 1];
           this.advance(2);
-          while (reHex.test(this.input[this.pos])) {
+          while (!this.reachedEnd && reHex.test(this.input[this.pos])) {
             rawValue += this.input[this.pos];
             this.advance();
           }
@@ -593,7 +593,7 @@ class Tokenizer {
           subType = "OCTAL";
           prefix = this.input[this.pos] + this.input[this.pos + 1];
           this.advance(2);
-          while (reOctal.test(this.input[this.pos])) {
+          while (!this.reachedEnd && reOctal.test(this.input[this.pos])) {
             rawValue += this.input[this.pos];
             this.advance();
           }
@@ -605,7 +605,7 @@ class Tokenizer {
           subType = "BINARY";
           prefix = this.input[this.pos] + this.input[this.pos + 1];
           this.advance(2);
-          while (reBinary.test(this.input[this.pos])) {
+          while (!this.reachedEnd && reBinary.test(this.input[this.pos])) {
             rawValue += this.input[this.pos];
             this.advance();
           }
@@ -645,6 +645,20 @@ class Tokenizer {
           this.advance();
         }
       }
+    }
+
+    // A non-decimal prefix (0x/0o/0b) with no valid leading digits is not a number
+    // (e.g. `0x`, `0o9`, `0b2`). Emit the leading `0` as the number 0 and rewind to the
+    // prefix letter; the caller then merges the remainder into an OPEN_STRING, exactly
+    // like `0b12`-style recovery. This keeps the lenient-tokenizer contract (never throw).
+    if (base !== 10 && rawValue === "") {
+      // start + 1 is the prefix letter (x/o/b), which always exists, so we are no
+      // longer at end-of-input; keep the cached `reachedEnd` flag consistent with pos.
+      this.pos = start + 1;
+      this.row = startRow;
+      this.col = startCol + 1;
+      this.reachedEnd = false;
+      return Token.init(start, startRow, startCol, "0", 0, TokenType.NUMBER);
     }
 
     let tokenType = TokenType.NUMBER;
