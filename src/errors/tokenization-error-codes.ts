@@ -11,7 +11,10 @@ enum TokenizationErrorCodes {
   invalidBase64 = 'invalid-base64',
 
   // DateTime tokenization
-  invalidDateTime = 'invalid-datetime'
+  invalidDateTime = 'invalid-datetime',
+
+  // BigInt tokenization (e.g. a `n` suffix on a non-integer mantissa: `12.3n`)
+  invalidBigInt = 'invalid-bigint'
 }
 
 export default TokenizationErrorCodes
