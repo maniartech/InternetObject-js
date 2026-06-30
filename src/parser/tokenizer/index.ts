@@ -299,25 +299,30 @@ class Tokenizer {
     switch (this.input[this.pos]) {
       case "b":
         value += "\b";
+        this.advance(); // Move past the escape char
         break;
       case "f":
         value += "\f";
+        this.advance(); // Move past the escape char
         break;
       case "n":
         value += "\n";
+        this.advance(); // Move past the escape char
         break;
       case "r":
         value += "\r";
+        this.advance(); // Move past the escape char
         break;
       case "t":
         value += "\t";
+        this.advance(); // Move past the escape char
         break;
       case "u":
         const hex = this.input.substring(this.pos + 1, this.pos + 5);
         if (regexHex4.test(hex)) {
           // /^[0-9a-fA-F]{4}$/
           value += String.fromCharCode(parseInt(hex, 16));
-          this.advance(4); // Move past the 4 hex digits
+          this.advance(5); // Move past 'u' and the 4 hex digits
           needToNormalize = true;
         } else {
           throw new SyntaxError(
@@ -331,7 +336,7 @@ class Tokenizer {
         if (regexHex2.test(hexByte)) {
           // /^[0-9a-fA-F]{2}$/
           value += String.fromCharCode(parseInt(hexByte, 16));
-          this.advance(2); // Move past the 2 hex digits
+          this.advance(3); // Move past 'x' and the 2 hex digits
           needToNormalize = true;
         } else {
           throw new SyntaxError(
@@ -666,6 +671,20 @@ class Tokenizer {
 
     // if the next char is 'n', then it is a BigInt literal
     if (this.input[this.pos] === "n") {
+      // BigInt is integer-only. A decimal point or exponent in the mantissa makes the literal
+      // invalid — emit a designated invalid-bigint ERROR token (never throw, never silently
+      // become an OPEN_STRING), mirroring invalid-base64 / invalid-datetime.
+      if (hasDecimal || hasExponent) {
+        rawValue += "n";
+        this.advance(); // consume the 'n' so the token text spans the whole literal
+        const tokenText = prefix + rawValue;
+        const error = new SyntaxError(
+          ErrorCodes.invalidBigInt,
+          `Invalid BigInt literal '${tokenText}'. BigInt values must be integers (no decimal point or exponent).`,
+          this.currentPosition
+        );
+        return this.createErrorToken(error, start, startRow, startCol, tokenText);
+      }
       tokenType = TokenType.BIGINT;
       numberValue = BigInt(prefix + rawValue);
       rawValue += "n";
