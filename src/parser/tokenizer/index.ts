@@ -669,30 +669,73 @@ class Tokenizer {
     let tokenType = TokenType.NUMBER;
     let numberValue: number | bigint | Decimal;
 
+    // An incomplete scientific mantissa — a dangling exponent like "5e" / "12E" / "5e+" — is not a
+    // pure number, so a following m/n suffix does NOT form a typed literal. Rewind and let the whole
+    // run become an OPEN_STRING (`5em` -> "5em", `5en` -> "5en"). A COMPLETE exponent (`12e5`) is
+    // unaffected and continues as a valid scientific bigint / decimal.
+    if (
+      hasExponent &&
+      (this.input[this.pos] === "n" || this.input[this.pos] === "m") &&
+      !/[eE][+-]?[0-9]+$/.test(rawValue)
+    ) {
+      this.pos = start;
+      this.row = startRow;
+      this.col = startCol;
+      this.reachedEnd = false;
+      return null;
+    }
+
     // if the next char is 'n', then it is a BigInt literal
     if (this.input[this.pos] === "n") {
-      // BigInt is integer-only. A decimal point or exponent in the mantissa makes the literal
-      // invalid — emit a designated invalid-bigint ERROR token (never throw, never silently
-      // become an OPEN_STRING), mirroring invalid-base64 / invalid-datetime.
-      if (hasDecimal || hasExponent) {
+      // BigInt is integer-only. A decimal POINT is invalid (a bigint is not a decimal). Scientific
+      // notation IS allowed when it denotes an integer — i.e. a non-negative exponent (`12e5n`).
+      // Anything else is a designated invalid-bigint ERROR token (never throw, never an OPEN_STRING).
+      let bigIntValue: bigint | null = null;
+      if (!hasDecimal) {
+        if (hasExponent) {
+          const sci = (prefix + rawValue).match(/^([+-]?\d+)[eE]\+?(\d+)$/);
+          if (sci) {
+            bigIntValue = BigInt(sci[1]) * (10n ** BigInt(sci[2]));
+          }
+        } else {
+          bigIntValue = BigInt(prefix + rawValue);
+        }
+      }
+      if (bigIntValue === null) {
         rawValue += "n";
         this.advance(); // consume the 'n' so the token text spans the whole literal
         const tokenText = prefix + rawValue;
         const error = new SyntaxError(
           ErrorCodes.invalidBigInt,
-          `Invalid BigInt literal '${tokenText}'. BigInt values must be integers (no decimal point or exponent).`,
+          `Invalid BigInt literal '${tokenText}'. BigInt values must be integers (no decimal point; scientific notation requires a non-negative exponent).`,
           this.currentPosition
         );
         return this.createErrorToken(error, start, startRow, startCol, tokenText);
       }
       tokenType = TokenType.BIGINT;
-      numberValue = BigInt(prefix + rawValue);
+      numberValue = bigIntValue;
       rawValue += "n";
       this.advance();
     } else if (this.input[this.pos] === "m") {
-      // Decimal literal
+      // Decimal literal. A malformed mantissa (missing leading digit `.5m`, or missing trailing
+      // digit `123.m`) is invalid per the decimal spec — emit a designated invalid-decimal ERROR
+      // token (never throw, never silently an OPEN_STRING), mirroring invalid-bigint.
+      let decimalValue: Decimal;
+      try {
+        decimalValue = new Decimal(rawValue);
+      } catch {
+        rawValue += "m";
+        this.advance(); // consume 'm' so the token text spans the whole literal
+        const tokenText = prefix + rawValue;
+        const error = new SyntaxError(
+          ErrorCodes.invalidDecimal,
+          `Invalid Decimal literal '${tokenText}'. A decimal must have a digit before and after the decimal point (e.g. '0.5m').`,
+          this.currentPosition
+        );
+        return this.createErrorToken(error, start, startRow, startCol, tokenText);
+      }
       tokenType = TokenType.DECIMAL;
-      numberValue = new Decimal(rawValue);
+      numberValue = decimalValue;
       rawValue += "f";
       this.advance();
     } else {
@@ -983,7 +1026,23 @@ class Tokenizer {
                   nextToken.token = spaces + nextToken.token;
                   nextToken.value = spaces + nextToken.value;
                 }
-                tokens[tokenIndex++] = this.mergeTokens(token, nextToken);
+                const merged = this.mergeTokens(token, nextToken);
+                // A merged run of only digits and dots (a multi-dot, non-numeric mantissa) ending
+                // in a lowercase m/n suffix is a botched typed literal, not a string — e.g.
+                // `12.34.56m`. Emit a designated error. The guard is deliberately narrow (digits and
+                // dots only) so number-prefixed words like `3pm`/`5km`/`2cm` stay OPEN_STRING.
+                const botched = (merged.token as string).match(/^[+-]?[0-9]*(?:\.[0-9]*){2,}([mn])$/);
+                if (botched) {
+                  const isDec = botched[1] === "m";
+                  const error = new SyntaxError(
+                    isDec ? ErrorCodes.invalidDecimal : ErrorCodes.invalidBigInt,
+                    `Invalid ${isDec ? "Decimal" : "BigInt"} literal '${merged.token}'. A ${isDec ? "decimal" : "bigint"} must be a valid number (a single decimal point at most).`,
+                    merged
+                  );
+                  tokens[tokenIndex++] = this.createErrorToken(error, merged.pos, merged.row, merged.col, merged.token as string);
+                } else {
+                  tokens[tokenIndex++] = merged;
+                }
               } else {
                 tokens[tokenIndex++] = token;
               }
