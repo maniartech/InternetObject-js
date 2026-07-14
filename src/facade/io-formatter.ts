@@ -20,6 +20,8 @@ import Schema from '../schema/schema';
 import MemberDef from '../schema/types/memberdef';
 import TypedefRegistry from '../schema/typedef-registry';
 import { IO_MARKERS } from './serialization-constants';
+import { formatObjectKey } from '../utils/string-formatter';
+import Decimal from '../core/decimal/decimal';
 
 /**
  * Formatting context passed through recursive calls
@@ -57,8 +59,25 @@ function getIndent(ctx: FormatContext): string {
 function isPrimitive(val: any): boolean {
   if (val === null || val === undefined) return true;
   if (typeof val === 'boolean' || typeof val === 'number' || typeof val === 'string') return true;
+  if (typeof val === 'bigint') return true;      // serialized as `<n>n`
+  if (val instanceof Decimal) return true;       // serialized as `<n>m`
   if (val instanceof Date) return true;
   return false;
+}
+
+/**
+ * SERIALIZATION-SPEC.md §4 / §10.1 — decide whether a member must be emitted **inline** (`key: value`)
+ * or **bare** (positional). A member is inline only when it carries an EXPLICIT, non-structural key:
+ * one that is present, is not merely its positional index, and is not a field name in the in-scope
+ * schema. Keyless (positional) members, index-keyed members, and schema-named members are structural →
+ * bare by default. Structural names are only spelled out when `includePositionalKeys` is set (handled
+ * by the caller). Layer (a) schema-membership over (b) the keyless provenance bit.
+ */
+export function isExplicitKey(key: string | undefined, index: number, schema?: Schema): boolean {
+  if (!key) return false;                                   // (b) keyless → positional
+  if (key === String(index)) return false;                 // index-key → positional
+  if (schema && schema.names && schema.names.includes(key)) return false; // (a) schema field → structural
+  return true;                                             // explicit, non-structural → inline
 }
 
 /**
@@ -122,6 +141,15 @@ function stringifyPrimitive(val: any, defs?: Definitions): string {
 
   if (typeof val === 'number') {
     return String(val);
+  }
+
+  // bigint / Decimal keep their IO literal suffix so they re-parse as the same type (not a number).
+  if (typeof val === 'bigint') {
+    return val.toString() + 'n';
+  }
+
+  if (val instanceof Decimal) {
+    return val.toString() + 'm';
   }
 
   if (typeof val === 'string') {
@@ -403,33 +431,46 @@ export function formatRecord(
         parts.pop();
       }
 
-      // Append any additional properties (wildcard or open schema extras)
+      // Append any additional properties (wildcard / open-schema extras). A KEYLESS member is
+      // positional (bare value); a KEYED member emits `key: value` (numeric/keyword keys quoted).
+      // Keyless members must NOT be skipped — that silently drops positional data (FINDINGS #25).
       for (const [key, val] of obj.entries()) {
-        if (!key) continue;
-        if (handled.has(key)) continue;
+        if (key && handled.has(key)) continue;
+        if (val === undefined) continue;
 
-        const memberDef = schema!.defs[key];
+        const memberDef = key ? schema!.defs[key] : undefined;
         const expandsArray = isFormatted && Array.isArray(val) && isArrayOfObjects(val);
         const expandsObject = isFormatted && !Array.isArray(val) &&
           typeof val === 'object' && val !== null && !(val instanceof Date) && !isSimpleObject(val);
 
-        // Extra properties retain their key label
         const formatted = memberDef
           ? formatValueWithMemberDef(val, memberDef, { ...ctx, isNested: false })
           : formatValue(val, { ...ctx, isNested: false });
-        parts.push({ value: `${key}: ${formatted}`, expandsArray, expandsObject });
+        parts.push({
+          value: key ? `${formatObjectKey(key)}: ${formatted}` : formatted,
+          expandsArray, expandsObject
+        });
       }
     } else {
-      for (const [key, val] of obj.entries()) {
-        if (!key || val === undefined) continue;
+      // No usable schema. A member is positional when it has no key OR its key equals its own IOObject
+      // INDEX position (`"0"`,`"1"`,…). The index MUST be the object's real index — the same one
+      // toObject() projects with (via forEach) — not a re-derived counter, which would drift after a
+      // deletion (gap). Positional members emit a bare value; any other key is a real label ->
+      // `key: value` (numeric/keyword keys quoted).
+      obj.forEach((val: any, key: string | undefined, index: number) => {
+        if (val === undefined) return;
 
         const expandsArray = isFormatted && Array.isArray(val) && isArrayOfObjects(val);
         const expandsObject = isFormatted && !Array.isArray(val) &&
           typeof val === 'object' && val !== null && !(val instanceof Date) && !isSimpleObject(val);
 
         const formatted = formatValue(val, { ...ctx, isNested: false });
-        parts.push({ value: formatted, expandsArray, expandsObject });
-      }
+        const isPositional = !key || key === String(index);
+        parts.push({
+          value: isPositional ? formatted : `${formatObjectKey(key)}: ${formatted}`,
+          expandsArray, expandsObject
+        });
+      });
     }
   } else if (typeof obj === 'object' && obj !== null) {
     // Plain object
