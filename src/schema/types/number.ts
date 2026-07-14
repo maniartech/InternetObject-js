@@ -12,6 +12,12 @@ import { NUMBER_TYPES, NUMBER_MAP, throwError } from './common-number'
 import BigIntDef from './bigint'
 import DecimalDef from './decimal'
 
+// Schema number types that are integer-only (a fractional value is rejected as `not-an-integer`).
+// `number` / `float*` are excluded — they accept fractions.
+const INTEGER_NUMBER_TYPES = new Set([
+  'int', 'uint', 'int8', 'int16', 'int32', 'uint8', 'uint16', 'uint32'
+])
+
 const numberSchema = new Schema(
   "number",
   { type:       { type: "string", optional: false, null: false, choices: NUMBER_TYPES } },
@@ -125,6 +131,17 @@ class NumberDef implements TypeDef {
       throw new ValidationError(
         `not-a-${memberDef.type}`,
         `Invalid value encountered for '${memberDef.path}'`,
+        node
+      )
+    }
+
+    // `int` and the sized-int schema types are integer-only: a `number` value carrying a fractional
+    // part (e.g. `3.7`) is rejected with the designated `not-an-integer` code. `number`/`float`
+    // accept fractions. (Internet Object value types are number/decimal/bigint; int is a schema type.)
+    if (INTEGER_NUMBER_TYPES.has(this._type) && !Number.isInteger(value)) {
+      throw new ValidationError(
+        'not-an-integer',
+        `Expecting an integer value for '${memberDef.path}', but received ${value}`,
         node
       )
     }
