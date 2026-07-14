@@ -68,11 +68,13 @@ class ASTParser {
   private static readonly COMMA_ARRAY = [TokenType.COMMA] as const;
   private static readonly COLON_ARRAY = [TokenType.COLON] as const;
   private static readonly COLLECTION_OR_SECTION_ARRAY = [TokenType.COLLECTION_START, TokenType.SECTION_SEP] as const;
+  // Object keys must be STRINGS. Non-string literal tokens — numbers (TokenType.NUMBER) and the
+  // keywords `null`/`true`/`false` incl. short forms `N`/`T`/`F` (TokenType.NULL / TokenType.BOOLEAN)
+  // — are NOT eligible as bare keys and raise `invalid-key`. To use a number or keyword as a key,
+  // quote it (`"0"`, `"null"`) — a normal string key. Bare open-string identifiers (`name`, `a b`)
+  // tokenize as STRING and remain valid.
   private static readonly VALID_KEY_TYPES = [
     TokenType.STRING,
-    TokenType.NUMBER,
-    TokenType.BOOLEAN,
-    TokenType.NULL,
   ] as const;
 
   /**
@@ -177,7 +179,18 @@ class ASTParser {
         }
       }
 
-      const section = this.processSection(first);
+      // Section-level error recovery (policy P1/P3/P4): a malformed section must NOT abort the whole
+      // document. Capture the designated error, skip to the next `---`, and represent the failed
+      // section by an empty SectionNode so sibling sections still parse. The `---` (and `~`) are the
+      // resume boundaries; finer delimiters are not.
+      let section: SectionNode;
+      try {
+        section = this.processSection(first);
+      } catch (error) {
+        this.errors.push(error as Error);
+        this.skipToNextSection();
+        section = new SectionNode(null, null, null);
+      }
 
       token = this.peek();
       if (!token) {
@@ -193,8 +206,8 @@ class ASTParser {
 
       if (first) first = false;
 
-      // If the next token is not a section separator, it means that
-      // the current section is not closed properly. Add error and stop
+      // If the next token is not a section separator, the current section did not consume everything
+      // (trailing junk). Record the error and RESUME at the next `---` instead of aborting.
       if (token.type !== TokenType.SECTION_SEP) {
         const error = new SyntaxError(
           ErrorCodes.unexpectedToken,
@@ -202,11 +215,12 @@ class ASTParser {
           token
         );
         this.errors.push(error);
-        break; // Stop parsing but return partial document
+        this.skipToNextSection();
+        token = this.peek();
+        if (!token) break; // nothing left after the junk
       }
 
-      // Move to the next token and check if it is a section separator
-      // or the end of file
+      // Move past the section separator to the next section (or end of file)
       this.advance();
     }
 
@@ -402,6 +416,21 @@ class ASTParser {
   }
 
   /**
+   * Skips tokens until the next section boundary (`---`).
+   *
+   * @remarks
+   * **Section-level error recovery.** After a section fails to parse, this advances the token stream
+   * to the next `SECTION_SEP` (leaving the cursor ON it, so the caller consumes it), allowing the
+   * document to continue with the following section. Mirrors {@link skipToNextCollectionItem} but for
+   * the coarser `---` boundary.
+   */
+  private skipToNextSection(): void {
+    while (this.peek() && !this.match(ASTParser.SECTION_SEP_ARRAY)) {
+      this.advance();
+    }
+  }
+
+  /**
    * Skips tokens to the next synchronization point after a parsing error.
    *
    * @remarks
@@ -582,7 +611,8 @@ class ASTParser {
         return new MemberNode(value, leftToken as TokenNode);
       } else {
         throw new SyntaxError(ErrorCodes.invalidKey,
-          `Invalid key '${leftToken.token}'. Object keys must be strings, numbers, booleans, or null.`,
+          `Invalid key '${leftToken.token}'. Object keys must be strings ` +
+          `(numbers and literal keywords like 0/null/true must be quoted to be used as keys).`,
           leftToken, false);
       }
     }
@@ -683,7 +713,10 @@ class ASTParser {
       case TokenType.DECIMAL:
       case TokenType.BOOLEAN:
       case TokenType.NULL:
-      case TokenType.DATETIME: {
+      case TokenType.DATETIME:
+      // BINARY (`b'…'`) is a first-class scalar value: the tokenizer has already decoded it to a
+      // native byte buffer (see tokenizer index.ts). It is usable anywhere a value is expected.
+      case TokenType.BINARY: {
         const node = new TokenNode(token);
         this.advance();
         return node;
