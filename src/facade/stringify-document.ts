@@ -4,6 +4,7 @@ import InternetObject from '../core/internet-object';
 import Collection from '../core/collection';
 import Section from '../core/section';
 import TypedefRegistry from '../schema/typedef-registry';
+import registerTypes from '../schema/types';
 import MemberDef from '../schema/types/memberdef';
 import { stringifyMemberDef } from '../schema/types/memberdef-stringify';
 import { stringify, stringifyObject } from './stringify';
@@ -80,6 +81,11 @@ export function stringifyDocument(
   doc: Document,
   options: StringifyDocumentOptions = {}
 ): string {
+  // Ensure built-in types are registered (see loadObject in load-processor). Serialization
+  // looks up the 'string'/'datetime' typedefs to format values, so an empty registry throws
+  // 'not registered' here too. Idempotent.
+  registerTypes();
+
   const parts: string[] = [];
   const includeHeader = options.includeHeader ?? true;
   const includeSectionNames = options.includeSectionNames ?? true;
