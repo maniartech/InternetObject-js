@@ -693,7 +693,9 @@ function inferMemberDefSimple(
       return { type: 'number', path };
 
     case 'bigint':
-      return { type: 'number', path };
+      // A JS bigint is a distinct IO value type → infer the `bigint` schema type, NOT `number`
+      // (number = IEEE-754 double and correctly rejects a bigint). See SERIALIZATION/spec bigint.md.
+      return { type: 'bigint', path };
 
     case 'boolean':
       return { type: 'bool', path };
@@ -834,7 +836,9 @@ function inferMemberDef(
       return { type: 'number', path };
 
     case 'bigint':
-      return { type: 'number', path };
+      // A JS bigint is a distinct IO value type → infer the `bigint` schema type, NOT `number`
+      // (number = IEEE-754 double and correctly rejects a bigint). See SERIALIZATION/spec bigint.md.
+      return { type: 'bigint', path };
 
     case 'boolean':
       return { type: 'bool', path };
