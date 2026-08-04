@@ -364,4 +364,10 @@ Maintainers: publish via `bash scripts/publish-latest.sh` or `bash scripts/publi
 
 For the full specification, visit [docs.internetobject.org](https://docs.internetobject.org).
 
-**ISC License** · © 2018-2026 ManiarTech®
+**[Apache License 2.0](./LICENSE)** · © 2018-2026 ManiarTech®
+
+Permissive and corporate-friendly: use it in commercial or closed-source products, with
+an explicit patent grant. Just retain the copyright and license notice.
+
+*Internet Object* is a trade name and unregistered trademark of Maniar Technologies.
+Per Section 6 of the license, the grant covers the code, not the name or the logos.
