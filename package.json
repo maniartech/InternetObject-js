@@ -17,7 +17,7 @@
     "email": "contact@maniartech.com",
     "url": "https://maniartech.com"
   },
-  "license": "ISC",
+  "license": "Apache-2.0",
   "homepage": "https://internetobject.org",
   "repository": {
     "type": "git",
@@ -30,7 +30,10 @@
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
-  "sideEffects": false,
+  "sideEffects": [
+    "./dist/schema/types/index.js",
+    "./dist/schema/types/index.cjs"
+  ],
   "exports": {
     ".": {
       "import": {

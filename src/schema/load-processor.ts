@@ -7,6 +7,7 @@ import ValidationError from '../errors/io-validation-error';
 import Schema from './schema';
 import MemberDef from './types/memberdef';
 import TypedefRegistry from './typedef-registry';
+import registerTypes from './types';
 import TokenNode from '../parser/nodes/tokens';
 
 /**
@@ -77,6 +78,11 @@ export function loadObject(
   schema: Schema | string,
   defs?: Definitions
 ): InternetObject {
+  // Ensure built-in types are registered. Registration is otherwise only triggered as an import
+  // side effect of `facade.ts`, which bundlers drop under `sideEffects: false` — leaving the
+  // registry empty and `TypedefRegistry.get('string')` throwing 'not registered'. Idempotent.
+  registerTypes();
+
   // Resolve schema if it's a string reference
   if (typeof schema === 'string') {
     if (!defs) {
@@ -220,6 +226,9 @@ export function loadCollection(
   defs?: Definitions,
   errorCollector?: Error[]
 ): Collection<InternetObject> {
+  // Ensure built-in types are registered (see loadObject). Idempotent.
+  registerTypes();
+
   // Resolve schema if it's a string reference
   if (typeof schema === 'string') {
     if (!defs) {
