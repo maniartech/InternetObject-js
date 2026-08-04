@@ -259,42 +259,34 @@ describe("AST Parser - Core Functionality", () => {
     });
   });
 
+  // Under the section-recovery policy (P1) the parser ACCUMULATES structural errors (getErrors)
+  // instead of throwing; each malformed input must still surface a designated error.
   describe("Error Handling", () => {
-    it("should throw error for malformed document structure", () => {
+    function errorsFor(input: string): string[] {
+      const tokens = new Tokenizer(input).tokenize();
+      const docNode: any = new ASTParser(tokens).parse();
+      return (docNode.getErrors() ?? []).map((e: any) => e?.errorCode);
+    }
+
+    it("should record error for malformed document structure", () => {
       const input = `
         ~ $schema1: {a: int, b: int}
         --- $schema2, # comma after schema name, invalid syntax
         ~ 1,2
-      `; // Reference to undefined schema
-
-      const tokenizer = new Tokenizer(input);
-      const tokens = tokenizer.tokenize();
-      const astParser = new ASTParser(tokens);
-
-      expect(() => astParser.parse()).toThrow();
+      `;
+      expect(errorsFor(input).length).toBeGreaterThan(0);
     });
 
-    it("should throw error for unexpected tokens", () => {
-      const input = `1,2,3 ~ unexpected`;
-
-      const tokenizer = new Tokenizer(input);
-      const tokens = tokenizer.tokenize();
-      const astParser = new ASTParser(tokens);
-
-      expect(() => astParser.parse()).toThrow();
+    it("should record error for unexpected tokens", () => {
+      expect(errorsFor(`1,2,3 ~ unexpected`).length).toBeGreaterThan(0);
     });
 
-    it("should throw error for missing section separator", () => {
+    it("should record error for missing section separator", () => {
       const input = `
       a,b,c
       ~ 1,2,3
       `;
-
-      const tokenizer = new Tokenizer(input);
-      const tokens = tokenizer.tokenize();
-      const astParser = new ASTParser(tokens);
-
-      expect(() => astParser.parse()).toThrow();
+      expect(errorsFor(input).length).toBeGreaterThan(0);
     });
   });
 });

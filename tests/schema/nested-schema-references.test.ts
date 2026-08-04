@@ -128,7 +128,7 @@ describe('Nested Schema References', () => {
 ---
 {
   questions: {
-    QID1: { questionName: Q1, choices: { 1: { recode: 4234230 }, 2: { recode: 1 } } }
+    QID1: { questionName: Q1, choices: { "1": { recode: 4234230 }, "2": { recode: 1 } } }
   }
 }
 `);
@@ -144,7 +144,7 @@ describe('Nested Schema References', () => {
 ---
 {
   questions: {
-    QID1: { questionName: Q1, choices: { 1: { recode: 4234230 }, 2: { recode: 1 } } }
+    QID1: { questionName: Q1, choices: { "1": { recode: 4234230 }, "2": { recode: 1 } } }
   }
 }
 `);
@@ -171,7 +171,7 @@ describe('Nested Schema References', () => {
 ---
 {
   questions: {
-    QID1: { Q1, { 1: { 4234230 }, 2: { 1 } } }
+    QID1: { Q1, { "1": { 4234230 }, "2": { 1 } } }
   }
 }
 `);

@@ -20,11 +20,24 @@ describe("Invalid BigInt literals", () => {
     expect(toks[0].token).toBe("12.3n");
   });
 
-  it("reports invalid-bigint (no throw) for an exponent mantissa", () => {
-    expect(() => tokenize("12e5n")).not.toThrow();
-    const toks = tokenize("12e5n");
+  it("accepts scientific notation with a non-negative exponent as a valid BigInt", () => {
+    expect(tokenize("12e5n")[0]).toMatchObject({ type: TokenType.BIGINT, value: 1200000n });
+    expect(tokenize("12E5n")[0]).toMatchObject({ type: TokenType.BIGINT, value: 1200000n });
+    expect(tokenize("12e+5n")[0]).toMatchObject({ type: TokenType.BIGINT, value: 1200000n });
+    expect(tokenize("-12e5n")[0]).toMatchObject({ type: TokenType.BIGINT, value: -1200000n });
+    expect(tokenize("12e0n")[0]).toMatchObject({ type: TokenType.BIGINT, value: 12n });
+  });
+
+  it("reports invalid-bigint for a negative exponent (would be non-integer)", () => {
+    expect(() => tokenize("12e-5n")).not.toThrow();
+    const toks = tokenize("12e-5n");
     expect(toks[0].type).toBe(TokenType.ERROR);
     expect((toks[0].value as TokenErrorValue).errorCode).toBe("invalid-bigint");
+  });
+
+  it("reports invalid-bigint for a decimal point even with an exponent", () => {
+    expect(tokenize("1.2e1n")[0].type).toBe(TokenType.ERROR);
+    expect((tokenize("1.2e1n")[0].value as TokenErrorValue).errorCode).toBe("invalid-bigint");
   });
 
   it("recovers and keeps tokenizing after an invalid bigint", () => {
