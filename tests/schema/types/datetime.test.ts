@@ -155,10 +155,10 @@ describe('DateTimeDef - DateTime, Date, and Time Types', () => {
       const doc = parse(`${schema}\n---\n{{Meeting, dt"2024-06-15T10:00:00"}}`, null)
       const section = doc.sections?.get(0)
       const data = section?.data as any
-      const event = data.event
+      const event = data.get('event')   // R7: data access is method-only
 
-      expect(event.name).toBe('Meeting')
-      expect(event.date).toBeInstanceOf(Date)
+      expect(event.get('name')).toBe('Meeting')
+      expect(event.get('date')).toBeInstanceOf(Date)
 
       // Also verify serialization
       const jsonResult = doc.toJSON()
