@@ -6,27 +6,19 @@ import Decimal from '../core/decimal/decimal';
 import Schema from '../schema/schema';
 import MemberDef from '../schema/types/memberdef';
 import TypedefRegistry from '../schema/typedef-registry';
-import { quoteExtraPropertyString } from '../utils/string-formatter';
+import registerTypes from '../schema/types';
+import { quoteExtraPropertyString, formatObjectKey, shouldEmitKey, EmitKeys } from '../utils/string-formatter';
+import { IOCommonOptions } from './options';
+import { resolveSchema } from './resolve-schema';
 import { IO_MARKERS } from './serialization-constants';
 import { stringifyDocument } from './stringify-document';
 import { formatRecord, createIndentString, FormatContext } from './io-formatter';
 
 /**
- * Stringify options for controlling output format
+ * Stringify options for controlling output format.
+ * `schemaName` is shared with the load family — see {@link IOCommonOptions} (declared once — R8).
  */
-export interface StringifyOptions {
-  /**
-   * The name of the schema to use from definitions.
-   * If provided, the schema will be looked up by this name in the definitions.
-   * If not provided, uses `defs.defaultSchema` (`$schema`).
-   *
-   * @example
-   * ```typescript
-   * const io = stringify(user, defs, { schemaName: '$User' });
-   * ```
-   */
-  schemaName?: string;
-
+export interface StringifyOptions extends Pick<IOCommonOptions, 'schemaName'> {
   /**
    * Indentation for pretty printing (number of spaces or string)
    * If omitted, output is compact (single line)
@@ -36,6 +28,8 @@ export interface StringifyOptions {
   /**
    * Skip error objects in collections
    * Default: false (includes errors in output)
+   * @remarks PARTIAL: honored for COLLECTION sections only; object-section support is parked
+   * (`IOSection.toObject` does not thread it to a single IOObject). See io-test-cases/RECOMMENDATIONS.md.
    */
   skipErrors?: boolean;
 
@@ -50,6 +44,16 @@ export interface StringifyOptions {
    * Default: false (data only)
    */
   includeHeader?: boolean;
+
+  /**
+   * How keys are emitted in data rows (SERIALIZATION-DECISIONS.md):
+   * - `'all'`    — every keyed member emits `key: value` (self-describing)
+   * - `'extras'` (default) — key only for a field NOT declared in the schema (open-schema extra, or
+   *   every field when there is no schema); declared fields stay bare
+   * - `'none'`   — values only (leanest; lossy when the schema can't recover the name)
+   * A keyless (positional) member is always bare. Default: `'extras'`.
+   */
+  emitKeys?: EmitKeys;
 }
 
 /**
@@ -119,6 +123,9 @@ export function stringify(
   defsOrOptions?: Definitions | StringifyOptions,
   options?: StringifyOptions
 ): string {
+  // Ensure built-in types are registered (see stringifyDocument). Idempotent.
+  registerTypes();
+
   // Resolve arguments
   let defs: Definitions | undefined;
   let opts: StringifyOptions | undefined;
@@ -137,27 +144,19 @@ export function stringify(
     // Build document options
     let docOptions: any = opts ? { ...opts } : {};
 
-    // Default behavior: if includeHeader is not specified, use includeTypes to determine
+    // includeHeader and includeTypes are INDEPENDENT (R9): header inclusion must not depend on type
+    // annotations. stringify(value) is the lean entry point → no header unless explicitly requested.
+    // (To emit a header WITH type annotations, pass { includeHeader: true, includeTypes: true }.)
     if (docOptions.includeHeader === undefined) {
-      docOptions.includeHeader = docOptions.includeTypes ?? false;
+      docOptions.includeHeader = false;
     }
 
     return stringifyDocument(value, docOptions);
   }
 
-  // Resolve schema from definitions
-  // Priority: options.schemaName → defs.defaultSchema → no schema
-  let schema: Schema | undefined;
-  if (defs) {
-    if (opts?.schemaName) {
-      const namedSchema = defs.getV(opts.schemaName);
-      if (namedSchema instanceof Schema) {
-        schema = namedSchema;
-      }
-    } else if (defs.defaultSchema) {
-      schema = defs.defaultSchema;
-    }
-  }
+  // Resolve schema uniformly — same primitive + failure mode as load* (R8): a bad schemaName now
+  // throws schemaNotFound instead of silently serializing schema-less.
+  const schema: Schema | undefined = resolveSchema(defs, opts?.schemaName);
 
   // Handle Collection
   if (value instanceof Collection) {
@@ -193,6 +192,11 @@ function stringifyAnyValue(val: any, defs?: Definitions): string {
   // Handle number
   if (typeof val === 'number') {
     return String(val);
+  }
+
+  // Handle bigint (must keep the `n` suffix so it round-trips as a bigint, not a number)
+  if (typeof val === 'bigint') {
+    return val.toString() + 'n';
   }
 
   // Handle Decimal
@@ -279,7 +283,8 @@ export function stringifyObject(
       indentStr,
       level: 0,
       defs: defs ?? new Definitions(),
-      isNested: false
+      isNested: false,
+      emitKeys: options?.emitKeys ?? 'extras'
     };
     return formatRecord(obj, schema, ctx);
   }
@@ -312,6 +317,9 @@ export function stringifyObject(
           if (strValue !== undefined) {
             parts.push(`${name}: ${strValue}`);
           }
+        } else if (options?.emitKeys === 'all' && strValue !== undefined) {
+          // emitKeys 'all' spells out schema-declared names too (self-describing)
+          parts.push(`${formatObjectKey(name)}: ${strValue}`);
         } else {
           parts.push(strValue ?? '');
         }
@@ -332,12 +340,13 @@ export function stringifyObject(
       parts.pop();
     }
 
-    // Append any additional properties (wildcard or open schema extras) in original insertion order after core schema fields.
+    // Append any additional properties (wildcard / open-schema extras) in insertion order after the
+    // core schema fields. IO objects carry an index always and a key optionally: a KEYLESS member is
+    // positional (emit a bare value); a KEYED member emits `key: value` (numeric/keyword keys quoted).
+    // A keyless member must NOT be skipped — that would silently drop positional data (FINDINGS #25).
     for (const [key, val] of obj.entries()) {
-      if (!key) continue;
-      if (handled.has(key)) continue; // already output
-      const memberDef: MemberDef | undefined = schema.defs[key];
-      // For extras there is typically no memberDef (unless explicit definition outside names array)
+      if (key && handled.has(key)) continue; // named schema member already output
+      const memberDef: MemberDef | undefined = key ? schema.defs[key] : undefined;
       const typeDef = memberDef ? TypedefRegistry.get(memberDef.type) : undefined;
       let strValue: string | undefined;
       if (memberDef && typeDef && 'stringify' in typeDef && typeof typeDef.stringify === 'function') {
@@ -347,28 +356,26 @@ export function stringifyObject(
         }
         strValue = (typeDef.stringify as any)(val, effectiveMemberDef, defs);
       } else if (typeof val === 'string') {
-        // Quote extra string properties using regular string format
+        // Quote extra string properties using auto format (safe open-string / quoted as needed)
         strValue = quoteExtraPropertyString(val);
       } else {
         strValue = stringifyAnyValue(val, defs);
       }
-      // Extras should retain key label even when includeTypes is false (desired output for wildcard properties)
-      // Skip if undefined (missing optional)
-      if (strValue !== undefined) {
-        parts.push(`${key}: ${strValue}`);
-      }
+      if (strValue === undefined) continue; // missing optional
+      // Extra / keyless member — honor emitKeys ('none' suppresses, 'all'/'extras' keep the key).
+      const emitKey = shouldEmitKey(key, schema, options?.emitKeys);
+      parts.push(emitKey ? `${formatObjectKey(key!)}: ${strValue}` : strValue);
     }
   } else {
-    // No schema: fall back to insertion order
-    for (const [key, val] of obj.entries()) {
-      // if (!key) continue; // Allow positional arguments
+    // No schema: a member is positional when it has no key OR its key equals its own IOObject INDEX
+    // position (the same index toObject() projects with, via forEach — NOT a re-derived counter,
+    // which drifts after a deletion). Positional -> bare value; any other key -> `key: value`
+    // (numeric/keyword keys quoted) so keys are never dropped (FINDINGS #25).
+    obj.forEach((val: any, key: string | undefined, index: number) => {
       const strValue = stringifyAnyValue(val, defs);
-      if (includeTypes && key) {
-        parts.push(`${key}: ${strValue}`);
-      } else {
-        parts.push(strValue);
-      }
-    }
+      const isPositional = !shouldEmitKey(key, undefined, options?.emitKeys);
+      parts.push(isPositional ? strValue : `${formatObjectKey(key)}: ${strValue}`);
+    });
   }
 
   // Format output

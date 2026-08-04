@@ -29,7 +29,8 @@ describe('IO Formatter', () => {
       const ctx: FormatContext = {
         indentStr: '',
         level: 0,
-        isNested: false
+        isNested: false,
+        emitKeys: 'none'      // these tests exercise FORMATTING (spacing/nesting/line-breaks) in values-only mode
       };
 
       const result = formatRecord(obj, undefined, ctx);
@@ -49,7 +50,8 @@ describe('IO Formatter', () => {
       const ctx: FormatContext = {
         indentStr: '',
         level: 0,
-        isNested: false
+        isNested: false,
+        emitKeys: 'none'      // these tests exercise FORMATTING (spacing/nesting/line-breaks) in values-only mode
       };
 
       const result = formatRecord(obj, undefined, ctx);
@@ -64,7 +66,8 @@ describe('IO Formatter', () => {
       const ctx: FormatContext = {
         indentStr: '',
         level: 0,
-        isNested: false
+        isNested: false,
+        emitKeys: 'none'      // these tests exercise FORMATTING (spacing/nesting/line-breaks) in values-only mode
       };
 
       const result = formatRecord(obj, undefined, ctx);
@@ -87,7 +90,8 @@ describe('IO Formatter', () => {
       const ctx: FormatContext = {
         indentStr: '',
         level: 0,
-        isNested: false
+        isNested: false,
+        emitKeys: 'none'      // these tests exercise FORMATTING (spacing/nesting/line-breaks) in values-only mode
       };
 
       const result = formatRecord(obj, undefined, ctx);
@@ -109,7 +113,8 @@ describe('IO Formatter', () => {
       const ctx: FormatContext = {
         indentStr: '  ',
         level: 0,
-        isNested: false
+        isNested: false,
+        emitKeys: 'none'      // these tests exercise FORMATTING (spacing/nesting/line-breaks) in values-only mode
       };
 
       const result = formatRecord(obj, undefined, ctx);
@@ -124,7 +129,8 @@ describe('IO Formatter', () => {
       const ctx: FormatContext = {
         indentStr: '  ',
         level: 0,
-        isNested: false
+        isNested: false,
+        emitKeys: 'none'      // these tests exercise FORMATTING (spacing/nesting/line-breaks) in values-only mode
       };
 
       const result = formatRecord(obj, undefined, ctx);
@@ -147,7 +153,8 @@ describe('IO Formatter', () => {
       const ctx: FormatContext = {
         indentStr: '  ',
         level: 0,
-        isNested: false
+        isNested: false,
+        emitKeys: 'none'      // these tests exercise FORMATTING (spacing/nesting/line-breaks) in values-only mode
       };
 
       const result = formatRecord(obj, undefined, ctx);
@@ -187,7 +194,8 @@ describe('IO Formatter', () => {
       const ctx: FormatContext = {
         indentStr: '  ',
         level: 0,
-        isNested: false
+        isNested: false,
+        emitKeys: 'none'      // these tests exercise FORMATTING (spacing/nesting/line-breaks) in values-only mode
       };
 
       const result = formatRecord(obj, undefined, ctx);

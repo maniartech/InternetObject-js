@@ -54,10 +54,13 @@ class BigIntDef implements TypeDef {
     // Validate before stringifying
     this.validate(memberDef, value)
 
+    // Explicit display formats emit a plain numeric string (no `n` suffix), like hex/octal/binary.
     if (memberDef.format === 'hex') { return value.toString(16) }
     if (memberDef.format === 'octal') { return value.toString(8) }
     if (memberDef.format === 'binary') { return value.toString(2) }
-    return value.toString()
+    if (memberDef.format === 'decimal') { return value.toString() }
+    // Default IO literal form keeps the `n` suffix so it re-parses as a bigint, not a number.
+    return value.toString() + 'n'
   }
 
   /**

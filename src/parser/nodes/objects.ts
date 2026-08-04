@@ -66,7 +66,11 @@ class ObjectNode extends ContainerNode {
           // o[member.key.value] = member.value.toValue(defs);
           o.set(member.key.value as string, member.value.toValue(defs));
         } else {
-          o.set(i.toString(), member.value.toValue(defs))
+          // Positional member: store WITHOUT a key via pushValue (NOT push — push would misread an
+          // array value like ["a","b"] as a [key,value] tuple and drop elements). The author wrote no
+          // key, so the model carries none; rendering handles keyless members positionally, and the
+          // JSON projection falls back to `key || index`.
+          o.pushValue(member.value.toValue(defs))
         }
       }
     }

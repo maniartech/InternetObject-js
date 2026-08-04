@@ -199,3 +199,48 @@ export function quoteHeaderString(str: string): string {
 export function quoteExtraPropertyString(str: string): string {
   return quoteString(str, 'auto', STRING_ENCLOSERS.REGULAR);
 }
+
+/**
+ * Formats an object KEY for output. Object keys must serialize back as STRING keys: a purely numeric
+ * key (`0`, `42`, `3.14`) or a reserved literal keyword (`null`/`true`/`false` and the short forms
+ * `N`/`T`/`F`) would otherwise re-parse as a non-string token and raise `invalid-key`, so they are
+ * quoted. Ordinary identifier / open-string keys (`name`, `a b`) pass through unquoted.
+ *
+ * @param key The key to format
+ * @returns The key, quoted only if it would not round-trip as a bare string key
+ */
+export function formatObjectKey(key: string): string {
+  const isNumeric = /^[+-]?(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?$/.test(key);
+  const isKeyword = /^(?:true|false|null|T|F|N)$/.test(key);
+  return (isNumeric || isKeyword) ? `"${key}"` : key;
+}
+
+/** How keys are emitted in serialized data rows (SERIALIZATION-DECISIONS.md). */
+export type EmitKeys = 'all' | 'extras' | 'none';
+
+/**
+ * The single rule every serializer shares — decide whether a member emits its key (`key: value`)
+ * or just its value (bare), per the `emitKeys` mode (SERIALIZATION-DECISIONS.md).
+ *
+ * - a **keyless / positional** member has no key → always bare, in every mode.
+ * - `'none'`   → never emit a key (values only; lossy when the schema can't recover the name).
+ * - `'all'`    → emit a key for every keyed member (fully self-describing).
+ * - `'extras'` (default) → emit a key only for a field NOT declared in the schema — i.e. an
+ *   open-schema extra OR (when there is no schema) every field, since all fields are then undeclared.
+ *   Fields declared in the schema stay bare (the name is recoverable from the schema/header).
+ *
+ * `schema` is duck-typed to `{ names }` so this stays dependency-free.
+ *
+ * @returns true → emit `key: value`; false → bare value
+ */
+export function shouldEmitKey(
+  key: string | undefined,
+  schema?: { names?: string[] },
+  emitKeys: EmitKeys = 'extras'
+): boolean {
+  if (key === undefined) return false;   // keyless → bare, always
+  if (emitKeys === 'none') return false;
+  if (emitKeys === 'all') return true;
+  // 'extras': emit only when the field is not declared in the schema (no schema ⇒ undeclared ⇒ emit)
+  return !schema || !Array.isArray(schema.names) || !schema.names.includes(key);
+}

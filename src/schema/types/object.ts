@@ -13,6 +13,7 @@ import TypeDef              from '../../schema/typedef';
 import TypedefRegistry      from '../../schema/typedef-registry';
 import doCommonTypeCheck    from './common-type';
 import MemberDef            from './memberdef';
+import { formatObjectKey, shouldEmitKey }  from '../../utils/string-formatter';
 
 const schema = new Schema(
   "object",
@@ -241,29 +242,49 @@ class ObjectDef implements TypeDef {
             } else {
               strValue = JSON.stringify(value)
             }
-            parts.push(`${key}: ${strValue}`)
+            parts.push(`${formatObjectKey(key)}: ${strValue}`)
           }
         }
       }
     } else {
-      // No schema - output all properties
-      for (const key in data) {
-        const value = data[key]
-
-        // Skip undefined values
-        if (value === undefined) continue
+      // No schema - render in INDEX order. IO objects ALWAYS carry a positional index; a key is
+      // optional. A member with NO key, or whose key equals its positional index, is positional and is
+      // emitted WITHOUT a label; any other key is a real label emitted as `key: value` (numeric/keyword
+      // keys are quoted so they round-trip as string keys).
+      //
+      // Iterate POSITIONALLY via forEach so keyless (push) members are not lost: `for..in` only sees
+      // keyed members that were synced as instance properties, silently dropping positional ones (which
+      // is how a keyless nested object used to serialize as `{}`). Nested object/array values recurse
+      // through IO serialization (the `any` typedef), never JSON.stringify.
+      const anyDef = TypedefRegistry.get('any')
+      const renderValue = (value: any, key: string | undefined, index: number): void => {
+        if (value === undefined) return
 
         let strValue: string
         if (value === null) {
           strValue = 'N'
-        } else if (typeof value === 'string') {
-          strValue = value
         } else if (typeof value === 'boolean') {
           strValue = value ? 'T' : 'F'
+        } else if (typeof value === 'string') {
+          strValue = value
+        } else if (anyDef && 'stringify' in anyDef && typeof anyDef.stringify === 'function') {
+          // number / bigint / Decimal / Date / array / nested object → IO serialization (not JSON)
+          strValue = anyDef.stringify(value, { type: 'any', path: basePath } as MemberDef, defs) ?? JSON.stringify(value)
         } else {
           strValue = JSON.stringify(value)
         }
-        parts.push(`${key}: ${strValue}`)
+
+        const positional = !shouldEmitKey(key)
+        parts.push(positional ? strValue : `${formatObjectKey(key)}: ${strValue}`)
+      }
+
+      if (data && typeof data.forEach === 'function') {
+        // IOObject: forEach yields (value, key, index) with the real positional index.
+        data.forEach((value: any, key: string | undefined, index: number) => renderValue(value, key, index))
+      } else {
+        // Plain JS object fallback.
+        let index = 0
+        for (const key in data) { renderValue(data[key], key, index); index++ }
       }
     }
 

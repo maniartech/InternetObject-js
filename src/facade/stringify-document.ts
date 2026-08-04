@@ -301,7 +301,8 @@ function stringifySection(
     indentStr,
     level: 0,
     defs,
-    isNested: false
+    isNested: false,
+    emitKeys: options.emitKeys ?? 'extras'
   };
 
   // Collections should be serialized using IO '~' items for parser compatibility

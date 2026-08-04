@@ -23,7 +23,7 @@ describe('IOStreamWriter', () => {
     transport.send(writer.write({ id: 1, name: 'Alice' }));
 
     expect(transport.chunks[0]).toContain('streamId: test-1');
-    expect(transport.chunks[1]).toContain('~ 1, Alice');
+    expect(transport.chunks[1]).toContain('~ id: 1, name: Alice');  // no schema → keyed (self-describing)
   });
 
   it('includeSchemas: false omits schema definitions from the header', () => {
@@ -46,7 +46,7 @@ describe('IOStreamWriter', () => {
     await writer.send({ b: 2 }); // default schema again => section(undefined) => '---'
     const last = out[out.length - 1];
     expect(last).toContain('---');
-    expect(last).toContain('~ 2');
+    expect(last).toContain('~ b: 2');  // no schema → keyed
   });
 
   it('throws on a validation error during write() (Gap 16: no onError modes)', () => {
@@ -65,8 +65,8 @@ describe('IOStreamWriter', () => {
       const writer = createStreamWriter(transport);
       const batch = writer.writeBatch([{ name: 'A' }, { name: 'B' }], 'users');
       expect(batch).toContain('--- users');
-      expect(batch).toContain('~ A');
-      expect(batch).toContain('~ B');
+      expect(batch).toContain('~ name: A');  // 'users' not a defined schema → keyed
+      expect(batch).toContain('~ name: B');
     });
 
     it('sendBatch does not re-emit a section when the schema is unchanged', async () => {
@@ -78,7 +78,7 @@ describe('IOStreamWriter', () => {
       await writer.sendBatch([{ name: 'C' }], 'users');                // users still active
 
       const last = output[output.length - 1];
-      expect(last).toContain('~ C');
+      expect(last).toContain('~ name: C');  // no defined schema → keyed
       expect(last).not.toContain('--- users');
     });
   });
@@ -89,7 +89,7 @@ describe('IOStreamWriter', () => {
       const writer = createStreamWriter({ send: (c) => { out.push(c.toString()); } });
       await writer.send({ a: 1 });
       expect(out[0]).toBe('---\n');
-      expect(out[1]).toContain('~ 1');
+      expect(out[1]).toContain('~ a: 1');  // no schema → keyed
     });
 
     it('emits the header at most once across sendHeader() + send()', async () => {
@@ -106,7 +106,7 @@ describe('IOStreamWriter', () => {
       const mockWritable = { write: (c: string) => { wrote.push(c); return true; }, end: () => {} };
       const writer = createStreamWriter(mockWritable as any);
       await writer.send({ a: 1 });
-      expect(wrote.join('')).toContain('~ 1');
+      expect(wrote.join('')).toContain('~ a: 1');  // no schema → keyed
     });
   });
 

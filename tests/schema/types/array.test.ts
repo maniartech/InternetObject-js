@@ -179,14 +179,14 @@ describe('ArrayDef - Array Type', () => {
   })
 
   describe('Edge cases', () => {
-    // TODO: Re-enable after fixing IOObject serialization for nested objects
     test('should handle mixed type arrays with any', () => {
-      const result = parse('mixed: []\n---\n[1, hello, T, {{x: 10}}, [1, 2]]', null).toJSON()
+      const result = parse('mixed: []\n---\n[1, hello, T, {x: 10}, [1, 2]]', null).toJSON()
       expect(result.mixed).toHaveLength(5)
       expect(result.mixed[0]).toBe(1)
       expect(result.mixed[1]).toBe('hello')
       expect(result.mixed[2]).toBe(true)
-      expect(result.mixed[3][0].toJSON()).toEqual({ x: 10 })
+      // an object inside an `any` array stays an IOObject in toObject() output; compare its value
+      expect(result.mixed[3].toObject()).toEqual({ x: 10 })
       expect(result.mixed[4]).toEqual([1, 2])
     })
 

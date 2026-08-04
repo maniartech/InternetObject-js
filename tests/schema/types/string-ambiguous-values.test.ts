@@ -321,8 +321,9 @@ describe('String Ambiguous Values - Round Trip Safety', () => {
     it('should preserve ambiguous strings in arrays', () => {
       const input = `
         ~ $item: {values: [string]}
+        ~ $schema: $item
         ---
-        ~ [["1984", "T", "N", "Hello"]]
+        ~ ["1984", "T", "N", "Hello"]
       `
       const doc = parse(input)
       const output = stringify(doc)

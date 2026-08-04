@@ -215,7 +215,7 @@ function _processObject(
 
       const val = member.value.toValue(defs)
 
-      o.push(val);
+      o.pushValue(val);   // positional value — pushValue, not push (push would destructure an array value)
     }
   }
 
