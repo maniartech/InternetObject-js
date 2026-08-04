@@ -18,24 +18,13 @@ import InternetObject from '../core/internet-object';
 import Collection from '../core/collection';
 import { inferDefs } from '../schema/utils/defs-inferrer';
 import { loadObject as processObject, loadCollection as processCollection } from '../schema/load-processor';
+import { IOCommonOptions } from './options';
 
 /**
- * Options for loadInferred function
+ * Options for `loadInferred` — the shared options minus `schemaName` (inference derives its own schema).
+ * See {@link IOCommonOptions} (shared, declared once — R8).
  */
-export interface LoadInferredOptions {
-  /**
-   * When true, throws on first validation error.
-   * When false (default), continues processing and collects errors.
-   * @default false
-   */
-  strict?: boolean;
-
-  /**
-   * Array to collect validation errors instead of throwing.
-   * Useful for processing collections where some items may be invalid.
-   */
-  errorCollector?: Error[];
-}
+export type LoadInferredOptions = Omit<IOCommonOptions, 'schemaName'>;
 
 /**
  * Load plain JavaScript data with **inferred schema** into a Document.

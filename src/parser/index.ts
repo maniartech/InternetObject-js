@@ -134,6 +134,10 @@ export default function parse(
       }
     }
 
+    // NOTE (PARKED): when the source has a header, an explicit `schema`/schema-name argument is NOT
+    // honored — the in-document header's `$schema` governs (spec: document owns its schema). Parse-time
+    // schema override is Experimental; not supported here. It currently no-ops rather than throwing to
+    // avoid breaking callers; harden to a thrown error when un-parked. See io-test-cases/RECOMMENDATIONS.md.
     parseDataWithSchema(docNode, doc, errorCollector);
   } else {
     if (externalDefs) {
