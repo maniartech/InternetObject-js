@@ -7,7 +7,8 @@
  * - Provides O(1) key-based lookups via internal Map
  * - Implements Iterable for for..of loops
  * - Supports sparse deletions with optional compaction
- * - Synchronizes with object properties for dot-notation access
+ * - Method-only access (R7): data is read via `get`/`getAt` — there is NO dot-notation / instance-
+ *   property sync, so a data key can never collide with a method name or with `.errors`/`.length`.
  *
  * @template T The type of values stored in the object
  *
@@ -15,14 +16,13 @@
  * ```typescript
  * const obj = new IOObject<number>();
  * obj.set('a', 1);
- * obj.push(2);           // positional entry (no key)
+ * obj.pushValue(2);       // positional entry (no key)
  * obj.set('b', 3);
- * console.log(obj.a);    // 1 (dot notation)
- * console.log(obj.getAt(1)); // 2
+ * console.log(obj.get('a'));  // 1  (method access — NOT obj.a)
+ * console.log(obj.getAt(1));  // 2
  * ```
  */
 class IOObject<T = any> implements Iterable<[string | undefined, T]> {
-  [key: string]: any;
   private items!: ([string | undefined, T] | undefined)[];
   private keyMap!: Map<string, number>;
   public errors: Error[] = [];
@@ -56,6 +56,14 @@ class IOObject<T = any> implements Iterable<[string | undefined, T]> {
   }
 
   /**
+   * Returns the validation/parse errors accumulated for this object.
+   * The uniform error-read API shared by every core container (R6); `.errors` stays available directly.
+   */
+  getErrors(): ReadonlyArray<Error> {
+    return [...this.errors];
+  }
+
+  /**
    * Adds or updates a key-value pair in the IOObject.
    * If the key exists, updates the value at its index.
    * @param key The key to add or update.
@@ -71,15 +79,9 @@ class IOObject<T = any> implements Iterable<[string | undefined, T]> {
       this.items.push([key, value]);
       this.keyMap.set(key, index);
     }
-    // Synchronize instance property (but skip if it's a reserved internal property)
-    if (key !== 'items' && key !== 'keyMap') {
-      Object.defineProperty(this, key, {
-        value,
-        writable: true,
-        enumerable: true,
-        configurable: true
-      });
-    }
+    // R7: data is stored ONLY in items/keyMap and accessed via get()/getAt() — no instance-property
+    // sync. This makes access consistent (method-only) and frees `.errors`/`.length` and every method
+    // name from ever colliding with a data key (so no reserved-name guard is needed).
     return this;
   }
 
@@ -102,6 +104,19 @@ class IOObject<T = any> implements Iterable<[string | undefined, T]> {
   this.items.push([undefined, item]);
       }
     }
+  }
+
+  /**
+   * Appends a single value as a POSITIONAL (keyless) member.
+   *
+   * Unlike `push()`, this does NOT apply the `[key, value]`-tuple interpretation to array arguments —
+   * so an array DATA value (e.g. `["1984","T","N","Hello"]`) is stored intact as one positional value
+   * rather than being destructured into `key="1984", value="T"` (which silently drops elements).
+   * Use this for positional data values; use `push([k, v])` only when you genuinely mean a keyed pair.
+   */
+  pushValue(value: T): this {
+    this.items.push([undefined, value]);
+    return this;
   }
 
   /**
@@ -163,8 +178,6 @@ class IOObject<T = any> implements Iterable<[string | undefined, T]> {
     if (index !== undefined && this.items[index]) {
       this.items[index] = undefined;
       this.keyMap.delete(key);
-      // Remove instance property
-      delete this[key];
       return true;
     }
     return false;
@@ -270,10 +283,6 @@ class IOObject<T = any> implements Iterable<[string | undefined, T]> {
    * Clears all key-value pairs from the IOObject.
    */
   clear(): void {
-    // Remove all instance properties for keys
-    for (const key of this.keysArray()) {
-      delete this[key];
-    }
     this.items = [];
     this.keyMap.clear();
   }

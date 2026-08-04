@@ -4,9 +4,7 @@ import IOSection from "./section";
  * IOSectionCollection manages multiple IOSection instances within a document.
  *
  * Features:
- * - Index-based access for ordered sections (collection[0])
- * - Name-based access for named sections (collection['users'])
- * - Proxy-based access supporting both patterns transparently
+ * - Method-based access via `get(nameOrIndex)` — by index (`get(0)`) or name (`get('users')`) (R7)
  * - Iterable for iterating over all sections
  *
  * @template T The type of data items in the sections
@@ -32,13 +30,6 @@ import IOSection from "./section";
 class IOSectionCollection<T = any> {
   private _sections: Array<IOSection<T>> = [];
   private _sectionNames: { [key: string]: number } = {};
-
-  // Support index access
-  [key: string]: any;
-
-  constructor() {
-    return new Proxy(this, proxy);
-  }
 
   public get sections(): Array<IOSection<T>> {
     return this._sections;
@@ -82,22 +73,5 @@ class IOSectionCollection<T = any> {
     }
   }
 }
-
-const proxy = {
-  get: (target: IOSectionCollection<any>, property: string | symbol) => {
-    if (property in target) {
-      return Reflect.get(target, property);
-    }
-    if (typeof property === 'string') {
-      if (/^[0-9]+$/.test(property)) {
-        return target.get(Number(property));
-      }
-      return target.get(property);
-    }
-  },
-  set: (target: IOSectionCollection<any>, property: string | number | symbol, value: any) => {
-    throw new Error('Cannot set a value on a IOSectionCollection');
-  }
-};
 
 export default IOSectionCollection;

@@ -1,15 +1,14 @@
-import assertNever from '../errors/asserts/asserts';
 import IOObject from "./internet-object";
 
 /**
- * IOCollection is an ordered, index-accessible collection of items.
+ * IOCollection is an ordered collection of items, accessed by method (get via `getAt(i)`).
  *
  * Features:
  * - Array-like operations (push, pop, insert, deleteAt)
  * - Functional methods (map, filter, reduce, forEach, find, some, every)
  * - Iterable support for for..of loops
  * - JSON serialization with error handling options
- * - Proxy-based index access (collection[0])
+ * - Method-based index access via `getAt(i)` (no proxy / `collection[0]` — R7)
  *
  * @template T The type of items stored in the collection (defaults to IOObject)
  *
@@ -268,16 +267,14 @@ class IOCollection<T = IOObject> {
   }
 
   /**
-   * Returns all Error objects contained within this collection's ErrorNodes.
+   * Returns the errors for this collection: its own accumulated `errors` PLUS any Error objects held
+   * by ErrorNode items. The uniform error-read API shared by every core container (R6).
    *
-   * Note: This method is primarily useful when working with collections directly.
-   * When using Document.getErrors(), all errors (parser + validation) are already
-   * aggregated at the document level.
-   *
-   * @returns Array of Error objects from ErrorNode items in this collection
+   * Note: when using `Document.getErrors()`, all errors (parser + validation) are already aggregated
+   * at the document level.
    */
-  public getErrors(): Error[] {
-    const errors: Error[] = [];
+  public getErrors(): ReadonlyArray<Error> {
+    const errors: Error[] = [...this.errors];   // R6: include the collection's own accumulated errors
     for (const item of this._items) {
       // ErrorNode-like shape: has an `error` property of type Error
       if (item && typeof item === 'object' && (item as any).error instanceof Error) {
@@ -323,38 +320,5 @@ class IOCollection<T = IOObject> {
     yield* this._items;
   }
 }
-
-const proxy = {
-  get: (target: IOCollection<any>, property: string | symbol) => {
-    if (property in target) {
-      return Reflect.get(target, property);
-    }
-
-    if (typeof property === 'string' && /^[0-9]+$/.test(property)) {
-      return target.getAt(Number(property));
-    }
-
-    assertNever(property as never);
-  },
-
-  set: (target: IOCollection<any>, property: string | number | symbol, value: any) => {
-    if (typeof property === 'string' && /^[0-9]+$/.test(property)) {
-      target.setAt(Number(property), value);
-      return true;
-    }
-
-    throw new Error('Cannot set a value on a Collection');
-  },
-
-  deleteProperty: (target: IOCollection<any>, property: string | symbol) => {
-    if (typeof property === 'string' && /^[0-9]+$/.test(property)) {
-      const index = Number(property);
-      target.deleteAt(index);
-      return true;
-    }
-
-    throw new Error('Cannot delete a value on a Collection');
-  }
-};
 
 export default IOCollection;

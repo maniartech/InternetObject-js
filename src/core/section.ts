@@ -65,6 +65,11 @@ class IOSection<T = any> {
     return errors;
   }
 
+  /** Uniform error-read API shared by every core container (R6); same result as the `errors` getter. */
+  public getErrors(): ReadonlyArray<Error> {
+    return this.errors;
+  }
+
   /**
    * Return a clean object for nodejs console logging.
    */
