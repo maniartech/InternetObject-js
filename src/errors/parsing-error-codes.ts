@@ -18,8 +18,9 @@ enum ParsingErrorCodes {
   invalidSchemaName = 'invalid-schema-name',
 
   // Variables and definitions
-  variableNotDefined = 'variable-not-defined',
-  schemaNotDefined = 'schema-not-defined'
+  variableNotDefined = 'variable-not-defined'
+  // NOTE: `schema-not-defined` lives in ValidationErrorCodes — it is raised as
+  // IOValidationError (category `validation`), so its group matches its class.
 }
 
 export default ParsingErrorCodes

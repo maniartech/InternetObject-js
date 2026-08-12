@@ -272,7 +272,7 @@ export function loadCollection(
         // This allows downstream code to know which items failed
         const errorObj = {
           __error: true,
-          category: error instanceof ValidationError ? 'validation' : 'runtime',
+          category: error instanceof ValidationError ? 'validation' : 'general',
           message: error.message,
           collectionIndex: i
         };

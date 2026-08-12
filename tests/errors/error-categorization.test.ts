@@ -2,7 +2,7 @@ import parse from '../../src/parser';
 
 /**
  * Test suite for error categorization and differential styling support.
- * Verifies that errors are properly categorized as 'syntax', 'validation', or 'runtime'
+ * Verifies that errors are properly categorized as 'syntax', 'validation', or 'general'
  * in the serialized output for UI consumption.
  */
 describe('Error Categorization', () => {
@@ -206,7 +206,7 @@ describe('Error Categorization', () => {
       expect(errorObj).toHaveProperty('position');
 
       expect(errorObj.__error).toBe(true);
-      expect(['syntax', 'validation', 'runtime']).toContain(errorObj.category);
+      expect(['syntax', 'validation', 'general']).toContain(errorObj.category);
       expect(typeof errorObj.message).toBe('string');
       expect(typeof errorObj.name).toBe('string');
       expect(errorObj.position).toHaveProperty('row');
@@ -299,20 +299,20 @@ describe('Error Categorization', () => {
         errorObjects.forEach((errObj: any) => {
           expect(errObj.category).toBeDefined();
           expect(errObj.category).not.toBeNull();
-          expect(['syntax', 'validation', 'runtime']).toContain(errObj.category);
+          expect(['syntax', 'validation', 'general']).toContain(errObj.category);
         });
       }
     });
 
-    it('uses "runtime" as fallback for unknown error types', () => {
+    it('uses "general" as fallback for unknown error types', () => {
       // This is a theoretical test; in practice, all errors should be
       // either SyntaxError or ValidationError, but the code has a fallback
-      // We can't easily trigger a runtime error in the current codebase,
+      // We can't easily trigger a general-category error in the current codebase,
       // but we document the expected behavior
 
       // If we somehow got an error that's neither Syntax nor Validation,
-      // it should default to 'runtime' category
-      expect(['syntax', 'validation', 'runtime']).toContain('runtime');
+      // it should default to 'general' category (matches PROTOCOL.md vocabulary)
+      expect(['syntax', 'validation', 'general']).toContain('general');
     });
   });
 

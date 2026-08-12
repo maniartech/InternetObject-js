@@ -34,7 +34,10 @@ enum ValidationErrorCodes {
   notABool = 'not-a-bool',
 
   // Choice validation
-  invalidChoice = 'invalid-choice'
+  invalidChoice = 'invalid-choice',
+
+  // Schema/definition resolution (raised as IOValidationError)
+  schemaNotDefined = 'schema-not-defined'
 }
 
 export default ValidationErrorCodes
