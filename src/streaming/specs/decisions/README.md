@@ -21,3 +21,9 @@ ADRs are **immutable once Accepted**. To change a decision, do not edit the acce
 | [0009](0009-reader-lifecycle-and-cancellation.md) | Reader lifecycle — single-consumption, lazy, releasing, cancellable | The reader is consumed once, pulls lazily, releases its source, and is cancellable. |
 | [0010](0010-writer-raw-forward-and-record-granularity.md) | Writer raw-forward semantics and the whole-record development constraint | Raw forwarding bypasses schema tracking; whole-record writes are a temporary dev constraint. |
 | [0011](0011-stream-absolute-error-positions.md) | Error positions are stream-absolute | Positions are measured from the start of the stream and rebased across frames, matching non-streaming parsing. |
+
+> **Reader strict/lenient framing** (accepting a no-`---` stream as headerless data; treating a midstream
+> `~ $Foo:` as a data record) is a *strict-mode* concern, not a streaming-only one. It is parked with all
+> other strict options in the repo-level ADR
+> [`docs/decisions/0001-defer-strict-validation-mode.md`](../../../../docs/decisions/0001-defer-strict-validation-mode.md).
+> For v1 the reader stays lenient (spec-permitted per PROTOCOL §4/§5/§8).

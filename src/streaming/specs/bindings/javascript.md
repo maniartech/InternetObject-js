@@ -115,10 +115,9 @@ The protocol speaks of an abstract "record value" and "error identity." In this 
   `stream-source-error`, `stream-aborted` (protocol §7.3). The **position** (`error.positionRange`) is
   stream-absolute, matching non-streaming parsing (protocol §7, ADR 0011).
 
-  > Note: core's internal error-node `toJSON` currently projects the base-`IOError` category as
-  > `"runtime"`. Aligning that label to the protocol's `general` is a binding-internal, non-breaking
-  > reconciliation tracked in [`../../../errors/FINALIZATION.md`](../../../errors/FINALIZATION.md). It does
-  > not affect the `StreamItem` category, and no streaming conformance case exercises `general` today.
+  > Note: core's error-node `toValue`/`toJSON` projects the base-`IOError` category as `general`, matching
+  > this table and the protocol vocabulary. (Earlier builds emitted `"runtime"`; that label was reconciled
+  > to `general` — see [`../../../errors/FINALIZATION.md`](../../../errors/FINALIZATION.md).)
 - **Fatal vs. recoverable** (protocol §7.2): a recoverable failure is a `record-error` item; a fatal
   stream error rejects the async iterator (a thrown/rejected error — an `IOStreamError` for the
   `stream` category, or the original core error for a fatal core failure such as an unknown schema switch).

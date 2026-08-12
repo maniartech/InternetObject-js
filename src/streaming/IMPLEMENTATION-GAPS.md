@@ -15,9 +15,25 @@ Do not use this file to redefine the public contract.
 
 ## Current Status
 
-- The public streaming contract is frozen.
-- The runtime implementation is not yet aligned with that contract.
-- The highest-risk touchpoints are [reader.ts](./reader.ts), [types.ts](./types.ts), [writer.ts](./writer.ts), and [adapters.ts](./adapters.ts).
+- The public streaming contract is frozen ([specs/PROTOCOL.md](./specs/PROTOCOL.md)).
+- **The runtime now conforms to that contract.** All 21 gaps below are Done; the full suite passes (2,600+ tests) and the language-neutral conformance corpus passes 27/27 across whole / per-line / per-byte chunkings.
+- Only a few minor residual items remain — see [Remaining Work](#remaining-work).
+
+## Remaining Work
+
+The tracker is complete. Two behaviors previously listed here as residuals were reviewed against the
+normative spec and found to **conform** — they are leniencies the protocol permits, not gaps:
+
+- **No `---` header terminator** — the reader buffers to EOF and treats the content as headerless data.
+  Permitted by PROTOCOL §4 ("a reader MAY accept the legacy form … contains no `---`").
+- **Midstream definition-looking records** — a `~ $Foo: {…}` after the header phase is parsed as a data
+  record and cannot mutate the frozen definitions state. PROTOCOL §5 defines no midstream-definition
+  syntax; §8 places the "MUST NOT emit" obligation on the writer, not the reader.
+
+Whether to add an **opt-in strict/defensive reader mode** that rejects these forms is **deferred** — it is
+parked with all other strict options in
+[docs/decisions/0001-defer-strict-validation-mode.md §7](../../docs/decisions/0001-defer-strict-validation-mode.md).
+For v1 the reader stays lenient.
 
 ## Gap Tracker
 
@@ -254,8 +270,11 @@ absent for implicit default-schema records (no more synthesized `$schema`); the 
 applied (records validate and receive defaults) by resolving and passing the active schema object to the
 core parser. In-stream `$schema` overrides the fallback `defaultSchema`. Verified by the conformance corpus
 (single-object-section, implicit-default-schema, preloaded-definitions-default-schema, explicit-schema-switch).
-Remaining sub-items (strict header-termination enforcement, rejecting midstream definition mutation) are still
-tracked here and not yet enforced.
+The two forms once tracked here as sub-items (accepting a no-`---` stream as headerless data; treating a
+midstream `~ $Foo:` as a data record) were reviewed against the spec and found to **conform** — they are
+permitted leniencies, not gaps (PROTOCOL §4 / §5 / §8). An opt-in strict/defensive mode that would reject
+them is deferred and parked with all other strict options in
+[docs/decisions/0001-defer-strict-validation-mode.md §7](../../docs/decisions/0001-defer-strict-validation-mode.md).
 
 Contract impact:
 
@@ -442,8 +461,8 @@ Associated tests:
 
 Status: Done (disposition) — the sliding-window reader bounds buffering to the current pending frame, and
 exceeding `maxBufferedChars` throws fatally (rejects the iterator) rather than emitting a `record-error`.
-Verified in `tests/streaming/reader-contract.test.ts`. Note: tagging the failure with the `stream-buffer-exceeded`
-code / `IOStreamError` class is tracked under Gap 17.
+Verified in `tests/streaming/reader-contract.test.ts`. The failure is now tagged with the
+`stream-buffer-exceeded` code (`IOStreamError`) — implemented via Gap 17.
 
 Contract impact:
 
@@ -671,8 +690,9 @@ Status: Done — the reader now detects record/section boundaries from `StreamTo
 the core `parse()` path. The reader no longer imports or uses `updateStringState`/line-scanning, so the
 second hand-rolled lexer is gone; `~`/`---` inside strings, comments, and nested containers can no longer be
 mistaken for boundaries (the tokenizer is the sole lexical authority). Behavior preserved: all existing
-reader/adapter tests pass and conformance is unchanged at 12/27 (the StreamItem shape, `schemaName` absence,
-and fatal-vs-record-error remain Gaps 5/7/8). The `text.ts` helpers remain exported with their own tests;
+reader/adapter tests pass and conformance was unchanged at 12/27 when this landed (the StreamItem shape,
+`schemaName` absence, and fatal-vs-record-error were still Gaps 5/7/8; those later closed and the corpus is
+now 27/27). The `text.ts` helpers remain exported with their own tests;
 removing them is a separate cleanup. Note: emitting through the Gap 20 token seam (instead of re-parsing
 sliced text) is a follow-up optimization.
 
@@ -695,36 +715,12 @@ Associated tests:
 - record boundaries inside strings/comments/annotated strings are never mis-split (delegated to tokenizer)
 - the ad-hoc string-state scanner is gone
 
-## Execution Priority
+## Execution Priority — complete
 
-### Priority 0 — Architecture foundation (do first)
-
-- bound the tokenizer section-separator lookahead (Gap 18)
-- make the tokenizer chunk-feedable with stream-absolute position rebasing (Gap 19)
-- add the per-record parse seam on `ASTParser` (Gap 20)
-- build the token-level frame collector and remove the reader's ad-hoc scanner (Gap 21)
-
-### Priority 0
-
-- align [types.ts](./types.ts) and [reader.ts](./reader.ts) with the frozen `StreamItem` contract (Gap 5)
-- fix `IOObject` versus collection classification in [reader.ts](./reader.ts) (Gap 1)
-- normalize recoverable parse and validation failures at the streaming boundary (Gap 7)
-- preserve preloaded definitions, default-schema fallback behavior, and explicit header rules in [reader.ts](./reader.ts) (Gap 8)
-- make [adapters.ts](./adapters.ts) UTF-8 safe across split byte chunks (Gap 2)
-- keep successful streamed records semantically equivalent to the non-streaming parse plus schema-processing path (Gap 6)
-- enforce reader lifecycle: source release on early exit, `AbortSignal` cancellation, single-consumption (Gap 11)
-- define empty / header-only / bare-`~` behavior (Gap 12)
-
-### Priority 1
-
-- make [writer.ts](./writer.ts) backpressure-aware for flow-controlled transports (Gap 3)
-- reduce header lifecycle footguns in [writer.ts](./writer.ts) (Gap 4)
-- enforce encoding rules: BOM stripping, newline normalization, cross-chunk decode (Gap 13)
-- align `maxBufferedChars` overflow semantics with the fatal-rejection contract (Gap 14)
-- guard writer concurrency, poisoning, and `sendRaw()` schema-tracking (Gap 15)
-- remove `onError: 'emit'` and reconcile `StreamWriterOptions` with the frozen surface (Gap 16)
-- prove incremental buffering, schema reuse, and transport behavior with focused tests (Gap 9)
-- normalize partial-frame-at-EOF behavior (Gap 10)
+All gaps are Done. The order followed was: foundation first (Gaps 18 → 19 → 20 → 21 — bound the
+section-separator lookahead, make the tokenizer chunk-feedable, add the per-record parse seam, build the
+token-level frame collector), then the contract-emission gaps (5, 7, 8), the Group-A verifications
+(1, 6, 10, 12, 14), and finally the writer / encoding / lifecycle gaps (2, 3, 4, 9, 11, 13, 15, 16, 17).
 
 ## Suggested Test Grouping
 
@@ -753,8 +749,8 @@ Associated tests:
 - incremental emit behavior on long streams
 - schema reuse under repeated same-schema records
 
-## Exit Criteria
+## Exit Criteria — met
 
-- The runtime behavior matches [specs/PROTOCOL.md](./specs/PROTOCOL.md) and [specs/bindings/javascript.md](./specs/bindings/javascript.md).
+- Runtime behavior matches [specs/PROTOCOL.md](./specs/PROTOCOL.md) and [specs/bindings/javascript.md](./specs/bindings/javascript.md) — the conformance corpus passes 27/27.
 - The focused tests above exist and pass.
-- The frozen docs do not need to explain around runtime quirks because the implementation actually conforms.
+- The frozen docs do not explain around runtime quirks; the implementation conforms.

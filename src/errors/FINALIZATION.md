@@ -43,29 +43,34 @@ streaming gap tracker — not here.
   base `IOError` instead of `IOValidationError`. Corrected to import `io-validation-error`. This was the
   only validator with the bug; full suite passed with no regressions. Fixing it also resolved a
   multi-error collection anomaly (the base error had been short-circuiting collected validation errors).
+- **`schema-not-defined` group/class mismatch — FIXED.** The code was defined in `ParsingErrorCodes`
+  yet raised as `IOValidationError` (category `validation`). Moved the enum entry to
+  `validation-error-codes.ts` so its group matches its class. The string value (`schema-not-defined`) is
+  unchanged and consumers reference the merged `ErrorCodes`, so the move is transparent — the
+  frozen-by-reference table above is unaffected.
+- **`runtime` → `general` category label — FIXED.** The error-node projection (`parser/nodes/error.ts`)
+  and the collection-error path (`schema/load-processor.ts`) emitted `"runtime"` for base `IOError`,
+  while the protocol vocabulary is `general`. Renamed to `general` in both sites and updated the
+  affected tests. No conformance case exercised the old label; the JS binding note is updated to match.
 
 ## Punch list (open — for full finalization)
 
-1. **Category derives from class, not bucket.** `schema-not-defined` lives in the *Parsing* code group
-   yet is raised as `IOValidationError`. Confirm/realign every code's group with the class it is raised
-   as, or document that group membership is organizational only and category is class-derived.
-2. **`runtime` vs `general` naming.** Core's error-node `toJSON` projects base-`IOError` category as
-   `"runtime"`; the protocol category is `general`. Reconcile to one term. Non-breaking (no streaming
-   case exercises `general`).
-3. **Completeness:** audit all error-construction sites (~119) and generic throws/`assertNever` (~52).
+1. **Completeness:** audit all error-construction sites (~119) and generic throws/`assertNever` (~52).
    Classify each as a public code or an internal invariant; ensure no user-reachable error is uncoded.
-4. **No drift:** every emission site references `ErrorCodes`; eliminate any raw code-string literals.
-5. **No dead codes:** every enum entry is emitted somewhere, or explicitly marked `reserved`.
-6. **Per-code definitions:** give each code a one-line, language-neutral trigger definition.
-7. **Registry:** publish a language-neutral `ERROR-CODES.md` (code, class/category, trigger, stability)
+   (While auditing, check whether `variable-not-defined` has the same group/class question as the
+   now-fixed `schema-not-defined`.)
+2. **No drift:** every emission site references `ErrorCodes`; eliminate any raw code-string literals.
+3. **No dead codes:** every enum entry is emitted somewhere, or explicitly marked `reserved`.
+4. **Per-code definitions:** give each code a one-line, language-neutral trigger definition.
+5. **Registry:** publish a language-neutral `ERROR-CODES.md` (code, class/category, trigger, stability)
    that the TS enums realize; have `PROTOCOL.md` reference it for the `syntax`/`validation`/`general`
    codes it preserves.
-8. **Freeze + versioning policy:** additive-only within a major version; new codes in minor versions;
+6. **Freeze + versioning policy:** additive-only within a major version; new codes in minor versions;
    no rename/remove/recategorize of published codes.
 
 ## Definition of Done
 
-Full core error finalization is complete when punch-list items 1–8 are satisfied, the registry is
+Full core error finalization is complete when punch-list items 1–6 are satisfied, the registry is
 published, and the freeze policy is adopted.
 
 ## Protecting invariant

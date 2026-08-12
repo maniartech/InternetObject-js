@@ -8,6 +8,11 @@ When processing an object against a schema, if there are multiple validation err
 
 In case of syntax errors, this behavior is acceptable that only the first error is reported and report to the error boundary for futher document scanning/processing. But for schema validation, all errors should be collected and reported together.
 
+> **Tracked under the deferred `strict` contract.** This collect-all-per-object behavior is part of the
+> validation-mode work parked for a future version — see
+> [`docs/decisions/0001-defer-strict-validation-mode.md`](docs/decisions/0001-defer-strict-validation-mode.md)
+> (specifically `validateObject` unification, §5–§6).
+
 ## Invalid Def-inferrance for Additional Properties
 
 See the following JSON example test case:

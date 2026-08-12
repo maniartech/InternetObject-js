@@ -27,7 +27,9 @@ export interface IOCommonOptions {
    * @remarks PARKED / not fully wired. Honored by `loadDocument` only; on `load`/`loadObject`/
    * `loadCollection`/`loadInferred` it is currently a no-op — an object load throws by default
    * regardless. To be wired to spec semantics (collect-all default / fail-fast; see spec
-   * `the-collections/collection.md:131`) when un-parked. See io-test-cases/RECOMMENDATIONS.md.
+   * `the-collections/collection.md:131`) when un-parked. Deferred to a future version by
+   * ADR docs/decisions/0001-defer-strict-validation-mode.md (has the full plan). See also
+   * io-test-cases/RECOMMENDATIONS.md (R3/R4/R5).
    */
   strict?: boolean;
 
