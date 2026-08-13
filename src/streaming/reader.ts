@@ -122,6 +122,9 @@ export class IOStreamReader implements AsyncIterable<StreamItem> {
       const text = content.length ? `${content}\n---\n` : '---\n';
       const headerErrors: Error[] = [];
       const headerDoc = defs ? parse(text, defs, headerErrors) : parse(text, null, headerErrors);
+      // Invalid header definitions are FATAL (PROTOCOL §7.2, ADR 0012): a broken header would
+      // make every subsequent record misvalidate, so reject now, preserving core error identity.
+      if (headerErrors.length > 0) throw headerErrors[0];
       defs = headerDoc.header?.definitions ?? defs;
       // An in-stream $schema becomes the default context, overriding any fallback.
       if (headerDoc.header?.schema instanceof Schema) defaultSchemaName = '$schema';
@@ -165,6 +168,12 @@ export class IOStreamReader implements AsyncIterable<StreamItem> {
           ? parse(text, activeSchema, errors)
           : (defs ? parse(text, defs, errors) : parse(text, null, errors));
       } catch (err: any) {
+        // On the no-`---` legacy flush (header never terminated — e.g. a `---` masked by an
+        // unclosed brace), a `---`-bearing frame is a full document: core treats its first
+        // section as the HEADER, so a throw here is an invalid-header/structural failure —
+        // FATAL per PROTOCOL §7.2 / ADR 0012. (Data-record errors don't throw; they surface
+        // as ErrorNodes inside the parsed document and stay recoverable.)
+        if (!headerDone && /(^|\n)[ \t]*---/.test(text)) throw err;
         return [mkError(err)];
       }
 

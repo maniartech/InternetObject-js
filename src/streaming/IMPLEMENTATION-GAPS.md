@@ -275,6 +275,11 @@ midstream `~ $Foo:` as a data record) were reviewed against the spec and found t
 permitted leniencies, not gaps (PROTOCOL §4 / §5 / §8). An opt-in strict/defensive mode that would reject
 them is deferred and parked with all other strict options in
 [docs/decisions/0001-defer-strict-validation-mode.md §7](../../docs/decisions/0001-defer-strict-validation-mode.md).
+Separately, **invalid header definitions are now enforced as FATAL** (PROTOCOL §7.2): the reader throws
+the first collected header error, and a header error reaching the legacy no-`---` flush (e.g. a `---`
+masked by an unclosed brace) is rethrown rather than demoted to a record-error — see
+[ADR 0012](./specs/decisions/0012-header-errors-are-fatal.md) and
+`tests/streaming/header-errors-fatal.test.ts`.
 
 Contract impact:
 
