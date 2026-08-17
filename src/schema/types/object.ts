@@ -275,7 +275,7 @@ class ObjectDef implements TypeDef {
         }
 
         const positional = !shouldEmitKey(key)
-        parts.push(positional ? strValue : `${formatObjectKey(key)}: ${strValue}`)
+        parts.push(positional ? strValue : `${formatObjectKey(key!)}: ${strValue}`)
       }
 
       if (data && typeof data.forEach === 'function') {

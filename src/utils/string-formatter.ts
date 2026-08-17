@@ -212,7 +212,11 @@ export function quoteExtraPropertyString(str: string): string {
 export function formatObjectKey(key: string): string {
   const isNumeric = /^[+-]?(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?$/.test(key);
   const isKeyword = /^(?:true|false|null|T|F|N)$/.test(key);
-  return (isNumeric || isKeyword) ? `"${key}"` : key;
+  // A bare (unquoted) key must be a plain identifier-like open string; anything else — colons
+  // (`ciqual_food_code:en`), braces, quotes, leading symbols, etc. — must be quoted or the emitted
+  // text won't re-parse (issue #61: JSON keys routinely contain such characters).
+  const isBareSafe = /^[$A-Za-z_][A-Za-z0-9_. -]*$/.test(key) && !/\s$/.test(key);
+  return (isNumeric || isKeyword || !isBareSafe) ? `"${key.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"` : key;
 }
 
 /** How keys are emitted in serialized data rows (SERIALIZATION-DECISIONS.md). */

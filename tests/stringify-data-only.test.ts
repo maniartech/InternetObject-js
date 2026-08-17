@@ -93,7 +93,10 @@ John, 30
 {{5}}
 `)
       const result = stringify(doc, { includeTypes: false })
-      expect(result).toBe('{5}')
+      // A record whose ONLY member is an object needs the explicit record wrapper: `{5}` would
+      // re-parse with the outer braces as the record itself, binding 5 to x's first member.
+      // `{{5}}` matches the source document text and round-trips.
+      expect(result).toBe('{{5}}')
       expect(result).not.toContain('$def')
     })
   })

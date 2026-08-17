@@ -65,6 +65,9 @@ class ArrayDef implements TypeDef {
       arrayMemberDef.path = memberDef.path
     } else {
       typeDef = TypedefRegistry.get('any')
+      // Untyped array: elements are nullable-any — the same canonical form the schema compiler
+      // produces for `[]` (of: {type:'any', null:true}). Keeps `array` ≡ `[]` (issue #61).
+      arrayMemberDef.null = true
     }
 
     // Load each item using the TypeDef.load() method
@@ -133,6 +136,8 @@ class ArrayDef implements TypeDef {
       arrayMemberDef.path = memberDef.path
     } else {
       typeDef = TypedefRegistry.get('any')
+      // Untyped array: nullable-any elements (matches the compiler's `[]` canonical form).
+      arrayMemberDef.null = true
     }
 
     // Stringify each item
@@ -187,6 +192,8 @@ function _processNode(node: Node, memberDef: MemberDef, defs?: Definitions) {
     assertNever(memberDef.of)
   } else {
     typeDef = TypedefRegistry.get('any')
+    // Untyped array: nullable-any elements (matches the compiler's `[]` canonical form).
+    arrayMemberDef.null = true
   }
 
   const array: any = []

@@ -75,6 +75,8 @@ function isAmbiguous(str: string): boolean {
   if (str === null || str === undefined) return true;
   if (str.length === 0) return true;
   if (ambiguousValues.has(str)) return true;
+  // Leading/trailing whitespace is trimmed when an open string is re-parsed — quote to keep it.
+  if (str.trim() !== str) return true;
   // Any string that looks like a number must be quoted
   if (looksLikeNumber(str)) return true;
   if (reDate.test(str)) return true;

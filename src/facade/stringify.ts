@@ -374,7 +374,7 @@ export function stringifyObject(
     obj.forEach((val: any, key: string | undefined, index: number) => {
       const strValue = stringifyAnyValue(val, defs);
       const isPositional = !shouldEmitKey(key, undefined, options?.emitKeys);
-      parts.push(isPositional ? strValue : `${formatObjectKey(key)}: ${strValue}`);
+      parts.push(isPositional ? strValue : `${formatObjectKey(key!)}: ${strValue}`);
     });
   }
 

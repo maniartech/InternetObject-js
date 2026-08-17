@@ -1,6 +1,7 @@
 import MemberDef from './memberdef';
 import { STANDARD_MEMBERDEF_PROPS, IO_MARKERS } from '../../facade/serialization-constants';
 import TokenNode from '../../parser/nodes/tokens';
+import { formatObjectKey } from '../../utils/string-formatter';
 
 /**
  * Stringifies a MemberDef into its schema definition format.
@@ -107,7 +108,7 @@ function formatNestedSchema(schema: any): string {
   if (schema.names) {
     for (const nestedName of schema.names) {
       const nestedMember = schema.defs[nestedName];
-      let nestedField = nestedName;
+      let nestedField = formatObjectKey(nestedName);
 
       if (nestedMember?.optional) {
         nestedField += IO_MARKERS.OPTIONAL;
