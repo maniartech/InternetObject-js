@@ -352,3 +352,28 @@ And `{ a: 10, b: 20 }` (lean) → `10, 20`; `{ Alice, "5": 100 }` (any mode) →
 `a: 10, b: 20`) is **withdrawn**. The correct no-schema rule is `isNonPositionalKey` (§4):
 keyless / named / index-matching-numeric ⇒ positional; displaced-numeric / non-schema-named ⇒
 non-positional. This makes §3-matrix / §4 / §5 self-consistent.
+
+## §13. Record wrapper braces — the single-object-member rule (FINALIZED)
+
+> **Format-level rule.** This is a general IO representation rule, not a serializer detail — the
+> normative statement lives in the spec: io-specs `the-structure/values/object.md`, section
+> "Record Enclosure Under Schema Validation". Schemaless, all enclosure forms are valid (positional
+> keys); the interpretation question exists only under schema binding. This section records the
+> serializer's implementation of that rule.
+
+A data row's outer braces are optional in general (`x, 4` ≡ `{x, 4}`), but the author's INTENT is
+ambiguous when the row consists ENTIRELY of one braced object: it could be the record itself or a
+value for member 0. Both readings are well-defined, but only the explicit forms say which is meant.
+
+**Parser facts (verified matrix, tests/regression/record-enclosure.test.ts — 47 cases):**
+- The reading depends on the row's FIRST KEY, not on schema arity (io-test-cases ISSUE-15, fixed):
+  a key the schema declares → the row is the record; a key it does not → the row is member 0's value.
+- `{key: val}` under `{o1: object}` and under `{o1: object, o2?: object}` now agree: `o1 = {key: val}`.
+- Members other than 0 are still validated on that path — required ones error, `default`s apply.
+- `{key: val}, 5` (trailing content) → unambiguous, first member binds; `{{key: val}, 5}` also legal.
+- Positional rows (`{x}`) and declared-key rows (`{o1: {…}}`) always read as the record.
+
+**Serializer rule (normative):** when a record serializes to exactly ONE part and that part begins
+with `{`, wrap the whole row: `{{...}}`. This is a safe superset of the minimal requirement — it
+always emits the form that states the author's intent explicitly, rather than leaving it to the
+first-key rule above. Implemented in `facade/io-formatter.ts` (formatRecord).

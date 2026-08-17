@@ -15,6 +15,15 @@ In case of syntax errors, this behavior is acceptable that only the first error 
 
 ## Invalid Def-inferrance for Additional Properties
 
+> **Status: ✅ FIXED (uncommitted, awaiting review) — 2026-08-15.** Dynamic-key objects now link via
+> wildcard container schemas (`$questions: {*: $question}`) instead of orphaning the extracted item
+> schemas; dynamic keys stay in the data. Detection tightened (common keys must cover ≥50% of every
+> value's keys) so unrelated static members sharing one incidental key are not franken-merged.
+> Fixed alongside GitHub issue #61 (null-bearing arrays, colon keys/schema-name sanitization,
+> trailing-space strings, single-object-member record wrapping, nested optional placeholders,
+> `[$item]` array item schemas). The 63KB issue-61 attachment now round-trips value-identical.
+> Tests: `tests/regression/infer-dynamic-wildcard.test.ts` (11 cases); suite green 2820.
+
 See the following JSON example test case:
 
 ```json
@@ -129,6 +138,13 @@ When converted back to JSON, it produces the following incorrect JSON:
 ```
 
 ## Multisection Document Inference
+
+> **Status: ✅ FIXED (uncommitted, awaiting review) — 2026-08-15.** `loadInferred` now detects the
+> multi-section shape (plain object, 2+ keys, every value a non-empty array of records) and emits
+> one named, schema-bound section per key (`--- accounting: $accounting`) with NO wrapper `$schema`
+> — exactly the desired form below. Mixed/single-key/primitive-array shapes keep the previous
+> single-section output. Round-trips value-identical (Document.toObject keys multi-section data by
+> section name). Tests: `tests/regression/infer-multisection.test.ts` (6); suite green 2826.
 
 Currently multisection inference is not supported. For example, see the following JSON:
 
