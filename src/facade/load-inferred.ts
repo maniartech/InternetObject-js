@@ -16,7 +16,7 @@ import Section from '../core/section';
 import SectionCollection from '../core/section-collection';
 import InternetObject from '../core/internet-object';
 import Collection from '../core/collection';
-import { inferDefs } from '../schema/utils/defs-inferrer';
+import { inferDefs, inferMultiSectionDefs, isMultiSectionShape } from '../schema/utils/defs-inferrer';
 import { loadObject as processObject, loadCollection as processCollection } from '../schema/load-processor';
 import { IOCommonOptions } from './options';
 
@@ -88,6 +88,25 @@ export function loadInferred(
   data: any,
   options?: LoadInferredOptions
 ): Document {
+  // Multi-section shape ({accounting: [...], sales: [...]}): infer one named, schema-bound
+  // section per top-level key (`--- accounting: $accounting`) — IO's native form for grouped
+  // record sets — instead of nesting everything into one section. Document.toObject keys
+  // multi-section data by section name, so the value model round-trips unchanged.
+  if (isMultiSectionShape(data)) {
+    const { definitions, sectionSchemas } = inferMultiSectionDefs(data);
+    const header = new Header();
+    header.definitions.merge(definitions, true);
+
+    const sections = new SectionCollection();
+    for (const [key, arr] of Object.entries(data as Record<string, any[]>)) {
+      const schemaName = sectionSchemas.get(key)!;
+      const schema = definitions.getV(schemaName);
+      const collection = processCollection(arr, schema, definitions, options?.errorCollector);
+      sections.push(new Section(collection, key, schemaName));
+    }
+    return new Document(header, sections);
+  }
+
   // Infer definitions from the data structure
   const { definitions, rootSchema } = inferDefs(data);
 

@@ -35,6 +35,120 @@ interface InferenceContext {
   // Track which property paths have been identified as dynamic collections
   // This allows us to treat single-item instances consistently
   dynamicPaths: Set<string>;
+  // Wildcard container schemas (e.g. `$questions: {*: $question}`) created while inferring
+  // members for dynamic-key objects. Registered into definitions AFTER all item schemas merge so
+  // the header lists dependencies first ($question before $questions). Keyed by container name to
+  // dedupe when the same dynamic path is inferred from several parent instances.
+  pendingContainers: Map<string, Schema>;
+}
+
+/**
+ * Makes a data key safe for use inside a generated schema name (`$<name>`). Definition names and
+ * `$ref` tokens must be identifier-like — a key such as `en:plastic` would otherwise emit
+ * `$en:plastic`, which cannot be re-parsed (issue #61). Applied at EVERY name-generation site so
+ * collection-time and memberdef-time lookups stay consistent; collisions introduced by the
+ * sanitization flow through the existing conflict-resolution machinery.
+ */
+function safeName(key: string): string {
+  return key.replace(/[^A-Za-z0-9_]/g, '_');
+}
+
+/**
+ * Builds (or reuses) the wildcard container schema for a dynamic-key member and returns the
+ * MemberDef that links the parent to it: `questions` → `{type:'object', schemaRef:'$questions'}`
+ * with `$questions: {*: $question}` queued for registration.
+ *
+ * The item schema name is the singularized member key, run through the same conflict-resolution
+ * map the item instances were collected under. If the container name is already taken by a
+ * DIFFERENT schema (a static object elsewhere also named e.g. `questions`), fall back to the old
+ * unlinked `{type:'object'}` so we never clobber or shadow an existing definition.
+ */
+function inferDynamicContainerMemberDef(
+  path: string,
+  fullPath: string[],
+  ctx: InferenceContext
+): MemberDef {
+  const itemBase = `$${safeName(singularize(path))}`;
+  const resolvedItem = ctx.resolvedNames.get(pathKey(fullPath, itemBase)) || itemBase;
+  const containerName = `$${safeName(path)}`;
+
+  // Conflict guards: item schema unusable, container name identical to item name (degenerate
+  // singularization, e.g. `data`), or container name already claimed by a static schema.
+  const containerTaken =
+    ctx.schemaRegistry.has(containerName) || ctx.schemaInstances.has(containerName);
+  if (resolvedItem.endsWith('::CONFLICTED') || containerName === resolvedItem || containerTaken) {
+    return { type: 'object', path };
+  }
+
+  if (!ctx.pendingContainers.has(containerName)) {
+    const wildcardDef: MemberDef = { type: 'object', path: '*', schemaRef: resolvedItem };
+    const container = new Schema(containerName);
+    container.defs['*'] = wildcardDef;   // serialized as `{*: $item}` (names stays empty)
+    container.open = wildcardDef;        // validation: every undeclared key must match $item
+    ctx.pendingContainers.set(containerName, container);
+  }
+
+  return { type: 'object', path, schemaRef: containerName };
+}
+
+/**
+ * True when the data is the multi-section shape: a plain object with 2+ keys whose EVERY value is
+ * a non-empty array of plain objects (records). `{accounting: [...], sales: [...]}` infers better
+ * as named sections (`--- accounting: $accounting`) than as one nested single-section document.
+ */
+export function isMultiSectionShape(data: any): boolean {
+  if (data === null || typeof data !== 'object' || Array.isArray(data)) return false;
+  const entries = Object.entries(data);
+  if (entries.length < 2) return false;
+  return entries.every(([, v]) =>
+    Array.isArray(v) && v.length > 0 &&
+    v.every(item => item !== null && typeof item === 'object' && !Array.isArray(item))
+  );
+}
+
+/**
+ * Infers definitions for the multi-section shape (see {@link isMultiSectionShape}): one ITEM
+ * schema per top-level key (named `$<singularized key>`, conflict-resolved), with NO root
+ * `$schema` — each section carries its own schema binding instead.
+ *
+ * @returns definitions plus a map of top-level key → resolved item schema name.
+ */
+export function inferMultiSectionDefs(data: Record<string, any[]>): {
+  definitions: Definitions;
+  sectionSchemas: Map<string, string>;
+} {
+  const ctx: InferenceContext = {
+    definitions: new Definitions(),
+    schemaRegistry: new Map(),
+    schemaInstances: new Map(),
+    resolvedNames: new Map(),
+    pendingMerge: new Set(),
+    dynamicPaths: new Set(),
+    pendingContainers: new Map()
+  };
+
+  preScanDynamicPaths(data, [], ctx);
+
+  // Collect every array item as an instance of its section's item schema (path = [key], matching
+  // how nested-array items are collected elsewhere so conflict resolution behaves identically).
+  for (const [key, arr] of Object.entries(data)) {
+    const itemBaseName = `$${safeName(singularize(key))}`;
+    for (const item of arr) {
+      addSchemaInstance(itemBaseName, [key], item, ctx);
+      collectNestedInstances(item, [key], ctx);
+    }
+  }
+
+  resolveSchemaNameConflicts(ctx);
+  mergeAllSchemaInstances(ctx);
+
+  const sectionSchemas = new Map<string, string>();
+  for (const key of Object.keys(data)) {
+    const itemBaseName = `$${safeName(singularize(key))}`;
+    sectionSchemas.set(key, ctx.resolvedNames.get(pathKey([key], itemBaseName)) || itemBaseName);
+  }
+
+  return { definitions: ctx.definitions, sectionSchemas };
 }
 
 /**
@@ -76,7 +190,14 @@ function isDynamicKeyObject(obj: Record<string, any>): boolean {
     allValueKeys.every(keySet => keySet.has(key))
   );
 
-  return commonKeys.length >= 1;
+  if (commonKeys.length < 1) return false;
+
+  // Check 3: The common keys must cover a MAJORITY of every value's keys. True maps
+  // ({QID1: {...}, QID2: {...}}) have near-identical key sets; two UNRELATED static members that
+  // merely share one incidental key (e.g. `origins_of_ingredients` and `packaging` both having
+  // `value`) must NOT be misread as a map — that frankenstein-merges different shapes into one
+  // item schema (issue #61).
+  return allValueKeys.every(keySet => commonKeys.length / keySet.size >= 0.5);
 }
 
 /**
@@ -104,7 +225,8 @@ export function inferDefs(data: any): InferredDefs {
     schemaInstances: new Map(),
     resolvedNames: new Map(),
     pendingMerge: new Set(),
-    dynamicPaths: new Set()
+    dynamicPaths: new Set(),
+    pendingContainers: new Map()
   };
 
   // Phase 0: Pre-scan to identify ALL dynamic paths across the entire data structure
@@ -123,6 +245,15 @@ export function inferDefs(data: any): InferredDefs {
 
   // Phase 5: Build the root schema with all nested schemas properly set up
   const rootSchema = buildFinalSchema(data, '$schema', [], ctx);
+
+  // Register any wildcard containers created during Phase 5 fallbacks (the merge-phase flush in
+  // mergeAllSchemaInstances has already run by now; this catches late additions).
+  for (const [name, container] of ctx.pendingContainers) {
+    if (!ctx.definitions.get(name)) {
+      ctx.schemaRegistry.set(name, container);
+      ctx.definitions.push(name, container, true, false);
+    }
+  }
 
   // Set the root schema as $schema (default schema)
   ctx.definitions.push('$schema', rootSchema, true, false);
@@ -242,7 +373,7 @@ function collectNestedInstances(
 
     if (Array.isArray(value)) {
       // Array property - collect instances with singularized schema name
-      const itemBaseName = `$${singularize(key)}`;
+      const itemBaseName = `$${safeName(singularize(key))}`;
       const objects = value.filter(item =>
         typeof item === 'object' && item !== null && !Array.isArray(item)
       );
@@ -263,7 +394,7 @@ function collectNestedInstances(
         ctx.dynamicPaths.add(pathKey);
 
         // Treat as collection - all values are instances of the same schema
-        const itemBaseName = `$${singularize(key)}`;
+        const itemBaseName = `$${safeName(singularize(key))}`;
 
         for (const [dynamicKey, dynamicValue] of Object.entries(value)) {
           if (dynamicValue !== null && typeof dynamicValue === 'object' && !Array.isArray(dynamicValue)) {
@@ -277,7 +408,7 @@ function collectNestedInstances(
         }
       } else {
         // Regular nested object - collect with key as schema name
-        const nestedBaseName = `$${key}`;
+        const nestedBaseName = `$${safeName(key)}`;
         addSchemaInstance(nestedBaseName, currentPath, value, ctx);
         // Recursively collect from nested objects
         collectNestedInstances(value, currentPath, ctx);
@@ -554,6 +685,13 @@ function mergeAllSchemaInstances(ctx: InferenceContext): void {
     }
   }
 
+  // Register wildcard container schemas AFTER all item schemas so the header lists
+  // dependencies first (`~ $question: {...}` before `~ $questions: {*: $question}`).
+  for (const [name, container] of ctx.pendingContainers) {
+    ctx.schemaRegistry.set(name, container);
+    ctx.definitions.push(name, container, true, false);
+  }
+
   ctx.pendingMerge.clear();
 }
 
@@ -709,14 +847,13 @@ function inferMemberDefSimple(
       // because a sibling has multiple items
       const fullPathKey = fullPath.join('.');
       if (isDynamicKeyObject(value) || ctx.dynamicPaths.has(fullPathKey)) {
-        // Dynamic-keyed objects (maps) should NOT have a schemaRef
-        // The schemaRef would describe the VALUE type, not the container itself
-        // When stringifying, the container should be treated as a plain object
-        // and each value will be validated/stringified according to the item schema
-        return { type: 'object', path };
+        // Dynamic-keyed object (map): link via a wildcard container schema — the member references
+        // `$<key>` and `$<key>: {*: $<item>}` is queued, so the item schema is actually used.
+        // (A direct schemaRef would wrongly describe the CONTAINER as an item.)
+        return inferDynamicContainerMemberDef(path, fullPath, ctx);
       }
       // Regular nested object - look up the resolved name based on the full path
-      const baseName = `$${path}`;
+      const baseName = `$${safeName(path)}`;
       const resolvedName = ctx.resolvedNames.get(pathKey(fullPath, baseName)) || baseName;
       // If conflicted, fall back to plain object without schemaRef
       if (resolvedName.endsWith('::CONFLICTED')) {
@@ -742,13 +879,18 @@ function inferArrayMemberDefSimple(
     return { type: 'array', path };
   }
 
+  // An untyped array accepts nullable-any elements (ArrayDef default = the compiler's `[]`
+  // canonical form), so null-bearing arrays infer as plain `array` — a `schemaRef`'d element
+  // would reject the nulls the data actually contains (issue #61).
+  const hasNulls = arr.some(item => item === null);
+
   // Check if array contains objects
   const hasObjects = arr.some(item =>
     typeof item === 'object' && item !== null && !Array.isArray(item)
   );
 
-  if (hasObjects) {
-    const baseName = `$${singularize(path)}`;
+  if (hasObjects && !hasNulls) {
+    const baseName = `$${safeName(singularize(path))}`;
     const resolvedName = ctx.resolvedNames.get(pathKey(fullPath, baseName)) || baseName;
     // If conflicted, fall back to plain array without schemaRef
     if (resolvedName.endsWith('::CONFLICTED')) {
@@ -757,13 +899,7 @@ function inferArrayMemberDefSimple(
     return { type: 'array', path, schemaRef: resolvedName };
   }
 
-  // Check if array has mixed primitive types
-  const types = new Set(arr.map(item => typeof item));
-  if (types.size > 1 || arr.some(item => item === null)) {
-    return { type: 'array', path };
-  }
-
-  // For arrays of same-type primitives
+  // Primitives, mixed types, or null-bearing arrays: untyped elements accept them all
   return { type: 'array', path };
 }
 
@@ -853,12 +989,12 @@ function inferMemberDef(
       // Note: currentPath already includes 'path' at the end (passed from caller)
       const fullPathKey = currentPath.join('.');
       if (isDynamicKeyObject(value) || ctx.dynamicPaths.has(fullPathKey)) {
-        // Dynamic-keyed objects (maps) should NOT have a schemaRef
-        // The schemaRef would describe the VALUE type, not the container itself
-        return { type: 'object', path };
+        // Dynamic-keyed object (map): link via a wildcard container schema (see
+        // inferDynamicContainerMemberDef; mirrors the merge-phase branch).
+        return inferDynamicContainerMemberDef(path, currentPath, ctx);
       }
       // Regular nested object - reference the resolved schema name
-      const baseName = `$${path}`;
+      const baseName = `$${safeName(path)}`;
       const resolvedName = ctx.resolvedNames.get(pathKey(currentPath, baseName)) || baseName;
       return { type: 'object', path, schemaRef: resolvedName };
 
@@ -880,25 +1016,23 @@ function inferArrayMemberDef(
     return { type: 'array', path };
   }
 
+  // Null-bearing arrays infer as plain untyped `array` (nullable-any elements) — see
+  // inferArrayMemberDefSimple / issue #61.
+  const hasNulls = arr.some(item => item === null);
+
   // Check if array contains objects
   const hasObjects = arr.some(item =>
     typeof item === 'object' && item !== null && !Array.isArray(item)
   );
 
-  if (hasObjects) {
-    const baseName = `$${singularize(path)}`;
+  if (hasObjects && !hasNulls) {
+    const baseName = `$${safeName(singularize(path))}`;
     const fullPath = [...currentPath, path];
     const resolvedName = ctx.resolvedNames.get(pathKey(fullPath, baseName)) || baseName;
     return { type: 'array', path, schemaRef: resolvedName };
   }
 
-  // Check if array has mixed primitive types
-  const types = new Set(arr.map(item => typeof item));
-  if (types.size > 1 || arr.some(item => item === null)) {
-    return { type: 'array', path };
-  }
-
-  // For arrays of same-type primitives
+  // Primitives, mixed types, or null-bearing arrays: untyped elements accept them all
   return { type: 'array', path };
 }
 

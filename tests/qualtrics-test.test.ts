@@ -45,10 +45,14 @@ describe('Qualtrics Survey Structure', () => {
     const questionSchema = definitions.get('$question');
     expect(questionSchema!.defs['questionText'].type).toBe('string');
 
-    // Dynamic-keyed objects (like choices) should NOT have schemaRef
-    // because the schemaRef would describe the VALUE type, not the container
+    // Dynamic-keyed objects (like choices) link via a wildcard CONTAINER schema:
+    // choices → $choices, where `$choices: {*: $choice}` — so the item schema is actually used
+    // (previously the member fell back to plain `object` and $choice was orphaned).
     expect(questionSchema!.defs['choices'].type).toBe('object');
-    expect(questionSchema!.defs['choices'].schemaRef).toBeUndefined();
+    expect(questionSchema!.defs['choices'].schemaRef).toBe('$choices');
+    const choicesContainer = definitions.get('$choices');
+    expect(choicesContainer).toBeDefined();
+    expect((choicesContainer as any).defs['*'].schemaRef).toBe('$choice');
 
     // questionType should either be merged or plain object (depending on common keys)
     // Since all questionTypes share 'type' key, they should merge
