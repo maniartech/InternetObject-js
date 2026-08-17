@@ -106,11 +106,50 @@ function _processObject(
     }
   };
 
-  // Special case: if schema has exactly one field and first data member has a key that doesn't match,
-  // treat the entire data object as the value for that single schema field
-  if (schema.names.length === 1 && data.children.length > 0) {
+  // Fill in every schema member not yet bound: applies `default`, permits `optional`, and raises
+  // `value-required` for the rest. Shared by the normal path and the lone-object absorption path
+  // below, so required members and defaults are honored either way.
+  //
+  // `lookupInData` is false for the absorption path: there the ENTIRE row was consumed as member
+  // 0's value, so re-reading a key out of it would bind the same data twice.
+  const fillMissingMembers = (lookupInData: boolean): void => {
+    for (const name in schema.defs) {
+      // Skip the wildcard additional property definition ('*') - not an actual member.
+      if (name === '*') continue;
+      if (processedNames.has(name)) continue;
+
+      const memberDef = _resolveMemberDefVariables(schema.defs[name], defs);
+      const member = lookupInData
+        ? data.children.find((m) => (m as any).key?.value === name)
+        : undefined;
+
+      try {
+        const val = processMember(member as any, memberDef, defs);
+        collectNestedErrors(val);
+        if (val !== undefined) o.set(name, val);
+      } catch (err) {
+        if (err instanceof ValidationError) {
+          // in case of missing member, set the position to the parent object.
+          err.positionRange = data;
+          handleError(err);
+        } else {
+          throw err;
+        }
+      }
+    }
+  };
+
+  // Lone-object record: when the row's first member is KEYED with a name the schema does not
+  // declare, the row cannot be the record itself, so it is the value of the first schema member.
+  // Applied at every arity for CLOSED schemas, so the reading no longer depends on how many
+  // members a schema happens to declare (io-test-cases ISSUE-15). An OPEN schema is excluded:
+  // there an undeclared key is a legal extra member, so there is nothing to disambiguate — except
+  // in the single-declared-member case, whose long-standing behavior is preserved.
+  if (data.children.length > 0 && (!schema.open || schema.names.length === 1)) {
     const firstMember = data.children[0] as MemberNode;
-    if (firstMember?.key && firstMember.key.value !== schema.names[0]) {
+    // Cast (not convert): keeps strict-equality semantics identical to the previous
+    // `key.value !== names[0]` comparison, so a numeric key never matches a string member name.
+    if (firstMember?.key && !schema.names.includes(firstMember.key.value as unknown as string)) {
       const name = schema.names[0];
       const memberDef = _resolveMemberDefVariables(schema.defs[name], defs);
       // Create a synthetic member with the entire data ObjectNode as its value
@@ -127,6 +166,10 @@ function _processObject(
           throw err;
         }
       }
+      // The row was consumed as member 0's value; every OTHER schema member is absent, so it must
+      // still get its default / optional / value-required treatment (it used to be skipped).
+      processedNames.add(name);
+      fillMissingMembers(false);
       // If top-level call (no context passed), throw the first error (backward compatible)
       if (isTopLevel && ctx.hasErrors()) {
         throw ctx.getErrors()[0];
@@ -271,33 +314,7 @@ function _processObject(
   // Check for missing required members and if the missing member has a
   // default value, then set the default value. Otherwise, throw an error.
   // But before throwing an error reset the position to the data node.
-  for (const name in schema.defs) {
-  // Skip the wildcard additional property definition ('*').
-  // It's not an actual member and must not participate in required checks.
-  if (name === '*') continue;
-
-    const memberDef = _resolveMemberDefVariables(schema.defs[name], defs);
-    if (!processedNames.has(name)) {
-      const member = data.children.find((m) => (m as any).key?.value === name)
-
-      try {
-        const val = processMember(member as any, memberDef, defs);
-        // Collect errors from nested InternetObjects
-        collectNestedErrors(val);
-        if (val !== undefined) {
-          o.set(name, val);
-        }
-      } catch (err) {
-        if (err instanceof ValidationError) {
-          // in case of missing member, set the position to the parent object.
-          err.positionRange = data;
-          handleError(err);
-        } else {
-          throw err;
-        }
-      }
-    }
-  }
+  fillMissingMembers(true);
 
   // Fallback: if schema is open and result is empty, process all data members as type 'any' or using schema.open constraints
   if ((schema.open === true || (typeof schema.open === 'object' && schema.open.type)) && o.isEmpty()) {
