@@ -10,6 +10,7 @@ import { stringifyMemberDef } from '../schema/types/memberdef-stringify';
 import { stringify, stringifyObject } from './stringify';
 import { StringifyOptions } from './stringify';
 import { IO_MARKERS, RESERVED_SECTION_NAMES, WILDCARD_KEY } from './serialization-constants';
+import { formatObjectKey } from '../utils/string-formatter';
 import { formatRecord, formatCollection, createIndentString, FormatContext } from './io-formatter';
 import { toObject } from './to-object';
 
@@ -93,27 +94,9 @@ export function stringifyDocument(
 
   // Stringify header (includes definitions, schemas, variables)
   if (includeHeader && doc.header) {
-    // Check if we're in schema-only mode (just $schema, no other definitions)
-    const isSchemaOnlyMode = doc.header.definitions?.defaultSchemaOnly ?? false;
-
-    if (isSchemaOnlyMode && doc.header.schema) {
-      // Schema-only mode: output bare schema line (backward compatible)
-      const schemaText = stringifySchema(doc.header.schema, { ...options, includeTypes: true });
-      if (schemaText) {
-        parts.push(schemaText);
-      }
-    } else if (doc.header.definitions && doc.header.definitions.length > 0) {
-      // Definitions mode: output all definitions (schemas, variables, metadata) in ~ format
-      const headerText = stringifyHeader(doc.header, defFormat, options);
-      if (headerText) {
-        parts.push(headerText);
-      }
-    } else if (doc.header.schema) {
-      // No definitions but has schema: output bare schema line
-      const schemaText = stringifySchema(doc.header.schema, { ...options, includeTypes: true });
-      if (schemaText) {
-        parts.push(schemaText);
-      }
+    const headerText = stringifyHeader(doc, options);
+    if (headerText) {
+      parts.push(headerText);
     }
   }
 
@@ -143,6 +126,14 @@ export function stringifyDocument(
       // Determine if we need a section separator
       // Skip --- when: no header, single section, no real name, no named schema
       const needsSeparator = includeHeader || sectionCount > 1 || hasRealName || hasNamedSchema;
+
+      // Readability: separate the defs block and each named/schema-bound section with a blank
+      // line (blank lines are insignificant to the parser). The bare single `---` form stays
+      // tight for backward compatibility.
+      const wantsBlankBefore = parts.length > 0 && ((includeSectionNames && hasRealName) || hasNamedSchema);
+      if (wantsBlankBefore) {
+        parts.push('');
+      }
 
       if (includeSectionNames && hasRealName) {
         if (hasNamedSchema) {
@@ -179,17 +170,22 @@ export function stringifyDocument(
  * Stringify a schema to IO format
  */
 function stringifySchema(schema: any, options: StringifyOptions): string {
-  if (!schema || !schema.names || schema.names.length === 0) return '';
+  if (!schema || !schema.defs) return '';
+  // A wildcard-only schema ({*: $item}) has no declared names but must still emit its `*` member.
+  const hasNames = schema.names && schema.names.length > 0;
+  if (!hasNames && !schema.defs[WILDCARD_KEY]) return '';
 
   const includeTypes = options.includeTypes ?? false;
   const parts: string[] = [];
 
-  for (const name of schema.names) {
+  for (const name of schema.names ?? []) {
     const memberDef: MemberDef = schema.defs[name];
     if (!memberDef) continue;
 
-    // Build field definition starting with the name
-    let fieldDef = name;
+    // Build field definition starting with the name (quoted when not bare-safe, e.g. `a:b`).
+    // Known limitation: the schema compiler cannot parse an optional/null marker AFTER a quoted
+    // name (`"a:b"?:`), so such members round-trip as required.
+    let fieldDef = formatObjectKey(name);
 
     // Add optional marker (?) if the field is optional
     if (memberDef.optional) {
@@ -225,9 +221,37 @@ function stringifySchema(schema: any, options: StringifyOptions): string {
 }
 
 /**
+ * Public: stringify ONLY a document's header (definitions/schema lines, no `---`, no data).
+ *
+ * The counterpart of `stringifyDocument(doc, { includeHeader: false })` — together they give
+ * consumers (e.g. the playground's "Separate Schema" view) the header/data split as an API,
+ * instead of each consumer re-splitting the serialized text on `---` (which breaks for
+ * multi-section documents, whose first marker is `--- name: $schema`, never a bare `---`).
+ */
+export function stringifyHeader(doc: Document, options: StringifyDocumentOptions = {}): string {
+  if (!doc?.header) return '';
+  const defFormat = options.definitionsFormat ?? 'io';
+
+  // Schema-only mode (just $schema, no other definitions): bare schema line (backward compatible)
+  const isSchemaOnlyMode = doc.header.definitions?.defaultSchemaOnly ?? false;
+  if (isSchemaOnlyMode && doc.header.schema) {
+    return stringifySchema(doc.header.schema, { ...options, includeTypes: true } as StringifyOptions);
+  }
+  // Definitions mode: all definitions (schemas, variables, metadata) in ~ format
+  if (doc.header.definitions && doc.header.definitions.length > 0) {
+    return stringifyHeaderDefinitions(doc.header, defFormat, options as StringifyOptions);
+  }
+  // No definitions but has schema: bare schema line
+  if (doc.header.schema) {
+    return stringifySchema(doc.header.schema, { ...options, includeTypes: true } as StringifyOptions);
+  }
+  return '';
+}
+
+/**
  * Stringify document header with definitions
  */
-function stringifyHeader(
+function stringifyHeaderDefinitions(
   header: any,
   format: 'io',
   options: StringifyOptions
