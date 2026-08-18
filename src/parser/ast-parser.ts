@@ -14,6 +14,7 @@ import MemberNode       from './nodes/members';
 import Node             from './nodes/nodes';
 import ObjectNode       from './nodes/objects';
 import SectionNode      from './nodes/section';
+import { DEFAULT_SECTION_NAME } from '../core/section';
 import TokenNode        from './nodes/tokens';
 
 /**
@@ -238,6 +239,13 @@ class ASTParser {
   private processSection(first: boolean): SectionNode {
     let token = this.peek();
 
+    // Where this section begins — its `---` when we are the one consuming it, otherwise the first
+    // token of its content (the caller may already have stepped past the separator). It is the
+    // position a duplicate-name error points at when the section carries no name token of its own.
+    // An error with NO position is easy for a consumer to drop on the floor — the playground
+    // filtered exactly those out — so every error raised here gets one.
+    const sectionStartToken = token ?? undefined;
+
     // Consume the section separator if present
     if (token?.type === TokenType.SECTION_SEP) {
       this.advance();
@@ -247,38 +255,42 @@ class ASTParser {
     // the section has started without a section name. A header
     // section does not have a name.
     const [schemaNode, nameNode] = this.parseSectionAndSchemaNames();
+    // Resolve the name ONCE, here. Everything downstream reads this value rather than
+    // re-deriving it, so a rename below cannot be silently lost (ISSUE-18).
     let name: string = nameNode?.value != null ? String(nameNode.value)
-      : (schemaNode?.value != null ? String(schemaNode.value).substring(1) : 'unnamed');
+      : (schemaNode?.value != null ? String(schemaNode.value).substring(1) : DEFAULT_SECTION_NAME);
     const originalName = name;
 
     // Check if the section name is already used - implement auto-rename for error recovery
     if (name && this.sectionNames[name]) {
       const error = new SyntaxError(
-        ErrorCodes.unexpectedToken,
+        ErrorCodes.duplicateSectionName,
         `Duplicate section name '${name}'. Each section must have a unique name within the document.`,
-        void 0, false
+        nameNode ?? sectionStartToken, false
       );
       this.errors.push(error); // Accumulate error
 
-      // Auto-rename: users -> users_2, users_3, etc.
+      // Auto-rename: users -> users_2, users_3, etc. (io-specs parsing-and-errors/error-accumulation.md).
+      // This applies to EVERY duplicate, including sections that carry no name of their own — those
+      // have no nameNode to write the new name into, which is why it is carried separately.
       let suffix = 2;
       while (this.sectionNames[`${originalName}_${suffix}`]) {
         suffix++;
       }
       name = `${originalName}_${suffix}`;
 
-      // Update the nameNode with the renamed value
+      // Keep the node's own token in step where there is one, so positions/text still line up.
       if (nameNode) {
         nameNode.value = name;
       }
     }
 
-    if (!first || (first && name !== 'unnamed' && this.peek()?.type !== TokenType.SECTION_SEP)) {
+    if (!first || (first && name !== DEFAULT_SECTION_NAME && this.peek()?.type !== TokenType.SECTION_SEP)) {
       this.sectionNames[name] = true;
     }
 
     const section = this.parseSectionContent();
-    return new SectionNode(section, nameNode, schemaNode);
+    return new SectionNode(section, nameNode, schemaNode, name);
   }
 
   private parseSectionAndSchemaNames(): [TokenNode | null, TokenNode | null] {

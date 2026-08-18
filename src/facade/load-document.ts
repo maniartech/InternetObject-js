@@ -1,3 +1,4 @@
+import { DEFAULT_SECTION_NAME } from '../core/section';
 import Document from '../core/document';
 import Header from '../core/header';
 import Section from '../core/section';
@@ -198,7 +199,7 @@ export function loadDocument(
       }
 
       if (!sectionSchema) {
-        const error = new Error(`No schema found for section '${sectionName || 'unnamed'}'`);
+        const error = new Error(`No schema found for section '${sectionName || DEFAULT_SECTION_NAME}'`);
         if (options.strict) throw error;
         errorCollector.push(error);
         continue;
