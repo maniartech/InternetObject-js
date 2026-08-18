@@ -10,6 +10,7 @@ import TypeDef                from '../../schema/typedef';
 import TypedefRegistry        from '../../schema/typedef-registry';
 import doCommonTypeCheck      from './common-type';
 import MemberDef              from './memberdef';
+import { inferDateTimeKind }  from '../../utils/datetime';
 
 const of = { type: "any", __memberdef: true }
 
@@ -178,6 +179,12 @@ export default class AnyDef implements TypeDef {
       return value ? 'T' : 'F'
     }
 
+    // Number — `Infinity`/`NaN` are JS spellings that do not re-parse as IO values.
+    if (typeof value === 'number' && !Number.isFinite(value)) {
+      if (Number.isNaN(value)) return 'NaN'
+      return value > 0 ? 'Inf' : '-Inf'
+    }
+
     // Number
     if (typeof value === 'number') {
       const numberDef = TypedefRegistry.get('number')
@@ -207,12 +214,21 @@ export default class AnyDef implements TypeDef {
 
     // Date - infer date/time/datetime based on components
     if (value instanceof Date) {
-      const inferredType = this._inferDateTimeType(value)
+      const inferredType = inferDateTimeKind(value)
       const datetimeDef = TypedefRegistry.get(inferredType)
       if (datetimeDef && 'stringify' in datetimeDef && typeof datetimeDef.stringify === 'function') {
         return datetimeDef.stringify(value, { type: inferredType, path } as MemberDef, defs) ?? value.toISOString()
       }
       return value.toISOString()
+    }
+
+    // Byte array -> base64 binary literal. Must precede the Array/Object branches: a
+    // Uint8Array is object-typed and would otherwise render as an object of byte indices.
+    if (value instanceof Uint8Array) {
+      const b64 = typeof Buffer !== 'undefined'
+        ? Buffer.from(value).toString('base64')
+        : btoa(Array.from(value, (b: number) => String.fromCharCode(b)).join(''))
+      return `b"${b64}"`
     }
 
     // Array
@@ -246,36 +262,6 @@ export default class AnyDef implements TypeDef {
 
     // Fallback
     return JSON.stringify(value)
-  }
-
-  /**
-   * Infer the datetime type (date, time, or datetime) based on the Date value.
-   * - If time is 00:00:00.000Z → 'date'
-   * - If date is 1900-01-01 → 'time'
-   * - Otherwise → 'datetime'
-   */
-  private _inferDateTimeType(date: Date): 'date' | 'time' | 'datetime' {
-    const hours = date.getUTCHours()
-    const minutes = date.getUTCMinutes()
-    const seconds = date.getUTCSeconds()
-    const ms = date.getUTCMilliseconds()
-
-    const year = date.getUTCFullYear()
-    const month = date.getUTCMonth() // 0-indexed
-    const day = date.getUTCDate()
-
-    // Time-only: date component is 1900-01-01 (the sentinel value used in parseTime)
-    if (year === 1900 && month === 0 && day === 1) {
-      return 'time'
-    }
-
-    // Date-only: time component is all zeros
-    if (hours === 0 && minutes === 0 && seconds === 0 && ms === 0) {
-      return 'date'
-    }
-
-    // Full datetime
-    return 'datetime'
   }
 
   public static get types() { return ['any'] }

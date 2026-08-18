@@ -77,6 +77,9 @@ function isAmbiguous(str: string): boolean {
   if (ambiguousValues.has(str)) return true;
   // Leading/trailing whitespace is trimmed when an open string is re-parsed — quote to keep it.
   if (str.trim() !== str) return true;
+  // `---` is the section separator: the tokenizer splits on it even mid-value, so an open
+  // string containing it would tear the document in half on re-parse.
+  if (str.includes('---')) return true;
   // Any string that looks like a number must be quoted
   if (looksLikeNumber(str)) return true;
   if (reDate.test(str)) return true;

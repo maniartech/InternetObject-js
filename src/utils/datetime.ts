@@ -131,6 +131,38 @@ export const dateToSmartString = (date: Date | null, type: "datetime" | "date" |
   }
 }
 
+/**
+ * Infer which temporal literal best spells a bare `Date`.
+ *
+ * The value model keeps one `Date` for all three temporal types, so a value written WITHOUT a
+ * schema has no declared kind to fall back on. Per io-specs `serialization/value-formatting.md`,
+ * a writer then infers "only what the value evidences":
+ *
+ * - the **1900-01-01** date component is the sentinel `parseTime` assigns to a time-only value
+ *   → `time`
+ * - an all-zero time component carries no time of day → `date`
+ * - anything else → `datetime`
+ *
+ * This is value-preserving in every case: each inferred literal re-parses to the very same
+ * instant, so only the spelling — never the value — can differ from the input text. A schema
+ * always wins over this; it is consulted only when there is none.
+ */
+export const inferDateTimeKind = (date: Date): "datetime" | "date" | "time" => {
+  // Time-only sentinel first: 1900-01-01T00:00:00 is a `time`, not a midnight `date`.
+  if (date.getUTCFullYear() === 1900 && date.getUTCMonth() === 0 && date.getUTCDate() === 1) {
+    return "time"
+  }
+
+  if (
+    date.getUTCHours() === 0 && date.getUTCMinutes() === 0 &&
+    date.getUTCSeconds() === 0 && date.getUTCMilliseconds() === 0
+  ) {
+    return "date"
+  }
+
+  return "datetime"
+}
+
 export const dateToIOString = (date: Date | null, type: "datetime" | "date" | "time", noSep = false) => {
   if (date === null) return "N"
 
