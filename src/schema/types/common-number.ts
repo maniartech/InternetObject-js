@@ -23,6 +23,20 @@ export const NUMBER_MAP = NUMBER_TYPES.reduce((acc, type) => {
 }, {} as { [key: string]: boolean })
 
 /**
+ * The non-decimal display `format`s, mapped to the IO literal prefix and the radix.
+ *
+ * A format changes only how a value is *spelled*, never what it is, so a writer emits the
+ * prefix along with the digits — `0xff`, not `ff`. Bare digits would read back as an open
+ * string (or, for `binary`/`octal`, as a decimal number), which the member's own schema
+ * then rejects.
+ */
+export const RADIX_FORMATS = {
+  hex:    ['0x', 16],
+  octal:  ['0o', 8],
+  binary: ['0b', 2],
+} as const
+
+/**
  * Helper function for throwing validation errors
  */
 export function throwError(code: string, memberPath: string, value: any, node?: Node) {

@@ -6,7 +6,7 @@ import Schema from '../../schema/schema'
 import TypeDef from '../../schema/typedef'
 import doCommonTypeCheck from './common-type'
 import MemberDef from './memberdef'
-import { NUMBER_TYPES, NUMBER_MAP, throwError } from './common-number'
+import { NUMBER_TYPES, NUMBER_MAP, RADIX_FORMATS, throwError } from './common-number'
 
 const bigintSchema = new Schema(
   "bigint",
@@ -16,7 +16,7 @@ const bigintSchema = new Schema(
   { min:        { type: "bigint", optional: true,  null: false } },
   { max:        { type: "bigint", optional: true,  null: false } },
   { multipleOf: { type: "bigint", optional: true,  null: false } },
-  { format:     { type: "string", optional: true,  null: false, choices: ["decimal", "hex", "octal", "binary"], default:"decimal" } },
+  { format:     { type: "string", optional: true,  null: false, choices: ["decimal", "hex", "octal", "binary", "scientific"], default:"decimal" } },
   { optional:   { type: "bool",   optional: true } },
   { null:       { type: "bool",   optional: true } },
 )
@@ -54,12 +54,31 @@ class BigIntDef implements TypeDef {
     // Validate before stringifying
     this.validate(memberDef, value)
 
-    // Explicit display formats emit a plain numeric string (no `n` suffix), like hex/octal/binary.
-    if (memberDef.format === 'hex') { return value.toString(16) }
-    if (memberDef.format === 'octal') { return value.toString(8) }
-    if (memberDef.format === 'binary') { return value.toString(2) }
-    if (memberDef.format === 'decimal') { return value.toString() }
-    // Default IO literal form keeps the `n` suffix so it re-parses as a bigint, not a number.
+    // A display `format` only changes the BASE, never the type. The base prefix and the `n`
+    // suffix are both required, or the output no longer re-parses as the bigint it came from
+    // (bare `ff` is an open string, and `0xff` is a number). See io-specs
+    // `serialization/value-formatting.md`.
+    const radix = RADIX_FORMATS[memberDef.format as keyof typeof RADIX_FORMATS]
+    if (radix) {
+      const [prefix, base] = radix
+      const negative = value < 0n
+      return `${negative ? '-' : ''}${prefix}${(negative ? -value : value).toString(base)}n`
+    }
+
+    // Scientific. A bigint has no fractional part, so the mantissa stays an integer and the
+    // exponent is never negative: trailing zeros move into the exponent (`1200000n` -> `12e5n`)
+    // and a value with none is written `e0` (`255n` -> `255e0n`). Anything else — a fractional
+    // mantissa, a negative exponent — is not a valid bigint literal.
+    if (memberDef.format === 'scientific') {
+      const digits = (value < 0n ? -value : value).toString()
+      const mantissa = digits.replace(/0+$/, '')
+      // An all-zero magnitude leaves nothing behind; `0` is its own mantissa.
+      const trimmed = mantissa === '' ? '0' : mantissa
+      const exponent = digits.length - trimmed.length
+      return `${value < 0n ? '-' : ''}${trimmed}e${exponent}n`
+    }
+
+    // Default (and the explicit `decimal` format) is the plain IO literal form.
     return value.toString() + 'n'
   }
 

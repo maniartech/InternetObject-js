@@ -45,24 +45,27 @@ describe('load() and stringify() - advanced types', () => {
   describe('BigIntDef.stringify', () => {
     const bigint = new BigIntDef()
 
+    // A `format` changes the BASE only. The base prefix and the `n` suffix are both part of the
+    // literal, or the output stops being a bigint on re-parse (ISSUE-16 row d).
     test('stringifies to decimal format by default', () => {
       const memberDef: any = { type: 'bigint', path: 'value', format: 'decimal' }
-      expect(bigint.stringify(42n, memberDef)).toBe('42')
+      expect(bigint.stringify(42n, memberDef)).toBe('42n')
     })
 
     test('stringifies to hex format', () => {
       const memberDef: any = { type: 'bigint', path: 'value', format: 'hex' }
-      expect(bigint.stringify(255n, memberDef)).toBe('ff')
+      expect(bigint.stringify(255n, memberDef)).toBe('0xffn')
+      expect(bigint.stringify(-255n, memberDef)).toBe('-0xffn')
     })
 
     test('stringifies to octal format', () => {
       const memberDef: any = { type: 'bigint', path: 'value', format: 'octal' }
-      expect(bigint.stringify(8n, memberDef)).toBe('10')
+      expect(bigint.stringify(8n, memberDef)).toBe('0o10n')
     })
 
     test('stringifies to binary format', () => {
       const memberDef: any = { type: 'bigint', path: 'value', format: 'binary' }
-      expect(bigint.stringify(5n, memberDef)).toBe('101')
+      expect(bigint.stringify(5n, memberDef)).toBe('0b101n')
     })
 
     test('validates before stringifying', () => {

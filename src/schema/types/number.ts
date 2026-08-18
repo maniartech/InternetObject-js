@@ -8,7 +8,7 @@ import Schema from '../../schema/schema'
 import TypeDef from '../../schema/typedef'
 import doCommonTypeCheck from './common-type'
 import MemberDef from './memberdef'
-import { NUMBER_TYPES, NUMBER_MAP, throwError } from './common-number'
+import { NUMBER_TYPES, NUMBER_MAP, RADIX_FORMATS, throwError } from './common-number'
 import BigIntDef from './bigint'
 import DecimalDef from './decimal'
 
@@ -104,11 +104,25 @@ class NumberDef implements TypeDef {
       return (this._delegateTypeDef as any).stringify(checkedValue, memberDef, defs)
     }
 
+    // `Infinity`/`NaN` are JS spellings that do not re-parse as IO values; IO spells them
+    // `Inf` / `-Inf` / `NaN`.
+    if (typeof checkedValue === 'number' && !Number.isFinite(checkedValue)) {
+      if (Number.isNaN(checkedValue)) return 'NaN'
+      return checkedValue > 0 ? 'Inf' : '-Inf'
+    }
+
     // Handle standard number types
     if (memberDef.format === 'scientific') { return checkedValue.toExponential() }
-    if (memberDef.format === 'hex') { return checkedValue.toString(16) }
-    if (memberDef.format === 'octal') { return checkedValue.toString(8) }
-    if (memberDef.format === 'binary') { return checkedValue.toString(2) }
+
+    // A radix `format` needs its IO prefix (`0xff`, not `ff`) or the output re-parses as an
+    // open string rather than a number. It also only makes sense for integers — a fractional
+    // value has no IO radix literal at all, so fall back to the decimal spelling.
+    const radix = RADIX_FORMATS[memberDef.format as keyof typeof RADIX_FORMATS]
+    if (radix && Number.isInteger(checkedValue)) {
+      const [prefix, base] = radix
+      const negative = checkedValue < 0
+      return `${negative ? '-' : ''}${prefix}${Math.abs(checkedValue).toString(base)}`
+    }
 
     return checkedValue.toString()
   }

@@ -530,6 +530,7 @@ class Tokenizer {
     let hasDecimal = false;
     let hasExponent = false;
     let prefix = "";
+    let signStr = "";
     let subType: string | undefined;
 
     // Check if current position points to a plus or minus sign.
@@ -551,6 +552,7 @@ class Tokenizer {
       // Otherwise, allow sign only if immediately followed by a digit or dot.
       if (is.isDigit(this.input[this.pos + 1]) || this.input[this.pos + 1] === ".") {
         rawValue += sign;
+        signStr = sign;
         this.advance();
       } else {
         return null;
@@ -579,12 +581,16 @@ class Tokenizer {
 
     // Determine the number format
     if (this.input[this.pos] === "0" && nonDecimalPrefixes.includes(this.input[this.pos + 1] as any)) {
+      // A sign is spelled BEFORE the base prefix (`-0xff`), never inside the digits. It was
+      // buffered into `rawValue` above for the decimal paths; move it into `prefix` here so the
+      // assembled literal reads `-0xff` and not `0x-ff` (which is not a number at all).
+      rawValue = "";
       switch (this.input[this.pos + 1]) {
         case "X":
         case "x":
           base = 16;
           subType = "HEX";
-          prefix = this.input[this.pos] + this.input[this.pos + 1];
+          prefix = signStr + this.input[this.pos] + this.input[this.pos + 1];
           this.advance(2);
           while (!this.reachedEnd && reHex.test(this.input[this.pos])) {
             rawValue += this.input[this.pos];
@@ -596,7 +602,7 @@ class Tokenizer {
         case "o":
           base = 8;
           subType = "OCTAL";
-          prefix = this.input[this.pos] + this.input[this.pos + 1];
+          prefix = signStr + this.input[this.pos] + this.input[this.pos + 1];
           this.advance(2);
           while (!this.reachedEnd && reOctal.test(this.input[this.pos])) {
             rawValue += this.input[this.pos];
@@ -608,7 +614,7 @@ class Tokenizer {
         case "b":
           base = 2;
           subType = "BINARY";
-          prefix = this.input[this.pos] + this.input[this.pos + 1];
+          prefix = signStr + this.input[this.pos] + this.input[this.pos + 1];
           this.advance(2);
           while (!this.reachedEnd && reBinary.test(this.input[this.pos])) {
             rawValue += this.input[this.pos];
@@ -657,13 +663,15 @@ class Tokenizer {
     // prefix letter; the caller then merges the remainder into an OPEN_STRING, exactly
     // like `0b12`-style recovery. This keeps the lenient-tokenizer contract (never throw).
     if (base !== 10 && rawValue === "") {
-      // start + 1 is the prefix letter (x/o/b), which always exists, so we are no
-      // longer at end-of-input; keep the cached `reachedEnd` flag consistent with pos.
-      this.pos = start + 1;
+      // The prefix letter (x/o/b) sits just past the optional sign and the `0`, and always
+      // exists, so we are no longer at end-of-input; keep the cached `reachedEnd` flag
+      // consistent with pos.
+      const consumed = signStr.length + 1; // sign (if any) + the leading `0`
+      this.pos = start + consumed;
       this.row = startRow;
-      this.col = startCol + 1;
+      this.col = startCol + consumed;
       this.reachedEnd = false;
-      return Token.init(start, startRow, startCol, "0", 0, TokenType.NUMBER);
+      return Token.init(start, startRow, startCol, signStr + "0", 0, TokenType.NUMBER);
     }
 
     let tokenType = TokenType.NUMBER;
@@ -698,7 +706,12 @@ class Tokenizer {
             bigIntValue = BigInt(sci[1]) * (10n ** BigInt(sci[2]));
           }
         } else {
-          bigIntValue = BigInt(prefix + rawValue);
+          // `BigInt()` accepts `0xff` and `-42`, but NOT a signed radix literal like `-0xff`.
+          // Negate the unsigned magnitude instead of handing it the sign.
+          const literal = prefix + rawValue;
+          bigIntValue = literal.startsWith("-")
+            ? -BigInt(literal.slice(1))
+            : BigInt(literal.startsWith("+") ? literal.slice(1) : literal);
         }
       }
       if (bigIntValue === null) {
@@ -742,7 +755,9 @@ class Tokenizer {
       if (base === 10 && (hasDecimal || hasExponent)) {
         numberValue = parseFloat(rawValue);
       } else {
+        // For a radix literal the sign now lives in `prefix`, so apply it to the magnitude.
         numberValue = parseInt(rawValue, base);
+        if (base !== 10 && prefix.startsWith("-")) numberValue = -numberValue;
         if (isNaN(numberValue as number)) {
           assertNever("Expected a number but got NaN", this.currentPosition.getStartPos());
         }
