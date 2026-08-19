@@ -49,6 +49,19 @@ export default class IOSchema {
     }
   }
 
+  /**
+   * The wildcard's MemberDef, when the schema is open WITH a type (`*: int`, `*: $item`).
+   *
+   * `undefined` for a bare `*` (open, unconstrained) and for a closed schema. The wildcard lives
+   * HERE and nowhere else. It used to be written to `defs['*']` as well -- the same object filed
+   * under a member name it does not have -- and `defs` is keyed by member NAME, so it collided with
+   * a schema that declares a member literally called `*` (written `"*"`). Bare `*` is grammar;
+   * quoted `"*"` is a name.
+   */
+  get wildcard(): MemberDef | undefined {
+    return typeof this.open === 'object' && this.open !== null ? this.open as MemberDef : undefined;
+  }
+
   /** Returns the member definition of the given member name. */
   get(name: string): MemberDef | undefined {
     return this.defs[name];

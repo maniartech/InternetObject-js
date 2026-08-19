@@ -19,6 +19,8 @@ const schema = new Schema(
   { len:      { type: "number", optional: true,  null: false, min: 0 } },
   { minLen:   { type: "number", optional: true,  null: false, min: 0 } },
   { maxLen:   { type: "number", optional: true,  null: false, min: 0 } },
+  { optional: { type: "bool",   optional: true } },
+  { null:     { type: "bool",   optional: true } },
 )
 
 class ArrayDef implements TypeDef {

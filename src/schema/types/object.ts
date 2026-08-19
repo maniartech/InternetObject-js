@@ -379,6 +379,15 @@ class ObjectDef implements TypeDef {
     // Resolve schema - it might be a TokenNode reference (e.g., $schemaName)
     let schema = this._resolveSchema(memberDef.schema, defs)
 
+    // A `schema:` member may REFERENCE an already-compiled definition (`{object, schema: $address}`)
+    // rather than spell the shape inline. Such a reference resolves to a Schema, not an ObjectNode,
+    // so it has to be accepted before the object-shape check below -- otherwise the long memberdef
+    // form is rejected as `invalid-object`, and that form is the only way to mark a QUOTED member
+    // name optional or nullable (`"a,b"?:` is not valid syntax).
+    if (memberDef.__schema && valueNode instanceof Schema) {
+      return valueNode
+    }
+
     if (valueNode instanceof ObjectNode === false) {
       throw new ValidationError(ErrorCodes.invalidObject, `Expecting an object value for '${memberDef.path}'`, node)
     }
