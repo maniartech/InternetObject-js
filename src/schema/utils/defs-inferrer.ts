@@ -36,6 +36,9 @@ interface InferenceContext {
   // Track which property paths have been identified as dynamic collections
   // This allows us to treat single-item instances consistently
   dynamicPaths: Set<string>;
+  // Paths where some instance CONTRADICTS map-shapedness — a record whose values are not all
+  // records, so no `{*: $item}` could describe it. Subtracted from dynamicPaths after the scan.
+  dynamicContradictions: Set<string>;
   // Wildcard container schemas (e.g. `$questions: {*: $question}`) created while inferring
   // members for dynamic-key objects. Registered into definitions AFTER all item schemas merge so
   // the header lists dependencies first ($question before $questions). Keyed by container name to
@@ -489,10 +492,13 @@ export function inferMultiSectionDefs(data: Record<string, any[]>): {
     resolvedNames: new Map(),
     pendingMerge: new Set(),
     dynamicPaths: new Set(),
+    dynamicContradictions: new Set(),
     pendingContainers: new Map()
   };
 
   preScanDynamicPaths(data, [], ctx);
+  // A path contradicted by any instance is not a map, however many siblings look like one.
+  for (const path of ctx.dynamicContradictions) ctx.dynamicPaths.delete(path);
 
   // Collect every array item as an instance of its section's item schema (path = [key], matching
   // how nested-array items are collected elsewhere so conflict resolution behaves identically).
@@ -593,12 +599,15 @@ export function inferDefs(data: any): InferredDefs {
     resolvedNames: new Map(),
     pendingMerge: new Set(),
     dynamicPaths: new Set(),
+    dynamicContradictions: new Set(),
     pendingContainers: new Map()
   };
 
   // Phase 0: Pre-scan to identify ALL dynamic paths across the entire data structure
   // This ensures that even single-item siblings are treated as dynamic if any sibling has multiple items
   preScanDynamicPaths(data, [], ctx);
+  // A path contradicted by any instance is not a map, however many siblings look like one.
+  for (const path of ctx.dynamicContradictions) ctx.dynamicPaths.delete(path);
 
   // Phase 1 & 2: Discovery and Collection
   // First pass to identify schema types and collect all instances with paths
@@ -671,6 +680,15 @@ function preScanDynamicPaths(
         // Check if this looks like a dynamic-key object
         if (isDynamicKeyObject(value)) {
           ctx.dynamicPaths.add(pathKey);
+        }
+        // ...and record the opposite. A map is `{*: $item}`, so EVERY value must be a record. One
+        // instance holding a scalar (`b: {a: "x"}`) cannot be described that way, and marking the
+        // path dynamic on the strength of a SIBLING emitted a wildcard the data then failed:
+        // "Expecting an object value for '*' but found string". Evidence only ever weakens — the
+        // same rule array element types already follow.
+        const values = Object.values(value);
+        if (values.length > 0 && !values.every(v => isPlainRecord(v))) {
+          ctx.dynamicContradictions.add(pathKey);
         }
 
         // Recursively scan into the object's values
@@ -757,7 +775,10 @@ function collectNestedInstances(
       // Check if this path is marked as dynamic (from pre-scan phase)
       // OR if it currently looks like a dynamic-key object
       const pathKey = currentPath.join('.');
-      const isDynamic = ctx.dynamicPaths.has(pathKey) || isDynamicKeyObject(value);
+      // A contradiction at this path beats a per-instance look: one sibling holding a scalar
+      // means no `{*: $item}` can describe the path, however map-shaped THIS instance is.
+      const isDynamic = !ctx.dynamicContradictions.has(pathKey) &&
+        (ctx.dynamicPaths.has(pathKey) || isDynamicKeyObject(value));
 
       if (isDynamic) {
         // Ensure this path is marked as dynamic
@@ -1152,7 +1173,8 @@ function inferMemberDefSimple(
       // Also check dynamicPaths for single-item objects that were identified as dynamic
       // because a sibling has multiple items
       const fullPathKey = fullPath.join('.');
-      if (isDynamicKeyObject(value) || ctx.dynamicPaths.has(fullPathKey)) {
+      if (!ctx.dynamicContradictions.has(fullPathKey) &&
+          (isDynamicKeyObject(value) || ctx.dynamicPaths.has(fullPathKey))) {
         // Dynamic-keyed object (map): link via a wildcard container schema — the member references
         // `$<key>` and `$<key>: {*: $<item>}` is queued, so the item schema is actually used.
         // (A direct schemaRef would wrongly describe the CONTAINER as an item.)

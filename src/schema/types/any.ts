@@ -207,7 +207,12 @@ export default class AnyDef implements TypeDef {
     if (typeof value === 'string') {
       const stringDef = TypedefRegistry.get('string')
       if (stringDef && 'stringify' in stringDef && typeof stringDef.stringify === 'function') {
-        return stringDef.stringify(value, { type: 'string', path, format: 'open' } as MemberDef, defs) ?? value
+        // `auto`, never `open`. An open string is written bare, so a value that LOOKS like
+        // another type stops being a string on the way back: "0" returned as the number 0, "true"
+        // as a boolean, "  p" with its spaces trimmed. `auto` quotes exactly when leaving it bare
+        // would change the value, which is the whole point of an untyped member preserving what it
+        // was given.
+        return stringDef.stringify(value, { type: 'string', path, format: 'auto' } as MemberDef, defs) ?? value
       }
       return value
     }

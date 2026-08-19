@@ -266,7 +266,16 @@ class ObjectDef implements TypeDef {
         } else if (typeof value === 'boolean') {
           strValue = value ? 'T' : 'F'
         } else if (typeof value === 'string') {
-          strValue = value
+          // Through the string typedef in `auto` form, NOT verbatim. Written bare, a string that
+          // looks like another type stops being a string on the way back: "0" returned as the
+          // number 0, "true" as a boolean, "  p" with its spaces trimmed. `auto` quotes exactly
+          // when leaving it bare would change the value. The open-schema branch above already
+          // did this; this branch — the no-schema one, which is where an untyped member's nested
+          // object lands — did not.
+          const stringDef = TypedefRegistry.get('string')
+          strValue = (stringDef && 'stringify' in stringDef && typeof stringDef.stringify === 'function'
+            ? stringDef.stringify(value, { type: 'string', path: basePath, format: 'auto' } as MemberDef, defs)
+            : undefined) ?? value
         } else if (anyDef && 'stringify' in anyDef && typeof anyDef.stringify === 'function') {
           // number / bigint / Decimal / Date / array / nested object → IO serialization (not JSON)
           strValue = anyDef.stringify(value, { type: 'any', path: basePath } as MemberDef, defs) ?? JSON.stringify(value)
