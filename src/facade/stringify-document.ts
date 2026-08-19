@@ -171,9 +171,11 @@ export function stringifyDocument(
  */
 function stringifySchema(schema: any, options: StringifyOptions): string {
   if (!schema || !schema.defs) return '';
-  // A wildcard-only schema ({*: $item}) has no declared names but must still emit its `*` member.
+  // A wildcard-only schema ({*: $item}, or a bare {*}) has no declared names but must still emit
+  // its `*` member. A bare `*` is recorded as `open === true` rather than in defs.
   const hasNames = schema.names && schema.names.length > 0;
-  if (!hasNames && !schema.defs[WILDCARD_KEY]) return '';
+  const isBareOpen = schema.open === true;
+  if (!hasNames && !schema.defs[WILDCARD_KEY] && !isBareOpen) return '';
 
   const includeTypes = options.includeTypes ?? false;
   const parts: string[] = [];
@@ -206,7 +208,9 @@ function stringifySchema(schema: any, options: StringifyOptions): string {
     parts.push(fieldDef);
   }
 
-  // Append wildcard open schema definition if present
+  // Append the wildcard member if present. A TYPED wildcard ({*: string}) lives in defs; a BARE
+  // one ({*}) is recorded only as `open === true`. Dropping either turns an open schema into a
+  // closed one, which is a different contract and rejects data the original accepted.
   if (schema.defs && schema.defs[WILDCARD_KEY]) {
     const openDef: MemberDef = schema.defs[WILDCARD_KEY];
     let wildcard = WILDCARD_KEY;
@@ -215,6 +219,8 @@ function stringifySchema(schema: any, options: StringifyOptions): string {
       wildcard += `:${typeAnnotation}`;
     }
     parts.push(wildcard);
+  } else if (schema.open === true) {
+    parts.push(WILDCARD_KEY);
   }
 
   return parts.join(', ');

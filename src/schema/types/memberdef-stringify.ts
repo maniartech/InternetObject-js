@@ -1,5 +1,5 @@
 import MemberDef from './memberdef';
-import { STANDARD_MEMBERDEF_PROPS, IO_MARKERS } from '../../facade/serialization-constants';
+import { STANDARD_MEMBERDEF_PROPS, IO_MARKERS, WILDCARD_KEY } from '../../facade/serialization-constants';
 import TokenNode from '../../parser/nodes/tokens';
 import { formatObjectKey } from '../../utils/string-formatter';
 
@@ -125,6 +125,18 @@ function formatNestedSchema(schema: any): string {
 
       nestedFields.push(nestedField);
     }
+  }
+
+  // A nested schema may be OPEN (`{*: string}`, `{*: $item}`) just as a top-level one may.
+  // Without this the wildcard was dropped and the schema serialized as `{}` -- a different
+  // contract entirely, and one the data no longer validates against.
+  // A TYPED wildcard lives in defs; a BARE one ({*}) is recorded only as `open === true`.
+  const wildcard = schema.defs?.[WILDCARD_KEY];
+  if (wildcard) {
+    const typeAnnotation = stringifyMemberDef(wildcard, true);
+    nestedFields.push(typeAnnotation ? `${WILDCARD_KEY}: ${typeAnnotation}` : WILDCARD_KEY);
+  } else if (schema.open === true) {
+    nestedFields.push(WILDCARD_KEY);
   }
 
   return `{${nestedFields.join(', ')}}`;

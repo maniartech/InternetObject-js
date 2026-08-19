@@ -82,6 +82,11 @@ function isArrayOfPrimitives(arr: any[]): boolean {
 function isArrayOfObjects(arr: any[]): boolean {
   return arr.some(item => {
     if (item === null || item === undefined) return false;
+    // A nested ARRAY is `typeof 'object'` but is not an object: `[[a, b], [c, d]]` is an array of
+    // arrays and must keep its bracket form. Counting it here expanded it one-item-per-line AND
+    // routed each inner array through the object formatter, which printed it with positional keys
+    // (`{"0": a, "1": b}`) -- a different shape on the page from the one in the data.
+    if (Array.isArray(item)) return false;
     if (typeof item === 'object' && !(item instanceof Date) && !(item instanceof Uint8Array)) return true;
     return false;
   });
@@ -214,8 +219,10 @@ function formatArray(arr: any[], ctx: FormatContext, schema?: Schema): string {
 
   const parts: string[] = [];
   for (const item of arr) {
-    if (shouldExpand && typeof item === 'object' && item !== null && !(item instanceof Date)) {
-      // For expanded arrays, format each object inline (wrapped in braces)
+    if (shouldExpand && typeof item === 'object' && item !== null &&
+        !Array.isArray(item) && !(item instanceof Date)) {
+      // For expanded arrays, format each object inline (wrapped in braces). A nested array is
+      // excluded: it goes through formatValue below and keeps its brackets.
       parts.push(formatNestedObject(item, { ...ctx, isNested: true, level: ctx.level + 1 }, schema));
     } else {
       parts.push(formatValue(item, { ...ctx, isNested: true }, schema));
