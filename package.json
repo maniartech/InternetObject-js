@@ -79,7 +79,9 @@
     "bundle:test-full": "bash scripts/bundle-test-full.sh",
     "bundle:compare": "bash scripts/bundle-compare.sh",
     "bundle:budget-check": "bash scripts/bundle-budget-check.sh",
-    "corpus": "tsx tools/corpus/verify.ts"
+    "corpus": "tsx tools/corpus/verify.ts",
+    "corpus:bootstrap": "tsx tools/corpus/bootstrap-csv.ts",
+    "corpus:tokens": "tsx tools/corpus/verify-bootstrap.ts"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",

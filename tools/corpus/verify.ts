@@ -53,7 +53,13 @@ function kindOf(file: string): Kind {
   return 'parse';
 }
 
+// `tokens` has a comparator, but it runs against the BOOTSTRAP CSV rather than the .io source --
+// the .io tokenizer suites express their data with the very syntax under test. See
+// tools/corpus/verify-bootstrap.ts, run by `npm run corpus:tokens`.
 const SUPPORTED: ReadonlySet<Kind> = new Set<Kind>(['parse', 'validation']);
+const ELSEWHERE: ReadonlyMap<Kind, string> = new Map<Kind, string>([
+  ['tokens', 'npm run corpus:tokens'],
+]);
 
 /** Reduce a value to the corpus's neutral spelling so two languages can be compared at all. */
 function norm(v: any): any {
@@ -92,8 +98,10 @@ for (const file of files) {
   const rows: any[] = Array.isArray(projected) ? projected : (projected?.data ?? []);
 
   if (!SUPPORTED.has(kind)) {
+    const via = ELSEWHERE.get(kind);
     skipped += rows.length;
-    console.log(`skip ${file.padEnd(52)} ${String(rows.length).padStart(3)} cases — no '${kind}' comparator yet`);
+    console.log(`skip ${file.padEnd(52)} ${String(rows.length).padStart(3)} cases — ` +
+      (via ? `run by \`${via}\`` : `no '${kind}' comparator yet`));
     continue;
   }
 
