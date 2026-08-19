@@ -52,7 +52,7 @@ describe('Qualtrics Survey Structure', () => {
     expect(questionSchema!.defs['choices'].schemaRef).toBe('$choices');
     const choicesContainer = definitions.get('$choices');
     expect(choicesContainer).toBeDefined();
-    expect((choicesContainer as any).defs['*'].schemaRef).toBe('$choice');
+    expect((choicesContainer as any).wildcard.schemaRef).toBe('$choice');
 
     // questionType should either be merged or plain object (depending on common keys)
     // Since all questionTypes share 'type' key, they should merge

@@ -96,14 +96,17 @@ describe('adversarial keys cannot corrupt the schema', () => {
     roundTrips(v);
   });
 
-  test('a literal `*` key degrades to an untyped object instead of an invalid header', () => {
-    // `*` IS the wildcard in schema syntax, so no schema can declare a member by that name.
-    // The data is unaffected -- the key is quoted in data rows.
+  test('a literal `*` key is an ordinary member, declared by name', () => {
+    // `*` is the wildcard only when written BARE. Quoted, it is a name like any other
+    // (OPEN-DECISIONS D1), so a `*` key is declared rather than degraded to an untyped object --
+    // which is what it used to be, because the wildcard occupied the same slot in `defs`.
     const v = { p: { '*': 'wild', a: 1 } };
-    expect(header(v)).toContain('p: object');
+    expect(header(v)).toContain('"*": string');
     roundTrips(v);
     roundTrips({ m: [{ '*': 1 }, { '*': 2 }] });        // in an array
     roundTrips({ m: { k1: { '*': 1 }, k2: { '*': 2 } } }); // in a map-shaped container
+    roundTrips({ '*': null });                            // at the root, nullable
+    roundTrips({ rules: { '*': 'allow', admin: 'deny' } });
   });
 });
 

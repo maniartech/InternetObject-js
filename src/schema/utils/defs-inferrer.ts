@@ -50,6 +50,28 @@ interface InferenceContext {
  * collection-time and memberdef-time lookups stay consistent; collisions introduced by the
  * sanitization flow through the existing conflict-resolution machinery.
  */
+/**
+ * The member a root value is bound to when it is NOT a collection of records.
+ *
+ * Unlike JSON, IO accepts a non-object root value — and PROMOTES it to a record under its
+ * positional key. `---` followed by `[1, 2, 3]` reads as `{ "0": [1, 2, 3] }`, and a bare `42`
+ * reads as `{ "0": 42 }`. So inference must use that same name: writing the array under an
+ * invented member (`value`) produced a document that read back as `{ value: [...] }`, disagreeing
+ * with what the parser does with the very same data written by hand.
+ *
+ * Exported so the loader binds the data the way the schema was built; when the two disagree the
+ * document is written with an error object per element.
+ */
+export const ROOT_VALUE_MEMBER = '0';
+
+/**
+ * True when a root array is a COLLECTION of records — the shape inference builds a per-item schema
+ * for. An array of scalars, or of arrays, is not: it is wrapped in {@link ROOT_VALUE_MEMBER}.
+ */
+export function isRecordCollection(data: any): boolean {
+  return Array.isArray(data) && data.some(isPlainRecord);
+}
+
 function safeName(key: string): string {
   return key.replace(/[^A-Za-z0-9_]/g, '_');
 }
@@ -116,16 +138,15 @@ function inferDynamicContainerMemberDef(
     ctx.schemaRegistry.has(containerName) || ctx.schemaInstances.has(containerName);
   if (containerName === resolvedItem || containerTaken) {
     const inline = new Schema('');
-    inline.defs['*'] = { type: 'object', path: '*', schemaRef: resolvedItem };
-    inline.open = inline.defs['*'];
+    inline.open = { type: 'object', path: '*', schemaRef: resolvedItem };
     return { type: 'object', path, schema: inline };
   }
 
   if (!ctx.pendingContainers.has(containerName)) {
-    const wildcardDef: MemberDef = { type: 'object', path: '*', schemaRef: resolvedItem };
     const container = new Schema(containerName);
-    container.defs['*'] = wildcardDef;   // serialized as `{*: $item}` (names stays empty)
-    container.open = wildcardDef;        // validation: every undeclared key must match $item
+    // Serialized as `{*: $item}` (names stays empty); on validation every undeclared key must
+    // match $item. The wildcard lives on `open` alone -- see Schema.wildcard.
+    container.open = { type: 'object', path: '*', schemaRef: resolvedItem };
     ctx.pendingContainers.set(containerName, container);
   }
 
@@ -158,7 +179,7 @@ function schemaSignature(schema: Schema): string {
   // collide with {a: string, b: string}, silently merging two unrelated schemas and making the
   // emitted document fail its own validation.
   const members = (schema.names ?? []).map(n => `${JSON.stringify(n)}:${memberSig(schema.defs[n])}`);
-  const wildcard = schema.defs?.['*'] ? `*:${memberSig(schema.defs['*'])}` : (schema.open === true ? '*' : '');
+  const wildcard = schema.wildcard ? `*:${memberSig(schema.wildcard)}` : (schema.open === true ? '*' : '');
   return `${members.join(',')}${wildcard ? ';' + wildcard : ''}`;
 }
 
@@ -181,6 +202,98 @@ function rewriteRefs(md: any, alias: Map<string, string | null>): void {
 function rewriteSchemaRefs(schema: Schema, alias: Map<string, string | null>): void {
   for (const key of Object.keys(schema.defs ?? {})) rewriteRefs(schema.defs[key], alias);
   if (schema.open && typeof schema.open === 'object') rewriteRefs(schema.open, alias);
+}
+
+/**
+ * Drop every `schemaRef` that names no definition.
+ *
+ * A member takes its item-schema reference while walking the data, before the schema itself is
+ * built -- and an item schema that turns out EMPTY is never registered at all, leaving `[$zz]` in
+ * the header with no `$zz` and a `schema-not-defined` on re-parse. The reference is what is wrong,
+ * not the member: dropping it degrades `[$zz]` to `array` and `{object, schema: $zz}` to `object`,
+ * which is what an empty schema constrained anyway (Rule 1).
+ *
+ * Runs after the fixed point, so it sees the final definition set. References are checked by name
+ * and never followed, so a recursive schema (`$node: { children: [$node] }`) cannot loop.
+ */
+function pruneDanglingRefs(ctx: InferenceContext, rootSchema: Schema | null): void {
+  const defined = new Set(ctx.definitions.keys);
+
+  function dropRef(md: any): void {
+    if (!md || typeof md !== 'object') return;
+    if (md.schemaRef && !defined.has(md.schemaRef)) delete md.schemaRef;
+    if (md.schema && typeof md.schema !== 'string' && md.schema.defs) walkSchema(md.schema);
+    if (md.of) dropRef(md.of);
+  }
+
+  function walkSchema(schema: Schema | undefined | null): void {
+    if (!schema) return;
+    for (const key of Object.keys(schema.defs ?? {})) dropRef(schema.defs[key]);
+    if (schema.open && typeof schema.open === 'object') dropRef(schema.open);
+  }
+
+  for (const name of ctx.definitions.keys) walkSchema(ctx.schemaRegistry.get(name));
+  walkSchema(rootSchema);
+}
+
+/** Every definition NAME this schema references directly (not transitively). */
+function directRefs(schema: Schema | undefined | null): Set<string> {
+  const out = new Set<string>();
+  if (!schema) return out;
+
+  function fromMember(md: any): void {
+    if (!md || typeof md !== 'object') return;
+    if (md.schemaRef) out.add(md.schemaRef);
+    if (md.schema && typeof md.schema !== 'string' && md.schema.defs) fromSchema(md.schema);
+    if (md.of) fromMember(md.of);
+  }
+  function fromSchema(s: any): void {
+    for (const key of Object.keys(s.defs ?? {})) fromMember(s.defs[key]);
+    if (s.open && typeof s.open === 'object') fromMember(s.open);
+  }
+
+  fromSchema(schema);
+  return out;
+}
+
+/**
+ * Order the definitions so each one follows everything it references.
+ *
+ * A definition that references another is COMPILED where it stands, so a forward reference
+ * (`$10` naming `$a_b` two lines before `$a_b` exists) fails -- and fails with a misleading
+ * `unexpected-positional-member` pointing at the target's own line. Inference discovers schemas in
+ * data order, which is not dependency order, and canonicalization preserves whatever order it was
+ * handed.
+ *
+ * Stable depth-first post-order: definitions keep their relative order except where a dependency
+ * forces one earlier. A cycle (`$node: { children: [$node] }`, which is legal and works) is left
+ * in its existing order rather than broken arbitrarily.
+ */
+function orderDefinitionsByDependency(ctx: InferenceContext): void {
+  const names = ctx.definitions.keys.filter(k => k !== '$schema');
+  const known = new Set(names);
+  const placed = new Set<string>();
+  const order: string[] = [];
+
+  function visit(name: string, onPath: Set<string>): void {
+    if (placed.has(name) || onPath.has(name)) return;   // done, or a cycle -- leave it be
+    onPath.add(name);
+    for (const ref of directRefs(ctx.schemaRegistry.get(name))) {
+      if (known.has(ref)) visit(ref, onPath);
+    }
+    onPath.delete(name);
+    placed.add(name);
+    order.push(name);
+  }
+
+  for (const name of names) visit(name, new Set());
+
+  const rebuilt = new Definitions();
+  for (const name of order) {
+    const schema = ctx.schemaRegistry.get(name);
+    if (schema) rebuilt.push(name, schema, true, false);
+  }
+  ctx.definitions = rebuilt;
 }
 
 /**
@@ -218,7 +331,7 @@ function canonicalizeDefinitions(
       const schema = ctx.schemaRegistry.get(name);
       if (!schema) continue;
       const hasMembers = (schema.names?.length ?? 0) > 0;
-      const hasWildcard = !!schema.defs?.['*'] || schema.open === true;
+      const hasWildcard = !!schema.wildcard || schema.open === true;
       if (!hasMembers && !hasWildcard) alias.set(name, null);
     }
 
@@ -337,6 +450,9 @@ function canonicalizeDefinitions(
     }
   }
 
+  pruneDanglingRefs(ctx, rootSchema);
+  orderDefinitionsByDependency(ctx);
+
   return totalAlias;
 }
 
@@ -431,10 +547,6 @@ function isDynamicKeyObject(obj: Record<string, any>): boolean {
   const allObjects = values.every(isPlainRecord);
 
   if (!allObjects) return false;
-
-  // A value with a literal `*` key cannot get an item schema (wildcard collision) -- treating
-  // the container as a map would emit a reference to a schema that is never built.
-  if (values.some(v => '*' in v)) return false;
 
   // Check 2: Find common keys across ALL objects
   const allValueKeys = values.map(v => new Set(Object.keys(v)));
@@ -684,10 +796,6 @@ function addSchemaInstance(
   obj: Record<string, any>,
   ctx: InferenceContext
 ): void {
-  // Backstop for the literal-`*`-key limitation (see inferMemberDefSimple): such a record
-  // must not become a schema instance, or a dangling/invalid definition gets built for it.
-  if ('*' in obj) return;
-
   if (!ctx.schemaInstances.has(baseName)) {
     ctx.schemaInstances.set(baseName, []);
   }
@@ -926,6 +1034,8 @@ function buildMergedSchema(
   for (const key of memberOrder) {
     builder.addMember(key, memberDefs.get(key)!);
   }
+  // A `*` data key is undeclarable (above), so the schema must accept undeclared keys or the
+  // document it describes fails to load with `unknown-member`.
 
   return builder.build();
 }
@@ -1038,11 +1148,6 @@ function inferMemberDefSimple(
       if (value instanceof Date) return { type: 'datetime', path };
       if (value instanceof Decimal) return { type: 'decimal', path };
       if (value instanceof Uint8Array) return { type: 'any', path }; // no `binary` TypeDef yet
-      // A record with a literal `*` key cannot be described: `*` IS the wildcard in schema
-      // syntax and the wildcard slot in the Schema model, so a member by that name emits an
-      // invalid header. The member stays an untyped `object` -- the DATA is unaffected (the
-      // key is quoted in data rows).
-      if (!Array.isArray(value) && '*' in value) return { type: 'object', path };
       // Check if this is a dynamic key object (collection-like)
       // Also check dynamicPaths for single-item objects that were identified as dynamic
       // because a sibling has multiple items
@@ -1084,9 +1189,6 @@ function inferArrayMemberDefSimple(
   // canonical form), so null-bearing arrays infer as plain `array` — a `schemaRef`'d element
   // would reject the nulls the data actually contains (issue #61).
   const hasNulls = arr.some(item => item === null);
-  // A record with a literal `*` key has no schema (see above); referencing one would dangle.
-  const hasStarKeys = arr.some(item => isPlainRecord(item) && '*' in item);
-
   // EVERY element must be a plain object for the array to take an item schema. `some` was wrong:
   // one object among arrays or primitives typed the whole array as `[$item]`, and the elements
   // that were not objects then failed validation on re-parse -- `[['a','b'], {x:1}]` threw
@@ -1096,7 +1198,7 @@ function inferArrayMemberDefSimple(
     isPlainRecord(item)
   );
 
-  if (allObjects && !hasNulls && !hasStarKeys) {
+  if (allObjects && !hasNulls) {
     const baseName = `$${safeName(singularize(path))}`;
     const resolvedName = ctx.resolvedNames.get(pathKey(fullPath, baseName)) || baseName;
     // If conflicted, fall back to plain array without schemaRef
@@ -1141,7 +1243,7 @@ function buildFinalSchema(
   // Fallback for edge cases
   if (data === null || data === undefined) {
     const builder = Schema.create(schemaName);
-    builder.addMember('value', { type: 'any', path: 'value', optional: true });
+    builder.addMember(ROOT_VALUE_MEMBER, { type: 'any', path: ROOT_VALUE_MEMBER, optional: true });
     return builder.build();
   }
 
@@ -1162,7 +1264,7 @@ function buildFinalSchema(
 
   // For primitives at root (unlikely case)
   const builder = Schema.create(schemaName);
-  builder.addMember('value', inferMemberDef(data, 'value', currentPath, ctx));
+  builder.addMember(ROOT_VALUE_MEMBER, inferMemberDef(data, ROOT_VALUE_MEMBER, currentPath, ctx));
   return builder.build();
 }
 

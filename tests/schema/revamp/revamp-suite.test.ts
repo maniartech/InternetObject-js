@@ -132,9 +132,12 @@ describe('Revamp plan coverage (non-invasive)', () => {
     test('additional props with type value canonicalizes and mirrors to schema.open', () => {
       const node = parseFirstChildObject('{ name, *: string }');
       const schema: any = compileObject('Test', node);
-      expect(schema.defs['*']).toBeTruthy();
+      // The wildcard is reachable through `schema.wildcard`, which reads `schema.open`; it is NOT
+      // filed under the member name '*' in `defs` (OPEN-DECISIONS D1).
+      expect(schema.wildcard).toBeTruthy();
+      expect(schema.defs['*']).toBeUndefined();
       expect(typeof schema.open).toBe('object');
-      expect(schema.defs['*'].type || schema.open.type).toBe('string');
+      expect(schema.wildcard.type).toBe('string');
     });
 
     test("schema.names doesn't include '*' (regression guard)", () => {

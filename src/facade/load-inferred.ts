@@ -16,7 +16,7 @@ import Section from '../core/section';
 import SectionCollection from '../core/section-collection';
 import InternetObject from '../core/internet-object';
 import Collection from '../core/collection';
-import { inferDefs, inferMultiSectionDefs, isMultiSectionShape } from '../schema/utils/defs-inferrer';
+import { inferDefs, inferMultiSectionDefs, isMultiSectionShape, isRecordCollection, ROOT_VALUE_MEMBER } from '../schema/utils/defs-inferrer';
 import { loadObject as processObject, loadCollection as processCollection } from '../schema/load-processor';
 import { IOCommonOptions } from './options';
 
@@ -118,8 +118,15 @@ export function loadInferred(
   // Load the data using the inferred schema
   let loadedData: InternetObject | Collection<InternetObject>;
 
-  if (Array.isArray(data)) {
-    loadedData = processCollection(data, rootSchema, definitions, options?.errorCollector);
+  // The loader must read the data the same way inference described it. A root array is a
+  // COLLECTION only when its items are records; an array of scalars or of arrays is instead
+  // wrapped in a single `value` member, and must be handed to the object loader wrapped the same
+  // way. Collection-processing it validated each ELEMENT against a schema meant for the whole
+  // array, which put one error object per element into the document.
+  if (isRecordCollection(data)) {
+    loadedData = processCollection(data as any[], rootSchema, definitions, options?.errorCollector);
+  } else if (Array.isArray(data)) {
+    loadedData = processObject({ [ROOT_VALUE_MEMBER]: data }, rootSchema, definitions);
   } else {
     loadedData = processObject(data, rootSchema, definitions);
   }
