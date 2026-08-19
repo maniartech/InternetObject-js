@@ -15,13 +15,20 @@ import parse from '../../src/parser/index';
  * `duplicate-section-name` — and cleared a previously suspected one that turned out to be a
  * hand-checking mistake.
  *
- * Two case shapes are understood today:
- *   { name, input, expected?, error_codes? }           — `input` is a whole document
- *   { name, schema, input, expected?, error_codes? }   — composed as `~ $schema: { <schema> }` + input
+ * The corpus holds FIVE kinds of assertion, and a case does not say which kind it is: a tokenizer
+ * case and a parser case are both `{ name, input, expected }`. Kind is therefore taken from the
+ * suite's DIRECTORY, which is a corpus gap worth closing — a case should declare its own kind
+ * rather than have every runner, in every language, infer it from a path.
  *
- * NOT yet handled, and silently skipped: `schemaDef` cases (schema/*.io), which assert a compiled
- * shape by SUBSET match, and the tokenizer suites, which assert token streams. Each needs its own
- * comparator.
+ *   parse       parser/, regression/  `input` is a whole document → compare the decoded value
+ *   validation  validation/           `schema` + `input` → compose `~ $schema: { … }` + input
+ *   schemaDef   schema/               compile a schema string → compare the shape by SUBSET
+ *   tokens      tokenizer/            compare the TOKEN STREAM, not a decoded value
+ *   stream      streaming/            compare emitted stream ITEMS ({ items, fatal })
+ *
+ * The first two are implemented. The other three need their own comparators and are reported as
+ * SKIPPED — never as passes, and never as failures, which is what they became when this runner
+ * parsed them as ordinary documents.
  *
  * Values are compared against `toObject()`, which keeps them live, reduced to the corpus's neutral
  * spellings: a binary is a byte array, a decimal its digits, a bigint a tagged string (JSON cannot
@@ -33,6 +40,20 @@ if (files.length === 0) {
   console.error('usage: tsx tools/corpus/verify.ts <file.io> [...]');
   process.exit(2);
 }
+
+type Kind = 'parse' | 'validation' | 'schemaDef' | 'tokens' | 'stream';
+
+/** Which comparator a suite needs. Taken from the path because nothing in a case says so. */
+function kindOf(file: string): Kind {
+  const path = file.replace(/\\/g, '/');
+  if (path.includes('/tokenizer/')) return 'tokens';
+  if (path.includes('/streaming/')) return 'stream';
+  if (path.includes('/schema/')) return 'schemaDef';
+  if (path.includes('/validation/')) return 'validation';
+  return 'parse';
+}
+
+const SUPPORTED: ReadonlySet<Kind> = new Set<Kind>(['parse', 'validation']);
 
 /** Reduce a value to the corpus's neutral spelling so two languages can be compared at all. */
 function norm(v: any): any {
@@ -53,8 +74,10 @@ const show = (v: any) => JSON.stringify(norm(v));
 
 let pass = 0;
 let fail = 0;
+let skipped = 0;
 
 for (const file of files) {
+  const kind = kindOf(file);
   const doc: any = parse(readFileSync(file, 'utf8'), null);
 
   const suiteErrors = doc.getErrors?.() ?? [];
@@ -68,12 +91,18 @@ for (const file of files) {
   const projected: any = doc.toObject();
   const rows: any[] = Array.isArray(projected) ? projected : (projected?.data ?? []);
 
+  if (!SUPPORTED.has(kind)) {
+    skipped += rows.length;
+    console.log(`skip ${file.padEnd(52)} ${String(rows.length).padStart(3)} cases — no '${kind}' comparator yet`);
+    continue;
+  }
+
   let suitePass = 0;
   let suiteFail = 0;
-  let skipped = 0;
+  let suiteSkipped = 0;
 
   for (const row of rows) {
-    if (row.input === undefined) { skipped++; continue; }   // a shape this runner cannot judge yet
+    if (row.input === undefined) { suiteSkipped++; skipped++; continue; }
 
     // A validation case carries only a schema fragment and a data fragment; compose the document.
     const source: string = row.schema !== undefined
@@ -112,9 +141,11 @@ for (const file of files) {
   }
 
   const tag = suiteFail > 0 ? 'FAIL' : ' ok ';
-  const note = skipped > 0 ? `, ${skipped} skipped (unsupported case shape)` : '';
-  console.log(`${tag} ${file.padEnd(52)} ${suitePass} passed, ${suiteFail} failed${note}`);
+  const note = suiteSkipped > 0 ? `, ${suiteSkipped} skipped` : '';
+  console.log(`${tag} ${file.padEnd(52)} ${String(suitePass).padStart(3)} passed, ${suiteFail} failed${note}`);
 }
 
-console.log(`\n${files.length} suite(s): ${pass} passed, ${fail} failed`);
+const total = pass + fail + skipped;
+console.log(`\n${files.length} suite(s): ${pass} passed, ${fail} failed, ${skipped} skipped ` +
+  `— ${pass + fail} of ${total} cases executed (${Math.round(((pass + fail) / total) * 100)}%)`);
 process.exit(fail > 0 ? 1 : 0);
