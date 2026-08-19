@@ -8,13 +8,14 @@ import parse from '../../../src/parser/index'
  */
 const HELLO = [72, 101, 108, 108, 111]
 
-// Extract the byte sequence regardless of how bytes render in JSON (native Buffer -> {type:'Buffer',
-// data:[…]} under JSON.stringify; a plain byte array renders as-is). Cross-language runners map their
-// native byte type to this same sequence.
+// Extract the byte sequence however the bytes are spelled. `toJSON()` is the JSON PROJECTION and
+// JSON has no binary type, so bytes become a base64 string (io-specs json-compatibility.md), while
+// `toObject()` hands back live bytes. A plain byte array is accepted too, so cross-language runners
+// can map their own byte type onto this same sequence.
 function bytesOf(v: any): number[] | null {
   if (Buffer.isBuffer(v) || v instanceof Uint8Array) return [...v]   // live native bytes
   if (Array.isArray(v)) return v                                     // plain byte array
-  if (v && v.type === 'Buffer' && Array.isArray(v.data)) return v.data // Buffer.toJSON() shape
+  if (typeof v === 'string') return [...Buffer.from(v, 'base64')]    // base64 projection (toJSON)
   return null
 }
 

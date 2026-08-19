@@ -1,3 +1,20 @@
+import { toJSONValue } from '../utils/json-projection';
+
+/**
+ * One value on its way out of {@link IOObject.toObject} — containers flattened, everything else
+ * left alone.
+ *
+ * A `Date` / `Decimal` / byte array used to be converted here too, by calling its `toJSON()`. That
+ * made `toObject()` half a JSON projection: a top-level `Date` came back a string while the same
+ * `Date` one level down inside an array stayed a `Date`.
+ */
+function toPlainValue(value: any): any {
+  if (value === null || typeof value !== 'object') return value;
+  if (Array.isArray(value)) return value.map(toPlainValue);
+  if (typeof value.toObject === 'function') return value.toObject();
+  return value;
+}
+
 /**
  * IOObject is an ordered key-value collection that supports both keyed and positional access.
  *
@@ -469,41 +486,32 @@ class IOObject<T = any> implements Iterable<[string | undefined, T]> {
   }
 
   /**
-   * Converts the InternetObject to a plain JavaScript object.
+   * Converts the InternetObject to a plain JavaScript object, with its values LIVE.
    *
-   * Logic:
-   * - Recursively calls `toObject()` on child values if they exist.
-   * - Uses keys where available; otherwise uses numeric indices.
+   * Containers (nested records, collections, arrays) become plain objects and arrays; every other
+   * value is handed back as it is — a `Date` stays a `Date`, a `Decimal` a `Decimal`, bytes stay
+   * bytes. This is the form to work with in code. For the JSON spelling of those values, use
+   * {@link toJSON}.
    *
-   * @returns A plain JavaScript object.
+   * Keys are used where available; otherwise the positional index.
    */
   toObject(): any {
     const obj:any = {}
     this.forEach((value:any, key:string | undefined, index:number) => {
       if (typeof value === "undefined") return
-
-      if (typeof value === 'object') {
-        if (typeof value?.toObject === 'function') {
-           obj[key || index] = value.toObject();
-        } else if (typeof value?.toJSON === 'function') {
-           obj[key || index] = value.toJSON();
-        } else {
-           obj[key || index] = value;
-        }
-      } else {
-        obj[key || index] = value;
-      }
+      obj[key || index] = toPlainValue(value);
     });
 
     return obj;
   }
 
   /**
-   * Alias for toObject().
-   * Used when calling JSON.stringify.
+   * Converts the InternetObject to JSON — the same data as {@link toObject}, with every value
+   * spelled the way JSON can carry it (dates as ISO strings, decimals and bigints as strings,
+   * binary as base64), all the way down. See {@link toJSONValue}.
    */
   toJSON(): any {
-    return this.toObject();
+    return toJSONValue(this.toObject());
   }
 
   /**

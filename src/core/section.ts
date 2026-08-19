@@ -1,3 +1,4 @@
+import { toJSONValue } from '../utils/json-projection';
 import IOCollection from "./collection";
 import IOObject from "./internet-object";
 
@@ -115,11 +116,12 @@ class IOSection<T = any> {
   }
 
   /**
-   * Alias for `toObject()`.
-   * Provides compatibility with `JSON.stringify()`.
+   * Converts to JSON — the same data as {@link toObject}, with every value spelled the way JSON
+   * can carry it (dates as ISO strings, decimals and bigints as strings, binary as base64), all
+   * the way down. See `toJSONValue`.
    */
   public toJSON(options?: { skipErrors?: boolean }): any {
-    return this.toObject(options);
+    return toJSONValue(this.toObject(options));
   }
 }
 

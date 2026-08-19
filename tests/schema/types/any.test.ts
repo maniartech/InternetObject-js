@@ -179,15 +179,15 @@ describe('AnyDef - Any Type', () => {
       expect(result.items[0]).toBe(1)
       expect(result.items[1]).toBe('hello')
       expect(result.items[2]).toBe(true)
-      // items[3] is an IOObject (array elements aren't flattened by toJSON) → method access
-      expect(result.items[3].get('x')).toEqual(10)
+      // A record nested in an array is flattened like any other: toJSON projects all the way down.
+      expect(result.items[3]).toEqual({ x: 10 })
     })
 
     test('should handle deeply nested any', () => {
       const result = parse('val: any\n---\n{a: {b: {c: [1, 2, {d: hello}]}}}', null).toJSON()
 
-      // c[2] is an IOObject (array elements aren't flattened by toJSON) → method access
-      expect(result.val.a.b.c[2].get('d')).toBe('hello')
+      // Depth makes no difference to the projection.
+      expect(result.val.a.b.c[2]).toEqual({ d: 'hello' })
     })
 
     test('should accept bigint, decimal, datetime', () => {

@@ -1,6 +1,7 @@
 import { describe, test, expect } from 'vitest';
 import parse from '../../src/parser/index';
 import { stringifyDocument } from '../../src/facade/stringify-document';
+import loadInferred from '../../src/facade/load-inferred';
 
 /**
  * ISSUE-16 — serializer round-trip defects found while writing the serialization spec.
@@ -164,7 +165,8 @@ describe('a sign is spelled before the base prefix, not inside the digits', () =
   const valueOf = (literal: string) => {
     const doc: any = parse(`---\n{a: ${literal}}`, null);
     expect(doc.getErrors()).toEqual([]);
-    return doc.toJSON().a;
+    // toObject() keeps the value live; toJSON() spells a bigint as a string.
+    return doc.toObject().a;
   };
 
   test('signed radix bigints parse', () => {
@@ -239,3 +241,28 @@ describe('the fixes do not disturb neighbouring forms', () => {
     expect(data('---\n{a: hello}')).toBe('a: hello');
   });
 });
+
+describe('a quoted string keeps its backslashes', () => {
+  // toRegularString escaped \n \r \t and the encloser, but never the BACKSLASH itself, so a
+  // literal `\` was written raw and the reader consumed it as the start of an escape sequence.
+  // It only showed up when a string needed quoting for some OTHER reason -- looking like a
+  // number, holding a comma -- because the open-string path escaped it correctly all along.
+  const B = String.fromCharCode(92)
+  const roundTrip = (value: string): string => {
+    const io = stringifyDocument(loadInferred({ s: value }), { includeHeader: true, includeTypes: true } as any)
+    return (parse(io, null) as any).toObject().s
+  }
+
+  test.each([
+    ['digit-leading, needs quoting', '9' + B + 'U'],
+    ['comma, needs quoting', 'a,b' + B + 'c'],
+    ['keyword-looking', 'true' + B + 'x'],
+    ['open string (already worked)', 'a' + B + 'b'],
+    ['windows path', 'C:' + B + 'path' + B + 'to'],
+    ['doubled', B + B],
+    ['trailing', 'q' + B],
+    ['leading', B + 'lead'],
+  ])('%s', (_label, value) => {
+    expect(roundTrip(value)).toBe(value)
+  })
+})

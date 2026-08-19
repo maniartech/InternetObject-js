@@ -1,3 +1,4 @@
+import { toJSONValue } from '../utils/json-projection';
 import IOSection from "./section";
 
 /**
@@ -62,6 +63,35 @@ class IOSectionCollection<T = any> {
       this._sectionNames[section.name] = this._sections.length;
     }
     this._sections.push(section);
+  }
+
+  /**
+   * Converts the sections to a plain JavaScript value, with values LIVE.
+   *
+   * Mirrors how a Document composes its sections: a lone section IS the data, and several sections
+   * become an object keyed by section name — so `sections.toObject()` and `doc.toObject()` agree
+   * on shape rather than each having its own idea.
+   *
+   * @param options.skipErrors If true, excludes error objects from collection output.
+   */
+  public toObject(options?: { skipErrors?: boolean }): any {
+    if (this._sections.length === 0) return null;
+    if (this._sections.length === 1) return this._sections[0].toObject(options);
+
+    const data: Record<string, any> = {};
+    this._sections.forEach((section, i) => {
+      data[(section.name as string) ?? String(i)] = section.toObject(options);
+    });
+    return data;
+  }
+
+  /**
+   * Converts to JSON — the same data as {@link toObject}, with every value spelled the way JSON
+   * can carry it (dates as ISO strings, decimals and bigints as strings, binary as base64), all
+   * the way down. See `toJSONValue`.
+   */
+  public toJSON(options?: { skipErrors?: boolean }): any {
+    return toJSONValue(this.toObject(options));
   }
 
   /**

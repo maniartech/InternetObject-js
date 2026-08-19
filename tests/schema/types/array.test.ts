@@ -47,8 +47,8 @@ describe('ArrayDef - Array Type', () => {
       const result = parse(`${schema}\n---\n[{Alice, 25}, {Bob, 30}]`, null).toJSON()
 
       expect(result.users).toHaveLength(2)
-      expect(result.users[0].toJSON()).toEqual({ name: 'Alice', age: 25 })
-      expect(result.users[1].toJSON()).toEqual({ name: 'Bob', age: 30 })
+      expect(result.users[0]).toEqual({ name: 'Alice', age: 25 })
+      expect(result.users[1]).toEqual({ name: 'Bob', age: 30 })
     })
 
     test('should validate each object in array', () => {
@@ -185,8 +185,7 @@ describe('ArrayDef - Array Type', () => {
       expect(result.mixed[0]).toBe(1)
       expect(result.mixed[1]).toBe('hello')
       expect(result.mixed[2]).toBe(true)
-      // an object inside an `any` array stays an IOObject in toObject() output; compare its value
-      expect(result.mixed[3].toObject()).toEqual({ x: 10 })
+      expect(result.mixed[3]).toEqual({ x: 10 })
       expect(result.mixed[4]).toEqual([1, 2])
     })
 

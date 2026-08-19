@@ -218,8 +218,8 @@ describe('ObjectDef - Object Type', () => {
       const result = parse(`${schema}\n---\n[{1, Item1}, {2, Item2}]`, null).toJSON()
 
       expect(result.items).toHaveLength(2)
-      expect(result.items[0].toJSON()).toEqual({ id: 1, name: 'Item1' })
-      expect(result.items[1].toJSON()).toEqual({ id: 2, name: 'Item2' })
+      expect(result.items[0]).toEqual({ id: 1, name: 'Item1' })
+      expect(result.items[1]).toEqual({ id: 2, name: 'Item2' })
     })
 
     test('should handle array in nested object', () => {

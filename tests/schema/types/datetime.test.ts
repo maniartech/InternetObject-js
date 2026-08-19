@@ -167,10 +167,13 @@ describe('DateTimeDef - DateTime, Date, and Time Types', () => {
 
     test('should handle datetime in arrays', () => {
       const schema = 'dates: [datetime]'
-      const result = parse(`${schema}\n---\n[dt"2024-01-01", dt"2024-06-15", dt"2024-12-31"]`, null).toJSON()
+      const doc = parse(`${schema}\n---\n[dt"2024-01-01", dt"2024-06-15", dt"2024-12-31"]`, null)
 
-      expect(result.dates).toHaveLength(3)
-      expect(result.dates[0]).toBeInstanceOf(Date)
+      // toObject() keeps values live -- a datetime is a Date, at any depth.
+      expect(doc.toObject().dates).toHaveLength(3)
+      expect(doc.toObject().dates[0]).toBeInstanceOf(Date)
+      // toJSON() is the JSON projection -- a datetime is an ISO-8601 string, at any depth.
+      expect(doc.toJSON().dates[0]).toBe('2024-01-01T00:00:00.000Z')
     })
 
     test('should handle boundary dates', () => {

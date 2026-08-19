@@ -996,7 +996,20 @@ class Decimal {
     }
 
     /**
+     * The plain-JavaScript form of this value — which is the value itself.
+     *
+     * `toObject()` across the core types means "plain structure, LIVE values". A Decimal already
+     * IS a value, and JavaScript has no lossless plain equivalent: a `number` would silently drop
+     * precision and scale, which is the whole reason this type exists. So it hands back the
+     * instance, and callers that want a JSON-safe spelling use {@link toJSON}.
+     */
+    toObject(): Decimal {
+        return this;
+    }
+
+    /**
      * Returns the string representation of the Decimal for JSON serialization.
+     * A JSON number cannot hold the precision and scale, so a string is used.
      */
     toJSON(): string {
         return this.toString();

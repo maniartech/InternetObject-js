@@ -1,3 +1,4 @@
+import { toJSONValue } from '../utils/json-projection';
 import ErrorCodes       from '../errors/io-error-codes';
 import ValidationError  from '../errors/io-validation-error';
 import TokenNode        from '../parser/nodes/tokens';
@@ -285,8 +286,13 @@ class IODefinitions {
     return null;
   }
 
+  /**
+   * Converts to JSON — the same data as {@link toObject}, with every value spelled the way JSON
+   * can carry it (dates as ISO strings, decimals and bigints as strings, binary as base64), all
+   * the way down. See `toJSONValue`.
+   */
   public toJSON() {
-    return this.toObject();
+    return toJSONValue(this.toObject());
   }
 
   /**
