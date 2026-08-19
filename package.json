@@ -78,7 +78,8 @@
     "bundle:test-minimal": "bash scripts/bundle-test-minimal.sh",
     "bundle:test-full": "bash scripts/bundle-test-full.sh",
     "bundle:compare": "bash scripts/bundle-compare.sh",
-    "bundle:budget-check": "bash scripts/bundle-budget-check.sh"
+    "bundle:budget-check": "bash scripts/bundle-budget-check.sh",
+    "corpus": "tsx tools/corpus/verify.ts"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",
