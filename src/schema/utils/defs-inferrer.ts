@@ -1,6 +1,7 @@
 import Schema from '../schema';
 import MemberDef from '../types/memberdef';
 import Definitions from '../../core/definitions';
+import Decimal from '../../core/decimal/decimal';
 
 /**
  * Result of inferring definitions from data
@@ -54,6 +55,34 @@ function safeName(key: string): string {
 }
 
 /**
+ * A RECORD for inference purposes: a plain key/value object. Dates, byte arrays and Decimals are
+ * `typeof 'object'` but are VALUES — collecting one as a record instance would fabricate an empty
+ * schema from its (non-enumerable) keys and lose its type.
+ */
+function isPlainRecord(v: any): v is Record<string, any> {
+  return v !== null && typeof v === 'object' && !Array.isArray(v) &&
+    !(v instanceof Date) && !(v instanceof Uint8Array) && !(v instanceof Decimal);
+}
+
+/** The IO type name for a primitive array element, or null when the value is not a primitive. */
+function primitiveTypeOf(v: any): string | null {
+  switch (typeof v) {
+    case 'string': return 'string';
+    case 'number': return 'number';
+    case 'boolean': return 'bool';
+    case 'bigint': return 'bigint';
+    default: return null;
+  }
+}
+
+/**
+ * Array members whose element evidence RULES OUT a typed form (mixed kinds, nulls, nested
+ * arrays). Tracked outside the MemberDef because any extra property on a MemberDef is
+ * serialized as a constraint; membership means "stay untyped no matter what later rows show".
+ */
+const lockedArrays = new WeakSet<MemberDef>();
+
+/**
  * Builds (or reuses) the wildcard container schema for a dynamic-key member and returns the
  * MemberDef that links the parent to it: `questions` → `{type:'object', schemaRef:'$questions'}`
  * with `$questions: {*: $question}` queued for registration.
@@ -72,12 +101,24 @@ function inferDynamicContainerMemberDef(
   const resolvedItem = ctx.resolvedNames.get(pathKey(fullPath, itemBase)) || itemBase;
   const containerName = `$${safeName(path)}`;
 
-  // Conflict guards: item schema unusable, container name identical to item name (degenerate
-  // singularization, e.g. `data`), or container name already claimed by a static schema.
+  // The item schema itself is unusable -- nothing to point at, so the member stays untyped.
+  if (resolvedItem.endsWith('::CONFLICTED')) {
+    return { type: 'object', path };
+  }
+
+  // The container CANNOT take its natural name: either the key does not pluralize (`nutriscore`
+  // singularizes to itself, so container and item want the same name) or a different schema
+  // already holds it. Emit the wildcard INLINE on the member instead of giving up.
+  //
+  // Returning an untyped `object` here used to discard the typing for the whole subtree while
+  // still registering the item schema, leaving a definition in the header that nothing referenced.
   const containerTaken =
     ctx.schemaRegistry.has(containerName) || ctx.schemaInstances.has(containerName);
-  if (resolvedItem.endsWith('::CONFLICTED') || containerName === resolvedItem || containerTaken) {
-    return { type: 'object', path };
+  if (containerName === resolvedItem || containerTaken) {
+    const inline = new Schema('');
+    inline.defs['*'] = { type: 'object', path: '*', schemaRef: resolvedItem };
+    inline.open = inline.defs['*'];
+    return { type: 'object', path, schema: inline };
   }
 
   if (!ctx.pendingContainers.has(containerName)) {
@@ -89,6 +130,214 @@ function inferDynamicContainerMemberDef(
   }
 
   return { type: 'object', path, schemaRef: containerName };
+}
+
+/**
+ * Structural signature of a schema — two schemas with the same signature describe the same shape
+ * and are interchangeable, so only one of them needs to exist.
+ *
+ * References are compared by NAME, so the signature is only stable once the names it mentions have
+ * themselves settled; `dedupeIdenticalSchemas` therefore iterates to a fixed point.
+ */
+function schemaSignature(schema: Schema): string {
+  const memberSig = (md: any): string => {
+    if (!md) return '~';
+    const parts = [md.type ?? '', md.optional ? '?' : '', md.null ? '*' : ''];
+    if (md.schemaRef) parts.push(`ref:${md.schemaRef}`);
+    if (md.schema) parts.push(`inline:${typeof md.schema === 'string' ? md.schema : schemaSignature(md.schema)}`);
+    if (md.of) parts.push(`of:${typeof md.of === 'string' ? md.of : memberSig(md.of)}`);
+    for (const k of Object.keys(md).sort()) {
+      if (['type', 'optional', 'null', 'schemaRef', 'schema', 'of', 'path'].includes(k)) continue;
+      parts.push(`${k}=${JSON.stringify(md[k])}`);
+    }
+    return parts.join('|');
+  };
+
+  // Member names are JSON-quoted so a name containing the separators (`:` `,` `|`) cannot
+  // forge another schema's signature -- a single member literally named `a:string||,b` used to
+  // collide with {a: string, b: string}, silently merging two unrelated schemas and making the
+  // emitted document fail its own validation.
+  const members = (schema.names ?? []).map(n => `${JSON.stringify(n)}:${memberSig(schema.defs[n])}`);
+  const wildcard = schema.defs?.['*'] ? `*:${memberSig(schema.defs['*'])}` : (schema.open === true ? '*' : '');
+  return `${members.join(',')}${wildcard ? ';' + wildcard : ''}`;
+}
+
+/**
+ * Rewrite every schema reference inside a MemberDef tree according to `alias`.
+ * An alias target of `null` means the referenced schema was REMOVED (it was empty): the
+ * reference is deleted and the member stays an untyped `object`/`array`.
+ */
+function rewriteRefs(md: any, alias: Map<string, string | null>): void {
+  if (!md || typeof md !== 'object') return;
+  if (md.schemaRef && alias.has(md.schemaRef)) {
+    const to = alias.get(md.schemaRef);
+    if (to === null) delete md.schemaRef;
+    else md.schemaRef = to;
+  }
+  if (md.schema && typeof md.schema !== 'string' && md.schema.defs) rewriteSchemaRefs(md.schema, alias);
+  if (md.of) rewriteRefs(md.of, alias);
+}
+
+function rewriteSchemaRefs(schema: Schema, alias: Map<string, string | null>): void {
+  for (const key of Object.keys(schema.defs ?? {})) rewriteRefs(schema.defs[key], alias);
+  if (schema.open && typeof schema.open === 'object') rewriteRefs(schema.open, alias);
+}
+
+/**
+ * Canonicalize the inferred definitions. Structure is the identity; names are labels.
+ *
+ * Two rules, run to a fixed point (collapsing two schemas can make their referrers identical
+ * in turn, and emptying a schema can empty its container):
+ *
+ * 1. **An empty schema is no schema.** `{}` constrains nothing -- it was inferred from a value
+ *    that happened to be empty, and asserting perpetual emptiness from one sighting is
+ *    overfitting. The definition is dropped and its referrers become plain `object`.
+ * 2. **One shape, one definition.** Inference names schemas after the key that introduced them
+ *    and never asks whether the shape already exists, so eleven identically-shaped images
+ *    produced `$1` ... `$11`. Structurally identical schemas collapse to one; the survivor is
+ *    the first-defined readable name (a non-numeric name wins over `$1`), and every reference --
+ *    member, wildcard, inline, array element -- is rewritten.
+ *
+ * `protectedNames` (multi-section item schemas, which sections reference BY NAME in their
+ * binding) are never dropped; they may still be renamed via dedup, which the returned alias map
+ * lets the caller follow.
+ */
+function canonicalizeDefinitions(
+  ctx: InferenceContext,
+  rootSchema: Schema | null,
+  protectedNames: Set<string> = new Set()
+): Map<string, string> {
+  const totalAlias = new Map<string, string>();
+
+  for (let pass = 0; pass < 20; pass++) {
+    const alias = new Map<string, string | null>();
+
+    // Rule 1: drop empty schemas.
+    for (const name of ctx.definitions.keys) {
+      if (name === '$schema' || protectedNames.has(name)) continue;
+      const schema = ctx.schemaRegistry.get(name);
+      if (!schema) continue;
+      const hasMembers = (schema.names?.length ?? 0) > 0;
+      const hasWildcard = !!schema.defs?.['*'] || schema.open === true;
+      if (!hasMembers && !hasWildcard) alias.set(name, null);
+    }
+
+    // Rule 2: collapse structurally identical schemas.
+    const bySignature = new Map<string, string[]>();
+    for (const name of ctx.definitions.keys) {
+      if (name === '$schema' || alias.has(name)) continue;
+      const schema = ctx.schemaRegistry.get(name);
+      if (!schema) continue;
+      const sig = schemaSignature(schema);
+      if (!bySignature.has(sig)) bySignature.set(sig, []);
+      bySignature.get(sig)!.push(name);
+    }
+    for (const names of bySignature.values()) {
+      if (names.length < 2) continue;
+      const keep = names.find(n => !/^\$\d+(_\d+)?$/.test(n)) ?? names[0];
+      for (const n of names) if (n !== keep) alias.set(n, keep);
+    }
+
+    // Rule 3: drop unreachable definitions. Instance collection is eager -- it gathers array
+    // items before the array's element strategy is decided -- so a member that ends up untyped
+    // can leave behind a definition nothing references.
+    // Rule 2b: a numeric name is not a name. Keys like "1" ... "11" produce cohorts called
+    // `$1`, and when every name in a dedup group is numeric the survivor is too. The concept
+    // the schema describes is named by the PARENT key (`images` -> `$image`) -- the schema must
+    // read as a description of the data, not as an accident of which key introduced it.
+    for (const name of ctx.definitions.keys) {
+      if (name === '$schema' || alias.has(name) || !/^\$\d+(_\d+)?$/.test(name)) continue;
+      let parent: string | undefined;
+      for (const instances of ctx.schemaInstances.values()) {
+        const info = instances.find(i => (i.resolvedName ?? i.baseName) === name && i.fullPath.length >= 2);
+        if (info) { parent = info.fullPath[info.fullPath.length - 2]; break; }
+      }
+      if (!parent) continue; // root-level numeric key: nothing better to derive from
+      const base = `$${safeName(singularize(parent))}`;
+      let candidate = base;
+      let n = 2;
+      while (ctx.schemaRegistry.has(candidate) || ctx.definitions.get(candidate) ||
+             [...alias.values()].includes(candidate)) {
+        candidate = `${base}_${n++}`;
+      }
+      alias.set(name, candidate);
+      ctx.schemaRegistry.set(candidate, ctx.schemaRegistry.get(name)!);
+    }
+
+    // Resolve chains before rewriting: a merge and a rename can land in one pass
+    // ($2 -> $1 from dedup, $1 -> $image from the numeric rule), and a ref rewritten to a
+    // mid-chain name would dangle.
+    for (const from of [...alias.keys()]) {
+      let to = alias.get(from)!;
+      while (to !== null && alias.has(to)) to = alias.get(to)!;
+      alias.set(from, to);
+    }
+
+    if (alias.size === 0) {
+      const reachable = new Set<string>(protectedNames);
+      const visit = (schema: Schema | undefined | null) => {
+        if (!schema) return;
+        const walk = (md: any) => {
+          if (!md || typeof md !== 'object') return;
+          if (md.schemaRef && !reachable.has(md.schemaRef)) {
+            reachable.add(md.schemaRef);
+            visit(ctx.schemaRegistry.get(md.schemaRef));
+          }
+          if (md.schema && typeof md.schema !== 'string' && md.schema.defs) visit(md.schema);
+          if (md.of) walk(md.of);
+        };
+        for (const key of Object.keys(schema.defs ?? {})) walk(schema.defs[key]);
+        if (schema.open && typeof schema.open === 'object') walk(schema.open);
+      };
+      if (rootSchema) visit(rootSchema);
+      for (const name of protectedNames) visit(ctx.schemaRegistry.get(name));
+
+      const orphans = ctx.definitions.keys.filter(k => k !== '$schema' && !reachable.has(k));
+      if (orphans.length === 0) break;
+      const rebuilt = new Definitions();
+      for (const key of ctx.definitions.keys) {
+        if (orphans.includes(key)) { ctx.schemaRegistry.delete(key); continue; }
+        const schema = ctx.schemaRegistry.get(key);
+        if (schema) rebuilt.push(key, schema, true, false);
+      }
+      ctx.definitions = rebuilt;
+      break;
+    }
+
+    for (const name of ctx.definitions.keys) {
+      if (alias.has(name)) continue; // being removed
+      const schema = ctx.schemaRegistry.get(name);
+      if (schema) rewriteSchemaRefs(schema, alias);
+    }
+    if (rootSchema) rewriteSchemaRefs(rootSchema, alias);
+
+    // Rebuild in the existing order minus the collapsed entries, so dependencies still
+    // precede the schemas that reference them.
+    const rebuilt = new Definitions();
+    for (const key of ctx.definitions.keys) {
+      if (alias.has(key)) {
+        // A rename (numeric -> derived) keeps the schema under its new name, IN PLACE, so the
+        // definition order still lists dependencies first; a merge or drop removes it.
+        const to = alias.get(key) ?? null;
+        const renamed = to !== null && !ctx.definitions.get(to) &&
+          ctx.schemaRegistry.get(to) === ctx.schemaRegistry.get(key);
+        if (renamed) rebuilt.push(to, ctx.schemaRegistry.get(to)!, true, false);
+        ctx.schemaRegistry.delete(key);
+        continue;
+      }
+      const schema = ctx.schemaRegistry.get(key);
+      if (schema) rebuilt.push(key, schema, true, false);
+    }
+    ctx.definitions = rebuilt;
+
+    for (const [from, to] of alias) {
+      if (to === null) continue;
+      totalAlias.set(from, to);
+      for (const [f, t] of totalAlias) if (t === from) totalAlias.set(f, to);
+    }
+  }
+
+  return totalAlias;
 }
 
 /**
@@ -142,11 +391,17 @@ export function inferMultiSectionDefs(data: Record<string, any[]>): {
   resolveSchemaNameConflicts(ctx);
   mergeAllSchemaInstances(ctx);
 
-  const sectionSchemas = new Map<string, string>();
+  // Sections reference their item schemas BY NAME in the `--- key: $item` binding, so those
+  // names must survive canonicalization; dedup may still rename them, which the alias follows.
+  const initialNames = new Map<string, string>();
   for (const key of Object.keys(data)) {
     const itemBaseName = `$${safeName(singularize(key))}`;
-    sectionSchemas.set(key, ctx.resolvedNames.get(pathKey([key], itemBaseName)) || itemBaseName);
+    initialNames.set(key, ctx.resolvedNames.get(pathKey([key], itemBaseName)) || itemBaseName);
   }
+  const alias = canonicalizeDefinitions(ctx, null, new Set(initialNames.values()));
+
+  const sectionSchemas = new Map<string, string>();
+  for (const [key, name] of initialNames) sectionSchemas.set(key, alias.get(name) ?? name);
 
   return { definitions: ctx.definitions, sectionSchemas };
 }
@@ -173,13 +428,13 @@ function isDynamicKeyObject(obj: Record<string, any>): boolean {
   const values = keys.map(k => obj[k]);
 
   // Check 1: All values must be non-null objects (not arrays)
-  const allObjects = values.every(v =>
-    v !== null &&
-    typeof v === 'object' &&
-    !Array.isArray(v)
-  );
+  const allObjects = values.every(isPlainRecord);
 
   if (!allObjects) return false;
+
+  // A value with a literal `*` key cannot get an item schema (wildcard collision) -- treating
+  // the container as a map would emit a reference to a schema that is never built.
+  if (values.some(v => '*' in v)) return false;
 
   // Check 2: Find common keys across ALL objects
   const allValueKeys = values.map(v => new Set(Object.keys(v)));
@@ -255,6 +510,9 @@ export function inferDefs(data: any): InferredDefs {
     }
   }
 
+  // Canonicalize: drop empty schemas, collapse identical shapes, rewrite references.
+  canonicalizeDefinitions(ctx, rootSchema);
+
   // Set the root schema as $schema (default schema)
   ctx.definitions.push('$schema', rootSchema, true, false);
 
@@ -276,7 +534,7 @@ function preScanDynamicPaths(
   if (Array.isArray(data)) {
     // Scan array items
     for (const item of data) {
-      if (typeof item === 'object' && item !== null && !Array.isArray(item)) {
+      if (isPlainRecord(item)) {
         preScanDynamicPaths(item, currentPath, ctx);
       }
     }
@@ -293,11 +551,11 @@ function preScanDynamicPaths(
       if (Array.isArray(value)) {
         // Scan array items
         for (const item of value) {
-          if (typeof item === 'object' && item !== null && !Array.isArray(item)) {
+          if (isPlainRecord(item)) {
             preScanDynamicPaths(item, childPath, ctx);
           }
         }
-      } else if (typeof value === 'object') {
+      } else if (isPlainRecord(value)) {
         // Check if this looks like a dynamic-key object
         if (isDynamicKeyObject(value)) {
           ctx.dynamicPaths.add(pathKey);
@@ -308,7 +566,7 @@ function preScanDynamicPaths(
         // Pass childPath (the dynamic object's path) so nested properties have correct paths
         if (ctx.dynamicPaths.has(pathKey) || isDynamicKeyObject(value)) {
           for (const childValue of Object.values(value)) {
-            if (typeof childValue === 'object' && childValue !== null && !Array.isArray(childValue)) {
+            if (isPlainRecord(childValue)) {
               preScanDynamicPaths(childValue, childPath, ctx);
             }
           }
@@ -337,7 +595,7 @@ function collectSchemaInstances(
   if (Array.isArray(data)) {
     // For arrays of objects, collect all objects as instances of the item schema
     const objects = data.filter(item =>
-      typeof item === 'object' && item !== null && !Array.isArray(item)
+      isPlainRecord(item)
     );
 
     if (objects.length > 0) {
@@ -375,7 +633,7 @@ function collectNestedInstances(
       // Array property - collect instances with singularized schema name
       const itemBaseName = `$${safeName(singularize(key))}`;
       const objects = value.filter(item =>
-        typeof item === 'object' && item !== null && !Array.isArray(item)
+        isPlainRecord(item)
       );
 
       for (const item of objects) {
@@ -383,7 +641,7 @@ function collectNestedInstances(
         // Recursively collect from nested arrays
         collectNestedInstances(item, currentPath, ctx);
       }
-    } else if (typeof value === 'object') {
+    } else if (isPlainRecord(value)) {
       // Check if this path is marked as dynamic (from pre-scan phase)
       // OR if it currently looks like a dynamic-key object
       const pathKey = currentPath.join('.');
@@ -397,7 +655,7 @@ function collectNestedInstances(
         const itemBaseName = `$${safeName(singularize(key))}`;
 
         for (const [dynamicKey, dynamicValue] of Object.entries(value)) {
-          if (dynamicValue !== null && typeof dynamicValue === 'object' && !Array.isArray(dynamicValue)) {
+          if (isPlainRecord(dynamicValue)) {
             // Add each dynamic-keyed object as an instance of the singularized schema
             addSchemaInstance(itemBaseName, currentPath, dynamicValue, ctx);
             // Recursively collect from nested objects within dynamic values
@@ -426,6 +684,10 @@ function addSchemaInstance(
   obj: Record<string, any>,
   ctx: InferenceContext
 ): void {
+  // Backstop for the literal-`*`-key limitation (see inferMemberDefSimple): such a record
+  // must not become a schema instance, or a dangling/invalid definition gets built for it.
+  if ('*' in obj) return;
+
   if (!ctx.schemaInstances.has(baseName)) {
     ctx.schemaInstances.set(baseName, []);
   }
@@ -496,11 +758,31 @@ function resolveSchemaNameConflicts(ctx: InferenceContext): void {
           ctx.resolvedNames.set(pathKey(info.fullPath, baseName), baseName);
         }
       } else {
-        // No common keys at all → truly incompatible structures → CONFLICT
-        // These will fall back to plain 'object' type without schemaRef
-        for (const info of instances) {
-          info.resolvedName = `${baseName}::CONFLICTED`;
-          ctx.resolvedNames.set(pathKey(info.fullPath, baseName), `${baseName}::CONFLICTED`);
+        // No common keys at all -> genuinely different shapes competing for one name. They cannot
+        // merge, but discarding them all is worse than naming them apart: every member that would
+        // have pointed at any of these schemas used to degrade to an untyped `object`, taking the
+        // whole subtree's typing with it. (`{packaging: {packagings: [{material}], score}}` lost
+        // everything, because `packagings` singularizes to `packaging`, the name its own container
+        // already held.)
+        //
+        // Give each PATH its own schema instead: the first keeps the base name and the rest are
+        // suffixed, the same recovery used for duplicate section names.
+        let ordinal = 1;
+        for (const group of pathGroups.values()) {
+          let candidate = baseName;
+          if (ordinal > 1) {
+            candidate = `${baseName}_${ordinal}`;
+            // Do not step on a name another base already claims.
+            while (ctx.schemaInstances.has(candidate) || ctx.schemaRegistry.has(candidate)) {
+              ordinal++;
+              candidate = `${baseName}_${ordinal}`;
+            }
+          }
+          for (const info of group) {
+            info.resolvedName = candidate;
+            ctx.resolvedNames.set(pathKey(info.fullPath, baseName), candidate);
+          }
+          ordinal++;
         }
       }
     }
@@ -529,118 +811,10 @@ function groupInstancesByPath(
 }
 
 /**
- * Get a signature representing the structure of an object (keys and their types)
- */
-function getStructureSignature(obj: Record<string, any>): string {
-  const entries = Object.entries(obj)
-    .map(([key, value]) => {
-      const type = value === null ? 'null' :
-                   Array.isArray(value) ? 'array' :
-                   typeof value;
-      return `${key}:${type}`;
-    })
-    .sort();
-  return entries.join(',');
-}
-
-/**
- * Resolve conflicting names by generating qualified names from path
- */
-function resolveConflictingNames(
-  baseName: string,
-  pathGroups: Map<string, SchemaInstanceInfo[]>,
-  ctx: InferenceContext
-): void {
-  // Sort paths by length (shorter paths get simpler names)
-  const sortedPaths = Array.from(pathGroups.keys()).sort((a, b) => {
-    const aLen = a.split('.').length;
-    const bLen = b.split('.').length;
-    return aLen - bLen;
-  });
-
-  // First path (shortest/root level) keeps the base name
-  const usedNames = new Set<string>();
-
-  for (let i = 0; i < sortedPaths.length; i++) {
-    const pathSig = sortedPaths[i];
-    const groupInstances = pathGroups.get(pathSig)!;
-
-    let resolvedName: string;
-
-    if (i === 0) {
-      // First/shortest path keeps base name
-      resolvedName = baseName;
-    } else {
-      // Generate qualified name from path
-      resolvedName = generateQualifiedName(baseName, groupInstances[0].fullPath, usedNames);
-    }
-
-    usedNames.add(resolvedName);
-
-    // Apply resolved name to all instances in this path group
-    for (const info of groupInstances) {
-      info.resolvedName = resolvedName;
-      ctx.resolvedNames.set(pathKey(info.fullPath, baseName), resolvedName);
-    }
-  }
-}
-
-/**
- * Generate a qualified schema name from the path
- * e.g., ['employee', 'manager', 'address'] -> '$employeeManagerAddress'
- */
-function generateQualifiedName(
-  baseName: string,
-  fullPath: string[],
-  usedNames: Set<string>
-): string {
-  // Remove the $ prefix from baseName for manipulation
-  const simpleName = baseName.startsWith('$') ? baseName.slice(1) : baseName;
-
-  // Build qualified name from path components (excluding the last one which is the property name)
-  // e.g., path=['employee', 'manager', 'address'] -> 'employeeManagerAddress'
-  const pathParts = fullPath.slice(0, -1); // Exclude the last element (the property itself)
-
-  if (pathParts.length === 0) {
-    // No parent path, keep base name (shouldn't happen in conflict case)
-    return baseName;
-  }
-
-  // Build camelCase qualified name
-  const qualifiedParts = pathParts.map((part, index) => {
-    // Singularize array parent names
-    const singularPart = singularize(part);
-    if (index === 0) {
-      return singularPart.toLowerCase();
-    }
-    return capitalize(singularPart);
-  });
-
-  let qualifiedName = `$${qualifiedParts.join('')}${capitalize(simpleName)}`;
-
-  // Ensure uniqueness
-  let counter = 1;
-  let uniqueName = qualifiedName;
-  while (usedNames.has(uniqueName)) {
-    uniqueName = `${qualifiedName}${counter++}`;
-  }
-
-  return uniqueName;
-}
-
-/**
  * Create a unique key for path + baseName combination
  */
 function pathKey(fullPath: string[], baseName: string): string {
   return `${fullPath.join('.')}::${baseName}`;
-}
-
-/**
- * Capitalize first letter of a string
- */
-function capitalize(str: string): string {
-  if (!str) return str;
-  return str.charAt(0).toUpperCase() + str.slice(1);
 }
 
 /**
@@ -794,10 +968,28 @@ function mergeIntoMemberDef(
     }
   }
 
-  // Preserve schemaRef for arrays
+  // Arrays: element typing may only ever WEAKEN across instances. Evidence that disagrees
+  // (a typed row after a mixed row, `[string]` vs `[number]`, an item schema vs primitives)
+  // strips the member to untyped `array` and locks it there — an element type that any
+  // instance's data would fail must never survive.
   if (existingDef.type === 'array' && newDef.type === 'array') {
-    if (newDef.schemaRef && !existingDef.schemaRef) {
-      existingDef.schemaRef = newDef.schemaRef;
+    const oldOf = (existingDef.of as any)?.type;
+    const newOf = (newDef.of as any)?.type;
+    const conflict =
+      lockedArrays.has(newDef) ||
+      (existingDef.schemaRef && newOf) || (oldOf && newDef.schemaRef) ||
+      (oldOf && newOf && oldOf !== newOf);
+
+    if (conflict) {
+      delete existingDef.schemaRef;
+      delete existingDef.of;
+      lockedArrays.add(existingDef);
+    } else if (!lockedArrays.has(existingDef)) {
+      if (newDef.schemaRef && !existingDef.schemaRef && !oldOf) {
+        existingDef.schemaRef = newDef.schemaRef;
+      } else if (newOf && !oldOf && !existingDef.schemaRef) {
+        existingDef.of = newDef.of;
+      }
     }
   }
 }
@@ -842,6 +1034,15 @@ function inferMemberDefSimple(
       if (Array.isArray(value)) {
         return inferArrayMemberDefSimple(value, path, fullPath, ctx);
       }
+      // Value objects first: these are typed VALUES, not records with members.
+      if (value instanceof Date) return { type: 'datetime', path };
+      if (value instanceof Decimal) return { type: 'decimal', path };
+      if (value instanceof Uint8Array) return { type: 'any', path }; // no `binary` TypeDef yet
+      // A record with a literal `*` key cannot be described: `*` IS the wildcard in schema
+      // syntax and the wildcard slot in the Schema model, so a member by that name emits an
+      // invalid header. The member stays an untyped `object` -- the DATA is unaffected (the
+      // key is quoted in data rows).
+      if (!Array.isArray(value) && '*' in value) return { type: 'object', path };
       // Check if this is a dynamic key object (collection-like)
       // Also check dynamicPaths for single-item objects that were identified as dynamic
       // because a sibling has multiple items
@@ -883,13 +1084,19 @@ function inferArrayMemberDefSimple(
   // canonical form), so null-bearing arrays infer as plain `array` — a `schemaRef`'d element
   // would reject the nulls the data actually contains (issue #61).
   const hasNulls = arr.some(item => item === null);
+  // A record with a literal `*` key has no schema (see above); referencing one would dangle.
+  const hasStarKeys = arr.some(item => isPlainRecord(item) && '*' in item);
 
-  // Check if array contains objects
-  const hasObjects = arr.some(item =>
-    typeof item === 'object' && item !== null && !Array.isArray(item)
+  // EVERY element must be a plain object for the array to take an item schema. `some` was wrong:
+  // one object among arrays or primitives typed the whole array as `[$item]`, and the elements
+  // that were not objects then failed validation on re-parse -- `[['a','b'], {x:1}]` threw
+  // invalid-object. A heterogeneous array stays untyped, which is what the comment below has
+  // always said it should do.
+  const allObjects = arr.length > 0 && arr.every(item =>
+    isPlainRecord(item)
   );
 
-  if (hasObjects && !hasNulls) {
+  if (allObjects && !hasNulls && !hasStarKeys) {
     const baseName = `$${safeName(singularize(path))}`;
     const resolvedName = ctx.resolvedNames.get(pathKey(fullPath, baseName)) || baseName;
     // If conflicted, fall back to plain array without schemaRef
@@ -899,8 +1106,22 @@ function inferArrayMemberDefSimple(
     return { type: 'array', path, schemaRef: resolvedName };
   }
 
-  // Primitives, mixed types, or null-bearing arrays: untyped elements accept them all
-  return { type: 'array', path };
+  // Homogeneous primitive arrays get an element type (`[string]`): validation and
+  // self-description for free. The guard is EVERY element, same kind — one stray value,
+  // a null, or a nested array keeps the member untyped, so nothing the data contains can
+  // be rejected on re-parse.
+  if (!hasNulls) {
+    const t0 = primitiveTypeOf(arr[0]);
+    if (t0 !== null && arr.every(v => primitiveTypeOf(v) === t0)) {
+      return { type: 'array', path, of: { type: t0 } } as MemberDef;
+    }
+  }
+
+  // Mixed kinds, nulls, or nested arrays: untyped elements accept them all — and the member
+  // must STAY untyped even if a later instance happens to look homogeneous.
+  const untyped: MemberDef = { type: 'array', path };
+  lockedArrays.add(untyped);
+  return untyped;
 }
 
 /**
@@ -926,7 +1147,7 @@ function buildFinalSchema(
 
   if (Array.isArray(data)) {
     const objects = data.filter(item =>
-      typeof item === 'object' && item !== null && !Array.isArray(item)
+      isPlainRecord(item)
     );
     if (objects.length > 0 && ctx.schemaRegistry.has(schemaName)) {
       return ctx.schemaRegistry.get(schemaName)!;
@@ -946,7 +1167,11 @@ function buildFinalSchema(
 }
 
 /**
- * Infers a MemberDef from a JavaScript value
+ * Infers a MemberDef from a JavaScript value.
+ *
+ * A thin alias for {@link inferMemberDefSimple}: there used to be two near-identical copies of
+ * this logic (and of the array variant), and they drifted -- one checked conflict markers, the
+ * other did not; one used `some` where the other needed `every`. One function, one behaviour.
  */
 function inferMemberDef(
   value: any,
@@ -954,86 +1179,7 @@ function inferMemberDef(
   currentPath: string[],
   ctx: InferenceContext
 ): MemberDef {
-  if (value === null) {
-    return { type: 'any', path, null: true, optional: true };
-  }
-
-  if (value === undefined) {
-    return { type: 'any', path, optional: true };
-  }
-
-  const jsType = typeof value;
-
-  switch (jsType) {
-    case 'string':
-      return { type: 'string', path };
-
-    case 'number':
-      return { type: 'number', path };
-
-    case 'bigint':
-      // A JS bigint is a distinct IO value type → infer the `bigint` schema type, NOT `number`
-      // (number = IEEE-754 double and correctly rejects a bigint). See SERIALIZATION/spec bigint.md.
-      return { type: 'bigint', path };
-
-    case 'boolean':
-      return { type: 'bool', path };
-
-    case 'object':
-      if (Array.isArray(value)) {
-        return inferArrayMemberDef(value, path, currentPath, ctx);
-      }
-      // Check if this is a dynamic key object (collection-like)
-      // Also check dynamicPaths for single-item objects that were identified as dynamic
-      // because a sibling has multiple items
-      // Note: currentPath already includes 'path' at the end (passed from caller)
-      const fullPathKey = currentPath.join('.');
-      if (isDynamicKeyObject(value) || ctx.dynamicPaths.has(fullPathKey)) {
-        // Dynamic-keyed object (map): link via a wildcard container schema (see
-        // inferDynamicContainerMemberDef; mirrors the merge-phase branch).
-        return inferDynamicContainerMemberDef(path, currentPath, ctx);
-      }
-      // Regular nested object - reference the resolved schema name
-      const baseName = `$${safeName(path)}`;
-      const resolvedName = ctx.resolvedNames.get(pathKey(currentPath, baseName)) || baseName;
-      return { type: 'object', path, schemaRef: resolvedName };
-
-    default:
-      return { type: 'any', path };
-  }
-}
-
-/**
- * Infers a MemberDef for an array value
- */
-function inferArrayMemberDef(
-  arr: any[],
-  path: string,
-  currentPath: string[],
-  ctx: InferenceContext
-): MemberDef {
-  if (arr.length === 0) {
-    return { type: 'array', path };
-  }
-
-  // Null-bearing arrays infer as plain untyped `array` (nullable-any elements) — see
-  // inferArrayMemberDefSimple / issue #61.
-  const hasNulls = arr.some(item => item === null);
-
-  // Check if array contains objects
-  const hasObjects = arr.some(item =>
-    typeof item === 'object' && item !== null && !Array.isArray(item)
-  );
-
-  if (hasObjects && !hasNulls) {
-    const baseName = `$${safeName(singularize(path))}`;
-    const fullPath = [...currentPath, path];
-    const resolvedName = ctx.resolvedNames.get(pathKey(fullPath, baseName)) || baseName;
-    return { type: 'array', path, schemaRef: resolvedName };
-  }
-
-  // Primitives, mixed types, or null-bearing arrays: untyped elements accept them all
-  return { type: 'array', path };
+  return inferMemberDefSimple(value, path, currentPath, ctx);
 }
 
 /**
@@ -1076,7 +1222,7 @@ function singularize(word: string): string {
   if (word.endsWith('es') && (
     word.endsWith('sses') ||
     word.endsWith('xes') ||
-    word.endsWith('zes') ||
+    word.endsWith('zzes') ||
     word.endsWith('ches') ||
     word.endsWith('shes')
   )) {

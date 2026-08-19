@@ -23,15 +23,17 @@ const data = {
 describe('multi-section inference (default for object-of-record-arrays)', () => {
   test('emits one named, schema-bound section per key; no wrapper $schema', () => {
     const io = stringifyDocument(loadInferred(data), { includeHeader: true, includeTypes: true });
+    // Both sections' items share one shape, so ONE definition serves both bindings --
+    // `--- sales: $accounting` is legal (the section NAME stays `sales`).
     expect(io).toContain('~ $accounting: {firstName: string, lastName: string, age: number}');
-    expect(io).toContain('~ $sale: {firstName: string, lastName: string, age: number}');
+    expect(io).not.toContain('~ $sale:');
     expect(io).toContain('--- accounting: $accounting');
-    expect(io).toContain('--- sales: $sale');
+    expect(io).toContain('--- sales: $accounting');
     expect(io).toContain('~ John, Doe, 23');
     expect(io).not.toContain('~ $schema:');
     // Readability: a blank line separates the defs block and each section marker.
     expect(io).toContain('\n\n--- accounting: $accounting');
-    expect(io).toContain('\n\n--- sales: $sale');
+    expect(io).toContain('\n\n--- sales: $accounting');
   });
 
   test('round-trips the value model', () => {

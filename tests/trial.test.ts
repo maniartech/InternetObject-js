@@ -32,10 +32,13 @@ describe('Trial Debug Playground', () => {
     const batterSchema = definitions.get('$batter');
     console.log('$batter id type:', batterSchema?.defs['id']?.type);
 
-    const toppingSchema = definitions.get('$topping');
+    // `topping` and `batter` items share one shape ({id, type}), so canonicalization
+    // collapses them into a single definition -- both members reference $batter.
+    const toppingSchema = definitions.get(String(rootSchema.defs['topping'].schemaRef));
     console.log('$topping id type:', toppingSchema?.defs['id']?.type);
 
     // All string IDs should be inferred as string type
+    expect(rootSchema.defs['topping'].schemaRef).toBe('$batter');
     expect(rootSchema.defs['id'].type).toBe('string');
     expect(batterSchema?.defs['id']?.type).toBe('string');
     expect(toppingSchema?.defs['id']?.type).toBe('string');

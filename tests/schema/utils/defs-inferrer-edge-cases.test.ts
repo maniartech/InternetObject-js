@@ -78,11 +78,14 @@ describe('inferDefs Edge Cases', () => {
       };
       const { definitions, rootSchema } = inferDefs(data);
 
+      // Node and child have the SAME shape, so canonicalization collapses them into one
+      // schema that references itself -- a genuinely recursive definition, which parses and
+      // round-trips: `$node: {value: string, children: [$node]}`.
       expect(definitions.get('$node')).toBeDefined();
-      expect(definitions.get('$child')).toBeDefined();
-      // Children should have proper schema
-      expect(definitions.get('$child')!.defs['value'].type).toBe('string');
-      expect(definitions.get('$child')!.defs['children'].type).toBe('array');
+      expect(definitions.get('$child')).toBeUndefined();
+      expect(definitions.get('$node')!.defs['value'].type).toBe('string');
+      expect(definitions.get('$node')!.defs['children'].type).toBe('array');
+      expect(definitions.get('$node')!.defs['children'].schemaRef).toBe('$node');
     });
 
     it('handles mixed array depths in different branches', () => {
@@ -299,9 +302,11 @@ describe('inferDefs Edge Cases', () => {
       };
       const { rootSchema } = inferDefs(data);
 
-      // Dates are currently inferred as 'object' type
-      // TODO: Future enhancement could detect Date objects and infer date/datetime
-      expect(rootSchema.defs['created'].type).toBe('object');
+      // A Date is a typed VALUE, not a record: it infers as `datetime`. (It previously fell
+      // into the generic object branch and produced an empty record schema from its
+      // non-enumerable keys.)
+      expect(rootSchema.defs['created'].type).toBe('datetime');
+      expect(rootSchema.defs['updated'].type).toBe('datetime');
     });
 
     it('handles mixed number types (int and float)', () => {
@@ -461,14 +466,12 @@ describe('inferDefs Edge Cases', () => {
       };
       const { definitions, rootSchema } = inferDefs(data);
 
-      // Both should get their own schema (different names)
+      // Identical shapes share ONE definition -- the first-defined name survives and every
+      // reference is rewritten. (This is what the test's name always promised.)
       expect(rootSchema.defs['billing'].schemaRef).toBe('$billing');
-      expect(rootSchema.defs['shipping'].schemaRef).toBe('$shipping');
-
-      // But both schemas should have same structure
-      const billingSchema = definitions.get('$billing');
-      const shippingSchema = definitions.get('$shipping');
-      expect(billingSchema!.names).toEqual(shippingSchema!.names);
+      expect(rootSchema.defs['shipping'].schemaRef).toBe('$billing');
+      expect(definitions.get('$billing')).toBeDefined();
+      expect(definitions.get('$shipping')).toBeUndefined();
     });
 
     it('handles array of arrays correctly', () => {
@@ -812,16 +815,17 @@ describe('Schema Name Conflict Resolution', () => {
       };
       const { definitions, rootSchema } = inferDefs(data);
 
-      // With NO common keys, addresses become conflicted and fall back to plain 'object'
-      // The $address schema may not exist, or if it does, it won't be referenced
-      expect(rootSchema.defs['address'].type).toBe('object');
-      expect(rootSchema.defs['address'].schemaRef).toBeUndefined();
+      // Shapes that cannot merge are named APART, never discarded: an untyped `object` loses
+      // the typing for the whole subtree. First path keeps the base name, the rest suffix --
+      // the same recovery duplicate section names use.
+      expect(rootSchema.defs['address'].schemaRef).toBe('$address');
+      expect(definitions.get('$address')!.defs['city'].type).toBe('string');
 
-      expect(definitions.get('$employee')!.defs['address'].type).toBe('object');
-      expect(definitions.get('$employee')!.defs['address'].schemaRef).toBeUndefined();
+      expect(definitions.get('$employee')!.defs['address'].schemaRef).toBe('$address_2');
+      expect(definitions.get('$address_2')!.defs['street'].type).toBe('string');
 
-      expect(definitions.get('$manager')!.defs['address'].type).toBe('object');
-      expect(definitions.get('$manager')!.defs['address'].schemaRef).toBeUndefined();
+      expect(definitions.get('$manager')!.defs['address'].schemaRef).toBe('$address_3');
+      expect(definitions.get('$address_3')!.defs['building'].type).toBe('string');
     });
 
     it('shares schema when same key at different paths has identical structure', () => {
@@ -831,15 +835,13 @@ describe('Schema Name Conflict Resolution', () => {
       };
       const { definitions, rootSchema } = inferDefs(data);
 
-      // These have different property names, so they get separate schemas
+      // Identical shapes collapse to one definition; both members reference the survivor.
       expect(definitions.get('$homeAddress')).toBeDefined();
-      expect(definitions.get('$workAddress')).toBeDefined();
-
-      // Both have same structure
+      expect(definitions.get('$workAddress')).toBeUndefined();
+      expect(rootSchema.defs['homeAddress'].schemaRef).toBe('$homeAddress');
+      expect(rootSchema.defs['workAddress'].schemaRef).toBe('$homeAddress');
       expect(definitions.get('$homeAddress')!.defs['city'].type).toBe('string');
       expect(definitions.get('$homeAddress')!.defs['zip'].type).toBe('string');
-      expect(definitions.get('$workAddress')!.defs['city'].type).toBe('string');
-      expect(definitions.get('$workAddress')!.defs['zip'].type).toBe('string');
     });
 
     it('marks array items as plain object when they have NO common keys (truly conflicting)', () => {
@@ -853,13 +855,14 @@ describe('Schema Name Conflict Resolution', () => {
       };
       const { definitions, rootSchema } = inferDefs(data);
 
-      // With NO common keys between root items and order items, they become CONFLICTED
-      // and fall back to plain 'object' type without schemaRef
+      // Incompatible shapes under one key are named apart, and both stay typed
       expect(rootSchema.defs['items'].type).toBe('array');
-      expect(rootSchema.defs['items'].schemaRef).toBeUndefined();
+      expect(rootSchema.defs['items'].schemaRef).toBe('$item');
+      expect(definitions.get('$item')!.defs['sku'].type).toBe('string');
 
       expect(definitions.get('$order')!.defs['items'].type).toBe('array');
-      expect(definitions.get('$order')!.defs['items'].schemaRef).toBeUndefined();
+      expect(definitions.get('$order')!.defs['items'].schemaRef).toBe('$item_2');
+      expect(definitions.get('$item_2')!.defs['name'].type).toBe('string');
     });
 
     it('marks nested array items as plain object when they have NO common keys', () => {
@@ -873,12 +876,14 @@ describe('Schema Name Conflict Resolution', () => {
       };
       const { definitions, rootSchema } = inferDefs(data);
 
-      // With NO common keys, they become CONFLICTED
+      // Incompatible shapes under one key are named apart, and both stay typed
       expect(rootSchema.defs['logs'].type).toBe('array');
-      expect(rootSchema.defs['logs'].schemaRef).toBeUndefined();
+      expect(rootSchema.defs['logs'].schemaRef).toBe('$log');
+      expect(definitions.get('$log')!.defs['message'].type).toBe('string');
 
       expect(definitions.get('$event')!.defs['logs'].type).toBe('array');
-      expect(definitions.get('$event')!.defs['logs'].schemaRef).toBeUndefined();
+      expect(definitions.get('$event')!.defs['logs'].schemaRef).toBe('$log_2');
+      expect(definitions.get('$log_2')!.defs['timestamp'].type).toBe('string');
     });
   });
 
@@ -900,15 +905,13 @@ describe('Schema Name Conflict Resolution', () => {
       };
       const { definitions, rootSchema } = inferDefs(company);
 
-      // All addresses have NO common keys → CONFLICTED → plain object
-      expect(rootSchema.defs['address'].type).toBe('object');
-      expect(rootSchema.defs['address'].schemaRef).toBeUndefined();
-
-      expect(definitions.get('$employee')!.defs['address'].type).toBe('object');
-      expect(definitions.get('$employee')!.defs['address'].schemaRef).toBeUndefined();
-
-      expect(definitions.get('$manager')!.defs['address'].type).toBe('object');
-      expect(definitions.get('$manager')!.defs['address'].schemaRef).toBeUndefined();
+      // Incompatible shapes are named apart; every address keeps a typed schema.
+      expect(rootSchema.defs['address'].schemaRef).toBe('$address');
+      expect(definitions.get('$employee')!.defs['address'].schemaRef).toBe('$address_2');
+      expect(definitions.get('$manager')!.defs['address'].schemaRef).toBe('$address_3');
+      expect(definitions.get('$address')!.defs['city'].type).toBe('string');
+      expect(definitions.get('$address_2')!.defs['street'].type).toBe('string');
+      expect(definitions.get('$address_3')!.defs['building'].type).toBe('string');
     });
 
     it('merges configs that share common key (setting) with optional fields', () => {
@@ -978,9 +981,9 @@ describe('Schema Name Conflict Resolution', () => {
       };
       const { definitions } = inferDefs(data);
 
-      // These should have separate schemas because they're different properties
+      // Identical shapes share one definition even under different member names.
       expect(definitions.get('$homeAddress')).toBeDefined();
-      expect(definitions.get('$workAddress')).toBeDefined();
+      expect(definitions.get('$workAddress')).toBeUndefined();
     });
   });
 
