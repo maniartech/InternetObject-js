@@ -211,11 +211,16 @@ export function quoteExtraPropertyString(str: string): string {
  */
 export function formatObjectKey(key: string): string {
   const isNumeric = /^[+-]?(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?$/.test(key);
-  const isKeyword = /^(?:true|false|null|T|F|N)$/.test(key);
+  // `Inf`/`-Inf`/`NaN` are keywords too -- a bare `Inf:` in a schema header is read as the
+  // special NUMBER, not a member name, and the definition is rejected (`invalid-definition`
+  // in the header, `invalid-key` in data). The signed forms are already caught by isNumeric.
+  const isKeyword = /^(?:true|false|null|T|F|N|Inf|NaN)$/.test(key);
   // A bare (unquoted) key must be a plain identifier-like open string; anything else — colons
   // (`ciqual_food_code:en`), braces, quotes, leading symbols, etc. — must be quoted or the emitted
   // text won't re-parse (issue #61: JSON keys routinely contain such characters).
-  const isBareSafe = /^[$A-Za-z_][A-Za-z0-9_. -]*$/.test(key) && !/\s$/.test(key);
+  // `-` is legal in a bare key, but three in a row spell the SECTION SEPARATOR: a bare `a---b:` at
+  // the start of a line splits the document in two and the rest is read as a new section.
+  const isBareSafe = /^[$A-Za-z_][A-Za-z0-9_. -]*$/.test(key) && !/\s$/.test(key) && !key.includes('---');
   return (isNumeric || isKeyword || !isBareSafe) ? `"${key.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"` : key;
 }
 

@@ -6,7 +6,7 @@ import Section from '../core/section';
 import TypedefRegistry from '../schema/typedef-registry';
 import registerTypes from '../schema/types';
 import MemberDef from '../schema/types/memberdef';
-import { stringifyMemberDef } from '../schema/types/memberdef-stringify';
+import { stringifyMemberDef, stringifyMemberDeclaration } from '../schema/types/memberdef-stringify';
 import { stringify, stringifyObject } from './stringify';
 import { StringifyOptions } from './stringify';
 import { IO_MARKERS, RESERVED_SECTION_NAMES, WILDCARD_KEY } from './serialization-constants';
@@ -175,7 +175,7 @@ function stringifySchema(schema: any, options: StringifyOptions): string {
   // its `*` member. A bare `*` is recorded as `open === true` rather than in defs.
   const hasNames = schema.names && schema.names.length > 0;
   const isBareOpen = schema.open === true;
-  if (!hasNames && !schema.defs[WILDCARD_KEY] && !isBareOpen) return '';
+  if (!hasNames && !schema.wildcard && !isBareOpen) return '';
 
   const includeTypes = options.includeTypes ?? false;
   const parts: string[] = [];
@@ -184,35 +184,17 @@ function stringifySchema(schema: any, options: StringifyOptions): string {
     const memberDef: MemberDef = schema.defs[name];
     if (!memberDef) continue;
 
-    // Build field definition starting with the name (quoted when not bare-safe, e.g. `a:b`).
-    // Known limitation: the schema compiler cannot parse an optional/null marker AFTER a quoted
-    // name (`"a:b"?:`), so such members round-trip as required.
-    let fieldDef = formatObjectKey(name);
-
-    // Add optional marker (?) if the field is optional
-    if (memberDef.optional) {
-      fieldDef += '?';
-    }
-
-    // Add null marker (*) if the field is nullable
-    if (memberDef.null) {
-      fieldDef += '*';
-    }
-
-    // Delegate to stringifyMemberDef for type annotation
-    const typeAnnotation = stringifyMemberDef(memberDef, includeTypes);
-    if (typeAnnotation) {
-      fieldDef += `: ${typeAnnotation}`;
-    }
-
-    parts.push(fieldDef);
+    // Name, markers and type in one step. A name that needs quoting (`a:b`, `a,b`) cannot carry the
+    // short `?`/`*` markers, so it is declared through the long memberdef form instead -- see
+    // stringifyMemberDeclaration.
+    parts.push(stringifyMemberDeclaration(name, memberDef, includeTypes));
   }
 
   // Append the wildcard member if present. A TYPED wildcard ({*: string}) lives in defs; a BARE
   // one ({*}) is recorded only as `open === true`. Dropping either turns an open schema into a
   // closed one, which is a different contract and rejects data the original accepted.
-  if (schema.defs && schema.defs[WILDCARD_KEY]) {
-    const openDef: MemberDef = schema.defs[WILDCARD_KEY];
+  if (schema.wildcard) {
+    const openDef: MemberDef = schema.wildcard;
     let wildcard = WILDCARD_KEY;
     const typeAnnotation = stringifyMemberDef(openDef, includeTypes);
     if (typeAnnotation) {
@@ -356,7 +338,11 @@ function stringifySection(
 
   // Single object/value: use formatter for smart formatting
   if (data instanceof InternetObject) {
-    return formatRecord(data, schema, ctx);
+    const line = formatRecord(data, schema, ctx);
+    // An empty record formats to no text at all, and a data section with no text reads back as
+    // `null` -- so an empty record is written with its enclosure. A collection item needs no such
+    // help: its `~` already says a record is present.
+    return line === '' ? '{}' : line;
   }
 
   return stringifyObject(data, schema, defs, options);

@@ -2,6 +2,7 @@ import MemberDef from './memberdef';
 import { STANDARD_MEMBERDEF_PROPS, IO_MARKERS, WILDCARD_KEY } from '../../facade/serialization-constants';
 import TokenNode from '../../parser/nodes/tokens';
 import { formatObjectKey } from '../../utils/string-formatter';
+import TypedefRegistry from '../typedef-registry';
 
 /**
  * Stringifies a MemberDef into its schema definition format.
@@ -108,22 +109,7 @@ function formatNestedSchema(schema: any): string {
   if (schema.names) {
     for (const nestedName of schema.names) {
       const nestedMember = schema.defs[nestedName];
-      let nestedField = formatObjectKey(nestedName);
-
-      if (nestedMember?.optional) {
-        nestedField += IO_MARKERS.OPTIONAL;
-      }
-      if (nestedMember?.null) {
-        nestedField += IO_MARKERS.NULLABLE;
-      }
-
-      // Add type annotation for nested member if it has constraints or is object/array
-      const typeAnnotation = stringifyMemberDef(nestedMember, true);
-      if (typeAnnotation) {
-        nestedField += `: ${typeAnnotation}`;
-      }
-
-      nestedFields.push(nestedField);
+      nestedFields.push(stringifyMemberDeclaration(nestedName, nestedMember, true));
     }
   }
 
@@ -131,7 +117,7 @@ function formatNestedSchema(schema: any): string {
   // Without this the wildcard was dropped and the schema serialized as `{}` -- a different
   // contract entirely, and one the data no longer validates against.
   // A TYPED wildcard lives in defs; a BARE one ({*}) is recorded only as `open === true`.
-  const wildcard = schema.defs?.[WILDCARD_KEY];
+  const wildcard = schema.wildcard;
   if (wildcard) {
     const typeAnnotation = stringifyMemberDef(wildcard, true);
     nestedFields.push(typeAnnotation ? `${WILDCARD_KEY}: ${typeAnnotation}` : WILDCARD_KEY);
@@ -151,11 +137,21 @@ function formatNestedSchema(schema: any): string {
  */
 function detectConstraintProperties(memberDef: MemberDef): string[] {
   const constraintProps: string[] = [];
+  // `get` throws for an unregistered type; this is a formatter, so an unknown type simply means
+  // no declared defaults are available and every property is emitted.
+  const declared = TypedefRegistry.isRegisteredType(memberDef.type)
+    ? (TypedefRegistry.get(memberDef.type).schema as any)
+    : undefined;
 
   for (const key in memberDef) {
-    if (!STANDARD_MEMBERDEF_PROPS.has(key) && memberDef[key] !== undefined) {
-      constraintProps.push(key);
-    }
+    if (STANDARD_MEMBERDEF_PROPS.has(key) || memberDef[key] === undefined) continue;
+    // A constraint left at the type's own DEFAULT carries no information: the parser re-applies it
+    // on the way back in. Emitting it makes serialization non-idempotent -- parse assigns the
+    // default (`isSchema: F` on `any`, `format: "auto"` on `string`), the next write prints it, and
+    // the text keeps growing on each round-trip.
+    const def = declared?.defs?.[key]?.default;
+    if (def !== undefined && Object.is(def, memberDef[key])) continue;
+    constraintProps.push(key);
   }
 
   return constraintProps;
@@ -296,4 +292,77 @@ export function formatConstraintValue(value: any): string {
   }
 
   return String(value);
+}
+
+/**
+ * Emits one member DECLARATION -- its name, its optional/nullable markers and its type.
+ *
+ * The short markers (`name?`, `name*`) are part of the unquoted-name token, so they cannot follow a
+ * QUOTED name: `"a,b"?: number` is a syntax error. A member whose name needs quoting (a comma, a
+ * colon, a leading digit -- routine in JSON-sourced data) therefore declares those flags through the
+ * long memberdef form instead:
+ *
+ * ```
+ * "a,b": {number, optional: T, "null": T}
+ * ```
+ *
+ * `null` is itself quoted there because a bare `null` key is read as the null keyword (`invalid-key`).
+ *
+ * Without this the serializer emitted `"a,b"?: number`, which its own parser then rejected -- the
+ * document could be written but never read back.
+ *
+ * @param name The member name, unquoted
+ * @param memberDef The member definition (may be undefined for a bare name)
+ * @param includeTypes Whether to emit type annotations
+ * @returns The declaration text, e.g. `name?: string` or `"a,b": {string, optional: T}`
+ */
+export function stringifyMemberDeclaration(
+  name: string,
+  memberDef: MemberDef | undefined,
+  includeTypes: boolean
+): string {
+  const key = formatObjectKey(name);
+  const optional = memberDef?.optional === true;
+  const nullable = memberDef?.null === true;
+  const typeAnnotation = memberDef ? stringifyMemberDef(memberDef, includeTypes) : '';
+
+  // Short form: either the name is bare (markers are legal) or there are no markers to place.
+  if (key === name || (!optional && !nullable)) {
+    const markers = (optional ? IO_MARKERS.OPTIONAL : '') + (nullable ? IO_MARKERS.NULLABLE : '');
+    return typeAnnotation ? `${key}${markers}: ${typeAnnotation}` : `${key}${markers}`;
+  }
+
+  const flags = [optional ? 'optional: T' : '', nullable ? '"null": T' : ''].filter(Boolean);
+  return `${key}: {${[longFormBody(memberDef!, includeTypes), ...flags].join(', ')}}`;
+}
+
+/**
+ * The body of a long memberdef form -- everything before the optional/nullable flags.
+ *
+ * Mirrors {@link stringifyMemberDef}, but produces the INSIDE of the braces (`number, min:0`)
+ * rather than a self-contained annotation (`{number, min:0}`), so flags can be appended.
+ */
+function longFormBody(memberDef: MemberDef, includeTypes: boolean): string {
+  if (memberDef.schemaRef) {
+    return memberDef.type === 'array'
+      ? `array, of: ${memberDef.schemaRef}`
+      : `object, schema: ${memberDef.schemaRef}`;
+  }
+
+  if (memberDef.type === 'object' && memberDef.schema) {
+    return `object, schema: ${formatNestedSchema(memberDef.schema)}`;
+  }
+
+  if (memberDef.type === 'array' && memberDef.of) {
+    // stringifyArrayMemberDef yields `[elem]`; `of:` takes the element type on its own.
+    const bracketed = stringifyArrayMemberDef(memberDef);
+    return `array, of: ${bracketed.slice(1, -1)}`;
+  }
+
+  const type = includeTypes && memberDef.type ? memberDef.type : 'any';
+  const parts = [type];
+  for (const prop of detectConstraintProperties(memberDef)) {
+    parts.push(`${prop}:${formatConstraintValue(memberDef[prop])}`);
+  }
+  return parts.join(', ');
 }
