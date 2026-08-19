@@ -14,6 +14,12 @@ export const toOpenString = (str: string, escapeLines: boolean) => {
 }
 
 export const toRegularString = (str: string, escapeLines: boolean, encloser: string='"') => {
+  // The BACKSLASH is escaped first, before any escape sequence is introduced below -- otherwise a
+  // literal \ in the data is written raw and the reader consumes it as the start of an escape:
+  // "9\U" was read back as "9U". Open strings already escaped it (it is in reStructuralChars);
+  // only the quoted form did not, so the loss showed up exactly when a string needed quoting for
+  // some OTHER reason -- looking like a number, holding a comma.
+  str = str.replace(/\\/g, '\\\\');
   str = str.replace(new RegExp(escapeChars, 'g'), '\\$1');
 
   if (escapeLines) {
