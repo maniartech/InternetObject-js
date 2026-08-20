@@ -84,7 +84,7 @@ function safeName(key: string): string {
  * `typeof 'object'` but are VALUES — collecting one as a record instance would fabricate an empty
  * schema from its (non-enumerable) keys and lose its type.
  */
-function isPlainRecord(v: any): v is Record<string, any> {
+export function isPlainRecord(v: any): v is Record<string, any> {
   return v !== null && typeof v === 'object' && !Array.isArray(v) &&
     !(v instanceof Date) && !(v instanceof Uint8Array) && !(v instanceof Decimal);
 }
@@ -674,7 +674,7 @@ function preScanDynamicPaths(
     return;
   }
 
-  if (typeof data === 'object') {
+  if (isPlainRecord(data)) {
     for (const [key, value] of Object.entries(data)) {
       if (value === null || value === undefined) continue;
 
@@ -751,7 +751,10 @@ function collectSchemaInstances(
     return;
   }
 
-  if (typeof data === 'object') {
+  // Only a plain RECORD is a schema instance. A Date, Decimal or byte array is `typeof 'object'`
+  // but is a VALUE: collecting one here walked its enumerable own properties and turned them into
+  // schema members, so a root `new Date(0)` inferred an empty schema and decoded as `{}`.
+  if (isPlainRecord(data)) {
     // Single object - add as instance and collect nested
     addSchemaInstance(baseName, currentPath, data, ctx);
     collectNestedInstances(data, currentPath, ctx);
@@ -1315,13 +1318,15 @@ function buildFinalSchema(
     }
   }
 
-  if (typeof data === 'object') {
+  if (isPlainRecord(data)) {
     if (ctx.schemaRegistry.has(schemaName)) {
       return ctx.schemaRegistry.get(schemaName)!;
     }
   }
 
-  // For primitives at root (unlikely case)
+  // Root VALUES -- primitives, and the scalar-shaped objects (Date, Decimal, byte array) that
+  // isPlainRecord excludes -- are wrapped in the positional member, the same promotion a root
+  // array of scalars gets.
   const builder = Schema.create(schemaName);
   builder.addMember(ROOT_VALUE_MEMBER, inferMemberDef(data, ROOT_VALUE_MEMBER, currentPath, ctx));
   return builder.build();

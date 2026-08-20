@@ -16,7 +16,7 @@ import Section from '../core/section';
 import SectionCollection from '../core/section-collection';
 import InternetObject from '../core/internet-object';
 import Collection from '../core/collection';
-import { inferDefs, inferMultiSectionDefs, isMultiSectionShape, isRecordCollection, ROOT_VALUE_MEMBER } from '../schema/utils/defs-inferrer';
+import { inferDefs, inferMultiSectionDefs, isMultiSectionShape, isPlainRecord, isRecordCollection, ROOT_VALUE_MEMBER } from '../schema/utils/defs-inferrer';
 import { loadObject as processObject, loadCollection as processCollection } from '../schema/load-processor';
 import { IOCommonOptions } from './options';
 
@@ -125,7 +125,10 @@ export function loadInferred(
   // array, which put one error object per element into the document.
   if (isRecordCollection(data)) {
     loadedData = processCollection(data as any[], rootSchema, definitions, options?.errorCollector);
-  } else if (Array.isArray(data)) {
+  } else if (!isPlainRecord(data)) {
+    // Everything that is not a record is a root VALUE: an array of scalars, a primitive, or a
+    // scalar-shaped object (Date, Decimal, byte array). Inference wraps all of them in the
+    // positional member, so the loader must hand them over wrapped the same way.
     loadedData = processObject({ [ROOT_VALUE_MEMBER]: data }, rootSchema, definitions);
   } else {
     loadedData = processObject(data, rootSchema, definitions);
