@@ -52,6 +52,20 @@ class DecimalDef implements TypeDef {
       )
     }
 
+    // A record, array or byte string under a `decimal` member is a TYPE error, not an internal one.
+    // Everything that is neither a number nor a Decimal fell through to `Decimal.ensureDecimal`,
+    // which throws a bare `DecimalError` carrying neither an error code nor a position -- so the
+    // document's error list held an entry no caller could classify, and the fuzzer printed it as
+    // `errors []`. `null` is excluded because doCommonTypeCheck above already owns that case.
+    if (value !== null && typeof value === 'object' && !(value instanceof Decimal)) {
+      throwError(
+        ErrorCodes.invalidType,
+        memberDef.path!,
+        `Expecting a value of type 'decimal' for '${memberDef.path}'`,
+        node
+      )
+    }
+
     value = this.validate(memberDef, value, node)
 
     return value
