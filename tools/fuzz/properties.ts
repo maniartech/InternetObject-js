@@ -164,7 +164,9 @@ export function checkValue(value: any): Failure[] {
 
     const errs = back.getErrors?.() ?? [];
     if (errs.length > 0) {
-      const codes = errs.map((e: any) => e.errorCode).join(',');
+      // An error that escaped the validation machinery carries no `errorCode`. Printing it as an
+      // empty slot made the detail read `errors []` -- a failure with no visible reason at all.
+      const codes = errs.map((e: any) => e.errorCode ?? `<${e.name ?? 'uncoded'}>`).join(',');
       failures.push({ property: 'output-reparses', mode: label, detail: `errors [${codes}] || ${brief(io)}` });
       continue;
     }
