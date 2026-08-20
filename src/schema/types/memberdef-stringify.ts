@@ -2,6 +2,20 @@ import MemberDef from './memberdef';
 import { STANDARD_MEMBERDEF_PROPS, IO_MARKERS, WILDCARD_KEY } from '../../facade/serialization-constants';
 import TokenNode from '../../parser/nodes/tokens';
 import { formatObjectKey } from '../../utils/string-formatter';
+
+/**
+ * Schema object → the definition name it was declared under (`$address`).
+ *
+ * Compiling `{object, schema: $address}` REPLACES the reference with the resolved Schema, so by the
+ * time the writer sees it there is no `$` anywhere in the MemberDef — and it used to inline the
+ * whole shape, losing the name and leaving the definition in the header unreferenced. The resolved
+ * object is IDENTICAL (`===`) to the one held in definitions, so this map recovers the name exactly.
+ *
+ * Identity, not `schema.name.startsWith('$')`: a member may legitimately be CALLED `$foo`
+ * (`{$foo: string}` parses), and an inline schema is named after its member — so a prefix test
+ * would report an inline shape under a member named `$foo` as a reference to a definition `$foo`.
+ */
+export type SchemaNames = ReadonlyMap<object, string>;
 import TypedefRegistry from '../typedef-registry';
 
 /**
@@ -43,7 +57,7 @@ import TypedefRegistry from '../typedef-registry';
  * // → "$address"
  * ```
  */
-export function stringifyMemberDef(memberDef: MemberDef, includeTypes: boolean): string {
+export function stringifyMemberDef(memberDef: MemberDef, includeTypes: boolean, named?: SchemaNames): string {
   // Handle array with schema reference - output as [$schemaRef]
   if (memberDef.type === 'array' && memberDef.schemaRef) {
     return `[${memberDef.schemaRef}]`;
@@ -56,7 +70,7 @@ export function stringifyMemberDef(memberDef: MemberDef, includeTypes: boolean):
 
   // Handle nested objects with embedded schema
   if (memberDef.type === 'object' && memberDef.schema) {
-    return formatNestedSchema(memberDef.schema);
+    return formatNestedSchema(memberDef.schema, named);
   }
 
   // Skip type annotation if not requested or if type is 'any'
@@ -66,7 +80,7 @@ export function stringifyMemberDef(memberDef: MemberDef, includeTypes: boolean):
 
   // Special handling for array type with 'of' property
   if (memberDef.type === 'array' && memberDef.of) {
-    return stringifyArrayMemberDef(memberDef);
+    return stringifyArrayMemberDef(memberDef, named);
   }
 
   // Detect constraint properties
@@ -91,7 +105,13 @@ export function stringifyMemberDef(memberDef: MemberDef, includeTypes: boolean):
  * @param schema The nested schema to format (Schema instance or TokenNode reference)
  * @returns Formatted nested object string or schema variable reference
  */
-function formatNestedSchema(schema: any): string {
+function formatNestedSchema(schema: any, named?: SchemaNames): string {
+  // A RESOLVED schema that is one of the document's definitions prints as its NAME. Without this
+  // the shape was inlined on every re-write: the header grew a copy per use, the definition it came
+  // from was left unreferenced, and two writes of one document produced different text.
+  const definitionName = schema && typeof schema === 'object' ? named?.get(schema) : undefined;
+  if (definitionName) return definitionName;
+
   // Handle schema variable reference (e.g., $employee, $address)
   if (schema instanceof TokenNode) {
     if (typeof schema.value === 'string' && schema.value.startsWith('$')) {
@@ -109,7 +129,7 @@ function formatNestedSchema(schema: any): string {
   if (schema.names) {
     for (const nestedName of schema.names) {
       const nestedMember = schema.defs[nestedName];
-      nestedFields.push(stringifyMemberDeclaration(nestedName, nestedMember, true));
+      nestedFields.push(stringifyMemberDeclaration(nestedName, nestedMember, true, named));
     }
   }
 
@@ -119,7 +139,7 @@ function formatNestedSchema(schema: any): string {
   // A TYPED wildcard lives in defs; a BARE one ({*}) is recorded only as `open === true`.
   const wildcard = schema.wildcard;
   if (wildcard) {
-    const typeAnnotation = stringifyMemberDef(wildcard, true);
+    const typeAnnotation = stringifyMemberDef(wildcard, true, named);
     nestedFields.push(typeAnnotation ? `${WILDCARD_KEY}: ${typeAnnotation}` : WILDCARD_KEY);
   } else if (schema.open === true) {
     nestedFields.push(WILDCARD_KEY);
@@ -208,7 +228,7 @@ function formatTypeWithConstraints(
  * // → "[{name: string, age: number}]"
  * ```
  */
-function stringifyArrayMemberDef(memberDef: MemberDef): string {
+function stringifyArrayMemberDef(memberDef: MemberDef, named?: SchemaNames): string {
   const ofType = memberDef.of;
 
   // No element type specified
@@ -227,13 +247,13 @@ function stringifyArrayMemberDef(memberDef: MemberDef): string {
 
     // Nested object with schema
     if (elementMemberDef.type === 'object' && elementMemberDef.schema) {
-      const nestedFormat = formatNestedSchema(elementMemberDef.schema);
+      const nestedFormat = formatNestedSchema(elementMemberDef.schema, named);
       return `[${nestedFormat}]`;
     }
 
     // Nested array (array of arrays)
     if (elementMemberDef.type === 'array' && elementMemberDef.of) {
-      const nestedArrayFormat = stringifyArrayMemberDef(elementMemberDef);
+      const nestedArrayFormat = stringifyArrayMemberDef(elementMemberDef, named);
       return `[${nestedArrayFormat}]`;
     }
 
@@ -319,12 +339,13 @@ export function formatConstraintValue(value: any): string {
 export function stringifyMemberDeclaration(
   name: string,
   memberDef: MemberDef | undefined,
-  includeTypes: boolean
+  includeTypes: boolean,
+  named?: SchemaNames
 ): string {
   const key = formatObjectKey(name);
   const optional = memberDef?.optional === true;
   const nullable = memberDef?.null === true;
-  const typeAnnotation = memberDef ? stringifyMemberDef(memberDef, includeTypes) : '';
+  const typeAnnotation = memberDef ? stringifyMemberDef(memberDef, includeTypes, named) : '';
 
   // Short form: either the name is bare (markers are legal) or there are no markers to place.
   if (key === name || (!optional && !nullable)) {
@@ -333,7 +354,7 @@ export function stringifyMemberDeclaration(
   }
 
   const flags = [optional ? 'optional: T' : '', nullable ? '"null": T' : ''].filter(Boolean);
-  return `${key}: {${[longFormBody(memberDef!, includeTypes), ...flags].join(', ')}}`;
+  return `${key}: {${[longFormBody(memberDef!, includeTypes, named), ...flags].join(', ')}}`;
 }
 
 /**
@@ -342,7 +363,7 @@ export function stringifyMemberDeclaration(
  * Mirrors {@link stringifyMemberDef}, but produces the INSIDE of the braces (`number, min:0`)
  * rather than a self-contained annotation (`{number, min:0}`), so flags can be appended.
  */
-function longFormBody(memberDef: MemberDef, includeTypes: boolean): string {
+function longFormBody(memberDef: MemberDef, includeTypes: boolean, named?: SchemaNames): string {
   if (memberDef.schemaRef) {
     return memberDef.type === 'array'
       ? `array, of: ${memberDef.schemaRef}`
@@ -350,12 +371,12 @@ function longFormBody(memberDef: MemberDef, includeTypes: boolean): string {
   }
 
   if (memberDef.type === 'object' && memberDef.schema) {
-    return `object, schema: ${formatNestedSchema(memberDef.schema)}`;
+    return `object, schema: ${formatNestedSchema(memberDef.schema, named)}`;
   }
 
   if (memberDef.type === 'array' && memberDef.of) {
     // stringifyArrayMemberDef yields `[elem]`; `of:` takes the element type on its own.
-    const bracketed = stringifyArrayMemberDef(memberDef);
+    const bracketed = stringifyArrayMemberDef(memberDef, named);
     return `array, of: ${bracketed.slice(1, -1)}`;
   }
 

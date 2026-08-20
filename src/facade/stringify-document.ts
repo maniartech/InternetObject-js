@@ -6,7 +6,7 @@ import Section from '../core/section';
 import TypedefRegistry from '../schema/typedef-registry';
 import registerTypes from '../schema/types';
 import MemberDef from '../schema/types/memberdef';
-import { stringifyMemberDef, stringifyMemberDeclaration } from '../schema/types/memberdef-stringify';
+import { stringifyMemberDef, stringifyMemberDeclaration, SchemaNames } from '../schema/types/memberdef-stringify';
 import { stringify, stringifyObject } from './stringify';
 import { StringifyOptions } from './stringify';
 import { IO_MARKERS, RESERVED_SECTION_NAMES, WILDCARD_KEY } from './serialization-constants';
@@ -167,9 +167,28 @@ export function stringifyDocument(
 }
 
 /**
+ * Map every schema DEFINITION object to the name it was declared under (`$address`).
+ *
+ * Compiling `{object, schema: $address}` replaces the reference with the resolved Schema, so the
+ * writer would otherwise have no name to print and would inline the shape instead — growing the
+ * header by a copy per use and leaving the definition unreferenced. The resolved object is the
+ * SAME object held in definitions, so identity recovers the name exactly.
+ */
+function schemaNamesOf(defs: any): SchemaNames | undefined {
+  if (!defs || typeof defs.entries !== 'function') return undefined;
+  const named = new Map<object, string>();
+  for (const [key, defValue] of defs.entries()) {
+    if (defValue?.isSchema && defValue.value && typeof defValue.value === 'object') {
+      named.set(defValue.value, key);
+    }
+  }
+  return named.size > 0 ? named : undefined;
+}
+
+/**
  * Stringify a schema to IO format
  */
-function stringifySchema(schema: any, options: StringifyOptions): string {
+function stringifySchema(schema: any, options: StringifyOptions, named?: SchemaNames): string {
   if (!schema || !schema.defs) return '';
   // A wildcard-only schema ({*: $item}, or a bare {*}) has no declared names but must still emit
   // its `*` member. A bare `*` is recorded as `open === true` rather than in defs.
@@ -187,7 +206,7 @@ function stringifySchema(schema: any, options: StringifyOptions): string {
     // Name, markers and type in one step. A name that needs quoting (`a:b`, `a,b`) cannot carry the
     // short `?`/`*` markers, so it is declared through the long memberdef form instead -- see
     // stringifyMemberDeclaration.
-    parts.push(stringifyMemberDeclaration(name, memberDef, includeTypes));
+    parts.push(stringifyMemberDeclaration(name, memberDef, includeTypes, named));
   }
 
   // Append the wildcard member if present. A TYPED wildcard ({*: string}) lives in defs; a BARE
@@ -196,7 +215,7 @@ function stringifySchema(schema: any, options: StringifyOptions): string {
   if (schema.wildcard) {
     const openDef: MemberDef = schema.wildcard;
     let wildcard = WILDCARD_KEY;
-    const typeAnnotation = stringifyMemberDef(openDef, includeTypes);
+    const typeAnnotation = stringifyMemberDef(openDef, includeTypes, named);
     if (typeAnnotation) {
       wildcard += `:${typeAnnotation}`;
     }
@@ -223,7 +242,8 @@ export function stringifyHeader(doc: Document, options: StringifyDocumentOptions
   // Schema-only mode (just $schema, no other definitions): bare schema line (backward compatible)
   const isSchemaOnlyMode = doc.header.definitions?.defaultSchemaOnly ?? false;
   if (isSchemaOnlyMode && doc.header.schema) {
-    return stringifySchema(doc.header.schema, { ...options, includeTypes: true } as StringifyOptions);
+    return stringifySchema(doc.header.schema, { ...options, includeTypes: true } as StringifyOptions,
+      schemaNamesOf(doc.header.definitions));
   }
   // Definitions mode: all definitions (schemas, variables, metadata) in ~ format
   if (doc.header.definitions && doc.header.definitions.length > 0) {
@@ -231,7 +251,8 @@ export function stringifyHeader(doc: Document, options: StringifyDocumentOptions
   }
   // No definitions but has schema: bare schema line
   if (doc.header.schema) {
-    return stringifySchema(doc.header.schema, { ...options, includeTypes: true } as StringifyOptions);
+    return stringifySchema(doc.header.schema, { ...options, includeTypes: true } as StringifyOptions,
+      schemaNamesOf(doc.header.definitions));
   }
   return '';
 }
@@ -247,6 +268,7 @@ function stringifyHeaderDefinitions(
   if (!header.definitions) return '';
 
   const defs = header.definitions;
+  const named = schemaNamesOf(defs);
   const defParts: string[] = [];
 
   // Iterate through all definitions: schemas, variables, and metadata
@@ -264,12 +286,12 @@ function stringifyHeaderDefinitions(
           formattedValue = schemaValue.value; // Output as $employee
         } else {
           // Non-reference TokenNode - try to stringify
-          const schemaText = stringifySchema(schemaValue, { ...options, includeTypes: true });
+          const schemaText = stringifySchema(schemaValue, { ...options, includeTypes: true }, named);
           formattedValue = schemaText ? `{${schemaText}}` : '{}';
         }
       } else {
         // It's a Schema instance - use stringifySchema to format the schema structure
-        const schemaText = stringifySchema(schemaValue, { ...options, includeTypes: true });
+        const schemaText = stringifySchema(schemaValue, { ...options, includeTypes: true }, named);
         formattedValue = schemaText ? `{${schemaText}}` : '{}';
       }
     }
