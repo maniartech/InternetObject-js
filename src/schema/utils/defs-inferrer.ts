@@ -464,11 +464,24 @@ function canonicalizeDefinitions(
  * a non-empty array of plain objects (records). `{accounting: [...], sales: [...]}` infers better
  * as named sections (`--- accounting: $accounting`) than as one nested single-section document.
  */
+/**
+ * A section name is written RAW after `---` (`--- accounting: $accounting`) and the grammar has no
+ * quoted form for it, so only letters, marks, digits, `-` and `_` survive a round trip. Anything
+ * else -- a colon, a comma, a space -- is silently truncated or breaks the parse, so such data must
+ * take the single-section route, where its keys are ordinary (quotable) member names.
+ *
+ * The character class is the tokenizer's own (`REGEX_CACHE.sectionSchemaName`); keep them in sync.
+ */
+function isLegalSectionName(key: string): boolean {
+  return /^[\p{L}\p{M}\p{N}\-_]+$/u.test(key);
+}
+
 export function isMultiSectionShape(data: any): boolean {
   if (data === null || typeof data !== 'object' || Array.isArray(data)) return false;
   const entries = Object.entries(data);
   if (entries.length < 2) return false;
-  return entries.every(([, v]) =>
+  return entries.every(([k, v]) =>
+    isLegalSectionName(k) &&
     Array.isArray(v) && v.length > 0 &&
     v.every(item => item !== null && typeof item === 'object' && !Array.isArray(item))
   );
