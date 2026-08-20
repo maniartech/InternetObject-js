@@ -482,8 +482,7 @@ export function isMultiSectionShape(data: any): boolean {
   if (entries.length < 2) return false;
   return entries.every(([k, v]) =>
     isLegalSectionName(k) &&
-    Array.isArray(v) && v.length > 0 &&
-    v.every(item => item !== null && typeof item === 'object' && !Array.isArray(item))
+    Array.isArray(v) && v.length > 0 && v.every(isPlainRecord)
   );
 }
 
