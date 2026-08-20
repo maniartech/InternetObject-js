@@ -47,13 +47,24 @@ function plain(v: any): any {
   return out;
 }
 
-/** A value's SHAPE only -- the array/object/leaf skeleton, with no values in it. */
+/**
+ * A value's SHAPE only -- the array/object/leaf skeleton, with no values in it.
+ *
+ * Keys are SORTED, because a record bound to a schema is written in SCHEMA order: give IO
+ * `{"code:en": …, "true": …}` against a schema declaring `true` then `code:en` and it comes back in
+ * the schema's order. That is the format working as designed, not a shape change -- the same reason
+ * `deepEqual` below compares objects order-insensitively. Comparing key ORDER here reported those
+ * documents as shape failures and buried the genuine ones (a Decimal printed as its internals was
+ * sitting underneath).
+ *
+ * ARRAY order is still significant and still compared: sorting applies to object keys only.
+ */
 function shapeOf(v: any): any {
   if (Array.isArray(v)) return { k: 'a', i: v.map(shapeOf) };
   if (v !== null && typeof v === 'object' &&
       !(v instanceof Date) && !(v instanceof Uint8Array) && !(v instanceof Decimal)) {
     const out: Record<string, any> = {};
-    for (const key of Object.keys(v)) out[key] = shapeOf(v[key]);
+    for (const key of Object.keys(v).sort()) out[key] = shapeOf(v[key]);
     return { k: 'o', v: out };
   }
   return { k: 'l' };

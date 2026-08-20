@@ -11,6 +11,7 @@ import TypedefRegistry        from '../../schema/typedef-registry';
 import doCommonTypeCheck      from './common-type';
 import MemberDef              from './memberdef';
 import { inferDateTimeKind }  from '../../utils/datetime';
+import Decimal            from '../../core/decimal/decimal'
 
 const of = { type: "any", __memberdef: true }
 
@@ -201,6 +202,19 @@ export default class AnyDef implements TypeDef {
         return bigintDef.stringify(value, { type: 'bigint', path } as MemberDef, defs) ?? value.toString()
       }
       return value.toString()
+    }
+
+    // Decimal — object-shaped in JS but a SCALAR on the wire, so it must be caught before the
+    // generic object branch below. Without this it fell through and printed its internals:
+    // `{coefficient: -101119n, exponent: 2, precision: 6, scale: 2}`. Same omission as the one
+    // fixed in io-formatter's nested-structure checks; this is a third site that re-derived
+    // "object-shaped but scalar" by hand and left Decimal out (see ARCHITECTURE-RETROSPECTIVE N2).
+    if (value instanceof Decimal) {
+      const decimalDef = TypedefRegistry.get('decimal')
+      if (decimalDef && 'stringify' in decimalDef && typeof decimalDef.stringify === 'function') {
+        return decimalDef.stringify(value, { type: 'decimal', path } as MemberDef, defs) ?? `${value}m`
+      }
+      return `${value}m`
     }
 
     // String

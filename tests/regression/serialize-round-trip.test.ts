@@ -2,6 +2,7 @@ import { describe, test, expect } from 'vitest';
 import parse from '../../src/parser/index';
 import { stringifyDocument } from '../../src/facade/stringify-document';
 import loadInferred from '../../src/facade/load-inferred';
+import Decimal from '../../src/core/decimal/decimal';
 
 /**
  * ISSUE-16 — serializer round-trip defects found while writing the serialization spec.
@@ -264,5 +265,30 @@ describe('a quoted string keeps its backslashes', () => {
     ['leading', B + 'lead'],
   ])('%s', (_label, value) => {
     expect(roundTrip(value)).toBe(value)
+  })
+})
+
+describe('an untyped member keeps a Decimal a decimal', () => {
+  // AnyDef._stringifyByInference had branches for bool, number, bigint, string, Date, binary,
+  // array and object — but none for Decimal, which is object-shaped in JS and a SCALAR on the
+  // wire. It fell through to the object branch and printed its internals:
+  //   {coefficient: -101119n, exponent: 2, precision: 6, scale: 2}
+  // Third site to re-derive "object-shaped but scalar" by hand and leave Decimal out; see
+  // io-test-cases/ARCHITECTURE-RETROSPECTIVE.md N2.
+  test.each([
+    ['compact', { includeHeader: true, includeTypes: true }],
+    ['formatted', { includeHeader: true, includeTypes: true, indent: 2 }],
+  ])('%s', (_label, opts) => {
+    const value = new Decimal('-1011.19')
+    // The member is untyped (`any`) because a sibling record lacks the key entirely.
+    const doc = loadInferred([{ m: { v: [{ n: value }, {}, { n: 0 }] } }])
+    const io = stringifyDocument(doc as any, opts as any)
+    expect(io).not.toContain('coefficient')
+
+    const back: any = parse(io, null)
+    expect(back.getErrors()).toEqual([])
+    const got = back.toObject()[0].m.v[0].n
+    expect(got).toBeInstanceOf(Decimal)
+    expect(String(got)).toBe('-1011.19')
   })
 })
