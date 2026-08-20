@@ -193,8 +193,11 @@ function stringifySchema(schema: any, options: StringifyOptions, named?: SchemaN
   // A wildcard-only schema ({*: $item}, or a bare {*}) has no declared names but must still emit
   // its `*` member. A bare `*` is recorded as `open === true` rather than in defs.
   const hasNames = schema.names && schema.names.length > 0;
-  const isBareOpen = schema.open === true;
-  if (!hasNames && !schema.wildcard && !isBareOpen) return '';
+  // A MEMBER-LESS schema is always written `{}`, never `{*}`. The two are the same contract to the
+  // reader -- compile-object forces `open` on a schema that declares nothing -- so writing
+  // whichever one the in-memory flag happened to say made the writer non-idempotent: an inferred
+  // `~ $x: {}` read back open and re-serialized as `~ $x: {*}`.
+  if (!hasNames && !schema.wildcard) return '';
 
   const includeTypes = options.includeTypes ?? false;
   const parts: string[] = [];

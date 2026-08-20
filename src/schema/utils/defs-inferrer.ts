@@ -972,14 +972,10 @@ function mergeAllSchemaInstances(ctx: InferenceContext): void {
       continue;
     }
 
-    // Get the representative path for this schema (from first instance)
-    const representativePath = instances[0].fullPath;
-
-    // Extract just the instance objects for merging
-    const objects = instances.map(info => info.instance);
-
-    // Build merged schema from all instances, passing the parent path context
-    const mergedSchema = buildMergedSchema(objects, resolvedName, representativePath, ctx);
+    // Build merged schema from all instances. Each instance carries its OWN path, because
+    // instances collected under one schema name can sit at DIFFERENT paths, and their members
+    // then resolve to different schema names.
+    const mergedSchema = buildMergedSchema(instances, resolvedName, ctx);
     ctx.schemaRegistry.set(resolvedName, mergedSchema);
 
     // Don't add $schema to definitions yet (handled separately)
@@ -1002,18 +998,17 @@ function mergeAllSchemaInstances(ctx: InferenceContext): void {
  * Build a merged schema from multiple object instances using multi-pass rules
  */
 function buildMergedSchema(
-  objects: Record<string, any>[],
+  instances: SchemaInstanceInfo[],
   schemaName: string,
-  parentPath: string[],
   ctx: InferenceContext
 ): Schema {
   const memberDefs: Map<string, MemberDef> = new Map();
   const memberOrder: string[] = [];
   const seenInIteration: Map<string, number> = new Map();
 
-  for (let i = 0; i < objects.length; i++) {
-    const obj = objects[i];
-    const keysInThisObject = new Set(Object.keys(obj));
+  for (let i = 0; i < instances.length; i++) {
+    const obj = instances[i].instance;
+    const parentPath = instances[i].fullPath;
 
     // Process each key in current object
     for (const [key, value] of Object.entries(obj)) {
@@ -1053,7 +1048,7 @@ function buildMergedSchema(
   // REQUIRED: `[{}, {value: 1}]` inferred `value` as required, and the empty record then failed
   // against its own inferred schema with `value-required`. Absence is absence, whenever it is seen.
   for (const [key, def] of memberDefs) {
-    if (objects.some(o => !Object.prototype.hasOwnProperty.call(o, key))) {
+    if (instances.some(i => !Object.prototype.hasOwnProperty.call(i.instance, key))) {
       def.optional = true;
     }
   }
@@ -1066,6 +1061,17 @@ function buildMergedSchema(
   // document it describes fails to load with `unknown-member`.
 
   return builder.build();
+}
+
+/**
+ * The schema an object MemberDef is bound to, as a comparable token: a `$name` reference, the
+ * signature of an INLINE schema (the `{*: $item}` wildcard containers carry no name), or null
+ * when the member is an untyped `object` and so bound to nothing.
+ */
+function objectLinkOf(md: MemberDef): string | null {
+  if (md.schemaRef) return md.schemaRef;
+  if (md.schema) return `inline:${schemaSignature(md.schema as Schema)}`;
+  return null;
 }
 
 /**
@@ -1099,10 +1105,22 @@ function mergeIntoMemberDef(
     delete existingDef.schemaRef;
   }
 
-  // Preserve schemaRef if both are objects with same schema
+  // Objects: the schema a member is bound to may only ever WEAKEN across instances -- the same
+  // rule arrays follow below. Two instances collected under one name can hold records of
+  // different shapes under the same key, and those records resolve to DIFFERENT schema names.
+  // Keeping the first binding made the writer emit one instance's record against the other
+  // instance's schema: a document its own reader rejects with `value-required`. An untyped
+  // `object` accepts both shapes.
   if (existingDef.type === 'object' && newDef.type === 'object') {
-    if (newDef.schemaRef && !existingDef.schemaRef) {
-      existingDef.schemaRef = newDef.schemaRef;
+    const oldLink = objectLinkOf(existingDef);
+    const newLink = objectLinkOf(newDef);
+    if (newLink !== null && oldLink === null) {
+      // Assign conditionally: an explicit `undefined` would be serialized as a constraint.
+      if (newDef.schemaRef) existingDef.schemaRef = newDef.schemaRef;
+      if (newDef.schema) existingDef.schema = newDef.schema;
+    } else if (oldLink !== newLink) {
+      delete existingDef.schemaRef;
+      delete existingDef.schema;
     }
   }
 

@@ -141,7 +141,9 @@ function formatNestedSchema(schema: any, named?: SchemaNames): string {
   if (wildcard) {
     const typeAnnotation = stringifyMemberDef(wildcard, true, named);
     nestedFields.push(typeAnnotation ? `${WILDCARD_KEY}: ${typeAnnotation}` : WILDCARD_KEY);
-  } else if (schema.open === true) {
+  } else if (schema.open === true && nestedFields.length > 0) {
+    // A member-less schema is written `{}`, never `{*}` -- see stringifySchema. The reader treats
+    // the two identically, and writing only one of them keeps a re-write stable.
     nestedFields.push(WILDCARD_KEY);
   }
 
