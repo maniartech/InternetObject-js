@@ -14,6 +14,7 @@ import TypedefRegistry      from '../../schema/typedef-registry';
 import doCommonTypeCheck    from './common-type';
 import MemberDef            from './memberdef';
 import { formatObjectKey, shouldEmitKey }  from '../../utils/string-formatter';
+import { undeclaredMemberDef } from '../utils/member-utils';
 
 const schema = new Schema(
   "object",
@@ -149,12 +150,8 @@ class ObjectDef implements TypeDef {
     if (schema.open) {
       for (const key in data) {
         if (!processedNames.has(key)) {
-          let extraMemberDef: MemberDef
-          if (typeof schema.open === 'object' && schema.open.type) {
-            extraMemberDef = { ...schema.open, path: basePath ? `${basePath}.${key}` : key }
-          } else {
-            extraMemberDef = { type: 'any', path: basePath ? `${basePath}.${key}` : key }
-          }
+          const extraMemberDef: MemberDef =
+            undeclaredMemberDef(basePath ? `${basePath}.${key}` : key, schema.open)
 
           const typeDef = TypedefRegistry.get(extraMemberDef.type)
           if (typeDef && 'load' in typeDef && typeof typeDef.load === 'function') {

@@ -11,6 +11,7 @@ import Schema             from './schema';
 import MemberDef          from './types/memberdef';
 import { processMember }  from './processing/member-processor';
 import { ProcessingContext } from './processing/processing-context';
+import { undeclaredMemberDef } from './utils/member-utils';
 
 /**
  * Resolves variable references in memberDef fields like default, min, max, choices.
@@ -289,11 +290,7 @@ function _processObject(
 
     // In an open schema, the memberDef is not found. Use schema.open constraints if available, else type 'any'.
     if (!memberDef && schema.open) {
-      if (typeof schema.open === 'object' && schema.open.type) {
-        memberDef = { ...schema.open, path: name as string };
-      } else {
-        memberDef = { type: 'any', path: name as string };
-      }
+      memberDef = undeclaredMemberDef(name as string, schema.open);
     }
 
     processedNames.add(name);
@@ -323,12 +320,7 @@ function _processObject(
       const memberNode = member as any;
       let name = memberNode.key ? memberNode.key.value : undefined;
       if (!name) continue;
-      let memberDef: MemberDef;
-      if (typeof schema.open === 'object' && schema.open.type) {
-        memberDef = { ...schema.open, path: name };
-      } else {
-        memberDef = { type: 'any', path: name };
-      }
+      const memberDef: MemberDef = undeclaredMemberDef(name, schema.open);
       try {
         const val = processMember(memberNode, memberDef, defs);
         // Collect errors from nested InternetObjects

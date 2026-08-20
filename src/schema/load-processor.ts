@@ -9,6 +9,7 @@ import MemberDef from './types/memberdef';
 import TypedefRegistry from './typedef-registry';
 import registerTypes from './types';
 import TokenNode from '../parser/nodes/tokens';
+import { undeclaredMemberDef } from './utils/member-utils';
 
 /**
  * Resolves variable references in memberDef fields like default, min, max, choices.
@@ -163,12 +164,7 @@ function _loadObject(data: any, schema: Schema, defs?: Definitions): InternetObj
       if (!processedNames.has(key)) {
         let memberDef: MemberDef;
 
-        // Use schema.open constraints if it's a MemberDef, otherwise type 'any'
-        if (typeof schema.open === 'object' && schema.open.type) {
-          memberDef = { ...schema.open, path: key };
-        } else {
-          memberDef = { type: 'any', path: key };
-        }
+        memberDef = undeclaredMemberDef(key, schema.open);
 
         const typeDef = TypedefRegistry.get(memberDef.type);
         if (typeDef && 'load' in typeDef && typeDef.load) {
