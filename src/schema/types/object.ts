@@ -378,6 +378,21 @@ class ObjectDef implements TypeDef {
   private _process = (
     node: Node, memberDef: MemberDef, defs?: Definitions
   ) => {
+    // A `schema:` member may REFERENCE a definition (`{object, schema: $address}`) rather than
+    // spell the shape inline. Keep the REFERENCE unresolved; do not substitute the schema it names.
+    //
+    // Resolving here was EAGER, and eager resolution cannot see a definition that is not finished
+    // being built. Two silent consequences, neither of which raised an error:
+    //   - a FORWARD reference bound the nested record positionally — `{x: 1}` decoded as `{"0": 1}`
+    //   - a RECURSIVE schema is always forward to ITSELF, so it did so every single time
+    // The short form (`home: $address`) has always stored the TokenNode and resolved on demand,
+    // which is why recursion works there. Both spellings now behave identically.
+    // See io-test-cases/ARCHITECTURE-RETROSPECTIVE.md (N3b).
+    if (memberDef.__schema && node instanceof TokenNode &&
+        typeof node.value === 'string' && node.value.startsWith('$')) {
+      return node
+    }
+
     const valueNode = defs?.getV(node) || node
     const { value, changed } = doCommonTypeCheck(memberDef, valueNode, node, defs)
 
