@@ -1043,11 +1043,18 @@ function buildMergedSchema(
       }
     }
 
-    // Rule 4: Mark keys missing in this object as optional
-    for (const [key, def] of memberDefs) {
-      if (!keysInThisObject.has(key) && seenInIteration.get(key)! < i) {
-        def.optional = true;
-      }
+  }
+
+  // Rule 4: a member is OPTIONAL if any instance lacks it.
+  //
+  // This used to run inside the loop above, marking a member optional only when it had been seen in
+  // an EARLIER instance and was missing from this one — so it depended on the order the instances
+  // happened to be collected in. An instance that came FIRST and lacked the key left that key
+  // REQUIRED: `[{}, {value: 1}]` inferred `value` as required, and the empty record then failed
+  // against its own inferred schema with `value-required`. Absence is absence, whenever it is seen.
+  for (const [key, def] of memberDefs) {
+    if (objects.some(o => !Object.prototype.hasOwnProperty.call(o, key))) {
+      def.optional = true;
     }
   }
 
