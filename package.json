@@ -81,6 +81,7 @@
     "bundle:budget-check": "bash scripts/bundle-budget-check.sh",
     "corpus": "tsx tools/corpus/verify.ts",
     "corpus:bootstrap": "tsx tools/corpus/bootstrap-csv.ts",
+    "corpus:both": "tsx tools/corpus/verify-both.ts",
     "corpus:tokens": "tsx tools/corpus/verify-bootstrap.ts",
     "fuzz:triage": "tsx tools/fuzz/triage.ts"
   },
