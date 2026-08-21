@@ -249,8 +249,13 @@ function _processObject(
     for (; i<data.children.length; i++) {
       const member = data.children[i] as MemberNode;
       if (!schema.open) {
-        // This is a syntax error, not a validation error - throw immediately
-        throw new SyntaxError(ErrorCodes.additionalValuesNotAllowed, `Additional values are not allowed in the ${schema.name}. The ${schema.name} schema is not open.`, member.value);
+        // A surplus positional value is the same fault as a surplus named member: a closed schema
+        // was given something it does not declare. One code, two messages -- and a VALIDATION
+        // error, matching the named case, because the data is at fault rather than the text.
+        throw new ValidationError(
+          ErrorCodes.unknownMember,
+          `The ${schema.name ? `${schema.name} ` : ''}schema declares ${schema.names.length} member(s); this value has no member to bind to.`,
+          member.value);
       }
       if (member.key) {
         positional = false;
@@ -283,8 +288,11 @@ function _processObject(
     // When the member is not found check if the schema is open to allow
     // additional properties. If not throw an error.
     if (!memberDef && !schema.open) {
-      // Syntax error - throw immediately
-      throw new SyntaxError(
+      // A VALIDATION error: the text is well-formed, the DATA carries a member the schema does not
+      // declare. This site used to raise it as a syntax error while the load path raised the same
+      // condition as a validation error, so one code surfaced under two categories depending on
+      // how the data arrived. CONFORMANCE.md 5.1 groups membership faults under validation.
+      throw new ValidationError(
         ErrorCodes.unknownMember, `The ${schema.name ? `${schema.name} ` : ''}schema does not define a member named '${name}'.`, member.key)
     }
 

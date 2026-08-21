@@ -4,9 +4,15 @@
 enum ValidationErrorCodes {
   // Object validation
   invalidObject = 'invalid-object',
+  // A closed schema was given a member it does not declare. ONE code for every spelling of that
+  // fault: a surplus POSITIONAL value, a surplus NAMED member, and a memberdef option the typedef
+  // does not declare (a memberdef is itself a record validated against the typedef's own member
+  // schema, so it is this same rule one level up). `additional-values-not-allowed` used to cover
+  // the positional case alone, which meant the same fault reported different codes depending on
+  // how the data arrived -- and a native caller, having only named members, could never see it.
+  // See io-js2 docs/decisions/0002-error-code-grammar-and-taxonomy.md §6.4.
   unknownMember = 'unknown-member',
   duplicateMember = 'duplicate-member',
-  additionalValuesNotAllowed = 'additional-values-not-allowed',
 
   // Array validation
   invalidArray = 'invalid-array',
