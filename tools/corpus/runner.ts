@@ -76,8 +76,18 @@ export function norm(v: any): any {
   // A Decimal must be caught BEFORE the generic object branch, or it flattens into its internals
   // ({ coefficient, exponent, … }). The corpus spells a decimal as its digits.
   if (v.constructor?.name === 'Decimal') return String(v);
+  // Object keys are SORTED before comparison, because key order in a projected value is a
+  // host-language artifact and not part of the format. JavaScript orders integer-like keys first,
+  // so `a: 1, 2` projects as {"1":…, "a":…}; a port whose map preserves insertion order projects
+  // {"a":…, "1":…}. Both are the same value, and a corpus that failed one of them would be
+  // asserting JavaScript rather than Internet Object.
+  //
+  // Nothing is lost. A positional member carries its index IN its key ("0", "1", …), so ordinal
+  // identity survives sorting; and where the ORDER of members is genuinely semantic — what a
+  // writer must emit — it is asserted as TEXT by the `serializer/` suite, and as an ordered
+  // `members` list by `schema/`.
   const out: Record<string, any> = {};
-  for (const k of Object.keys(v)) out[k] = norm(v[k]);
+  for (const k of Object.keys(v).sort()) out[k] = norm(v[k]);
   return out;
 }
 
