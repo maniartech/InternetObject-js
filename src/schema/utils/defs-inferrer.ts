@@ -635,6 +635,10 @@ function isDynamicKeyObject(obj: Record<string, any>): boolean {
 /**
  * Infers Internet Object definitions from plain JavaScript data.
  *
+ * @experimental Inference is a convenience of this library, not part of the format — it guesses,
+ * where the rest of the format is determined. No port must reproduce it and no conformance suite
+ * covers it, so the rules below may change in any release. See ADR 0004.
+ *
  * This utility analyzes the structure and types of the input data
  * and generates proper Definitions with:
  * - `$schema` for the root object (default schema)

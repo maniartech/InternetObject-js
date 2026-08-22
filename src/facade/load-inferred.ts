@@ -7,6 +7,11 @@
  * Unlike `load()` which requires explicit schema definitions, `loadInferred()`
  * analyzes the structure and types of your data to generate appropriate schemas.
  *
+ * **Experimental, and not part of the Internet Object format.** Inference is a convenience of this
+ * library: it guesses a schema, where every other part of the format is determined by its input.
+ * No port is required to provide it, no conformance suite covers it, and its output may change in
+ * any release. See ADR 0004.
+ *
  * @module facade/load-inferred
  */
 
@@ -28,6 +33,12 @@ export type LoadInferredOptions = Omit<IOCommonOptions, 'schemaName'>;
 
 /**
  * Load plain JavaScript data with **inferred schema** into a Document.
+ *
+ * @experimental Not part of the Internet Object format — a library convenience for data arriving
+ * from JSON. The inferred shape is a heuristic and carries no compatibility promise; it may change
+ * in any release, and a conforming implementation in another language need not provide it at all.
+ * See `docs/decisions/0004-schema-inference-is-out-of-scope-for-1.0.md`. For output you intend to
+ * keep or exchange, write the schema explicitly and use {@link load}.
  *
  * This function analyzes the structure of your data and automatically generates
  * appropriate schema definitions. The resulting Document includes:

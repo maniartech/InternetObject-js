@@ -277,7 +277,7 @@ if (errors.length > 0) {
 }
 ```
 
-### Infer schema from data
+### Infer schema from data (experimental)
 
 ```ts
 import { loadInferred } from 'internet-object';
@@ -285,6 +285,11 @@ import { loadInferred } from 'internet-object';
 const doc = loadInferred({ name: 'Alice', age: 30 });
 // Schema is auto-generated: { name: string, age: number }
 ```
+
+> **Experimental.** Inference is a convenience of this library, **not part of the Internet Object
+> format** — it guesses a schema, where everything else is determined by its input. It carries no
+> compatibility promise and may change in any release, and implementations in other languages need
+> not provide it. For data you intend to keep or exchange, write the schema and use `load()`.
 
 ### Advanced stringify options
 
