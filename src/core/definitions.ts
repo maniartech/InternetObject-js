@@ -157,16 +157,8 @@ class IODefinitions {
    * @returns The value associated with the variable
    */
   public getV(k: any): any {
-    let key: string = "";
-
-    // Check if k is a TokenNode (can have lowercase 'string' or uppercase 'STRING' type)
-    if ((k || {}).type === TokenType.STRING || (k || {}).type === 'string') {
-      key = k.value;
-    } else if (typeof k === 'string') {
-      key = k;
-    } else {
-      return;
-    }
+    const key = this.keyOf(k);
+    if (key === "") return;
 
     const def = this._definitions[key];
     if (!def) {
@@ -196,6 +188,63 @@ class IODefinitions {
     }
 
     return def.value;
+  }
+
+  /**
+   * The KEY a lookup argument names, or "" when it names nothing. Shared by `getV` and
+   * `getValue` so the two cannot disagree about what a TokenNode refers to.
+   */
+  private keyOf(k: any): string {
+    // A TokenNode can carry lowercase 'string' or uppercase 'STRING' as its type.
+    if ((k || {}).type === TokenType.STRING || (k || {}).type === 'string') return k.value;
+    if (typeof k === 'string') return k;
+    return "";
+  }
+
+  /** Variables being resolved right now, so a self-referential definition is reported, not recursed. */
+  private readonly _resolvingValues = new Set<string>();
+
+  /**
+   * Resolve a reference to its VALUE — the sibling of {@link getV}, which returns the stored
+   * NODE.
+   *
+   * Both are needed, and conflating them is a bug in either direction:
+   *
+   *   getV       returns the AST node. The schema type-checkers depend on this: they read
+   *              `valueNode.type` to decide whether a variable holds a string, a boolean, a
+   *              number, and report `expected-string` when it does not.
+   *   getValue   returns the decoded value. The document projection depends on THIS.
+   *
+   * Until 2026-08-22 only `getV` existed, and `TokenNode.toValue` used it — so a variable read
+   * without a schema projected the parser's internals into the value model. `~ @red: "#f00"`
+   * followed by `color: @red` produced `{ pos, row, col, token, value, type, subType }` instead
+   * of `"#f00"`, and an array variable leaked its brackets as nodes. It stayed invisible because
+   * every example in the specification declares a schema, and the schema path decodes separately.
+   *
+   * Decoding also resolves a variable defined in terms of another (`~ @b: @a`), which previously
+   * yielded the literal string "@a".
+   *
+   * @returns the value, or `undefined` when the key names no definition (so a caller can treat
+   *   the text as an ordinary string).
+   */
+  public getValue(k: any): any {
+    const found = this.getV(k);
+    if (found === null || found === undefined) return found;
+    if (typeof (found as any).toValue !== 'function') return found;
+
+    const key = this.keyOf(k);
+    if (this._resolvingValues.has(key)) {
+      throw new ValidationError(
+        ErrorCodes.invalidDefinition,
+        `Variable ${key} is defined in terms of itself.`
+      );
+    }
+    this._resolvingValues.add(key);
+    try {
+      return (found as any).toValue(this);
+    } finally {
+      this._resolvingValues.delete(key);
+    }
   }
 
   public set(k: string, v: any) {

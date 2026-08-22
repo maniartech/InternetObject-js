@@ -294,12 +294,10 @@ describe("SectionNode", () => {
       const objectChild = createSimpleObject();
       const section = new SectionNode(objectChild, null, null);
 
-      // Mock definitions
-      const mockDefs = {
-        getV: (key: string) => {
-          return key === "test" ? "mockValue" : null;
-        }
-      } as any;
+      // Mock definitions. `getValue` is the value-returning sibling of `getV` and is what the
+      // projection path calls; a mock that carries only `getV` no longer stands in for Definitions.
+      const resolve = (key: string) => (key === "test" ? "mockValue" : null);
+      const mockDefs = { getV: resolve, getValue: resolve } as any;
 
       // Spy on child's toValue method
       const toValueSpy = vi.spyOn(objectChild, 'toValue');
