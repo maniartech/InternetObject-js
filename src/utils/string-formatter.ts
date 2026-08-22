@@ -7,6 +7,8 @@
 import TypedefRegistry from '../schema/typedef-registry';
 import MemberDef from '../schema/types/memberdef';
 import { STRING_ENCLOSERS } from '../facade/serialization-constants';
+// One copy of the rule, in the module the serializer actually uses.
+import { readsBackAsANumber } from './strings';
 
 /**
  * String format types supported by Internet Object
@@ -91,11 +93,15 @@ function fallbackQuoteString(str: string, encloser: string): string {
  * @example
  * ```typescript
  * needsQuoting('hello')      // → false (safe identifier)
- * needsQuoting('123')        // → true (looks like number)
- * needsQuoting('0001')       // → true (looks like number, has leading zeros)
- * needsQuoting('true')       // → true (looks like boolean)
+ * needsQuoting('013ABSD')    // → false (a part code reads back as itself)
+ * needsQuoting('12mm')       // → false (a measurement; no marker, no claim)
+ * needsQuoting('1.2.3')      // → false (a version; not a complete number)
+ * needsQuoting('123')        // → true  (would read back as a NUMBER)
+ * needsQuoting('0001')       // → true  (likewise, and would lose its zeros)
+ * needsQuoting('0x123FG')    // → true  (the 0x marker would make it an ERROR)
+ * needsQuoting('true')       // → true  (looks like boolean)
  * needsQuoting('hello world') // → true (contains space)
- * needsQuoting('')           // → true (empty string)
+ * needsQuoting('')           // → true  (empty string)
  * ```
  */
 export function needsQuoting(str: string): boolean {
@@ -105,9 +111,8 @@ export function needsQuoting(str: string): boolean {
   // Check for whitespace
   if (/\s/.test(str)) return true;
 
-  // Check if it looks like a number (starts with digit, or -/+/. followed by digit)
-  // This catches: "123", "0001", "-5", ".5", "3.14", etc.
-  if (looksLikeNumber(str)) return true;
+  // Would the bare text read back as something OTHER than this string?
+  if (readsBackAsANumber(str)) return true;
 
   // Check if it looks like a boolean
   if (str === 'T' || str === 'F' || str === 'true' || str === 'false') return true;
@@ -125,26 +130,6 @@ export function needsQuoting(str: string): boolean {
   return false;
 }
 
-/**
- * Check if a string looks like a number when parsed.
- * Any string starting with a digit (or -/+/. followed by digit) looks like a number.
- */
-function looksLikeNumber(str: string): boolean {
-  if (str.length === 0) return false;
-
-  const first = str[0];
-  if (first === '-' || first === '+') {
-    if (str.length === 1) return false;
-    const second = str[1];
-    return (second >= '0' && second <= '9') || second === '.';
-  }
-  if (first === '.') {
-    if (str.length === 1) return false;
-    const second = str[1];
-    return second >= '0' && second <= '9';
-  }
-  return first >= '0' && first <= '9';
-}
 
 /**
  * Escapes special characters in a string value.

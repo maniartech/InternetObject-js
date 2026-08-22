@@ -1,5 +1,6 @@
 import SyntaxError from '../../errors/io-syntax-error'
 import ErrorCodes from '../../errors/io-error-codes'
+import ValidationError from '../../errors/io-validation-error'
 import MemberDef from './memberdef'
 
 export interface CreateMemberDefInput extends Partial<MemberDef> {
@@ -20,7 +21,7 @@ export function createMemberDef(input: CreateMemberDefInput, opts?: { allowNamel
   const { name, type } = input
 
   if (!type || typeof type !== 'string') {
-    throw new SyntaxError(ErrorCodes.invalidType, 'MemberDef.type must be a non-empty string.')
+    throw new ValidationError(ErrorCodes.unknownType, 'MemberDef.type must be a non-empty string.')
   }
 
   // A name is invalid when it is ABSENT or EMPTY -- not when it is whitespace. `{" ": string}`

@@ -25,7 +25,7 @@ describe('BigIntDef - BigInt Type Validation', () => {
 
       expect(() => parse(`${schema}\n---\n10n`, null)).not.toThrow()
       expect(() => parse(`${schema}\n---\n100n`, null)).not.toThrow()
-      expect(() => parse(`${schema}\n---\n9n`, null)).toThrow(/range/)
+      expect(() => parse(`${schema}\n---\n9n`, null)).toThrow(expect.objectContaining({ errorCode: expect.stringMatching(/^mismatched-(min|max)$|^out-of-range-/) }))
     })
 
     test('should respect max constraint', () => {
@@ -33,7 +33,7 @@ describe('BigIntDef - BigInt Type Validation', () => {
 
       expect(() => parse(`${schema}\n---\n100n`, null)).not.toThrow()
       expect(() => parse(`${schema}\n---\n0n`, null)).not.toThrow()
-      expect(() => parse(`${schema}\n---\n101n`, null)).toThrow(/range/)
+      expect(() => parse(`${schema}\n---\n101n`, null)).toThrow(expect.objectContaining({ errorCode: expect.stringMatching(/^mismatched-(min|max)$|^out-of-range-/) }))
     })
 
     test('should respect both min and max constraints', () => {
@@ -43,24 +43,24 @@ describe('BigIntDef - BigInt Type Validation', () => {
       expect(() => parse(`${schema}\n---\n50n`, null)).not.toThrow()
       expect(() => parse(`${schema}\n---\n100n`, null)).not.toThrow()
 
-      expect(() => parse(`${schema}\n---\n9n`, null)).toThrow(/range/)
-      expect(() => parse(`${schema}\n---\n101n`, null)).toThrow(/range/)
+      expect(() => parse(`${schema}\n---\n9n`, null)).toThrow(expect.objectContaining({ errorCode: expect.stringMatching(/^mismatched-(min|max)$|^out-of-range-/) }))
+      expect(() => parse(`${schema}\n---\n101n`, null)).toThrow(expect.objectContaining({ errorCode: expect.stringMatching(/^mismatched-(min|max)$|^out-of-range-/) }))
     })
 
     test('should handle very large min/max values', () => {
       const schema = 'num: { bigint, min: 1000000000000000000n, max: 9999999999999999999n }'
 
       expect(() => parse(`${schema}\n---\n5000000000000000000n`, null)).not.toThrow()
-      expect(() => parse(`${schema}\n---\n999999999999999999n`, null)).toThrow(/range/)
-      expect(() => parse(`${schema}\n---\n10000000000000000000n`, null)).toThrow(/range/)
+      expect(() => parse(`${schema}\n---\n999999999999999999n`, null)).toThrow(expect.objectContaining({ errorCode: expect.stringMatching(/^mismatched-(min|max)$|^out-of-range-/) }))
+      expect(() => parse(`${schema}\n---\n10000000000000000000n`, null)).toThrow(expect.objectContaining({ errorCode: expect.stringMatching(/^mismatched-(min|max)$|^out-of-range-/) }))
     })
 
     test('should handle negative min/max values', () => {
       const schema = 'num: { bigint, min: -100n, max: -10n }'
 
       expect(() => parse(`${schema}\n---\n-50n`, null)).not.toThrow()
-      expect(() => parse(`${schema}\n---\n-101n`, null)).toThrow(/range/)
-      expect(() => parse(`${schema}\n---\n-9n`, null)).toThrow(/range/)
+      expect(() => parse(`${schema}\n---\n-101n`, null)).toThrow(expect.objectContaining({ errorCode: expect.stringMatching(/^mismatched-(min|max)$|^out-of-range-/) }))
+      expect(() => parse(`${schema}\n---\n-9n`, null)).toThrow(expect.objectContaining({ errorCode: expect.stringMatching(/^mismatched-(min|max)$|^out-of-range-/) }))
     })
   })
 
@@ -68,15 +68,15 @@ describe('BigIntDef - BigInt Type Validation', () => {
     test('should handle zero', () => {
       expect(() => parse('num: bigint\n---\n0n', null)).not.toThrow()
       expect(() => parse('num: { bigint, min: 0n }\n---\n0n', null)).not.toThrow()
-      expect(() => parse('num: { bigint, min: 0n }\n---\n-1n', null)).toThrow(/range/)
+      expect(() => parse('num: { bigint, min: 0n }\n---\n-1n', null)).toThrow(expect.objectContaining({ errorCode: expect.stringMatching(/^mismatched-(min|max)$|^out-of-range-/) }))
     })
 
     test('should handle boundary values', () => {
       const schema = 'num: { bigint, min: 10n, max: 10n }'
 
       expect(() => parse(`${schema}\n---\n10n`, null)).not.toThrow()
-      expect(() => parse(`${schema}\n---\n9n`, null)).toThrow(/range/)
-      expect(() => parse(`${schema}\n---\n11n`, null)).toThrow(/range/)
+      expect(() => parse(`${schema}\n---\n9n`, null)).toThrow(expect.objectContaining({ errorCode: expect.stringMatching(/^mismatched-(min|max)$|^out-of-range-/) }))
+      expect(() => parse(`${schema}\n---\n11n`, null)).toThrow(expect.objectContaining({ errorCode: expect.stringMatching(/^mismatched-(min|max)$|^out-of-range-/) }))
     })
 
     test('should handle very large numbers beyond Number.MAX_SAFE_INTEGER', () => {
@@ -115,7 +115,7 @@ describe('BigIntDef - BigInt Type Validation', () => {
 
       expect(() => parse(`${schema}\n---\n1000000n`, null)).not.toThrow()
       expect(() => parse(`${schema}\n---\n9999999n`, null)).not.toThrow()
-      expect(() => parse(`${schema}\n---\n999999n`, null)).toThrow(/range/)
+      expect(() => parse(`${schema}\n---\n999999n`, null)).toThrow(expect.objectContaining({ errorCode: expect.stringMatching(/^mismatched-(min|max)$|^out-of-range-/) }))
     })
 
     test('should work with max-only', () => {
@@ -123,7 +123,7 @@ describe('BigIntDef - BigInt Type Validation', () => {
 
       expect(() => parse(`${schema}\n---\n1000000n`, null)).not.toThrow()
       expect(() => parse(`${schema}\n---\n-9999999n`, null)).not.toThrow()
-      expect(() => parse(`${schema}\n---\n1000001n`, null)).toThrow(/range/)
+      expect(() => parse(`${schema}\n---\n1000001n`, null)).toThrow(expect.objectContaining({ errorCode: expect.stringMatching(/^mismatched-(min|max)$|^out-of-range-/) }))
     })
   })
 
@@ -133,7 +133,7 @@ describe('BigIntDef - BigInt Type Validation', () => {
 
       expect(() => parse(`${schema}\n---\n0n`, null)).not.toThrow()
       expect(() => parse(`${schema}\n---\n999999n`, null)).not.toThrow()
-      expect(() => parse(`${schema}\n---\n-1n`, null)).toThrow(/range/)
+      expect(() => parse(`${schema}\n---\n-1n`, null)).toThrow(expect.objectContaining({ errorCode: expect.stringMatching(/^mismatched-(min|max)$|^out-of-range-/) }))
     })
   })
 })

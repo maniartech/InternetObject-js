@@ -17,7 +17,7 @@ describe('IOCollection Errors', () => {
 
     expect(collection.length).toBe(2);
     expect(collection.errors.length).toBe(1);
-    expect(collection.errors[0].message).toContain('invalid-type');
+    expect(collection.errors[0].message).toContain('expected-number');
     expect((collection.errors[0] as any).collectionIndex).toBe(1);
   });
 
@@ -37,6 +37,6 @@ describe('IOCollection Errors', () => {
     expect(collection.length).toBe(2);
     expect(collection.errors.length).toBe(1);
     // Errors are collected in collection.errors, not external array
-    expect(collection.errors[0].message).toContain('invalid-type');
+    expect(collection.errors[0].message).toContain('expected-number');
   });
 });

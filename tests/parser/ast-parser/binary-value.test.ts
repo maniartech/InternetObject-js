@@ -4,7 +4,7 @@ import parse from '../../../src/parser/index'
 /**
  * ISSUE-4: a binary literal `b'…'` is a first-class value. The tokenizer decodes it to native bytes
  * (a Buffer); the parser must accept it anywhere a value is expected (keyed, positional, array
- * element). "Hello" = base64 SGVsbG8= = bytes [72,101,108,108,111]. A malformed base64 still errors.
+ * element). "Hello" = base64 SGVsbG8= = bytes [72,101,108,108,111]. Malformed content reports `invalid-binary`.
  */
 const HELLO = [72, 101, 108, 108, 111]
 
@@ -48,9 +48,12 @@ describe('ISSUE-4 — binary literals usable as values (decode to native bytes)'
     expect(bytesOf(r.value.items[0])).toEqual(HELLO)
   })
 
-  test('malformed base64 still errors with invalid-base64 (control)', () => {
+  // The code names the TYPE the marker claims, not the encoding it happens to use: `b'...'` claims
+  // `binary`, exactly as `dt'...'` claims `datetime`. It was `invalid-base64`, which left this as
+  // the one literal code naming something that is not a type in this format.
+  test('malformed content still errors with invalid-binary (control)', () => {
     const doc: any = parse("{ pic: b'@@@' }", null)
     const codes = (doc.getErrors?.() ?? []).map((e: any) => e?.errorCode)
-    expect(codes).toContain('invalid-base64')
+    expect(codes).toContain('invalid-binary')
   })
 })

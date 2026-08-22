@@ -10,7 +10,7 @@ import { stringifyDocument } from '../../src/facade/stringify-document'
  * `*` is grammar in a schema (`{ name: string, * }` = "and any other fields"), but it is also an
  * ordinary character that JSON data uses as a key — `{ "rules": { "*": "allow" } }`. The compiler
  * asked only "is this key the text `*`?", so a DATA key named `*` was read as the wildcard and its
- * value checked against the wildcard's rules: `{"*": null}` failed `null-not-allowed`, `{"*": 42}`
+ * value checked against the wildcard's rules: `{"*": null}` failed `forbidden-null`, `{"*": 42}`
  * failed `invalid-object`, and a record holding one re-serialized to a different shape.
  *
  * The rule now matches the one governing the `?` / `*` name suffixes — **quoting means "this,

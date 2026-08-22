@@ -1,5 +1,6 @@
 import { readFileSync } from 'fs';
 import parse from '../../src/parser/index';
+import { stringifyDocument } from '../../src/facade/stringify-document';
 
 /**
  * Corpus verifier — runs the language-independent conformance corpus (io-test-cases) against this
@@ -41,7 +42,7 @@ if (files.length === 0) {
   process.exit(2);
 }
 
-type Kind = 'parse' | 'validation' | 'schemaDef' | 'tokens' | 'stream';
+type Kind = 'parse' | 'validation' | 'schemaDef' | 'tokens' | 'stream' | 'roundtrip';
 
 /** Which comparator a suite needs. Taken from the path because nothing in a case says so. */
 function kindOf(file: string): Kind {
@@ -50,13 +51,14 @@ function kindOf(file: string): Kind {
   if (path.includes('/streaming/')) return 'stream';
   if (path.includes('/schema/')) return 'schemaDef';
   if (path.includes('/validation/')) return 'validation';
+  if (path.includes('/serializer/')) return 'roundtrip';
   return 'parse';
 }
 
 // `tokens` has a comparator, but it runs against the BOOTSTRAP CSV rather than the .io source --
 // the .io tokenizer suites express their data with the very syntax under test. See
 // tools/corpus/verify-bootstrap.ts, run by `npm run corpus:tokens`.
-const SUPPORTED: ReadonlySet<Kind> = new Set<Kind>(['parse', 'validation']);
+const SUPPORTED: ReadonlySet<Kind> = new Set<Kind>(['parse', 'validation', 'roundtrip']);
 const ELSEWHERE: ReadonlyMap<Kind, string> = new Map<Kind, string>([
   ['tokens', 'npm run corpus:tokens'],
 ]);
@@ -111,6 +113,46 @@ for (const file of files) {
 
   for (const row of rows) {
     if (row.input === undefined) { suiteSkipped++; skipped++; continue; }
+
+    // ---- roundtrip -----------------------------------------------------------------------------
+    // Three properties per case, because each catches what the others cannot: canonical OUTPUT
+    // (two conforming writers must agree on spelling), VALUE preservation (a writer that loses data
+    // raises no error), and IDEMPOTENCE (text that drifts on every rewrite, as `{}` -> `{*}` did).
+    if (kind === 'roundtrip') {
+      const opts = { includeHeader: true, includeTypes: true };
+      const problems: string[] = [];
+      try {
+        const doc: any = parse(row.input, null);
+        const inErrs = (doc.getErrors?.() ?? []).map((e: any) => e.errorCode);
+        if (inErrs.length > 0) problems.push(`input does not parse: ${inErrs.join(', ')}`);
+
+        const produced = stringifyDocument(doc, opts);
+        if (produced !== row.output) {
+          problems.push(`output
+     expected=${JSON.stringify(row.output)}
+     actual  =${JSON.stringify(produced)}`);
+        }
+
+        const back: any = parse(produced, null);
+        const backErrs = (back.getErrors?.() ?? []).map((e: any) => e.errorCode);
+        if (backErrs.length > 0) problems.push(`output does not re-parse: ${backErrs.join(', ')}`);
+        else if (show(doc.toObject()) !== show(back.toObject())) {
+          problems.push(`value changed
+     in =${show(doc.toObject())}
+     out=${show(back.toObject())}`);
+        } else if (stringifyDocument(back, opts) !== produced) {
+          problems.push('not idempotent: a second write differs from the first');
+        }
+      } catch (e: any) {
+        problems.push(`THREW ${e?.errorCode ?? e?.message ?? e}`);
+      }
+
+      if (problems.length === 0) { pass++; suitePass++; continue; }
+      fail++; suiteFail++;
+      console.log(`FAIL ${file} :: ${row.name}`);
+      for (const p of problems) console.log(`   ${p}`);
+      continue;
+    }
 
     // A validation case carries only a schema fragment and a data fragment; compose the document.
     const source: string = row.schema !== undefined

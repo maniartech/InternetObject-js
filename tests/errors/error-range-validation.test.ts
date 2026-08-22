@@ -252,7 +252,7 @@ describe('Error Range Validation - Parser Level (Arrays)', () => {
     const errors: any[] = parse(doc, null).getErrors();
     expect(errors.length).toBeGreaterThan(0);
     expect(errors.some((e: any) =>
-      /expecting-bracket|Unexpected end of input/.test(`${e.errorCode} ${e.message}`)
+      /expected-closing-bracket|Unexpected end of input/.test(`${e.errorCode} ${e.message}`)
     )).toBe(true);
   });
 });
@@ -303,7 +303,7 @@ describe('Error Range Validation - Complex Scenarios', () => {
     const errors: any[] = parse(doc, null).getErrors();
     expect(errors.length).toBeGreaterThan(0);
     expect(errors.some((e: any) =>
-      /unexpected-token|expecting-bracket/.test(`${e.errorCode} ${e.message}`)
+      /unexpected-token|expected-closing-bracket/.test(`${e.errorCode} ${e.message}`)
     )).toBe(true);
   });
 });

@@ -63,7 +63,7 @@ describe('Revamp suite: Definitions and processing contracts', () => {
       throw new Error('Expected schemaNotDefined error');
     } catch (e: any) {
   expect(e).toBeInstanceOf(ValidationError);
-  expect(e.errorCode).toBe(ErrorCodes.schemaNotDefined);
+  expect(e.errorCode).toBe(ErrorCodes.undefinedSchema);
       // Position is undefined when key is provided as string
       // console.log('schemaNotDefined', { code: e.code, message: e.message, pos: e.position });
     }
@@ -76,7 +76,7 @@ describe('Revamp suite: Definitions and processing contracts', () => {
       throw new Error('Expected variableNotDefined error');
     } catch (e: any) {
   expect(e).toBeInstanceOf(ValidationError);
-  expect(e.errorCode).toBe(ErrorCodes.variableNotDefined);
+  expect(e.errorCode).toBe(ErrorCodes.undefinedVariable);
       // console.log('variableNotDefined', { code: e.code, message: e.message, pos: e.position });
     }
   });
@@ -98,7 +98,7 @@ describe('Revamp plan coverage (non-invasive)', () => {
         defs.getV(tok);
       } catch (e: any) {
   expect(e).toBeInstanceOf(ValidationError);
-  expect(e.errorCode).toBe(ErrorCodes.schemaNotDefined);
+  expect(e.errorCode).toBe(ErrorCodes.undefinedSchema);
       }
     });
 
@@ -110,7 +110,7 @@ describe('Revamp plan coverage (non-invasive)', () => {
         defs.getV(tok);
       } catch (e: any) {
   expect(e).toBeInstanceOf(ValidationError);
-  expect(e.errorCode).toBe(ErrorCodes.variableNotDefined);
+  expect(e.errorCode).toBe(ErrorCodes.undefinedVariable);
       }
     });
   });

@@ -1,6 +1,6 @@
 # ADR 0002 — Error-code grammar (`<predicate>-<subject>`) and a symmetric taxonomy
 
-- **Status:** **Accepted** (grammar + vocabulary agreed 2026-08-21) — execution pending. One change (§6.4) already implemented.
+- **Status:** **Accepted and EXECUTED** 2026-08-21. Grammar, vocabulary and registry applied across source, tests, corpus, specs and the streaming lockstep. Codes re-freeze under the new names.
 - **Date:** 2026-08-13
 - **Owner:** core/errors (affects every layer + streaming)
 - **Related:** `src/errors/FINALIZATION.md` (punch list #1–#7) · streaming `PROTOCOL.md` §7 · streaming conformance corpus · ADR [0001](0001-defer-strict-validation-mode.md)
@@ -60,41 +60,41 @@ with the conformance corpus). After this lands, the codes re-freeze under the ne
 Multi-word predicates and subjects are both allowed (`out-of-range-number`, `duplicate-section-name`);
 the rule is only that the **predicate comes first**.
 
-### Why predicate-first
+### Subject: the type, or the constraint?
 
-Three independent reasons, all measured rather than assumed:
+The subject is not always the same *kind* of thing, and the rule for which is deliberate:
 
-1. **It makes missing codes visible — the point of §5.** The predicate vocabulary is small and fixed
-   (13); the subject set is large (~27). Grouping by predicate gives 13 checklists you can scan against
-   one subject list:
+> **A TYPE problem names the type. A CONSTRAINT problem names the constraint.**
 
-   ```
-   invalid-array     invalid-base64    invalid-bigint    invalid-datetime
-   invalid-decimal   invalid-email     invalid-url       ...
-                                       ^ where is invalid-number?
-   ```
+```
+expected-integer        the value is not an integer          -> the TYPE is the fault
+out-of-range-integer    200 does not fit `int8`              -> the TYPE is the fault
+mismatched-max          200 violates a declared `max: 120`   -> the CONSTRAINT is the fault
+mismatched-min-len      violates a declared `minLen`         -> the CONSTRAINT is the fault
+```
 
-   Reading the other way round — 30 subject groups, each needing 13 predicates recalled from memory —
-   hides the same hole. Two real gaps were found this way within minutes of adopting the rule:
-   `invalid-number` (a malformed numeric literal such as `0o89` silently decodes as an open string, no
-   error at all) and `expected-decimal` (the decimal typedef had to fall back to the generic
-   `invalid-type`). Both had already been hit in practice without being recognised as *missing codes*.
+This is what every schema-validation system does: **JSON Schema** reports the failed keyword
+(`minimum`, `maxLength`, `minItems`), **XSD** reports the failed facet (`cvc-maxLength-valid`), and
+**Bean Validation** reports the annotation (`@Min`, `@Size`). The RPC/transport world (gRPC
+`OUT_OF_RANGE`, HTTP 416) uses one undirected code, but those are status codes, not validators.
 
-2. **It matches the industry.** Every mainstream error-code namespace leads with the predicate.
-   Node.js is the closest analogue — a namespaced code that also carries a subject — and it is
-   predicate-first throughout: `ERR_INVALID_ARG_TYPE`, `ERR_MISSING_ARGS`, `ERR_UNKNOWN_ENCODING`,
-   `ERR_OUT_OF_RANGE`. gRPC (`NOT_FOUND`, `INVALID_ARGUMENT`, `OUT_OF_RANGE`), Rust `io::ErrorKind`
-   (`NotFound`, `InvalidData`, `UnexpectedEof`), Go (`ErrNotExist`) and ESLint (`no-unused-vars`) all
-   do the same. Nothing mainstream is consistently subject-first.
+Naming the constraint is also the more *useful* half of the pair: the type is always recoverable
+from the error's `path` plus the schema, whereas the failed constraint is not recoverable from the
+value at all. It tells the reader which line of their schema rejected the data.
 
-3. **It is far less churn.** Of the 49 live codes, **41 are already predicate-first** and only 8 are
-   subject-first. Subject-first would rewrite 41 codes to preserve 8. That matters directly: 98 corpus
-   cases carry error codes today and ~430 will at the 2,400-case target, so every avoided rename is
-   avoided rework — the "no repeat loop" constraint.
+> **Superseded.** Earlier drafts named bound failures after the value — `undersized-string`,
+> `out-of-range-integer` for a declared `max`. Three problems, each fatal on its own: `undersized-`
+> reads as a term of art rather than English once applied to primitives (an "undersized integer");
+> a single `out-of-range-<type>` **lost the direction**, reporting the same code whether the value
+> was below `min` or above `max`, while strings and arrays distinguished the two; and none of them
+> said which constraint had failed. Natural English also differs per type — too short, too few, too
+> small, too early — so no single value-describing word could ever have been uniform.
 
-> **Superseded.** An earlier draft of this ADR specified `<subject>-<predicate>`, chosen for sort-order
-> and grouping. Reviewed against the real 49-code set and the industry survey above, that was the
-> weaker call: both orders group, but only predicate-first groups along the axis where the gaps are.
+`out-of-range-integer` survives for exactly one thing: a value that does not fit the **type's own**
+range (`int8` given 200, where no bound was declared). That is a type problem, and the fix — widen
+the type — is different from the fix for a violated `max`.
+
+---
 
 ---
 
@@ -115,9 +115,8 @@ implementation decision — that is what stops the vocabulary drifting back into
 | `unexpected-` | appears where the grammar disallows it | `unexpected-token`, `unexpected-positional-member` |
 | `unterminated-` | an opened construct is never closed | `string-not-closed` |
 | `forbidden-` | present but explicitly disallowed | `null-not-allowed` |
-| `oversized-` / `undersized-` | a **length or size** bound is violated | `invalid-max-length`, `invalid-min-length`, `invalid-length` |
-| `out-of-range-` | a **numeric value** bound is violated | `out-of-range`, `invalid-range` |
-| `mismatched-` | failed to match a declared spec | `invalid-pattern` |
+| `out-of-range-` | a value does not fit the **type's own** range | `int8` given 200 |
+| `mismatched-` | violated a constraint the **schema author declared** — named after the keyword they wrote | `min`, `max`, `minLen`, `maxLen`, `len`, `pattern`, `choices`, `multipleOf`, `precision`, `scale` |
 | `empty-` | empty where content is required | `empty-memberdef` |
 
 ### The three distinctions that do the work
@@ -213,7 +212,7 @@ path emits it — see §5).
 | `unknown-member` | `unknown-member` | keep — the **merge** target, see §6.4 |
 | `duplicate-member` | `duplicate-member` | keep |
 | `additional-values-not-allowed` | `unknown-member` | **merge — ALREADY DONE**, see §6.4 |
-| `invalid-array` | `invalid-array` | keep |
+| `invalid-array` | **removed** | never emitted by any site, at any point in this repo's history; it hid from the registry guard behind `mismatched-array-length` as a substring |
 | `not-an-array` | `expected-array` | **merge** (with `expected-array`) |
 | `not-a-string` | `expected-string` | rename **(FROZEN — lockstep, §7)** |
 | `not-a-number` | `expected-number` | **switch** — today via `invalid-type`; old code is dead (§5.3) |
@@ -226,15 +225,15 @@ path emits it — see §5).
 | — | **`reserved-type`** | **NEW** — a name the spec reserves (`int64`, `uint64`, `float32`, `float64`) |
 | `invalid-email` | `invalid-email` | keep |
 | `invalid-url` | `invalid-url` | keep |
-| `invalid-length` | `invalid-string-length` | rename (array's reuse → `invalid-array-length`, §5.2) |
+| `invalid-length` | `mismatched-string-length` | rename (array's reuse → `mismatched-array-length`, §5.2) |
 | `invalid-min-length` | `undersized-string` | rename |
 | `invalid-max-length` | `oversized-string` | rename |
 | `invalid-pattern` | `mismatched-pattern` | rename |
 | `unsupported-number-type` | `reserved-type` | **merge** — see §3 |
 | `out-of-range` | `out-of-range-datetime` + array size (`undersized-array` / `oversized-array`) | **switch** — per-type; container size split from magnitude (§5.2) |
 | `invalid-range` | `out-of-range-<type>` (number / integer / decimal / bigint) | rename — this is a **value** bound, not a spec error (§5.1) |
-| `invalid-scale` | `invalid-scale` | keep |
-| `invalid-precision` | `invalid-precision` | keep |
+| `invalid-scale` | `mismatched-scale` | rename — a well-formed decimal violating a declared constraint, not a malformed one |
+| `invalid-precision` | `mismatched-precision` | rename — as `invalid-scale` |
 | `invalid-choice` | `invalid-choice` | keep |
 | `schema-not-defined` | `undefined-schema` | rename **(FROZEN — lockstep, §7)** |
 
@@ -278,7 +277,7 @@ Every populated row uses **two-to-four names for one concept**:
 |---|---|---|
 | wrong type | `expected-<type>` | `expected-string`, `expected-number`, `expected-integer`, `expected-decimal`, `expected-bigint`, `expected-datetime`, `expected-boolean`, `expected-array`, `expected-object` |
 | value out of range (scalar magnitude / ordinal) | `out-of-range-<type>` | `out-of-range-number`, `out-of-range-integer`, `out-of-range-decimal`, `out-of-range-bigint`, `out-of-range-datetime` |
-| container size (length / item count) | `undersized-<container>` / `oversized-<container>` / `invalid-<container>-length` | `undersized-string` / `oversized-string` / `invalid-string-length`; `undersized-array` / `oversized-array` / `invalid-array-length` |
+| container size (length / item count) | `undersized-<container>` / `oversized-<container>` / `mismatched-<container>-length` | `undersized-string` / `oversized-string` / `mismatched-string-length`; `undersized-array` / `oversized-array` / `mismatched-array-length` |
 
 This also draws a line the current codes blur: **magnitude bounds** (`out-of-range-*`, for scalar values)
 vs **size bounds** (`undersized-*` / `oversized-*`, for containers). Today both hide under `out-of-range`.
@@ -315,21 +314,65 @@ literal) — that is the correct, fully-balanced outcome, replacing today's sing
 - **Retired:** `invalid-type` (split into `expected-<type>` + `unknown-type`); dead `not-a-number` /
   `not-an-integer` (folded into the emitted `expected-number` / `expected-integer`).
 - **Added (all emitted today under a borrowed name, so not dead):** `undersized-array`, `oversized-array`,
-  `invalid-array-length`; per-type `expected-<type>` and `out-of-range-<type>` for the numeric/datetime
+  `mismatched-array-length`; per-type `expected-<type>` and `out-of-range-<type>` for the numeric/datetime
   types that currently use the generic forms.
 
 ---
 
-## 6. Open dedup questions (need a decision during execution)
+## 6. Dedup questions — all resolved
 
-1. **`schema-not-found` vs `schema-missing` vs `schema-not-defined`** — three "schema absent" codes.
-   Confirm each has a *distinct* trigger, or collapse. Proposal: `schema-not-defined` = referenced but not
-   in defs (frozen); `schema-not-found` = named selector unresolved; `schema-missing` = no schema supplied
-   where one is required. If any two coincide in practice, merge.
+1. **`schema-not-found` vs `schema-missing` vs `schema-not-defined`** — *resolved 2026-08-21: three
+   codes become **two**.* Read from the actual raise sites:
+
+   | Code | Trigger | Verdict |
+   |---|---|---|
+   | `schema-not-defined` | `definitions.getV('$Foo')` — the **document** references `$Foo`, the header never defines it (`core/definitions.ts:177`, `streaming/reader.ts:109`) | → **`undefined-schema`** |
+   | `schema-not-found` | `resolveSchema(defs, 'Person')` — the **API caller** names a schema that is not in defs (`facade/resolve-schema.ts:22`, `schema/load-processor.ts:94,235`, `schema/utils/schema-resolver.ts:15`) | → **merge into `undefined-schema`** |
+   | `schema-missing` | the tokenizer sees `---` with **no schema name after it** (`parser/tokenizer/index.ts:1188`) | → **`missing-schema`**, kept distinct |
+
+   The first two are **one condition** — *a schema was named and nothing is defined under that name*.
+   They differ only in **who did the naming**: a `$ref` inside the document, or an argument passed by
+   the host program. That is an *entry point*, not a fault, and §6.4 and X1 both establish that the same
+   condition must not report different codes depending on how it was reached. Merged.
+
+   `schema-missing` stays separate because it is genuinely a different fault and a different fix:
+   **nothing was named at all**, versus *a name that resolves to nothing*. One is "you forgot to write
+   the schema name"; the other is "the name you wrote does not exist."
+
+   Corpus impact: `schema-not-found` and `schema-missing` have **0** corpus references;
+   `schema-not-defined` has 5.
+
 2. **`invalid-type` overload** — *resolved* in §5.4: split into `expected-<type>` (value) + `unknown-type`
    (unregistered type in a def), and retired. Listed here only so the resolution is traceable.
-3. **`value-invalid`** — keep as the generic "value matched no constraint / NaN-style" code
-   (`any.ts:68`, number NaN). Confirm no site emits it where a specific `<type>-*` code already applies.
+
+3. **`invalid-value`** — *resolved 2026-08-21: **split**, it is overloaded across two unrelated things.*
+   Read from the raise sites:
+
+   | Site | Condition | Becomes |
+   |---|---|---|
+   | `types/any.ts:70`, `any.ts:116` | an `anyOf` union where **no branch matched** | **`mismatched-value`** |
+   | `types/number.ts:178`, `bigint.ts:119`, `decimal.ts:202` | the **`multipleOf`** constraint was violated | **`mismatched-multiple-of`** (NEW) |
+
+   `multipleOf` is a *specific declared constraint*, exactly parallel to `pattern` and `choices`, and
+   every other specific constraint already has its own code. Reporting it through a generic bucket left
+   `invalid-value` meaning "a union failed" **and** "one named constraint failed", so a caller could not
+   distinguish them. The ADR's claim that `invalid-value` also covered a NaN case is **not supported by
+   the code** — there is no such site; all five are the two conditions above.
+
+   `invalid-value` itself is retired. Corpus impact: **0** references.
+
+   **Consequence for `invalid-choice` → `mismatched-choice`.** Under the §3 vocabulary `invalid-` means
+   *malformed* and `mismatched-` means *failed to match a declared spec*. A value absent from `choices`
+   is not malformed — it is a well-formed value that failed a declared spec, exactly like `pattern` and
+   `multipleOf`. Leaving it as `invalid-choice` would be the same "one site missing a case" pattern this
+   whole effort exists to remove, so it is renamed for consistency. This is the one rename in the batch
+   driven purely by vocabulary consistency rather than by a defect; it costs 3 corpus references and is
+   the easiest item in this ADR to revert if you disagree.
+
+   **The constraint-failure family, after this:** `mismatched-pattern`, `mismatched-choice`,
+   `mismatched-multiple-of`, `mismatched-value` — plus the bound predicates that have their own words
+   (`out-of-range-*`, `oversized-*`, `undersized-*`).
+
 4. **`additional-values-not-allowed` vs `unknown-member`** — *resolved 2026-08-21: **merge** into
    `member-unknown`.* Both mean one thing: **a closed schema was given a member it does not declare.**
    They differed only by NOTATION — `additional-values-not-allowed` fires on positional surplus
@@ -383,7 +426,7 @@ streaming is unreleased**; it must be applied in one lockstep change:
 
 ---
 
-## 8. Execution plan (after this ADR is approved)
+## 8. Execution plan — EXECUTED 2026-08-21
 
 1. Rewrite the four enum files (`general` / `tokenization` / `parsing` / `validation` error codes) —
    **rename both the enum key and the string value** (e.g. `notAString = 'string-expected'`) so call sites
@@ -401,6 +444,40 @@ streaming is unreleased**; it must be applied in one lockstep change:
    the human rationale; the machine-checked registry (`ERROR-CODES.md`) is generated/curated separately.
 8. `CHANGELOG.md`: document the breaking `errorCode` rename (pre-1.0).
 9. Full suite green + streaming conformance 27/27 under the new names, then re-freeze.
+
+### Execution record (2026-08-21)
+
+All nine steps applied. Gates after the pass, all green:
+
+| Gate | Result |
+|---|---|
+| io-js2 suite | 3,072 passed, 22 skipped |
+| Round-trip fuzzer | 0 failures / 24,000 documents, 8 seeds |
+| `.io` conformance corpus | 182 passed, 0 failed |
+| Bootstrap CSV (regenerated) | 140 passed, 0 failed |
+| X1 both-entry-points | 65 agree, 0 diverge |
+| `tsc --noEmit` (src) | 0 errors |
+| Spec examples | 167 pass (3 pre-existing failures, unrelated) |
+| Build | exit 0 |
+
+Notes on how it went:
+
+- **The compiler drove the per-site work.** Rewriting the enums first turned every call site that
+  needed a *decision* (rather than a rename) into a type error, which is how the 22 `invalid-type`
+  sites were separated into "this TYPE NAME is not valid" (→ `unknown-type`) and "this VALUE is the
+  wrong type" (→ `expected-<type>`) without guesswork.
+- **Corpus expectations were regenerated from actual output, not edited by hand** — the corpus's own
+  rule. A guard restricted the auto-update to the known old→new transitions, so genuine drift would
+  still have failed rather than being silently rewritten. 17 cases updated.
+- **Three sites now share one helper** (`unusableTypeCode`) rather than each deciding
+  reserved-vs-unknown for itself. The `int64` symptom in §3 existed precisely because that decision
+  was distributed; `RESERVED_TYPES` is now the single list.
+- **`number-old.ts` deleted** — unreferenced dead code carrying stale error codes, and the source of
+  the build's `duplicate-case` warning.
+- **`invalid-number` and `invalid-section-name` were NOT added to the enums.** Both are in the §4
+  registry, but no path emits either yet (the malformed-numeric gap and ISSUE-20's reader fix are
+  separate behaviour changes). Declaring a code nothing throws is exactly what `not-a-number` and
+  `not-an-integer` had become, so they land with their emitting sites.
 
 ---
 

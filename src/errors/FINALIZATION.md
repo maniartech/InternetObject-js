@@ -28,9 +28,12 @@ NOT be renamed, removed, or recategorized within streaming protocol v1 (see Inva
 
 | Code | Class | Category | Frozen by |
 |---|---|---|---|
-| `expecting-bracket` | `IOSyntaxError` | `syntax` | `conformance/cases/recoverable-parse-error.json` |
-| `not-a-string` | `IOValidationError` | `validation` | `conformance/cases/multi-validation-error-one-item.json` |
-| `schema-not-defined` | `IOValidationError` | `validation` | `conformance/cases/unknown-schema-switch-fatal.json` |
+| `expected-closing-bracket` | `IOSyntaxError` | `syntax` | `conformance/cases/recoverable-parse-error.json` |
+| `expected-string` | `IOValidationError` | `validation` | `conformance/cases/multi-validation-error-one-item.json` |
+| `undefined-schema` | `IOValidationError` | `validation` | `conformance/cases/unknown-schema-switch-fatal.json` |
+
+> **Re-frozen under ADR 0002 (2026-08-21).** All three names changed in the `<predicate>-<subject>` pass — `expecting-bracket` → `expected-closing-bracket`, `not-a-string` → `expected-string`, `schema-not-defined` → `undefined-schema`. The rename was applied in lockstep with the streaming conformance fixtures that reference them. The freeze stands under the new names.
+
 
 Streaming-owned `stream`-category codes (`stream-buffer-exceeded`, `stream-source-error`,
 `stream-aborted`) are defined by the streaming layer (PROTOCOL §7.3), not core, and are tracked in the
@@ -39,13 +42,13 @@ streaming gap tracker — not here.
 ## Resolved findings (during streaming pinning)
 
 - **Boolean validator misclassification — FIXED.** `src/schema/types/boolean.ts` imported the base
-  `IOError` aliased as `ValidationError`, so boolean validation failures (`not-a-bool`) were raised as
+  `IOError` aliased as `ValidationError`, so boolean validation failures (`expected-boolean`) were raised as
   base `IOError` instead of `IOValidationError`. Corrected to import `io-validation-error`. This was the
   only validator with the bug; full suite passed with no regressions. Fixing it also resolved a
   multi-error collection anomaly (the base error had been short-circuiting collected validation errors).
-- **`schema-not-defined` group/class mismatch — FIXED.** The code was defined in `ParsingErrorCodes`
+- **`undefined-schema` group/class mismatch — FIXED.** The code was defined in `ParsingErrorCodes`
   yet raised as `IOValidationError` (category `validation`). Moved the enum entry to
-  `validation-error-codes.ts` so its group matches its class. The string value (`schema-not-defined`) is
+  `validation-error-codes.ts` so its group matches its class. The string value (`undefined-schema`) is
   unchanged and consumers reference the merged `ErrorCodes`, so the move is transparent — the
   frozen-by-reference table above is unaffected.
 - **`runtime` → `general` category label — FIXED.** The error-node projection (`parser/nodes/error.ts`)
@@ -57,8 +60,8 @@ streaming gap tracker — not here.
 
 1. **Completeness:** audit all error-construction sites (~119) and generic throws/`assertNever` (~52).
    Classify each as a public code or an internal invariant; ensure no user-reachable error is uncoded.
-   (While auditing, check whether `variable-not-defined` has the same group/class question as the
-   now-fixed `schema-not-defined`.)
+   (While auditing, check whether `undefined-variable` has the same group/class question as the
+   now-fixed `undefined-schema`.)
 2. **No drift:** every emission site references `ErrorCodes`; eliminate any raw code-string literals.
 3. **No dead codes:** every enum entry is emitted somewhere, or explicitly marked `reserved`.
 4. **Per-code definitions:** give each code a one-line, language-neutral trigger definition.

@@ -15,6 +15,7 @@ import doCommonTypeCheck    from './common-type';
 import MemberDef            from './memberdef';
 import { formatObjectKey, shouldEmitKey }  from '../../utils/string-formatter';
 import { undeclaredMemberDef } from '../utils/member-utils';
+import { unusableTypeCode } from './common-number'
 
 const schema = new Schema(
   "object",
@@ -120,7 +121,7 @@ class ObjectDef implements TypeDef {
 
       const typeDef = TypedefRegistry.get(memberDef.type)
       if (!typeDef) {
-        throw new IOError(ErrorCodes.invalidType, `Type '${memberDef.type}' is not registered.`)
+        throw new ValidationError(unusableTypeCode(memberDef.type), `Type '${memberDef.type}' is not registered.`)
       }
 
       // Use load() method if available
@@ -137,7 +138,7 @@ class ObjectDef implements TypeDef {
           result[name] = memberDef.default
         } else if (!memberDef.optional) {
           throw new ValidationError(
-            ErrorCodes.valueRequired,
+            ErrorCodes.missingValue,
             `Value required for field '${memberDef.path}'`
           )
         }

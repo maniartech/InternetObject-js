@@ -239,16 +239,16 @@ shape* (single vs multi error) is a streaming-local choice.
 The error-code finalization tracker constrains and confirms the above:
 
 - **S1 is real, not hypothetical.** A frozen conformance case, `multi-validation-error-one-item.json`
-  (freezing `not-a-string`), proves core **collects multiple validation errors for a single item**. So the
+  (freezing `expected-string`), proves core **collects multiple validation errors for a single item**. So the
   extra errors the streaming envelope drops (S1) demonstrably exist — this is truncation, not absence.
 - **S4 is already pinned by conformance, not unconfirmed.** The recoverable/fatal split is frozen:
-  `expecting-bracket` (syntax) is **recoverable** via `recoverable-parse-error.json`; `schema-not-defined`
+  `expected-closing-bracket` (syntax) is **recoverable** via `recoverable-parse-error.json`; `undefined-schema`
   is **fatal** via `unknown-schema-switch-fatal.json`. So streaming's "syntax-error-in-a-frame is a
   recoverable record-error" is a tested contract. Reframe S4's action: don't *demote a fatal* error, and
   don't let strict-wiring **recategorize** these codes.
 - **Hard constraint on the §6 activation plan.** Wiring `strict` / unifying `validate*` must **not** rename,
-  remove, or recategorize any **frozen-by-reference** code (`expecting-bracket`, `not-a-string`,
-  `schema-not-defined`) nor change the class/condition that produces it — per FINALIZATION.md's protecting
+  remove, or recategorize any **frozen-by-reference** code (`expected-closing-bracket`, `expected-string`,
+  `undefined-schema`) nor change the class/condition that produces it — per FINALIZATION.md's protecting
   invariant. In particular, moving `validateObject` to collect-all must keep each error's existing
   class/category (`IOValidationError` / `validation`) intact.
 - **Independent, already-resolved note:** FINALIZATION.md records that a boolean-validator misclassification

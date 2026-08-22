@@ -174,9 +174,9 @@ class IODefinitions {
       if (key.startsWith("$") || key.startsWith("@")) {
         const positionParam = (typeof k === 'string') ? undefined : k;
         if (key.startsWith("$")) {
-          throw new ValidationError(ErrorCodes.schemaNotDefined, `Schema ${key} is not defined.`, positionParam);
+          throw new ValidationError(ErrorCodes.undefinedSchema, `Schema ${key} is not defined.`, positionParam);
         }
-        throw new ValidationError(ErrorCodes.variableNotDefined, `Variable ${key} is not defined.`, positionParam);
+        throw new ValidationError(ErrorCodes.undefinedVariable, `Variable ${key} is not defined.`, positionParam);
       }
       return undefined;
     }

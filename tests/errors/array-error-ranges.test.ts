@@ -132,7 +132,7 @@ describe('Array Error Ranges - Critical Boundary Tests', () => {
     // This syntax error (] expected but } found) is recorded (policy P1: no fatal parse)
     const errors: any[] = parse(doc, null).getErrors();
     expect(errors.some((e: any) =>
-      /Unexpected token|Expected a valid value|unexpected-token|expecting-bracket/.test(`${e.errorCode} ${e.message}`)
+      /Unexpected token|Expected a valid value|unexpected-token|expected-closing-bracket/.test(`${e.errorCode} ${e.message}`)
     )).toBe(true);
   });
 
@@ -179,7 +179,7 @@ next: value`;
     // Without synchronization boundaries, this is recorded as a designated error (policy P1)
     const errors: any[] = parse(doc, null).getErrors();
     expect(errors.some((e: any) =>
-      /Unexpected end of input while parsing array|Missing closing bracket|expecting-bracket/.test(`${e.errorCode} ${e.message}`)
+      /Unexpected end of input while parsing array|Missing closing bracket|expected-closing-bracket/.test(`${e.errorCode} ${e.message}`)
     )).toBe(true);
   });
 });
@@ -192,7 +192,7 @@ describe('Array Error Ranges - Position Accuracy', () => {
     // Without synchronization boundaries, this is recorded as a designated error (policy P1)
     const errors: any[] = parse(doc, null).getErrors();
     expect(errors.some((e: any) =>
-      /Unexpected end of input while parsing array|Missing closing bracket|expecting-bracket/.test(`${e.errorCode} ${e.message}`)
+      /Unexpected end of input while parsing array|Missing closing bracket|expected-closing-bracket/.test(`${e.errorCode} ${e.message}`)
     )).toBe(true);
   });
 
@@ -202,7 +202,7 @@ describe('Array Error Ranges - Position Accuracy', () => {
     // Without synchronization boundaries, this is recorded as a designated error (policy P1)
     const errors: any[] = parse(doc, null).getErrors();
     expect(errors.some((e: any) =>
-      /Unexpected end of input while parsing array|Missing closing bracket|expecting-bracket/.test(`${e.errorCode} ${e.message}`)
+      /Unexpected end of input while parsing array|Missing closing bracket|expected-closing-bracket/.test(`${e.errorCode} ${e.message}`)
     )).toBe(true);
   });
 });
@@ -215,7 +215,7 @@ describe('Array Error Ranges - Edge Cases', () => {
     // Without synchronization boundaries, this is recorded as a designated error (policy P1)
     const errors: any[] = parse(doc, null).getErrors();
     expect(errors.some((e: any) =>
-      /Unexpected end of input while parsing array|Missing closing bracket|expecting-bracket/.test(`${e.errorCode} ${e.message}`)
+      /Unexpected end of input while parsing array|Missing closing bracket|expected-closing-bracket/.test(`${e.errorCode} ${e.message}`)
     )).toBe(true);
   });
 
@@ -225,7 +225,7 @@ describe('Array Error Ranges - Edge Cases', () => {
     // Without synchronization boundaries, this is recorded as a designated error (policy P1)
     const errors: any[] = parse(doc, null).getErrors();
     expect(errors.some((e: any) =>
-      /Unexpected end of input while parsing array|Missing closing bracket|expecting-bracket/.test(`${e.errorCode} ${e.message}`)
+      /Unexpected end of input while parsing array|Missing closing bracket|expected-closing-bracket/.test(`${e.errorCode} ${e.message}`)
     )).toBe(true);
   });
 });

@@ -233,7 +233,7 @@ Associated tests:
 Status: Done — the reader normalizes recoverable failures to one `record-error` per record, extracting the
 underlying `IOError` from either an `ErrorNode` or an `__error`-flagged value (preserving its core class/code,
 so category derives correctly). An unknown schema switch is now FATAL — `applySectionHeader` resolves the
-explicit `$Schema` via `defs.getV` (or throws `schema-not-defined` when undefined), rejecting the iterator
+explicit `$Schema` via `defs.getV` (or throws `undefined-schema` when undefined), rejecting the iterator
 rather than emitting a record-error. Verified by the conformance corpus (recoverable-parse-error,
 multi-validation-error, unknown-schema-switch-fatal).
 
@@ -558,7 +558,7 @@ Status: Done (reader side) — added `IOStreamError` (`src/errors/io-stream-erro
 `stream-source-error`, `stream-aborted`) with a `streamError()` factory (`src/streaming/errors`). The reader
 raises them: buffer overflow → `stream-buffer-exceeded`; source/transport failure → `stream-source-error`
 (original attached as `cause`); abort → `stream-aborted`. Fatal core failures (unknown schema switch) still
-preserve their core identity (`validation`/`schema-not-defined`) rather than being wrapped. Exported from the
+preserve their core identity (`validation`/`undefined-schema`) rather than being wrapped. Exported from the
 package root. Verified in `tests/streaming/lifecycle.test.ts`. The writer side (raising `IOStreamError` on a
 poisoned transport) is handled with Gap 15.
 
@@ -579,14 +579,14 @@ Required implementation:
 - Raise `stream-buffer-exceeded` on single-frame buffer overflow (Gap 14), `stream-aborted` on abort
   (Gap 11), `stream-source-error` on source/transport failure.
 - Preserve core identity for fatal *core* errors (unknown schema switch keeps `validation` /
-  `schema-not-defined`); do not wrap them in `IOStreamError`.
+  `undefined-schema`); do not wrap them in `IOStreamError`.
 
 Associated tests:
 
 - buffer overflow rejects with `stream-buffer-exceeded`
 - abort rejects with `stream-aborted`, not a record-error
 - source failure rejects with `stream-source-error`
-- unknown schema switch rejects preserving `schema-not-defined` (core identity), not a stream code
+- unknown schema switch rejects preserving `undefined-schema` (core identity), not a stream code
 
 Note: the full core error-code finalization (registry, freeze policy, audit) is tracked separately in
 [../errors/FINALIZATION.md](../errors/FINALIZATION.md), which also records the codes frozen by reference

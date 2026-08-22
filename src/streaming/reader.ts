@@ -106,7 +106,7 @@ export class IOStreamReader implements AsyncIterable<StreamItem> {
       const explicit = line ? line.match(SCHEMA_NAME_RE)?.[0] : undefined;
       if (explicit) {
         if (!defs) {
-          throw new IOValidationError(ErrorCodes.schemaNotDefined, `Schema ${explicit} is not defined.`);
+          throw new IOValidationError(ErrorCodes.undefinedSchema, `Schema ${explicit} is not defined.`);
         }
         const resolved = defs.getV(explicit); // throws schema-not-defined (fatal) if unknown
         activeSchema = resolved instanceof Schema ? resolved : resolveDefaultSchema();

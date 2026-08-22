@@ -9,6 +9,7 @@ import Schema from '../schema/schema';
 import { loadObject as processObject, loadCollection as processCollection } from '../schema/load-processor';
 import IOError from '../errors/io-error';
 import ErrorCodes from '../errors/io-error-codes';
+import ValidationError from '../errors/io-validation-error';
 import { IOCommonOptions } from './options';
 import { resolveSchema } from './resolve-schema';
 
@@ -96,7 +97,7 @@ export function loadObject(
 
   // Validate that data is an object, not an array
   if (Array.isArray(data)) {
-    throw new IOError(ErrorCodes.expectedObject, `loadObject expects an object, not an array. Use loadCollection for arrays.`);
+    throw new ValidationError(ErrorCodes.expectedObject, `loadObject expects an object, not an array. Use loadCollection for arrays.`);
   }
 
   // Schema-less mode: if no schema, load without validation
@@ -157,7 +158,7 @@ export function loadCollection(
 
   // Validate that data is an array
   if (!Array.isArray(data)) {
-    throw new IOError(ErrorCodes.expectedArray, `loadCollection expects an array. Use loadObject for single objects.`);
+    throw new ValidationError(ErrorCodes.expectedArray, `loadCollection expects an array. Use loadObject for single objects.`);
   }
 
   // Resolve schema uniformly — one primitive, one failure mode (R8).

@@ -133,14 +133,14 @@ describe('schema with a scalar first member', () => {
   });
 
   test('extra enclosure makes member 0 an object → type error', () => {
-    expect(run(S_SCALAR, '{{x}}')).toBe('THROW:not-a-string');
-    expect(run(S_SCALAR, '{{{x}}}')).toBe('THROW:not-a-string');
+    expect(run(S_SCALAR, '{{x}}')).toBe('THROW:expected-string');
+    expect(run(S_SCALAR, '{{{x}}}')).toBe('THROW:expected-string');
   });
 
   test('a second declared member does not change the reading', () => {
     expect(run('~ $schema: {a: string, b?: string}', 'x')).toEqual({ a: 'x' });
     expect(run('~ $schema: {a: string, b?: string}', '{x}')).toEqual({ a: 'x' });
-    expect(run('~ $schema: {a: string, b?: string}', '{{x}}')).toBe('THROW:not-a-string');
+    expect(run('~ $schema: {a: string, b?: string}', '{{x}}')).toBe('THROW:expected-string');
   });
 });
 
@@ -182,7 +182,7 @@ describe('schema with an object first member (closed, 2+ members) — the canoni
 
   test('empty braces', () => {
     // `{}` is an EMPTY record — the required member is missing, not an empty object value.
-    expect(run(S_OBJ2, '{}')).toBe('THROW:value-required');
+    expect(run(S_OBJ2, '{}')).toBe('THROW:missing-value');
     expect(run(S_OBJ2, '{{}}')).toEqual({ o1: {} });
     expect(run(S_OBJ2, '{{{}}}')).toEqual({ o1: { '0': {} } });
   });
@@ -268,7 +268,7 @@ describe('ISSUE-15 (FIXED for closed schemas): lone-object reading is arity-inde
 
   test('single-member SCALAR schema absorbs the whole record too (type error, not unknown-member)', () => {
     // Evidence the fallback is not object-specific: the record object is bound to `a: string`.
-    expect(run('~ $schema: {a: string}', 'key: val')).toBe('THROW:not-a-string');
+    expect(run('~ $schema: {a: string}', 'key: val')).toBe('THROW:expected-string');
   });
 
   test('open schema with an object first member also absorbs the whole record', () => {
@@ -300,11 +300,11 @@ describe('ISSUE-15 (FIXED for closed schemas): lone-object reading is arity-inde
 // ─────────────────────────────────────────────────────────────────────────────
 describe('absorption path still honors the REST of the schema', () => {
   test('a missing REQUIRED object member errors', () => {
-    expect(run('~ $schema: {o1: object, o2: object}', '{key: val}')).toBe('THROW:value-required');
+    expect(run('~ $schema: {o1: object, o2: object}', '{key: val}')).toBe('THROW:missing-value');
   });
 
   test('a missing REQUIRED scalar member errors', () => {
-    expect(run('~ $schema: {o1: object, n: number}', '{key: val}')).toBe('THROW:value-required');
+    expect(run('~ $schema: {o1: object, n: number}', '{key: val}')).toBe('THROW:missing-value');
   });
 
   test('a missing OPTIONAL member is fine', () => {
@@ -318,12 +318,12 @@ describe('absorption path still honors the REST of the schema', () => {
 
   test('required checks match the non-absorbed path', () => {
     // Same schema, explicitly enclosed row — must reach the same verdict.
-    expect(run('~ $schema: {o1: object, o2: object}', '{{key: val}}')).toBe('THROW:value-required');
+    expect(run('~ $schema: {o1: object, o2: object}', '{{key: val}}')).toBe('THROW:missing-value');
   });
 
   test('data consumed by absorption is not re-bound to a later member', () => {
     // The whole row became o1's value; `o2` must NOT be harvested from inside it.
     expect(run('~ $schema: {o1: object, o2: object}', '{key: val, o2: {b: 2}}'))
-      .toBe('THROW:value-required');
+      .toBe('THROW:missing-value');
   });
 });

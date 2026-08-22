@@ -5,6 +5,7 @@ import Definitions from '../../src/core/definitions';
 import ValidationError from '../../src/errors/io-validation-error';
 import InternetObject from '../../src/core/internet-object';
 import Collection from '../../src/core/collection';
+import Decimal from '../../src/core/decimal/decimal';
 
 describe('Load Processor', () => {
   describe('loadObject', () => {
@@ -146,14 +147,22 @@ describe('Load Processor', () => {
 
       it('loads advanced types - decimal', () => {
         const schema = compileSchema('TestSchema', '{ price: decimal }');
-        const data = { price: '19.99' };
 
-        const result = loadObject(data, schema);
+        const result = loadObject({ price: new Decimal('19.99') }, schema);
 
         // Decimal returns a Decimal object, not a string
         const price = result.get('price');
         expect(price).toHaveProperty('coefficient');
         expect(price).toHaveProperty('scale', 2);
+      });
+
+      // A string is NOT coerced into a decimal. The text path has always rejected `"19.99"` for a
+      // decimal member; the load path used to accept it, so the same value validated differently
+      // depending on how it reached the validator.
+      it('rejects a string for a decimal member', () => {
+        const schema = compileSchema('TestSchema', '{ price: decimal }');
+        expect(() => loadObject({ price: '19.99' } as any, schema))
+          .toThrow(expect.objectContaining({ errorCode: 'expected-decimal' }));
       });
 
       it('loads advanced types - datetime', () => {
@@ -432,10 +441,12 @@ describe('Load Processor', () => {
 
       it('validates complex types in collection items', () => {
         const schema = compileSchema('TestSchema', '{ id: bigint, price: decimal }');
+        // Decimals are Decimals here, not strings: a string is no longer coerced on the load path,
+        // because the text path never coerced one either.
         const data = [
-          { id: 123n, price: '19.99' },
-          { id: 'invalid', price: '29.99' },  // Error
-          { id: 456n, price: '39.99' }
+          { id: 123n, price: new Decimal('19.99') },
+          { id: 'invalid', price: new Decimal('29.99') },  // Error: id is not a bigint
+          { id: 456n, price: new Decimal('39.99') }
         ];
 
         const errors: Error[] = [];

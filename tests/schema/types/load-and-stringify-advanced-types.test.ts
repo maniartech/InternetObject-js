@@ -165,10 +165,33 @@ describe('load() and stringify() - advanced types', () => {
       expect(datetime.load(null, memberDef)).toBe(null)
     })
 
+    // Assert the CODE, not the message. Messages are explicitly non-normative (a port may reword
+    // or translate them), so pinning one makes the suite fail on a pure wording change — which is
+    // how this test broke when `date` and `time` gained their own codes and the message stopped
+    // saying "Date object", a JavaScript term that had leaked into user-facing text.
     test('rejects non-Date values', () => {
       const memberDef: any = { type: 'datetime', path: 'value' }
-      expect(() => datetime.load('2024-01-15', memberDef)).toThrow(/Date object/)
-      expect(() => datetime.load(1234567890, memberDef)).toThrow(/Date object/)
+      for (const bad of ['2024-01-15', 1234567890]) {
+        expect(() => datetime.load(bad, memberDef)).toThrow(
+          expect.objectContaining({ errorCode: 'expected-datetime' })
+        )
+      }
+    })
+
+    // Each temporal type names ITSELF. One class serves all three, and reporting
+    // `expected-datetime` for a `date` member named a type the schema never mentioned.
+    test('date and time report their own type-mismatch codes', () => {
+      const cases: Array<[string, string]> = [
+        ['date', 'expected-date'],
+        ['time', 'expected-time'],
+        ['datetime', 'expected-datetime'],
+      ]
+      for (const [type, code] of cases) {
+        const def = new DateTimeDef(type)
+        expect(() => def.load('not a date', { type, path: 'value' } as any)).toThrow(
+          expect.objectContaining({ errorCode: code })
+        )
+      }
     })
 
     test('enforces min constraint', () => {

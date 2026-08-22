@@ -193,7 +193,7 @@ Disposition (what happens to iteration) is distinct from category (what the erro
    MUST terminate iteration (the binding signals this idiomatically — exception, rejected promise,
    error result) and MUST NOT be emitted as a record-error item. A fatal error MAY carry a **core**
    category (e.g. an unknown schema switch is fatal but preserves the core `validation` /
-   `schema-not-defined` identity) or the **`stream`** category (§7.3).
+   `undefined-schema` identity) or the **`stream`** category (§7.3).
 
 Recoverable-error rules:
 
@@ -227,7 +227,7 @@ The streaming layer defines exactly these fatal codes in v1, all category `strea
 | `stream-aborted` | iteration is cancelled cooperatively (e.g. via an abort signal, §9). |
 
 These are the only `stream`-category codes in v1. Every other fatal error preserves a **core** category
-and code (unknown schema switch → `validation` / `schema-not-defined`; invalid header definitions →
+and code (unknown schema switch → `validation` / `undefined-schema`; invalid header definitions →
 `syntax`; partial frame at end of stream → `syntax`). This preserves the governing principle: streaming
 defines codes only for its own transport/lifecycle domain; everything semantic stays core's.
 

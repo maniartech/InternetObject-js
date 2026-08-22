@@ -41,19 +41,22 @@ describe('fuzzer findings — a document the writer emits, its own reader must r
    * instances the first one's schemas, so a member was typed by whichever sibling happened to be
    * collected first, and the writer emitted one instance's record against the other's schema.
    *
-   * It surfaced under six different error codes — `value-required` when a key was missing, and
-   * `invalid-type` / `not-an-array` / `invalid-object` / `not-a-bool` / `not-a-string` /
+   * It surfaced under six different error codes — `missing-value` when a key was missing, and
+   * `expected-bigint` / `expected-array` / `invalid-object` / `expected-boolean` / `expected-string` /
    * `invalid-datetime` when a key was present but differently typed — which is why it read as six
    * separate bugs. One case per code.
+   *
+   * (Those codes are the post-ADR-0002 names. When these defects were found the numeric ones all
+   * reported the single generic `invalid-type`, which is part of why they read as one family.)
    */
   const CROSS_PATH: [string, any][] = [
-    ['missing key (value-required)', { x: { t: { N: { q: false } } }, t: { N: {} } }],
+    ['missing key (missing-value)', { x: { t: { N: { q: false } } }, t: { N: {} } }],
     ['differently-typed key', { x: { t: { N: { q: false } } }, t: { N: { r: 1 } } }],
-    ['bigint vs empty (invalid-type)', { 'trail ': { ' lead': { N: { 'trail ': 0n } } }, ' lead': { N: { 'has\ttab': {} } } }],
-    ['array vs record (not-an-array)', [{ s: { '2': { '0': [] } } }, { u: { s: [{ '2': { n: '' } }] } }]],
+    ['bigint vs empty (expected-bigint)', { 'trail ': { ' lead': { N: { 'trail ': 0n } } }, ' lead': { N: { 'has\ttab': {} } } }],
+    ['array vs record (expected-array)', [{ s: { '2': { '0': [] } } }, { u: { s: [{ '2': { n: '' } }] } }]],
     ['record vs array (invalid-object)', [{ t: { n: { h: { '1': { t: new Date(0) }, '2': { t: null } } } } }, { n: { h: { r: [] } } }]],
-    ['bool vs decimal (not-a-bool)', { '2': { ' lead': { n: { h: true } } }, ' lead': { n: { u: new Decimal('9173.35') } } }],
-    ['string vs bytes (not-a-string)', [{ '10': { k: { t: { N: 0 } } }, h: { '0': '' } }, { N: { t: { h: { v: {} }, N: new Uint8Array([]) } } }]],
+    ['bool vs decimal (expected-boolean)', { '2': { ' lead': { n: { h: true } } }, ' lead': { n: { u: new Decimal('9173.35') } } }],
+    ['string vs bytes (expected-string)', [{ '10': { k: { t: { N: 0 } } }, h: { '0': '' } }, { N: { t: { h: { v: {} }, N: new Uint8Array([]) } } }]],
     ['datetime vs record (invalid-datetime)', { b: { b: { t: { '3.14': {} } }, t: { '0': { k: new Date(0) } } } }],
   ];
 

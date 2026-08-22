@@ -94,9 +94,9 @@ describe('BigIntDef - multipleOf Constraint', () => {
       expect(() => parse(`${schema}\n---\n15n`, null)).not.toThrow()
       expect(() => parse(`${schema}\n---\n100n`, null)).not.toThrow()
 
-      expect(() => parse(`${schema}\n---\n5n`, null)).toThrow(/range/) // valid multiple but below min
+      expect(() => parse(`${schema}\n---\n5n`, null)).toThrow(expect.objectContaining({ errorCode: expect.stringMatching(/^mismatched-(min|max)$|^out-of-range-/) })) // valid multiple but below min
       expect(() => parse(`${schema}\n---\n11n`, null)).toThrow(/multiple/) // above min but not multiple
-      expect(() => parse(`${schema}\n---\n0n`, null)).toThrow(/range/)
+      expect(() => parse(`${schema}\n---\n0n`, null)).toThrow(expect.objectContaining({ errorCode: expect.stringMatching(/^mismatched-(min|max)$|^out-of-range-/) }))
     })
 
     test('should work with max constraint', () => {
@@ -106,7 +106,7 @@ describe('BigIntDef - multipleOf Constraint', () => {
       expect(() => parse(`${schema}\n---\n25n`, null)).not.toThrow()
       expect(() => parse(`${schema}\n---\n50n`, null)).not.toThrow()
 
-      expect(() => parse(`${schema}\n---\n55n`, null)).toThrow(/range/) // valid multiple but above max
+      expect(() => parse(`${schema}\n---\n55n`, null)).toThrow(expect.objectContaining({ errorCode: expect.stringMatching(/^mismatched-(min|max)$|^out-of-range-/) })) // valid multiple but above max
       expect(() => parse(`${schema}\n---\n49n`, null)).toThrow(/multiple/) // below max but not multiple
     })
 
@@ -117,8 +117,8 @@ describe('BigIntDef - multipleOf Constraint', () => {
       expect(() => parse(`${schema}\n---\n50n`, null)).not.toThrow()
       expect(() => parse(`${schema}\n---\n80n`, null)).not.toThrow()
 
-      expect(() => parse(`${schema}\n---\n10n`, null)).toThrow(/range/) // valid multiple but below min
-      expect(() => parse(`${schema}\n---\n90n`, null)).toThrow(/range/) // valid multiple but above max
+      expect(() => parse(`${schema}\n---\n10n`, null)).toThrow(expect.objectContaining({ errorCode: expect.stringMatching(/^mismatched-(min|max)$|^out-of-range-/) })) // valid multiple but below min
+      expect(() => parse(`${schema}\n---\n90n`, null)).toThrow(expect.objectContaining({ errorCode: expect.stringMatching(/^mismatched-(min|max)$|^out-of-range-/) })) // valid multiple but above max
       expect(() => parse(`${schema}\n---\n45n`, null)).toThrow(/multiple/) // within range but not multiple
     })
   })

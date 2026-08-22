@@ -204,7 +204,7 @@ function _processObject(
           // If optional and no default, allow later keyed assignment without triggering duplicate-member
           if (!memberDef.optional && memberDef.default === undefined) {
             // Required but undefined value – collect error
-            handleError(new ValidationError(ErrorCodes.valueRequired, `Expecting a value for ${memberDef.path}.`, data));
+            handleError(new ValidationError(ErrorCodes.missingValue, `Expecting a value for ${memberDef.path}.`, data));
           }
           // Optional missing: skip adding to processedNames now so a later keyed value may fill it.
         }
@@ -219,7 +219,7 @@ function _processObject(
     } else {
       // Member node entirely missing
       if (!memberDef.optional && memberDef.default === undefined) {
-        handleError(new ValidationError(ErrorCodes.valueRequired, `Expecting a value for ${memberDef.path}.`, data));
+        handleError(new ValidationError(ErrorCodes.missingValue, `Expecting a value for ${memberDef.path}.`, data));
         processedNames.add(name); // Mark as processed to avoid duplicate errors
       } else {
         try {
@@ -282,7 +282,7 @@ function _processObject(
 
     if (processedNames.has(name)) {
       // Syntax error - throw immediately
-      throw new SyntaxError(ErrorCodes.duplicateMember, `Member ${name} is already defined.`, member);
+      throw new ValidationError(ErrorCodes.duplicateMember, `Member ${name} is already defined.`, member);
     }
 
     // When the member is not found check if the schema is open to allow

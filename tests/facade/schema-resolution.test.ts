@@ -16,13 +16,13 @@ describe('R8 — one schema resolver, one failure mode', () => {
 
   test('loadObject: unknown schemaName throws schemaNotFound', () => {
     expect(codeOf(() => loadObject({ name: 'A' }, defs(), { schemaName: '$Nope' } as any)))
-      .toBe(ErrorCodes.schemaNotFound);
+      .toBe(ErrorCodes.undefinedSchema);
   });
 
   test('stringify(InternetObject): unknown schemaName throws the SAME error (was silent before)', () => {
     const io = loadObject({ name: 'A' }, defs(), { schemaName: '$User' } as any);
     expect(codeOf(() => stringify(io as any, defs(), { schemaName: '$Nope' } as any)))
-      .toBe(ErrorCodes.schemaNotFound);
+      .toBe(ErrorCodes.undefinedSchema);
   });
 
   test('valid schemaName resolves for both', () => {

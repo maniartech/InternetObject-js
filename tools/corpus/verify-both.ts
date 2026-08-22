@@ -102,7 +102,8 @@ type Unbridgeable =
   | 'no-schema'
   | 'input-does-not-parse'
   | 'text-only:duplicate-member'
-  | 'ambiguous:record-enclosure';
+  | 'ambiguous:record-enclosure'
+  | 'no-native-form:empty-section';
 
 /**
  * Conditions that exist only in the NOTATION, with no counterpart in a native value -- so there is
@@ -180,6 +181,12 @@ for (const file of files) {
       note('input-does-not-parse', row.name);
       continue;
     }
+
+    // An EMPTY data section has no native counterpart: "a document with no record" is not a value a
+    // host program can hold, and handing the native route `null` asks it a different question. The
+    // text route's own answer (an absent or defaulted member) is still asserted by the ordinary
+    // corpus runner -- it is only the CROSS-ROUTE comparison that has nothing to compare.
+    if (row.input.trim() === '') { note('no-native-form:empty-section', row.name); continue; }
 
     // A condition that exists only in the notation has no native counterpart to compare against.
     const textOnly = textCodes.map(c => TEXT_ONLY.get(c)).find(Boolean);

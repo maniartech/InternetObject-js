@@ -16,8 +16,8 @@ describe('NumberDef - Integer and Float Types', () => {
       expect(() => parse(`${schema}\n---\n50`, null)).not.toThrow()
       expect(() => parse(`${schema}\n---\n100`, null)).not.toThrow()
 
-      expect(() => parse(`${schema}\n---\n9`, null)).toThrow(/range/)
-      expect(() => parse(`${schema}\n---\n101`, null)).toThrow(/range/)
+      expect(() => parse(`${schema}\n---\n9`, null)).toThrow(expect.objectContaining({ errorCode: expect.stringMatching(/^mismatched-(min|max)$|^out-of-range-/) }))
+      expect(() => parse(`${schema}\n---\n101`, null)).toThrow(expect.objectContaining({ errorCode: expect.stringMatching(/^mismatched-(min|max)$|^out-of-range-/) }))
     })
 
     test('should respect min-only constraint', () => {
@@ -25,7 +25,7 @@ describe('NumberDef - Integer and Float Types', () => {
 
       expect(() => parse(`${schema}\n---\n0`, null)).not.toThrow()
       expect(() => parse(`${schema}\n---\n100`, null)).not.toThrow()
-      expect(() => parse(`${schema}\n---\n-1`, null)).toThrow(/range/)
+      expect(() => parse(`${schema}\n---\n-1`, null)).toThrow(expect.objectContaining({ errorCode: expect.stringMatching(/^mismatched-(min|max)$|^out-of-range-/) }))
     })
 
     test('should respect max-only constraint', () => {
@@ -33,7 +33,7 @@ describe('NumberDef - Integer and Float Types', () => {
 
       expect(() => parse(`${schema}\n---\n100`, null)).not.toThrow()
       expect(() => parse(`${schema}\n---\n0`, null)).not.toThrow()
-      expect(() => parse(`${schema}\n---\n101`, null)).toThrow(/range/)
+      expect(() => parse(`${schema}\n---\n101`, null)).toThrow(expect.objectContaining({ errorCode: expect.stringMatching(/^mismatched-(min|max)$|^out-of-range-/) }))
     })
   })
 
@@ -45,16 +45,16 @@ describe('NumberDef - Integer and Float Types', () => {
     })
 
     test('should reject negative integers', () => {
-      expect(() => parse('num: uint\n---\n-1', null)).toThrow(/range/)
-      expect(() => parse('num: uint\n---\n-100', null)).toThrow(/range/)
+      expect(() => parse('num: uint\n---\n-1', null)).toThrow(expect.objectContaining({ errorCode: expect.stringMatching(/^mismatched-(min|max)$|^out-of-range-/) }))
+      expect(() => parse('num: uint\n---\n-100', null)).toThrow(expect.objectContaining({ errorCode: expect.stringMatching(/^mismatched-(min|max)$|^out-of-range-/) }))
     })
 
     test('should respect min/max constraints', () => {
       const schema = 'num: { uint, min: 10, max: 100 }'
 
       expect(() => parse(`${schema}\n---\n50`, null)).not.toThrow()
-      expect(() => parse(`${schema}\n---\n9`, null)).toThrow(/range/)
-      expect(() => parse(`${schema}\n---\n101`, null)).toThrow(/range/)
+      expect(() => parse(`${schema}\n---\n9`, null)).toThrow(expect.objectContaining({ errorCode: expect.stringMatching(/^mismatched-(min|max)$|^out-of-range-/) }))
+      expect(() => parse(`${schema}\n---\n101`, null)).toThrow(expect.objectContaining({ errorCode: expect.stringMatching(/^mismatched-(min|max)$|^out-of-range-/) }))
     })
   })
 
@@ -66,8 +66,8 @@ describe('NumberDef - Integer and Float Types', () => {
     })
 
     test('should reject values outside int8 range', () => {
-      expect(() => parse('num: int8\n---\n-129', null)).toThrow(/range/)
-      expect(() => parse('num: int8\n---\n128', null)).toThrow(/range/)
+      expect(() => parse('num: int8\n---\n-129', null)).toThrow(expect.objectContaining({ errorCode: expect.stringMatching(/^mismatched-(min|max)$|^out-of-range-/) }))
+      expect(() => parse('num: int8\n---\n128', null)).toThrow(expect.objectContaining({ errorCode: expect.stringMatching(/^mismatched-(min|max)$|^out-of-range-/) }))
     })
 
     test('should respect custom min/max within bounds', () => {
@@ -75,8 +75,8 @@ describe('NumberDef - Integer and Float Types', () => {
 
       expect(() => parse(`${schema}\n---\n-10`, null)).not.toThrow()
       expect(() => parse(`${schema}\n---\n10`, null)).not.toThrow()
-      expect(() => parse(`${schema}\n---\n-11`, null)).toThrow(/range/)
-      expect(() => parse(`${schema}\n---\n11`, null)).toThrow(/range/)
+      expect(() => parse(`${schema}\n---\n-11`, null)).toThrow(expect.objectContaining({ errorCode: expect.stringMatching(/^mismatched-(min|max)$|^out-of-range-/) }))
+      expect(() => parse(`${schema}\n---\n11`, null)).toThrow(expect.objectContaining({ errorCode: expect.stringMatching(/^mismatched-(min|max)$|^out-of-range-/) }))
     })
   })
 
@@ -88,16 +88,16 @@ describe('NumberDef - Integer and Float Types', () => {
     })
 
     test('should reject values outside uint8 range', () => {
-      expect(() => parse('num: uint8\n---\n-1', null)).toThrow(/range/)
-      expect(() => parse('num: uint8\n---\n256', null)).toThrow(/range/)
+      expect(() => parse('num: uint8\n---\n-1', null)).toThrow(expect.objectContaining({ errorCode: expect.stringMatching(/^mismatched-(min|max)$|^out-of-range-/) }))
+      expect(() => parse('num: uint8\n---\n256', null)).toThrow(expect.objectContaining({ errorCode: expect.stringMatching(/^mismatched-(min|max)$|^out-of-range-/) }))
     })
 
     test('should respect custom min/max within bounds', () => {
       const schema = 'num: { uint8, min: 10, max: 200 }'
 
       expect(() => parse(`${schema}\n---\n100`, null)).not.toThrow()
-      expect(() => parse(`${schema}\n---\n9`, null)).toThrow(/range/)
-      expect(() => parse(`${schema}\n---\n201`, null)).toThrow(/range/)
+      expect(() => parse(`${schema}\n---\n9`, null)).toThrow(expect.objectContaining({ errorCode: expect.stringMatching(/^mismatched-(min|max)$|^out-of-range-/) }))
+      expect(() => parse(`${schema}\n---\n201`, null)).toThrow(expect.objectContaining({ errorCode: expect.stringMatching(/^mismatched-(min|max)$|^out-of-range-/) }))
     })
   })
 
@@ -109,8 +109,8 @@ describe('NumberDef - Integer and Float Types', () => {
     })
 
     test('should reject values outside int16 range', () => {
-      expect(() => parse('num: int16\n---\n-32769', null)).toThrow(/range/)
-      expect(() => parse('num: int16\n---\n32768', null)).toThrow(/range/)
+      expect(() => parse('num: int16\n---\n-32769', null)).toThrow(expect.objectContaining({ errorCode: expect.stringMatching(/^mismatched-(min|max)$|^out-of-range-/) }))
+      expect(() => parse('num: int16\n---\n32768', null)).toThrow(expect.objectContaining({ errorCode: expect.stringMatching(/^mismatched-(min|max)$|^out-of-range-/) }))
     })
   })
 
@@ -122,8 +122,8 @@ describe('NumberDef - Integer and Float Types', () => {
     })
 
     test('should reject values outside uint16 range', () => {
-      expect(() => parse('num: uint16\n---\n-1', null)).toThrow(/range/)
-      expect(() => parse('num: uint16\n---\n65536', null)).toThrow(/range/)
+      expect(() => parse('num: uint16\n---\n-1', null)).toThrow(expect.objectContaining({ errorCode: expect.stringMatching(/^mismatched-(min|max)$|^out-of-range-/) }))
+      expect(() => parse('num: uint16\n---\n65536', null)).toThrow(expect.objectContaining({ errorCode: expect.stringMatching(/^mismatched-(min|max)$|^out-of-range-/) }))
     })
   })
 
@@ -135,8 +135,8 @@ describe('NumberDef - Integer and Float Types', () => {
     })
 
     test('should reject values outside int32 range', () => {
-      expect(() => parse('num: int32\n---\n-2147483649', null)).toThrow(/range/)
-      expect(() => parse('num: int32\n---\n2147483648', null)).toThrow(/range/)
+      expect(() => parse('num: int32\n---\n-2147483649', null)).toThrow(expect.objectContaining({ errorCode: expect.stringMatching(/^mismatched-(min|max)$|^out-of-range-/) }))
+      expect(() => parse('num: int32\n---\n2147483648', null)).toThrow(expect.objectContaining({ errorCode: expect.stringMatching(/^mismatched-(min|max)$|^out-of-range-/) }))
     })
   })
 
@@ -148,8 +148,8 @@ describe('NumberDef - Integer and Float Types', () => {
     })
 
     test('should reject values outside uint32 range', () => {
-      expect(() => parse('num: uint32\n---\n-1', null)).toThrow(/range/)
-      expect(() => parse('num: uint32\n---\n4294967296', null)).toThrow(/range/)
+      expect(() => parse('num: uint32\n---\n-1', null)).toThrow(expect.objectContaining({ errorCode: expect.stringMatching(/^mismatched-(min|max)$|^out-of-range-/) }))
+      expect(() => parse('num: uint32\n---\n4294967296', null)).toThrow(expect.objectContaining({ errorCode: expect.stringMatching(/^mismatched-(min|max)$|^out-of-range-/) }))
     })
   })
 
@@ -169,8 +169,8 @@ describe('NumberDef - Integer and Float Types', () => {
       const schema = 'num: { float, min: 0.0, max: 100.0 }'
 
       expect(() => parse(`${schema}\n---\n50.5`, null)).not.toThrow()
-      expect(() => parse(`${schema}\n---\n-0.1`, null)).toThrow(/range/)
-      expect(() => parse(`${schema}\n---\n100.1`, null)).toThrow(/range/)
+      expect(() => parse(`${schema}\n---\n-0.1`, null)).toThrow(expect.objectContaining({ errorCode: expect.stringMatching(/^mismatched-(min|max)$|^out-of-range-/) }))
+      expect(() => parse(`${schema}\n---\n100.1`, null)).toThrow(expect.objectContaining({ errorCode: expect.stringMatching(/^mismatched-(min|max)$|^out-of-range-/) }))
     })
   })
 
@@ -217,8 +217,8 @@ describe('NumberDef - Integer and Float Types', () => {
 
     test('should handle boundary values', () => {
       expect(() => parse('num: { int, min: 10, max: 10 }\n---\n10', null)).not.toThrow()
-      expect(() => parse('num: { int, min: 10, max: 10 }\n---\n9', null)).toThrow(/range/)
-      expect(() => parse('num: { int, min: 10, max: 10 }\n---\n11', null)).toThrow(/range/)
+      expect(() => parse('num: { int, min: 10, max: 10 }\n---\n9', null)).toThrow(expect.objectContaining({ errorCode: expect.stringMatching(/^mismatched-(min|max)$|^out-of-range-/) }))
+      expect(() => parse('num: { int, min: 10, max: 10 }\n---\n11', null)).toThrow(expect.objectContaining({ errorCode: expect.stringMatching(/^mismatched-(min|max)$|^out-of-range-/) }))
     })
 
     test('should handle very large integers', () => {

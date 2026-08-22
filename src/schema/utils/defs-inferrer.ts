@@ -39,6 +39,10 @@ interface InferenceContext {
   // Paths where some instance CONTRADICTS map-shapedness — a record whose values are not all
   // records, so no `{*: $item}` could describe it. Subtracted from dynamicPaths after the scan.
   dynamicContradictions: Set<string>;
+  // Every inferred schema name handed out so far, mapped to the key that holds it. Keeps
+  // `safeName` injective across a run: two keys that sanitize alike get distinct names rather
+  // than silently sharing one schema. See safeName.
+  claimedNames: Map<string, string>;
   // Wildcard container schemas (e.g. `$questions: {*: $question}`) created while inferring
   // members for dynamic-key objects. Registered into definitions AFTER all item schemas merge so
   // the header lists dependencies first ($question before $questions). Keyed by container name to
@@ -75,8 +79,50 @@ export function isRecordCollection(data: any): boolean {
   return Array.isArray(data) && data.some(isPlainRecord);
 }
 
-function safeName(key: string): string {
-  return key.replace(/[^A-Za-z0-9_]/g, '_');
+/**
+ * A legal identifier for `key`, unique to that key.
+ *
+ * Sanitizing alone is NOT injective: every character outside `[A-Za-z0-9_]` becomes `_`, so `"*"`,
+ * `" "` and `","` all produce `_`, and `"x-y"` and `"x.y"` both produce `x_y`. Two unrelated parts
+ * of a document then resolve to ONE inferred schema name, and the schema built from one of them is
+ * bound to the other's data — which fails against a shape it was never built from. The symptom
+ * varies with the input (`expected-boolean`, `missing-value`, `unknown-member`); the cause is
+ * always that two things were filed under one label. See io-test-cases ISSUES.md, ISSUE-25.
+ *
+ * `claimed` maps each name already handed out to the key that holds it, so a name is reused only
+ * by the key that earned it. A different key that would collide counts past the names already
+ * taken — `_`, then `_2`, then `_3` — which is the rule this format already uses for
+ * duplicate SECTION names (see the specification, Error Accumulation).
+ *
+ * Two properties matter and both are load-bearing:
+ *
+ *   STABLE     the same key always yields the same name, however often it is asked. Callers ask
+ *              repeatedly for the same key and must agree, or a schema is registered under one
+ *              name and referenced by another.
+ *   INJECTIVE  different keys never share a name.
+ *
+ * The map lives on the inference context, so it is per-run: names never leak between documents.
+ */
+function safeName(key: string, claimed?: Map<string, string>): string {
+  const base = key.replace(/[^A-Za-z0-9_]/g, '_');
+  if (!claimed) return base;
+
+  const owner = claimed.get(base);
+  if (owner === undefined) {
+    claimed.set(base, key);
+    return base;
+  }
+  if (owner === key) return base; // stability: this key already holds this name
+
+  for (let n = 2; ; n++) {
+    const candidate = `${base}_${n}`;
+    const holder = claimed.get(candidate);
+    if (holder === undefined) {
+      claimed.set(candidate, key);
+      return candidate;
+    }
+    if (holder === key) return candidate;
+  }
 }
 
 /**
@@ -122,9 +168,9 @@ function inferDynamicContainerMemberDef(
   fullPath: string[],
   ctx: InferenceContext
 ): MemberDef {
-  const itemBase = `$${safeName(singularize(path))}`;
+  const itemBase = `$${safeName(singularize(path), ctx.claimedNames)}`;
   const resolvedItem = ctx.resolvedNames.get(pathKey(fullPath, itemBase)) || itemBase;
-  const containerName = `$${safeName(path)}`;
+  const containerName = `$${safeName(path, ctx.claimedNames)}`;
 
   // The item schema itself is unusable -- nothing to point at, so the member stays untyped.
   if (resolvedItem.endsWith('::CONFLICTED')) {
@@ -369,7 +415,7 @@ function canonicalizeDefinitions(
         if (info) { parent = info.fullPath[info.fullPath.length - 2]; break; }
       }
       if (!parent) continue; // root-level numeric key: nothing better to derive from
-      const base = `$${safeName(singularize(parent))}`;
+      const base = `$${safeName(singularize(parent), ctx.claimedNames)}`;
       let candidate = base;
       let n = 2;
       while (ctx.schemaRegistry.has(candidate) || ctx.definitions.get(candidate) ||
@@ -505,7 +551,8 @@ export function inferMultiSectionDefs(data: Record<string, any[]>): {
     pendingMerge: new Set(),
     dynamicPaths: new Set(),
     dynamicContradictions: new Set(),
-    pendingContainers: new Map()
+    pendingContainers: new Map(),
+    claimedNames: new Map()
   };
 
   preScanDynamicPaths(data, [], ctx);
@@ -515,7 +562,7 @@ export function inferMultiSectionDefs(data: Record<string, any[]>): {
   // Collect every array item as an instance of its section's item schema (path = [key], matching
   // how nested-array items are collected elsewhere so conflict resolution behaves identically).
   for (const [key, arr] of Object.entries(data)) {
-    const itemBaseName = `$${safeName(singularize(key))}`;
+    const itemBaseName = `$${safeName(singularize(key), ctx.claimedNames)}`;
     for (const item of arr) {
       addSchemaInstance(itemBaseName, [key], item, ctx);
       collectNestedInstances(item, [key], ctx);
@@ -529,7 +576,7 @@ export function inferMultiSectionDefs(data: Record<string, any[]>): {
   // names must survive canonicalization; dedup may still rename them, which the alias follows.
   const initialNames = new Map<string, string>();
   for (const key of Object.keys(data)) {
-    const itemBaseName = `$${safeName(singularize(key))}`;
+    const itemBaseName = `$${safeName(singularize(key), ctx.claimedNames)}`;
     initialNames.set(key, ctx.resolvedNames.get(pathKey([key], itemBaseName)) || itemBaseName);
   }
   const alias = canonicalizeDefinitions(ctx, null, new Set(initialNames.values()));
@@ -612,7 +659,8 @@ export function inferDefs(data: any): InferredDefs {
     pendingMerge: new Set(),
     dynamicPaths: new Set(),
     dynamicContradictions: new Set(),
-    pendingContainers: new Map()
+    pendingContainers: new Map(),
+    claimedNames: new Map()
   };
 
   // Phase 0: Pre-scan to identify ALL dynamic paths across the entire data structure
@@ -776,7 +824,7 @@ function collectNestedInstances(
 
     if (Array.isArray(value)) {
       // Array property - collect instances with singularized schema name
-      const itemBaseName = `$${safeName(singularize(key))}`;
+      const itemBaseName = `$${safeName(singularize(key), ctx.claimedNames)}`;
       const objects = value.filter(item =>
         isPlainRecord(item)
       );
@@ -800,7 +848,7 @@ function collectNestedInstances(
         ctx.dynamicPaths.add(pathKey);
 
         // Treat as collection - all values are instances of the same schema
-        const itemBaseName = `$${safeName(singularize(key))}`;
+        const itemBaseName = `$${safeName(singularize(key), ctx.claimedNames)}`;
 
         for (const [dynamicKey, dynamicValue] of Object.entries(value)) {
           if (isPlainRecord(dynamicValue)) {
@@ -814,7 +862,7 @@ function collectNestedInstances(
         }
       } else {
         // Regular nested object - collect with key as schema name
-        const nestedBaseName = `$${safeName(key)}`;
+        const nestedBaseName = `$${safeName(key, ctx.claimedNames)}`;
         addSchemaInstance(nestedBaseName, currentPath, value, ctx);
         // Recursively collect from nested objects
         collectNestedInstances(value, currentPath, ctx);
@@ -1221,7 +1269,7 @@ function inferMemberDefSimple(
         return inferDynamicContainerMemberDef(path, fullPath, ctx);
       }
       // Regular nested object - look up the resolved name based on the full path
-      const baseName = `$${safeName(path)}`;
+      const baseName = `$${safeName(path, ctx.claimedNames)}`;
       const resolvedName = ctx.resolvedNames.get(pathKey(fullPath, baseName)) || baseName;
       // If conflicted, fall back to plain object without schemaRef
       if (resolvedName.endsWith('::CONFLICTED')) {
@@ -1261,7 +1309,7 @@ function inferArrayMemberDefSimple(
   );
 
   if (allObjects && !hasNulls) {
-    const baseName = `$${safeName(singularize(path))}`;
+    const baseName = `$${safeName(singularize(path), ctx.claimedNames)}`;
     const resolvedName = ctx.resolvedNames.get(pathKey(fullPath, baseName)) || baseName;
     // If conflicted, fall back to plain array without schemaRef
     if (resolvedName.endsWith('::CONFLICTED')) {

@@ -54,7 +54,7 @@ export default class AnyDef implements TypeDef {
 
       const typeDef = TypedefRegistry.get(def.type)
       if (!typeDef) {
-        throw new InternetObjectError(ErrorCodes.invalidType, `Invalid type definition '${def.type}'`)
+        throw new ValidationError(ErrorCodes.unknownType, `Invalid type definition '${def.type}'`)
       }
 
       try {
@@ -67,7 +67,7 @@ export default class AnyDef implements TypeDef {
 
     // None of the types matched
     if (errors.length === anyOf.length) {
-      throw new ValidationError(ErrorCodes.invalidValue, `None of the constraints defined for '${memberDef.path}' matched.`, node)
+      throw new ValidationError(ErrorCodes.mismatchedAnyOf, `None of the constraints defined for '${memberDef.path}' matched.`, node)
     }
 
     return valueNode;
@@ -93,7 +93,7 @@ export default class AnyDef implements TypeDef {
       const typeDef = TypedefRegistry.get(def.type)
 
       if (!typeDef) {
-        throw new InternetObjectError(ErrorCodes.invalidType, `Invalid type definition '${def.type}'`)
+        throw new ValidationError(ErrorCodes.unknownType, `Invalid type definition '${def.type}'`)
       }
 
       try {
@@ -113,7 +113,7 @@ export default class AnyDef implements TypeDef {
     // None of the types matched
     if (errors.length === anyOf.length) {
       throw new ValidationError(
-        ErrorCodes.invalidValue,
+        ErrorCodes.mismatchedAnyOf,
         `None of the constraints defined for '${memberDef.path}' matched.`
       )
     }

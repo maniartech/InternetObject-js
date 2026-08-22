@@ -8,7 +8,7 @@
   "chunkings": ["whole", "per-line"],
   "expected": {
     "items": [
-      { "kind": "record-error", "recordIndex": 0, "schemaName": "$User", "error": { "category": "validation", "code": "not-a-string" } }
+      { "kind": "record-error", "recordIndex": 0, "schemaName": "$User", "error": { "category": "validation", "code": "expected-string" } }
     ],
     "fatal": null
   }

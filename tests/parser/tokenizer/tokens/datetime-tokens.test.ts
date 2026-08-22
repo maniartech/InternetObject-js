@@ -257,7 +257,8 @@ describe("DateTime Token Parsing", () => {
       
       expect(dateTimeTokens[0].token).toBe('dt"2023-12-25T10:30:00Z"');
       expect(dateTimeTokens[1].token).toBe("d'2023-12-25'");
-      expect(dateTimeTokens[2].token).toBe('t"10:30:00'); // Actual tokenizer behavior
+      // Keeps its closing quote even as the last token in the input; it used to be truncated here.
+      expect(dateTimeTokens[2].token).toBe('t"10:30:00"');
     });
   });
 

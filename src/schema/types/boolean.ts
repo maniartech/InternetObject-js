@@ -30,7 +30,7 @@ export default class BooleanDef implements TypeDef {
     const { value: checkedValue, changed } = doCommonTypeCheck(memberDef, value)
     if (changed) return checkedValue
     if (typeof value !== 'boolean') {
-      throw new ValidationError(ErrorCodes.notABool, `Expecting a boolean value for '${memberDef.path}' but found ${JSON.stringify(value)}.`)
+      throw new ValidationError(ErrorCodes.expectedBoolean, `Expecting a boolean value for '${memberDef.path}' but found ${JSON.stringify(value)}.`)
     }
     return value
   }
@@ -47,7 +47,7 @@ export default class BooleanDef implements TypeDef {
     if (changed) return value
 
     if (valueNode instanceof TokenNode === false || valueNode.type !== TokenType.BOOLEAN) {
-      throw new ValidationError(ErrorCodes.notABool, `Expecting a boolean value for '${memberDef.path}' but found ${valueNode.toValue()}.`, node)
+      throw new ValidationError(ErrorCodes.expectedBoolean, `Expecting a boolean value for '${memberDef.path}' but found ${valueNode.toValue()}.`, node)
     }
 
     return valueNode.value

@@ -46,7 +46,7 @@ try {
 ## Expected Outcome
 
 - the iterator rejects before `Alice` is emitted
-- the failure preserves core schema-not-defined identity
+- the failure preserves core undefined-schema identity
 - no `record-error` item is emitted for the invalid control frame
 
 ## What This Does Not Mean

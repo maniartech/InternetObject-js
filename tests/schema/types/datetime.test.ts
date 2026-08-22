@@ -80,7 +80,7 @@ describe('DateTimeDef - DateTime, Date, and Time Types', () => {
 
       expect(() => parse(`${schema}\n---\ndt"2024-01-01T00:00:00"`, null)).not.toThrow()
       expect(() => parse(`${schema}\n---\ndt"2024-06-15T12:00:00"`, null)).not.toThrow()
-      expect(() => parse(`${schema}\n---\ndt"2023-12-31T23:59:59"`, null)).toThrow(/range/i)
+      expect(() => parse(`${schema}\n---\ndt"2023-12-31T23:59:59"`, null)).toThrow(expect.objectContaining({ errorCode: expect.stringMatching(/^mismatched-(min|max)$|^out-of-range-/) }))
     })
 
     test('should respect max constraint for datetime', () => {
@@ -88,15 +88,15 @@ describe('DateTimeDef - DateTime, Date, and Time Types', () => {
 
       expect(() => parse(`${schema}\n---\ndt"2024-12-31T23:59:59"`, null)).not.toThrow()
       expect(() => parse(`${schema}\n---\ndt"2024-06-15T12:00:00"`, null)).not.toThrow()
-      expect(() => parse(`${schema}\n---\ndt"2025-01-01T00:00:00"`, null)).toThrow(/range/i)
+      expect(() => parse(`${schema}\n---\ndt"2025-01-01T00:00:00"`, null)).toThrow(expect.objectContaining({ errorCode: expect.stringMatching(/^mismatched-(min|max)$|^out-of-range-/) }))
     })
 
     test('should respect both min and max constraints', () => {
       const schema = 'dt: { datetime, min: dt"2024-01-01", max: dt"2024-12-31" }'
 
       expect(() => parse(`${schema}\n---\ndt"2024-06-15"`, null)).not.toThrow()
-      expect(() => parse(`${schema}\n---\ndt"2023-12-31"`, null)).toThrow(/range/i)
-      expect(() => parse(`${schema}\n---\ndt"2025-01-01"`, null)).toThrow(/range/i)
+      expect(() => parse(`${schema}\n---\ndt"2023-12-31"`, null)).toThrow(expect.objectContaining({ errorCode: expect.stringMatching(/^mismatched-(min|max)$|^out-of-range-/) }))
+      expect(() => parse(`${schema}\n---\ndt"2025-01-01"`, null)).toThrow(expect.objectContaining({ errorCode: expect.stringMatching(/^mismatched-(min|max)$|^out-of-range-/) }))
     })
 
     test('should respect min constraint for date', () => {
@@ -104,7 +104,7 @@ describe('DateTimeDef - DateTime, Date, and Time Types', () => {
 
       expect(() => parse(`${schema}\n---\nd"2024-01-01"`, null)).not.toThrow()
       expect(() => parse(`${schema}\n---\nd"2024-06-15"`, null)).not.toThrow()
-      expect(() => parse(`${schema}\n---\nd"2023-12-31"`, null)).toThrow(/range/i)
+      expect(() => parse(`${schema}\n---\nd"2023-12-31"`, null)).toThrow(expect.objectContaining({ errorCode: expect.stringMatching(/^mismatched-(min|max)$|^out-of-range-/) }))
     })
 
     test('should respect max constraint for date', () => {
@@ -112,7 +112,7 @@ describe('DateTimeDef - DateTime, Date, and Time Types', () => {
 
       expect(() => parse(`${schema}\n---\nd"2024-12-31"`, null)).not.toThrow()
       expect(() => parse(`${schema}\n---\nd"2024-06-15"`, null)).not.toThrow()
-      expect(() => parse(`${schema}\n---\nd"2025-01-01"`, null)).toThrow(/range/i)
+      expect(() => parse(`${schema}\n---\nd"2025-01-01"`, null)).toThrow(expect.objectContaining({ errorCode: expect.stringMatching(/^mismatched-(min|max)$|^out-of-range-/) }))
     })
   })
 

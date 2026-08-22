@@ -121,8 +121,8 @@ describe('ObjectDef - Object Type', () => {
       const schema = 'item: { quantity: { int, min: 1, max: 100 } }'
 
       expect(() => parse(`${schema}\n---\n{{50}}`, null)).not.toThrow()
-      expect(() => parse(`${schema}\n---\n{{0}}`, null)).toThrow(/range/i)
-      expect(() => parse(`${schema}\n---\n{{101}}`, null)).toThrow(/range/i)
+      expect(() => parse(`${schema}\n---\n{{0}}`, null)).toThrow(expect.objectContaining({ errorCode: expect.stringMatching(/^mismatched-(min|max)$|^out-of-range-/) }))
+      expect(() => parse(`${schema}\n---\n{{101}}`, null)).toThrow(expect.objectContaining({ errorCode: expect.stringMatching(/^mismatched-(min|max)$|^out-of-range-/) }))
     })
 
     test('should validate pattern constraints', () => {

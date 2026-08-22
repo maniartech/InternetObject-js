@@ -10,6 +10,7 @@ import TypedefRegistry from './typedef-registry';
 import registerTypes from './types';
 import TokenNode from '../parser/nodes/tokens';
 import { undeclaredMemberDef } from './utils/member-utils';
+import { unusableTypeCode } from './types/common-number'
 
 /**
  * Resolves variable references in memberDef fields like default, min, max, choices.
@@ -87,11 +88,11 @@ export function loadObject(
   // Resolve schema if it's a string reference
   if (typeof schema === 'string') {
     if (!defs) {
-      throw new IOError(ErrorCodes.definitionsRequired, `Schema reference '${schema}' requires definitions`);
+      throw new ValidationError(ErrorCodes.missingDefinitions, `Schema reference '${schema}' requires definitions`);
     }
     const resolvedSchema = defs.getV(schema);
     if (!(resolvedSchema instanceof Schema)) {
-      throw new IOError(ErrorCodes.schemaNotFound, `Schema '${schema}' not found or invalid`);
+      throw new ValidationError(ErrorCodes.undefinedSchema, `Schema '${schema}' not found or invalid`);
     }
     schema = resolvedSchema;
   }
@@ -121,7 +122,7 @@ function _loadObject(data: any, schema: Schema, defs?: Definitions): InternetObj
 
     const typeDef = TypedefRegistry.get(memberDef.type);
     if (!typeDef) {
-      throw new IOError(ErrorCodes.invalidType, `Type '${memberDef.type}' is not registered.`);
+      throw new ValidationError(unusableTypeCode(memberDef.type), `Type '${memberDef.type}' is not registered.`);
     }
 
     // Use loadObject() method if available
@@ -149,7 +150,7 @@ function _loadObject(data: any, schema: Schema, defs?: Definitions): InternetObj
         result.set(name, memberDef.default);
       } else if (!memberDef.optional) {
         throw new ValidationError(
-          ErrorCodes.valueRequired,
+          ErrorCodes.missingValue,
           `Value required for field '${name}'`
         );
       }
@@ -228,11 +229,11 @@ export function loadCollection(
   // Resolve schema if it's a string reference
   if (typeof schema === 'string') {
     if (!defs) {
-      throw new IOError(ErrorCodes.definitionsRequired, `Schema reference '${schema}' requires definitions`);
+      throw new ValidationError(ErrorCodes.missingDefinitions, `Schema reference '${schema}' requires definitions`);
     }
     const resolvedSchema = defs.getV(schema);
     if (!(resolvedSchema instanceof Schema)) {
-      throw new IOError(ErrorCodes.schemaNotFound, `Schema '${schema}' not found or invalid`);
+      throw new ValidationError(ErrorCodes.undefinedSchema, `Schema '${schema}' not found or invalid`);
     }
     schema = resolvedSchema;
   }
@@ -240,7 +241,7 @@ export function loadCollection(
   // Type check
   if (!Array.isArray(dataArray)) {
     throw new ValidationError(
-      ErrorCodes.notAnArray,
+      ErrorCodes.expectedArray,
       `Expecting an array but found ${typeof dataArray}`
     );
   }

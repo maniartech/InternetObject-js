@@ -589,7 +589,7 @@ class ASTParser {
     if (!isOpenObject) {
       if (!this.match(ASTParser.CURLY_CLOSE_ARRAY)) {
         throw this.createUnclosedConstructError(
-          ErrorCodes.expectingBracket,
+          ErrorCodes.expectedClosingBracket,
           `Missing closing brace '}'. Object must be properly closed.`,
           openBracket,
           members
@@ -637,10 +637,15 @@ class ASTParser {
 
   private parseArray(): ArrayNode  {
     const arr: Array<Node | undefined> = [];
+    // A comma SEPARATES values, so one must precede it. Tracked explicitly because the
+    // look-AHEAD below cannot see backwards: it caught `[a,,c]` and `[a, ]`, but a LEADING comma
+    // has an ordinary value after it, so it passed the check and was simply consumed {EM} `[,a]`
+    // loaded as ["a"], silently discarding a position the author had written.
+    let sawValue = false;
     const openBracket = this.peek();
     if (!openBracket || openBracket.type !== TokenType.BRACKET_OPEN) {
       throw new SyntaxError(
-        ErrorCodes.expectingBracket,
+        ErrorCodes.expectedClosingBracket,
         `Expected opening bracket '[' to start array but found '${openBracket?.token || 'end of input'}'.`,
         openBracket === null ? void 0 : openBracket,
         openBracket === null
@@ -654,7 +659,7 @@ class ASTParser {
       if (!currentToken) {
         // Unexpected end of input
         throw this.createUnclosedConstructError(
-          ErrorCodes.expectingBracket,
+          ErrorCodes.expectedClosingBracket,
           `Unexpected end of input while parsing array. Expected closing bracket ']'.`,
           openBracket,
           arr
@@ -666,12 +671,19 @@ class ASTParser {
                  currentToken.type === TokenType.SECTION_SEP) {
         // Reached a synchronization boundary without closing the array
         throw this.createUnclosedConstructError(
-          ErrorCodes.expectingBracket,
+          ErrorCodes.expectedClosingBracket,
           `Missing closing bracket ']'. Array must be properly closed.`,
           openBracket,
           arr
         );
       } else if (currentToken.type === TokenType.COMMA) {
+        if (!sawValue) {
+          throw new SyntaxError(
+            ErrorCodes.unexpectedToken,
+            `Unexpected comma. An array cannot begin with a comma - remove it, or add a value before it.`,
+            currentToken, false
+          );
+        }
         // If the next token is a comma or a closing bracket, it implies an undefined
         // element in the array, which is not allowed. Throw an error.
         if (this.matchNext([TokenType.COMMA, TokenType.BRACKET_CLOSE])) {
@@ -684,6 +696,7 @@ class ASTParser {
         }
         // consume the current comma
         this.advance();
+        sawValue = false;
         continue;
       }
 
@@ -693,12 +706,13 @@ class ASTParser {
       } else {
         arr.push(member.value);
       }
+      sawValue = true;
     }
 
     // Now, expect a closing bracket
     if (!this.match(ASTParser.BRACKET_CLOSE_ARRAY)) {
       throw this.createUnclosedConstructError(
-        ErrorCodes.expectingBracket,
+        ErrorCodes.expectedClosingBracket,
         `Missing closing bracket ']'. Array must be properly closed.`,
         openBracket,
         arr
@@ -713,7 +727,7 @@ class ASTParser {
   private parseValue(): Node {
     const token = this.peek();
     if (!token) {
-      throw new SyntaxError(ErrorCodes.valueRequired,
+      throw new SyntaxError(ErrorCodes.expectedValue,
         `Unexpected end of input. Expected a value (string, number, boolean, null, array, or object).`,
         void 0, true);
     }

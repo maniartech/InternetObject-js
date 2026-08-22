@@ -90,15 +90,21 @@ class BigIntDef implements TypeDef {
 
     if (valueType === "") {
       throw new ValidationError(
-        ErrorCodes.invalidType,
+        ErrorCodes.expectedBigInt,
         `Expecting a value of type '${memberDef.type}' for '${memberDef.path}'`,
         node
       )
     }
 
+    // The code must come from the REGISTRY, never be built from the declared type name. This site
+    // used to emit `not-a-${memberDef.type}` -- yielding `not-a-bigint`, and for the number typedef
+    // `not-a-uint32`, `not-a-int8` and so on: codes that appear in no enum, that no port could know
+    // to expect, and that CONFORMANCE.md §5.1 explicitly forbids. They survived the ADR 0002 rename
+    // because they are runtime strings rather than `ErrorCodes.*` references, so the compiler could
+    // not point at them.
     if (valueType !== "bigint") {
       throw new ValidationError(
-        `not-a-${memberDef.type}`,
+        ErrorCodes.expectedBigInt,
         `Invalid value encountered for '${memberDef.path}'`,
         node
       )
@@ -106,9 +112,13 @@ class BigIntDef implements TypeDef {
 
     const { min, max, multipleOf } = memberDef
 
-    if ((min !== undefined && min !== null && value < min) ||
-        (max !== undefined && max !== null && value > max)) {
-      throwError(ErrorCodes.invalidRange, memberDef.path!, value, node)
+    // Split so the DIRECTION survives: one combined check reported the same code whether the value
+    // was below `min` or above `max`, and a caller could not tell which constraint had rejected it.
+    if (min !== undefined && min !== null && value < min) {
+      throwError(ErrorCodes.mismatchedMin, memberDef.path!, value, node)
+    }
+    if (max !== undefined && max !== null && value > max) {
+      throwError(ErrorCodes.mismatchedMax, memberDef.path!, value, node)
     }
 
     // Validate multipleOf constraint
@@ -116,7 +126,7 @@ class BigIntDef implements TypeDef {
       const remainder = value % BigInt(multipleOf)
       if (remainder !== 0n) {
         throw new ValidationError(
-          ErrorCodes.invalidValue,
+          ErrorCodes.mismatchedMultipleOf,
           `The value ${value} for '${memberDef.path}' must be a multiple of ${multipleOf}`,
           node
         )

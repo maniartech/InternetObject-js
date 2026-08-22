@@ -4,6 +4,8 @@ import TokenNode from '../../parser/nodes/tokens';
 import Schema from '../schema';
 import IOError from '../../errors/io-error';
 import ErrorCodes from '../../errors/io-error-codes';
+import IOSyntaxError from '../../errors/io-syntax-error';
+import ValidationError from '../../errors/io-validation-error';
 
 export class ValidationUtils {
   static isValidDataNode(data: unknown): data is ObjectNode | CollectionNode {
@@ -24,7 +26,7 @@ export class ValidationUtils {
         : data === undefined ? 'undefined'
         : hasCtorName === undefined ? 'undefined'
         : hasCtorName || 'unknown';
-      throw new IOError(ErrorCodes.invalidType, `Invalid data node type: ${typeName}`);
+      throw new ValidationError(ErrorCodes.unknownType, `Invalid data node type: ${typeName}`);
     }
 
     if (!ValidationUtils.isValidSchema(schema)) {
@@ -33,7 +35,7 @@ export class ValidationUtils {
         : schema === undefined ? 'undefined'
         : hasCtorName === undefined ? 'undefined'
         : hasCtorName || 'unknown';
-      throw new IOError(ErrorCodes.invalidSchema, `Invalid schema type: ${typeName}`);
+      throw new IOSyntaxError(ErrorCodes.invalidSchema, `Invalid schema type: ${typeName}`);
     }
 
     return { data: data as ObjectNode | CollectionNode, schema: schema as Schema | TokenNode };

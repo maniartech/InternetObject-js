@@ -118,9 +118,9 @@ describe('Decimal - multipleOf Constraint', () => {
       expect(() => parse(`${schema}\n---\n15m`, null)).not.toThrow()
       expect(() => parse(`${schema}\n---\n100m`, null)).not.toThrow()
 
-      expect(() => parse(`${schema}\n---\n5m`, null)).toThrow(/range/) // valid multiple but below min
+      expect(() => parse(`${schema}\n---\n5m`, null)).toThrow(expect.objectContaining({ errorCode: expect.stringMatching(/^mismatched-(min|max)$|^out-of-range-/) })) // valid multiple but below min
       expect(() => parse(`${schema}\n---\n11m`, null)).toThrow(/multiple/) // above min but not multiple
-      expect(() => parse(`${schema}\n---\n0m`, null)).toThrow(/range/)
+      expect(() => parse(`${schema}\n---\n0m`, null)).toThrow(expect.objectContaining({ errorCode: expect.stringMatching(/^mismatched-(min|max)$|^out-of-range-/) }))
     })
 
     test('should work with max constraint', () => {
@@ -130,7 +130,7 @@ describe('Decimal - multipleOf Constraint', () => {
       expect(() => parse(`${schema}\n---\n25m`, null)).not.toThrow()
       expect(() => parse(`${schema}\n---\n50m`, null)).not.toThrow()
 
-      expect(() => parse(`${schema}\n---\n55m`, null)).toThrow(/range/) // valid multiple but above max
+      expect(() => parse(`${schema}\n---\n55m`, null)).toThrow(expect.objectContaining({ errorCode: expect.stringMatching(/^mismatched-(min|max)$|^out-of-range-/) })) // valid multiple but above max
       expect(() => parse(`${schema}\n---\n49m`, null)).toThrow(/multiple/) // below max but not multiple
     })
 
@@ -141,8 +141,8 @@ describe('Decimal - multipleOf Constraint', () => {
       expect(() => parse(`${schema}\n---\n50m`, null)).not.toThrow()
       expect(() => parse(`${schema}\n---\n80m`, null)).not.toThrow()
 
-      expect(() => parse(`${schema}\n---\n10m`, null)).toThrow(/range/) // valid multiple but below min
-      expect(() => parse(`${schema}\n---\n90m`, null)).toThrow(/range/) // valid multiple but above max
+      expect(() => parse(`${schema}\n---\n10m`, null)).toThrow(expect.objectContaining({ errorCode: expect.stringMatching(/^mismatched-(min|max)$|^out-of-range-/) })) // valid multiple but below min
+      expect(() => parse(`${schema}\n---\n90m`, null)).toThrow(expect.objectContaining({ errorCode: expect.stringMatching(/^mismatched-(min|max)$|^out-of-range-/) })) // valid multiple but above max
       expect(() => parse(`${schema}\n---\n45m`, null)).toThrow(/multiple/) // within range but not multiple
     })
 
@@ -155,8 +155,8 @@ describe('Decimal - multipleOf Constraint', () => {
       expect(() => parse(`${schema}\n---\n4.5m`, null)).not.toThrow()
       expect(() => parse(`${schema}\n---\n5m`, null)).not.toThrow()
 
-      expect(() => parse(`${schema}\n---\n0.5m`, null)).toThrow(/range/) // valid multiple but below min
-      expect(() => parse(`${schema}\n---\n5.5m`, null)).toThrow(/range/) // valid multiple but above max
+      expect(() => parse(`${schema}\n---\n0.5m`, null)).toThrow(expect.objectContaining({ errorCode: expect.stringMatching(/^mismatched-(min|max)$|^out-of-range-/) })) // valid multiple but below min
+      expect(() => parse(`${schema}\n---\n5.5m`, null)).toThrow(expect.objectContaining({ errorCode: expect.stringMatching(/^mismatched-(min|max)$|^out-of-range-/) })) // valid multiple but above max
       expect(() => parse(`${schema}\n---\n1.3m`, null)).toThrow(/multiple/) // within range but not multiple
     })
   })

@@ -11,7 +11,7 @@ describe('ADR 0012 — header errors are fatal', () => {
   it('a bad type in a header definition rejects iteration (no records emitted)', async () => {
     const input = '~ $User: {name: strnig}\n--- $User\n~ Alice\n';
     const reader = createStreamReader(input);
-    await expect(reader.collect()).rejects.toMatchObject({ errorCode: 'invalid-type' });
+    await expect(reader.collect()).rejects.toMatchObject({ errorCode: 'unknown-type' });
   });
 
   it('an unclosed brace in a header definition rejects iteration', async () => {

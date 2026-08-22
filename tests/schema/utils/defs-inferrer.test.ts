@@ -18,7 +18,7 @@ describe('Definition Inference (inferDefs)', () => {
    *   1. Merge them into a single schema (e.g., $question, $choice)
    *   2. Apply multi-pass inference to detect optional/nullable fields
    *
-   * IMPACT: Causes "value-required" errors when loading data where some
+   * IMPACT: Causes "missing-value" errors when loading data where some
    * dynamic-keyed objects are missing fields that others have.
    */
   describe('BUG REPRODUCTION: Dynamic Key Objects', () => {
@@ -74,7 +74,7 @@ describe('Definition Inference (inferDefs)', () => {
     });
 
     it('REPRODUCTION: Real-world Qualtrics survey structure that fails', () => {
-      // This structure causes "value-required" error on loadInferred
+      // This structure causes "missing-value" error on loadInferred
       const surveyData = {
         result: {
           questions: {
@@ -103,7 +103,7 @@ describe('Definition Inference (inferDefs)', () => {
       // 1. First choice encountered: QID1.choices.1 → creates $1 schema: {recode, description}
       // 2. Later: QID3.choices.1 is expected to match existing $1 schema
       // 3. But QID3.choices.1 is MISSING 'description'
-      // 4. loadInferred fails: "value-required" for description
+      // 4. loadInferred fails: "missing-value" for description
       //
       // DESIRED PATH:
       // 1. Recognize all choices.* values are same "type"

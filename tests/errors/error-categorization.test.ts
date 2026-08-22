@@ -118,7 +118,7 @@ describe('Error Categorization', () => {
 
       errorObjects.forEach((errObj: any) => {
         expect(errObj.category).toBe('validation');
-        expect(errObj.message).toContain('range');
+        expect(errObj.message).toContain('mismatched-');
       });
     });
   });

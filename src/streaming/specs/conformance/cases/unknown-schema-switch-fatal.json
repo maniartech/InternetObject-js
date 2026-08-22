@@ -8,6 +8,6 @@
   "chunkings": ["whole", "per-line"],
   "expected": {
     "items": [],
-    "fatal": { "category": "validation", "code": "schema-not-defined" }
+    "fatal": { "category": "validation", "code": "undefined-schema" }
   }
 }

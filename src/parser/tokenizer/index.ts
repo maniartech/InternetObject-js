@@ -257,7 +257,7 @@ class Tokenizer {
       const currentPos = createPosition(this.pos, this.row, this.col);
 
       const error = new SyntaxError(
-        ErrorCodes.stringNotClosed,
+        ErrorCodes.unterminatedString,
         `Unterminated string literal. Expected closing quote '"' before end of input.`,
         unclosedConstructRange(openingToken, currentPos),
         true
@@ -398,7 +398,7 @@ class Tokenizer {
       const currentPos = createPosition(this.pos, this.row, this.col);
 
       const error = new SyntaxError(
-        ErrorCodes.stringNotClosed,
+        ErrorCodes.unterminatedString,
         `Unterminated annotated string literal. Expected closing quote '${annotation.quote}' before end of input.`,
         unclosedConstructRange(openingToken, currentPos),
         true
@@ -412,26 +412,39 @@ class Tokenizer {
       this.advance();
     }
 
-    // If we reached the end without finding the closing quote,
-    // treat it as an annotated string that goes to EOF
-    const tokenText = this.input.substring(start, this.pos);
-    let value: string;
+    // The loop above ends either at the closing quote or at end of input. Only the first is a
+    // string.
+    //
+    // This used to "treat it as an annotated string that goes to EOF": `r'Unclosed` yielded the
+    // string "Unclosed" with no error, while the regular string `"Unclosed` correctly reported
+    // `unterminated-string`. Two spellings of one fault, one of them silent — and silent is the
+    // dangerous one, because a truncated value that parses is indistinguishable from an intended
+    // one. It applies to every annotation (`r`, `b`, `dt`, `d`, `t`), not just raw strings.
+    if (this.reachedEnd && this.input[this.pos] !== annotation.quote) {
+      const tokenText = this.input.substring(start, this.pos);
+      const openingToken = Token.init(start, startRow, startCol, annotation.name + annotation.quote, annotation.name, "STRING");
+      const currentPos = createPosition(this.pos, this.row, this.col);
 
-    if (this.reachedEnd) {
-      // Extract value from unclosed string (from after opening quote to EOF)
-      value = tokenText.substring(annotation.name.length + 1);
-    } else {
-      this.advance(); // Move past the closing quotation mark
-      const fullTokenText = this.input.substring(start, this.pos);
-      value = fullTokenText.substring(annotation.name.length + 1, fullTokenText.length - 1);
+      const error = new SyntaxError(
+        ErrorCodes.unterminatedString,
+        `Unterminated annotated string literal. Expected closing quote '${annotation.quote}' before end of input.`,
+        unclosedConstructRange(openingToken, currentPos),
+        true
+      );
+
+      return this.createErrorToken(error, start, startRow, startCol, tokenText);
     }
+
+    this.advance(); // Move past the closing quotation mark
+    const fullTokenText = this.input.substring(start, this.pos);
+    const value = fullTokenText.substring(annotation.name.length + 1, fullTokenText.length - 1);
 
     // Prepare the token
     const token = new Token();
     token.pos = start;
     token.row = startRow;
     token.col = startCol;
-    token.token = this.reachedEnd ? tokenText : this.input.substring(start, this.pos);
+    token.token = fullTokenText;
     token.value = value;
 
     return token;
@@ -462,7 +475,7 @@ class Tokenizer {
     const valueStr = token.value as string;
     if (!REGEX_CACHE.base64.test(valueStr)) {
       const error = new SyntaxError(
-        ErrorCodes.invalidBase64,
+        ErrorCodes.invalidBinary,
         `Invalid base64 format '${valueStr.length > 20 ? valueStr.substring(0, 20) + '...' : valueStr}'. Expected valid base64 characters (A-Z, a-z, 0-9, +, /) with optional '=' padding.`,
         token
       );
@@ -487,18 +500,24 @@ class Tokenizer {
 
     try {
       let fn = (value: string): Date | null => null
+      // The marker picks the error code, so a broken `d'...'` reports `invalid-date` rather than
+      // naming a type the author never wrote.
+      let code: string = ErrorCodes.invalidDateTime
 
       switch (annotation.name) {
         case "dt":
           fn = dtParser.parseDateTime;
+          code = ErrorCodes.invalidDateTime;
           token.subType = TokenType.DATETIME
           break;
         case "d":
           fn = dtParser.parseDate;
+          code = ErrorCodes.invalidDate;
           token.subType = TokenType.DATE
           break;
         case "t":
           fn = dtParser.parseTime;
+          code = ErrorCodes.invalidTime;
           token.subType = TokenType.TIME
           break;
         default:
@@ -507,7 +526,9 @@ class Tokenizer {
 
       const dt = typeof token.value === 'string' ? fn(token.value) : null;
       if (!dt) {
-        const error = new SyntaxError(ErrorCodes.invalidDateTime,
+        // The marker chose the code in the switch above, so the code always names the type the
+        // author actually wrote.
+        const error = new SyntaxError(code,
           `Invalid ${annotation.name === 'dt' ? 'datetime' : annotation.name === 'd' ? 'date' : 'time'} format '${token.value}'. Expected valid ISO 8601 format.`,
           token);
         return this.createErrorToken(error, token.pos, token.row, token.col, token.token);
@@ -575,6 +596,14 @@ class Tokenizer {
     if (this.input[this.pos] === ".") {
       // If there is a dot, ensure it is followed by a digit.
       if (!reFloatDigit.test(this.input[this.pos + 1])) {
+        // REWIND. A sign has already been consumed by this point, and bailing out without
+        // restoring the position left the caller resuming AFTER it — so the sign was dropped
+        // from the value entirely: `-.j` decoded as the string ".j", losing a character the author
+        // wrote. Every other bail-out in this function either rewinds or has not advanced yet.
+        this.pos = start;
+        this.row = startRow;
+        this.col = startCol;
+        this.reachedEnd = false;
         return null;
       }
     }
@@ -658,20 +687,33 @@ class Tokenizer {
       }
     }
 
-    // A non-decimal prefix (0x/0o/0b) with no valid leading digits is not a number
-    // (e.g. `0x`, `0o9`, `0b2`). Emit the leading `0` as the number 0 and rewind to the
-    // prefix letter; the caller then merges the remainder into an OPEN_STRING, exactly
-    // like `0b12`-style recovery. This keeps the lenient-tokenizer contract (never throw).
+    // A non-decimal prefix (0x/0o/0b) that delivered NO valid digits: `0x`, `0o9`, `0b2`,
+    // `0b 1010`. The prefix ANNOUNCES a base, so failing to produce one is a failed number
+    // whatever follows it — the space in `0b 1010` does not rescue it.
+    //
+    // This is the load-bearing half of the rule. The other half is the merge-path check
+    // (`isFailedNumericLiteral`), which catches a prefix that decoded and then ran on into
+    // junk (`0b12`: `1` is valid binary, `2` is not).
+    //
+    // Between them they leave prose alone, because prose that begins with a prefix begins with
+    // a VALID one: `0xFFn) and bad-value fallbacks` decodes `0xFF` happily and is an open
+    // string. That distinction — did the prefix deliver anything? — is what separates a
+    // broken literal from a word, and it is why a run with no prefix at all (`013ABSD`, a code
+    // of the kind people write every day) is never touched. See ADR 0003 §2.
+    //
+    // Consume the whole alphanumeric run so the reported text is the literal the author wrote,
+    // and so nothing is left for the merge step to glue on.
     if (base !== 10 && rawValue === "") {
-      // The prefix letter (x/o/b) sits just past the optional sign and the `0`, and always
-      // exists, so we are no longer at end-of-input; keep the cached `reachedEnd` flag
-      // consistent with pos.
-      const consumed = signStr.length + 1; // sign (if any) + the leading `0`
-      this.pos = start + consumed;
-      this.row = startRow;
-      this.col = startCol + consumed;
-      this.reachedEnd = false;
-      return Token.init(start, startRow, startCol, signStr + "0", 0, TokenType.NUMBER);
+      while (!this.reachedEnd && /[0-9A-Za-z_]/.test(this.input[this.pos])) {
+        this.advance();
+      }
+      const tokenText = this.input.substring(start, this.pos);
+      const error = new SyntaxError(
+        ErrorCodes.invalidNumber,
+        `Invalid number literal '${tokenText}'. The '${tokenText.replace(/^[+-]?0/, '0').slice(0, 2)}' prefix requires at least one valid digit for its base (0x hex, 0o octal, 0b binary). To write this as text, quote it: "${tokenText}".`,
+        this.currentPosition
+      );
+      return this.createErrorToken(error, start, startRow, startCol, tokenText);
     }
 
     let tokenType = TokenType.NUMBER;
@@ -749,10 +791,28 @@ class Tokenizer {
       }
       tokenType = TokenType.DECIMAL;
       numberValue = decimalValue;
-      rawValue += "f";
+      // The literal ends in 'm', so the token TEXT must too. This appended 'f' — an internal
+      // marker with no reader — and the text is not private: when a decimal is followed by more
+      // open-string characters the two tokens MERGE, and the marker left the tokenizer as data.
+      // `123.45mm` decoded as the string "123.45fm", an `f` the input never contained.
+      rawValue += "m";
       this.advance();
     } else {
       if (base === 10 && (hasDecimal || hasExponent)) {
+        // RULE 1, all or nothing. A dangling exponent — `1e`, `12E`, `5e+` — is not a complete
+        // number, so the whole run is an open string. It is NOT an error: `e` is an ordinary letter
+        // and makes no claim, so `1e` is no more a broken number than `013ABSD` is.
+        //
+        // What must never happen is the third option. `parseFloat("1e")` returns 1, so this used to
+        // decode as the NUMBER 1 — a value the author never wrote, with no text left to inspect.
+        // Rewinding is what forbids inventing a value from a partial parse.
+        if (hasExponent && !/[eE][+-]?[0-9]+$/.test(rawValue)) {
+          this.pos = start;
+          this.row = startRow;
+          this.col = startCol;
+          this.reachedEnd = false;
+          return null;
+        }
         numberValue = parseFloat(rawValue);
       } else {
         // For a radix literal the sign now lives in `prefix`, so apply it to the magnitude.
@@ -773,6 +833,25 @@ class Tokenizer {
       tokenType,
       subType
     );
+  }
+
+  /**
+   * Does this run carry a base-prefix CLAIM it failed to keep?
+   *
+   * RULE 2. `0x`, `0o` and `0b` can only mean "a number follows in this base" — nothing else in
+   * the format begins that way. A run that makes the claim and does not keep it is an error, not
+   * an open string. (The type suffixes `m` and `n` make the same kind of claim at the other end,
+   * and are handled where they are read, as `invalid-decimal` / `invalid-bigint`.)
+   *
+   * A run that makes NO claim is never touched by this: `013ABSD`, `1.2.3`, `10.0.0.1`, `12mm`,
+   * `3pm` and `1e` are all ordinary open strings under Rule 1 (all or nothing).
+   *
+   * The end-anchor is what keeps prose safe. Without it, an open string that merely begins with a
+   * prefix and runs on — "0xFFn) and bad-value fallbacks" — reads as a failed number and takes
+   * the whole document down with it. Once punctuation or a space appears, the run is text.
+   */
+  private static isFailedNumericLiteral(text: string): boolean {
+    return /^[+-]?0[xXoObB][0-9A-Za-z_]*$/.test(text)
   }
 
   private parseLiteralOrOpenString(): Token | null {
@@ -1023,7 +1102,12 @@ class Tokenizer {
 
         const token = this.parseNumber();
 
-        if (token) {
+        if (token && token.type === TokenType.ERROR) {
+          // A designated error token is final. Merging it with whatever follows would splice the
+          // fault into a larger open string and lose it: `0b 1010` reported `invalid-number` for
+          // the `0b`, then glued it to ` 1010` and returned the string "0b 1010" with no error.
+          tokens[tokenIndex++] = token;
+        } else if (token) {
           const spaces = this.skipWhitespaces();
           if (!this.reachedEnd) {
             // If the next character (2abc) is not a symbol or whitespace, then
@@ -1037,6 +1121,12 @@ class Tokenizer {
               if (nextToken) {
                 nextToken.type = TokenType.STRING;
                 nextToken.subType = "OPEN_STRING";
+                // Take the value from the TEXT, not from whatever the run parsed as. This token is
+                // being forced to an open string, and `parseLiteralOrOpenString` may have read it
+                // as a keyword — `T` comes back with the boolean value `true`. Concatenating that
+                // spelled the keyword out into the merged string, so `5T` decoded as "5true": two
+                // characters in, five out, and a word the author never wrote.
+                nextToken.value = nextToken.token;
                 if (spaces.length > 0) {
                   nextToken.token = spaces + nextToken.token;
                   nextToken.value = spaces + nextToken.value;
@@ -1052,6 +1142,16 @@ class Tokenizer {
                   const error = new SyntaxError(
                     isDec ? ErrorCodes.invalidDecimal : ErrorCodes.invalidBigInt,
                     `Invalid ${isDec ? "Decimal" : "BigInt"} literal '${merged.token}'. A ${isDec ? "decimal" : "bigint"} must be a valid number (a single decimal point at most).`,
+                    merged
+                  );
+                  tokens[tokenIndex++] = this.createErrorToken(error, merged.pos, merged.row, merged.col, merged.token as string);
+                } else if (Tokenizer.isFailedNumericLiteral(merged.token as string)) {
+                  // A numeric literal that did not decode. Reaching here means the number parser
+                  // rewound and the remainder was swept into an open string -- which is how `0xGH`
+                  // used to become the STRING "0xGH" with no error at all.
+                  const error = new SyntaxError(
+                    ErrorCodes.invalidNumber,
+                    `Invalid number literal '${merged.token}'. Expected digits valid for the declared base (0x hex, 0o octal, 0b binary) and at most one decimal point.`,
                     merged
                   );
                   tokens[tokenIndex++] = this.createErrorToken(error, merged.pos, merged.row, merged.col, merged.token as string);
@@ -1096,7 +1196,7 @@ class Tokenizer {
               break;
 
             default:
-              const error = new SyntaxError(ErrorCodes.unsupportedAnnotation,
+              const error = new SyntaxError(ErrorCodes.unknownAnnotation,
                 `Unsupported annotation '${annotation.name}'. Supported annotations are: 'r' (raw string), 'b' (binary), 'dt' (datetime), 'd' (date), 't' (time).`,
                 this.currentPosition);
               const tokenText = this.input.substring(this.pos, this.pos + annotation.name.length + 1);
@@ -1185,7 +1285,7 @@ class Tokenizer {
 
           // Once the sep is detected, the schema must be present
           if (!schema) {
-            const error = new SyntaxError(ErrorCodes.schemaMissing,
+            const error = new SyntaxError(ErrorCodes.missingSchema,
               `Missing schema definition after section separator. Expected schema name starting with '$' (e.g., '$mySchema').`,
               this.currentPosition);
             tokens[tokenIndex++] = this.createErrorToken(error, this.pos, this.row, this.col, "");

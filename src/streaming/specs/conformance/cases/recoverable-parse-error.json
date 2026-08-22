@@ -9,7 +9,7 @@
   "expected": {
     "items": [
       { "kind": "record", "recordIndex": 0, "value": { "id": 1 } },
-      { "kind": "record-error", "recordIndex": 1, "error": { "category": "syntax", "code": "expecting-bracket" } },
+      { "kind": "record-error", "recordIndex": 1, "error": { "category": "syntax", "code": "expected-closing-bracket" } },
       { "kind": "record", "recordIndex": 2, "value": { "id": 2 } }
     ],
     "fatal": null

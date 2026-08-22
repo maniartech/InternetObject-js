@@ -184,9 +184,17 @@ describe('a sign is spelled before the base prefix, not inside the digits', () =
     expect(valueOf('-0b1010')).toBe(-10);
   });
 
-  test('a signed but malformed prefix still degrades to an open string, never a throw', () => {
-    expect(valueOf('-0x')).toBe('-0x');
-    expect(valueOf('-0b2')).toBe('-0b2');
+  // A signed but malformed prefix must not THROW — that was the original regression, and it still
+  // holds. It no longer degrades to an open string either: a base prefix announces a base, so
+  // failing to decode is `invalid-number` rather than a silent string (ADR 0003 §2).
+  test('a signed but malformed prefix reports invalid-number, never a throw', () => {
+    for (const literal of ['-0x', '-0b2']) {
+      const src = `---\n{a: ${literal}}`;
+      expect(() => parse(src, null)).not.toThrow();
+      const doc: any = parse(src, null);
+      const codes = JSON.stringify(doc.toObject()).match(/"errorCode":"([a-z-]+)"/g) ?? [];
+      expect(codes.join(',')).toContain('invalid-number');
+    }
   });
 });
 

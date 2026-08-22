@@ -52,7 +52,7 @@ describe('load() and stringify() - basic types', () => {
     test('validates range and multipleOf', () => {
       const memberDef: any = { type: 'number', path: 'age', min: 0, max: 120, multipleOf: 5 }
       expect(num.load(25, memberDef)).toBe(25)
-      expect(() => num.load(-1, memberDef)).toThrow(/range|out/i)
+      expect(() => num.load(-1, memberDef)).toThrow(expect.objectContaining({ errorCode: expect.stringMatching(/^mismatched-(min|max)$|^out-of-range-/) }))
       expect(() => num.load(26, memberDef)).toThrow(/multiple/i)
     })
   })

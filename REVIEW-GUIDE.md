@@ -84,7 +84,7 @@ git diff -w -- src/schema/types/number.ts
 
 **Finding:** #20.
 **What it does:** integer schema types (`int`, `uint`, sized ints) raise
-`not-an-integer` when given a fractional number instead of silently accepting/truncating.
+`expected-integer` when given a fractional number instead of silently accepting/truncating.
 
 **Check & see:**
 - [ ] There is an explicit set of integer type names (`INTEGER_NUMBER_TYPES`) and the check only fires for those.

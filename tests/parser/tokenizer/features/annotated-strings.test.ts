@@ -227,7 +227,10 @@ describe("Annotated String Parsing", () => {
 
       expect(tokens).toHaveLength(3);
       expect(tokens[0].token).toBe('r"test"');
-      expect(tokens[2].token).toBe("r'test"); // Actual tokenizer behavior
+      // The token text keeps its closing quote even when the string ends the input. It used to be
+      // truncated to `r'test` here, because the scan hit end-of-input at the closing quote and the
+      // unterminated branch built the text from the un-advanced position.
+      expect(tokens[2].token).toBe("r'test'");
     });
   });
 
@@ -304,15 +307,16 @@ describe("Annotated String Parsing", () => {
       expect(tokens[2].value).toBe("next");
     });
 
-    it("should handle unclosed annotated strings", () => {
+    // No closing quote anywhere — unterminated, exactly as a regular string would be. This used
+    // to produce a clean RAW_STRING, which is a truncated value that parses.
+    it("reports unterminated-string for an annotated string with no closing quote", () => {
       const input = `r"unclosed raw string`;
       const tokenizer = new Tokenizer(input);
       const tokens = tokenizer.tokenize();
 
       expect(tokens).toHaveLength(1);
-      expect(tokens[0].type).toBe(TokenType.STRING);
-      expect(tokens[0].subType).toBe("RAW_STRING");
-      expect(tokens[0].value).toBe("unclosed raw string");
+      expect(tokens[0].type).toBe(TokenType.ERROR);
+      expect((tokens[0].value as TokenErrorValue).errorCode).toBe("unterminated-string");
     });
   });
 

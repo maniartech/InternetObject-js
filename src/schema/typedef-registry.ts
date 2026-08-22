@@ -1,6 +1,8 @@
 import InternetObjectError  from '../errors/io-error';
 import ErrorCodes           from '../errors/io-error-codes';
+import ValidationError      from '../errors/io-validation-error';
 import TypeDef              from './typedef';
+import { RESERVED_TYPES, unusableTypeCode } from './types/common-number';
 
 interface TypeDefConstructor {
   new(type: string): TypeDef;
@@ -66,7 +68,13 @@ export default class TypedefRegistry {
   public static get(type: string): TypeDef {
     const typeDef = this.typeDefMap.get(type);
     if (!typeDef) {
-      throw new InternetObjectError(ErrorCodes.invalidType, `Type '${type}' is not registered`);
+      // A name the spec RESERVES is not the same fault as a name that does not exist. Both used to
+      // arrive here and report the same code, so `int64` was indistinguishable from a typo purely
+      // because this registry happens not to register it. See ADR 0002 §3.
+      const message = RESERVED_TYPES.has(type)
+        ? `The type '${type}' is reserved for a future version of Internet Object and cannot be used yet.`
+        : `Type '${type}' is not registered`;
+      throw new ValidationError(unusableTypeCode(type), message);
     }
     return typeDef;
   }

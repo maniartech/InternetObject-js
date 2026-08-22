@@ -43,7 +43,7 @@ function doCommonTypeCheck(memberDef: MemberDef, value: any, node?: Node, defs?:
   if (isNull) {
     if (memberDef.null) return { value: null, changed: true }
     const msg = `Null is not allowed for ${memberDef.path}`
-    throw new InternetObjectValidationError(ErrorCodes.nullNotAllowed, msg, node)
+    throw new InternetObjectValidationError(ErrorCodes.forbiddenNull, msg, node)
   }
 
   value = (typeof value === 'object' && value.toValue) ? value.toValue(defs) : value
@@ -112,11 +112,11 @@ function _default(value: any, defs?: Definitions) {
   return value
 }function _valueRequired(memberDef: MemberDef, node?: Node): ErrorArgs {
   const msg = `Value is required for ${memberDef.path}`
-  return [ErrorCodes.valueRequired, msg , node]
+  return [ErrorCodes.missingValue, msg , node]
 }
 
 function _nullNotAllowed(memberDef: MemberDef, node?: Node): ErrorArgs {
-  return [ErrorCodes.nullNotAllowed, `${memberDef.path} does not support null.`, node]
+  return [ErrorCodes.forbiddenNull, `${memberDef.path} does not support null.`, node]
 }
 
 // Return an invalid choice error parameters
@@ -135,7 +135,7 @@ function _invlalidChoice(memberDef: MemberDef, value: any, node?: Node): ErrorAr
     msg = `The value of "${memberDef.path}" must be '${memberDef.choices[0]}'. Currently it is ${value}.`
   }
 
-  return [ErrorCodes.invalidChoice, msg, node]
+  return [ErrorCodes.mismatchedChoice, msg, node]
 }
 
 export default doCommonTypeCheck
