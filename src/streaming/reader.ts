@@ -206,7 +206,23 @@ export class IOStreamReader implements AsyncIterable<StreamItem> {
       return out;
     };
 
-    // Handle one committed token; returns any items to emit. May throw (fatal).
+    // A fatal raised while APPLYING a section header, held until the records that preceded it
+    // have been yielded. PROTOCOL §7.2: a fatal terminates iteration *after* any items already
+    // produced — so an unknown `--- $Missing` must not swallow the records before it. Throwing
+    // straight out of handleToken discarded the return value, and with it the whole frame.
+    let pendingFatal: Error | null = null;
+
+    /** Apply a section header, deferring a fatal so pending records survive it. */
+    const applySectionHeaderDeferred = (header: string | null): void => {
+      try {
+        applySectionHeader(header);
+      } catch (err: any) {
+        pendingFatal = err;
+      }
+    };
+
+    // Handle one committed token; returns any items to emit. May set `pendingFatal`, which the
+    // caller MUST throw after yielding the returned items.
     const handleToken = (t: any): StreamItem[] => {
       const type = t.type;
 
@@ -220,7 +236,7 @@ export class IOStreamReader implements AsyncIterable<StreamItem> {
           processHeader(sliceAbs(frameStart, t.pos));
           headerDone = true;
           const { header, next } = readSectionHeaderLine(t.pos);
-          applySectionHeader(header); // may throw (fatal) on unknown explicit schema
+          applySectionHeaderDeferred(header); // fatal on unknown explicit schema
           frameStart = next;
           advanceWindow(next);
         }
@@ -237,7 +253,7 @@ export class IOStreamReader implements AsyncIterable<StreamItem> {
       if (type === TokenType.SECTION_SEP) {
         const out = emitFrame(frameStart, t.pos);
         const { header, next } = readSectionHeaderLine(t.pos);
-        applySectionHeader(header); // may throw (fatal) on unknown explicit schema
+        applySectionHeaderDeferred(header); // fatal on unknown explicit schema
         frameStart = next;
         advanceWindow(next);
         return out;
@@ -279,10 +295,12 @@ export class IOStreamReader implements AsyncIterable<StreamItem> {
         }
         for (const t of st.feed(text)) {
           for (const item of handleToken(t)) yield item;
+          if (pendingFatal) throw pendingFatal;
         }
       }
       for (const t of st.end()) {
         for (const item of handleToken(t)) yield item;
+        if (pendingFatal) throw pendingFatal;
       }
 
       // Flush the final pending frame. If no `---` was ever seen, the accumulated

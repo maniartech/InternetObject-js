@@ -33,8 +33,15 @@ describe('beta ergonomic APIs', () => {
     expect(() => parseSchema('   \n  ')).toThrow(/non-empty schema/i);
   });
 
-  test('parseSchema() throws Invalid schema input when no schema body is provided', () => {
-    expect(() => parseSchema('---')).toThrow(/invalid schema input/i);
+  // A malformed definition must fail with a DESIGNATED code and an IO error class, like every
+  // other error in the library (ADR 0002). This test used to pin the opposite — a bare
+  // `Error('Invalid schema input')` that no caller could branch on — which is what the schema
+  // corpus surfaced the first time anything ran it.
+  test('parseSchema() reports a designated code when no schema body is provided', () => {
+    expect(() => parseSchema('---')).toThrow(/expected-value/);
+    let code: string | undefined;
+    try { parseSchema('name:'); } catch (e: any) { code = e?.errorCode; }
+    expect(code).toBe('expected-value');
   });
 
   test('parseSchema() supports parentDefs for [$Schema] array shorthand', () => {
