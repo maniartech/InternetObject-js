@@ -65,7 +65,14 @@ class ObjectDef implements TypeDef {
       )
     }
 
-    const schema = memberDef.schema
+    // Resolve the schema the same way validate() and stringify() do: `memberDef.schema` may be a
+    // Schema, or a `$name` reference (TokenNode / string) into `defs`. load() used to read it raw,
+    // so a member declared as `address: $address` reached _loadObject as a TokenNode and blew up
+    // on `schema.names` — while the identical document parsed from text worked.
+    let schema = this._resolveSchema(memberDef.schema, defs)
+    if (!schema && memberDef.schemaRef && defs) {
+      schema = this._resolveSchema(memberDef.schemaRef, defs)
+    }
     if (!schema) {
       // No schema - return value as-is for open objects
       return value
