@@ -179,6 +179,44 @@ const subFormats: Case[] = [
 ];
 
 // ---------------------------------------------------------------------------------------------
+// Union types — `anyOf` on the `any` type
+// ---------------------------------------------------------------------------------------------
+const unions: Case[] = [
+  { group: 'a value matching ANY listed alternative is accepted',
+    name: 'anyOf_first_alternative', schema: 'id: {any, anyOf: [string, int]}', input: 'abc' },
+  { name: 'anyOf_second_alternative', schema: 'id: {any, anyOf: [string, int]}', input: '42' },
+  { name: 'anyOf_bool_alternative', schema: 'f: {any, anyOf: [bool, int]}', input: 'T' },
+  { name: 'anyOf_int_alternative', schema: 'f: {any, anyOf: [bool, int]}', input: '1' },
+  { name: 'anyOf_single_alternative', schema: 'v: {any, anyOf: [int]}', input: '1' },
+  { name: 'anyOf_three_alternatives', schema: 'v: {any, anyOf: [bool, int, string]}', input: 'x' },
+
+  { group: 'a value matching NONE is rejected', name: 'anyOf_matches_nothing',
+    schema: 'f: {any, anyOf: [bool, int]}', input: 'hello' },
+  { name: 'anyOf_single_alternative_violated', schema: 'v: {any, anyOf: [int]}', input: 'x' },
+  { name: 'anyOf_wrong_container', schema: 'v: {any, anyOf: [int, string]}', input: '[1]' },
+
+  { group: 'an alternative may be a full memberdef, not just a type name',
+    name: 'anyOf_constrained_first', schema: 'v: {any, anyOf: [{int, multipleOf: 5}, {int, multipleOf: 3}]}', input: '10',
+    note: 'a multiple of 5' },
+  { name: 'anyOf_constrained_second', schema: 'v: {any, anyOf: [{int, multipleOf: 5}, {int, multipleOf: 3}]}', input: '9',
+    note: 'a multiple of 3' },
+  { name: 'anyOf_constrained_neither', schema: 'v: {any, anyOf: [{int, multipleOf: 5}, {int, multipleOf: 3}]}', input: '7' },
+  { name: 'anyOf_constrained_both', schema: 'v: {any, anyOf: [{int, multipleOf: 5}, {int, multipleOf: 3}]}', input: '15',
+    note: 'a multiple of both — matching more than one alternative is still a match' },
+  { name: 'anyOf_length_constrained', schema: 'v: {any, anyOf: [{string, maxLen: 2}, int]}', input: 'ab' },
+  { name: 'anyOf_length_constrained_violated', schema: 'v: {any, anyOf: [{string, maxLen: 2}, int]}', input: 'abcd' },
+
+  { group: 'anyOf beside the other modifiers', name: 'anyOf_null_rejected_by_default',
+    schema: 'v: {any, anyOf: [int]}', input: 'N' },
+  { name: 'anyOf_null_allowed_when_declared', schema: 'v: {any, "null": T, anyOf: [int]}', input: 'N' },
+  { name: 'anyOf_optional_omitted', schema: 'v?: {any, anyOf: [int]}', input: '~' },
+  { name: 'anyOf_optional_supplied', schema: 'v?: {any, anyOf: [int]}', input: '~ 1' },
+  { name: 'anyOf_two_members', schema: 'a: {any, anyOf: [int]}, b: {any, anyOf: [string]}', input: '~ 1, x' },
+  { name: 'anyOf_inside_an_array', schema: 'a: [{any, anyOf: [int, bool]}]', input: '~ a: [1, T]' },
+  { name: 'anyOf_inside_an_array_violated', schema: 'a: [{any, anyOf: [int, bool]}]', input: '~ a: [1, x]' },
+];
+
+// ---------------------------------------------------------------------------------------------
 // Objects: surplus members, nesting, and how a failure names its path
 // ---------------------------------------------------------------------------------------------
 const objectsAndPaths: Case[] = [
@@ -307,6 +345,16 @@ const SUITES: Suite[] = [
     'a maxLen applies to an email exactly as it would to a string.',
     COMMON],
    subFormats],
+
+  ['unions', 'Union types — anyOf on the any type, including constrained alternatives',
+   ['Validation · UNION TYPES (anyOf)',
+    'Authoritative: outcomes produced by running io-js2 parse().',
+    'A member typed `any` with an `anyOf` list accepts a value matching ANY one alternative.',
+    'An alternative may be a bare type name or a full memberdef with its own constraints, so',
+    '`anyOf: [{int, multipleOf: 5}, {int, multipleOf: 3}]` accepts 10 and 9 but not 7.',
+    'Matching MORE than one alternative is still a match.',
+    COMMON],
+   unions],
 
   ['objects-and-paths', 'Objects — surplus members against closed and open schemas, and failures at depth',
    ['Validation · OBJECTS, SURPLUS MEMBERS, and DEPTH',
