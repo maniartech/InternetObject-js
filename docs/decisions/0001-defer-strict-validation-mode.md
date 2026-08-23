@@ -3,7 +3,7 @@
 - **Status:** Accepted — **Deferred (parked) in the current version.** Retained as declared, non-functional options; to be activated in a later release.
 - **Date:** 2026-08-12
 - **Owner:** core/facade + streaming
-- **Related:** io-test-cases `RECOMMENDATIONS.md` R3/R4/R5 · streaming ADRs `0001`, `0003`, `0007`, `0008` · streaming `PROTOCOL.md` §4/§5/§8 · `src/errors/FINALIZATION.md` (frozen error-code subset)
+- **Related:** io-test-cases `RECOMMENDATIONS.md` R3/R4/R5 · streaming ADRs [`0001`](streaming/0001-delegate-semantics-to-core.md), [`0003`](streaming/0003-mandatory-header-terminator.md), [`0007`](streaming/0007-first-validation-error-in-envelope.md), [`0008`](streaming/0008-recoverable-vs-fatal-errors.md) · the streaming chapter of io-specs (`io-specs/streaming/`, which superseded the in-repo `PROTOCOL.md` on 2026-06-05) · the error-finalization tracker (`.private/docs/errors-FINALIZATION.md`, out of the repo; frozen error-code subset)
 - **Scope:** This ADR is the single home for **all deferred strict options**: the core/facade
   **validation-error mode** (§1–§6, §8 appendix) and the **streaming reader's strict framing** (§7).
 
@@ -109,7 +109,7 @@ That, not `strict`, is the real switch.
 ### F. Streaming — has its **own** decided posture (delegates semantics to core)
 | Location | Reality |
 |---|---|
-| `src/streaming/specs/decisions/0001-delegate-semantics-to-core.md` | streaming never redefines core semantics; same value + error identity as core |
+| `docs/decisions/streaming/0001-delegate-semantics-to-core.md` | streaming never redefines core semantics; same value + error identity as core |
 | `.../0007-first-validation-error-in-envelope.md` | a streamed record's envelope surfaces the **first** validation error by design |
 | `.../0008-recoverable-vs-fatal-errors.md` | streaming's recoverable-vs-fatal split |
 | Impact | When core's mode is unified, re-check these ADRs for consistency, but streaming is **not blocked** by this deferral and needs no change now. |
@@ -234,7 +234,7 @@ so value/error *identity* matches core (ADR `0001`). The *surfacing* layer, howe
 **Impact on §1–§6:** none blocking. Streaming delegates value/error *identity* to core; only the *surfacing
 shape* (single vs multi error) is a streaming-local choice.
 
-### 7.2 Cross-check with error finalization (`src/errors/FINALIZATION.md`)
+### 7.2 Cross-check with error finalization (the error-finalization tracker, now `.private/docs/errors-FINALIZATION.md`, out of the repo)
 
 The error-code finalization tracker constrains and confirms the above:
 

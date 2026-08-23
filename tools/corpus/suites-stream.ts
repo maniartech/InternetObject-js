@@ -274,6 +274,12 @@ const errors: StreamCase[] = [
     input: '~ $P: {n:string, a:int}\n--- $P\n~ A, x\n~ B, y\n' },
   { name: 'bad_record_between_good_ones',
     input: '~ $P: {n:string, a:int}\n--- $P\n~ A, 1\n~ B, x\n~ C, 3\n' },
+  // Streaming ADR 0007 / io-specs streaming/error-model.md: validation may find SEVERAL problems
+  // in one record, but the stream emits exactly ONE record-error item for it, carrying the FIRST.
+  // Three members, all the wrong type -- one item, and it names the first failure. Carried over
+  // from the JSON fixture `multi-validation-error-one-item` when that second runner was retired.
+  { name: 'several_failures_one_item_carrying_the_first',
+    input: '~ $P: {n:string, a:int, ok:bool}\n--- $P\n~ 123, "old", "yes"\n' },
   { name: 'missing_required_member',
     input: '~ $P: {n:string, a:int}\n--- $P\n~ Alice\n' },
   { name: 'surplus_member_closed_schema',

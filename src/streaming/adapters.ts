@@ -98,7 +98,7 @@ export function createPushSource(): {
 export class BufferTransport implements IOStreamTransport {
   private chunks: string[] = [];
   // A single streaming decoder preserves multibyte UTF-8 state across send() calls,
-  // so a code point split across two byte chunks decodes correctly (IMPLEMENTATION-GAPS Gap 2).
+  // so a code point split across two byte chunks decodes correctly (gap tracker Gap 2).
   private decoder = new TextDecoder('utf-8');
 
   send(chunk: string | Uint8Array): void {

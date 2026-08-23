@@ -3,7 +3,7 @@
 - **Status:** **Accepted and EXECUTED** 2026-08-21. Grammar, vocabulary and registry applied across source, tests, corpus, specs and the streaming lockstep. Codes re-freeze under the new names.
 - **Date:** 2026-08-13
 - **Owner:** core/errors (affects every layer + streaming)
-- **Related:** `src/errors/FINALIZATION.md` (punch list #1–#7) · streaming `PROTOCOL.md` §7 · streaming conformance corpus · ADR [0001](0001-defer-strict-validation-mode.md)
+- **Related:** the error-finalization tracker (`.private/docs/errors-FINALIZATION.md`, out of the repo; punch list #1–#7) · the streaming chapter of io-specs (`io-specs/streaming/`, which superseded the in-repo `PROTOCOL.md` on 2026-06-05) · the streaming suites of the io-test-cases corpus · ADR [0001](0001-defer-strict-validation-mode.md)
 
 ---
 
