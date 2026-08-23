@@ -111,7 +111,8 @@ console.log(doc.toObject());
 // [{ name: 'Alice', age: 30 }, { name: 'Bob', age: 25 }, { name: 'Carol', age: 28 }]
 ```
 
-One row = object. Multiple rows = array of objects.
+The `~` is what makes a collection, not the row count: a lone `~ Alice, 30` is an array of one,
+and a bare `Alice, 30` with no `~` is a single object. Each `~` row is one record.
 
 ### 3. Embed IO in your code (template literals)
 
@@ -204,7 +205,7 @@ try {
 ```
 
 **Method B: `validateObject()` (Safe)**
-Returns a result object with `valid` flag and errors. Great for form inputs.
+Returns `{ valid, errors }` and never throws. Great for form inputs.
 
 ```ts
 import { validateObject, parseDefinitions } from 'internet-object';
@@ -212,11 +213,9 @@ import { validateObject, parseDefinitions } from 'internet-object';
 const defs = parseDefinitions('~ $schema: { name: string, age: int }');
 const result = validateObject({ name: 'Alice', age: 'thirty' }, defs);
 
-if (result.valid) {
-  console.log('Valid:', result.data);
-} else {
-  console.error('Errors:', result.errors);
-  // Error: expected int, got string
+if (!result.valid) {
+  for (const e of result.errors) console.error(e.errorCode, e.message);
+  // expected-integer  Expecting a value of type 'int' for 'age'
 }
 ```
 
