@@ -150,7 +150,15 @@ const errors: SchemaCase[] = [
   { name: 'optional_member_with_no_type', schemaDef: 'name?:' },
 
   { group: 'a type must be registered', name: 'unknown_type', schemaDef: 'n: nosuchtype' },
-  { name: 'unknown_type_in_object_form', schemaDef: 'n: {nosuchtype}' },
+  { name: 'unknown_type_in_object_form', schemaDef: 'n: {nosuchtype}',
+    note: 'braces around an UNREGISTERED name are read as a nested object BODY, not as the object '
+        + 'form of a typedef — so this compiles to an object with one member of type `any`' },
+  { name: 'binary_in_object_form', schemaDef: 'n: {binary}',
+    note: 'the same rule reached a different way: `binary` is described by the spec but registers '
+        + 'no type here, so `{binary}` compiles as a nested object exactly like `{nosuchtype}`. '
+        + 'Compare `{string}`, which IS registered and compiles as a typedef' },
+  { name: 'registered_type_in_object_form', schemaDef: 'n: {string}',
+    note: 'the control for the two rows above' },
   { name: 'unknown_type_capitalized', schemaDef: 'n: String',
     note: 'type names are lower-case; `String` is not `string`' },
   { name: 'unknown_type_boolean_spelled_out', schemaDef: 'b: boolean',

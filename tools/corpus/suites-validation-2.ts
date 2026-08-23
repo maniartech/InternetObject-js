@@ -217,6 +217,73 @@ const unions: Case[] = [
 ];
 
 // ---------------------------------------------------------------------------------------------
+// Binary values, and the schema type that does not exist yet
+// ---------------------------------------------------------------------------------------------
+const binary: Case[] = [
+  { group: 'a binary VALUE works wherever a value is accepted',
+    name: 'binary_under_any', schema: 'b: any', input: 'b"SGVsbG8="' },
+  { name: 'binary_empty_under_any', schema: 'b: any', input: 'b""' },
+  { name: 'binary_single_quoted', schema: 'b: any', input: "b'SGVsbG8='" },
+  { name: 'binary_in_an_array', schema: 'b: [any]', input: '~ b: [b"SGVsbG8="]' },
+  { name: 'binary_in_a_nested_object', schema: 'o: {b: any}', input: '~ o: {b"SGVsbG8="}' },
+  { name: 'binary_optional_omitted', schema: 'b?: any', input: '~' },
+  { name: 'binary_beside_other_members', schema: 'n: string, b: any', input: '~ x, b"SGVsbG8="' },
+
+  { group: 'malformed base64', name: 'binary_invalid_base64', schema: 'b: any', input: 'b"!!!"' },
+  { name: 'binary_bad_padding', schema: 'b: any', input: 'b"SGVsbG8"' },
+  { name: 'binary_unterminated', schema: 'b: any', input: 'b"SGVsbG8=' },
+
+  // `binary` is NOT a registered schema type. ADR 0002 §5 withheld `expected-binary` for exactly
+  // this reason: no site could emit it. These rows pin the CURRENT state — the value form is
+  // fully supported, the schema type is not — so a port knows precisely where the line is, and
+  // so the day the type is registered these rows change and say so.
+  { group: 'the `binary` TYPE NAME is not registered (spec describes it; io-js2 has no BinaryDef)',
+    name: 'binary_as_schema_type', schema: 'b: binary', input: 'b"SGVsbG8="' },
+  // `b: {binary}` is deliberately NOT here. What it demonstrates is a COMPILATION fact — an
+  // unregistered name inside braces becomes a nested object body — so it belongs in the schema
+  // suite, and schema/errors-extended.io pins it as `binary_in_object_form`. Validating against
+  // that nonsense schema makes the two validation entry points name the fault differently
+  // (`invalid-object` vs `missing-value`), which is a limit of the X1 bridge rather than anything
+  // a port needs to reproduce.
+  { name: 'binary_as_array_element_type', schema: 'b: [binary]', input: '~ b: [b"SGVsbG8="]' },
+];
+
+// ---------------------------------------------------------------------------------------------
+// Collection rules
+// ---------------------------------------------------------------------------------------------
+const collections: Case[] = [
+  { group: 'records without a schema may each have a different shape',
+    name: 'ragged_records_schemaless', schema: 'x?: any, y?: any, z?: any',
+    input: '~ a, 20, f\n~ T, F\n~ m, 123' },
+  { name: 'one_record_under_schema', schema: 'n: string, a: int', input: '~ John, 20' },
+  { name: 'two_records_same_shape', schema: 'n: string, a: int', input: '~ John, 20\n~ Jane, 25' },
+  { name: 'second_record_wrong_shape', schema: 'n: string, a: int', input: '~ John, 20\n~ Jane' },
+  { name: 'second_record_wrong_type', schema: 'n: string, a: int', input: '~ John, 20\n~ Jane, x' },
+
+  // The spec is explicit here: `~` alone is an EMPTY OBJECT, valid only if every member is
+  // optional and/or nullable. The pair of rows is the point — one schema accepts it, one does not.
+  { group: 'an empty record `~` is {} — valid only when every member may be absent',
+    name: 'empty_record_all_optional', schema: 'name?*: string, age?*: {int, max: 25}', input: '~' },
+  { name: 'empty_record_one_required', schema: 'name: string, age?*: {int, max: 25}', input: '~' },
+  { name: 'empty_record_all_optional_not_nullable', schema: 'name?: string, age?: int', input: '~' },
+  { name: 'empty_record_all_nullable_not_optional', schema: 'name*: string, age*: int', input: '~',
+    note: 'nullable is not optional — the members are still required to be PRESENT' },
+  { name: 'empty_record_no_schema', schema: 'x?: any', input: '~' },
+  { name: 'empty_record_among_full_ones', schema: 'name?*: string', input: '~ John\n~\n~ Jane' },
+
+  { group: 'positional records map to indices when the schema is permissive',
+    name: 'positional_three_values', schema: 'a?: any, b?: any, c?: any', input: '~ John, 20, f' },
+  { name: 'positional_fewer_than_declared', schema: 'a?: any, b?: any, c?: any', input: '~ John' },
+  { name: 'positional_more_than_declared', schema: 'a?: any', input: '~ John, 20' },
+  { name: 'positional_mixed_types', schema: 'a?: any, b?: any, c?: any', input: '~ m, 123, {x, y}' },
+
+  { group: 'every record is validated, not just the first',
+    name: 'third_record_fails', schema: 'a: int', input: '~ 1\n~ 2\n~ x' },
+  { name: 'all_three_fail', schema: 'a: int', input: '~ x\n~ y\n~ z' },
+  { name: 'first_and_last_fail', schema: 'a: int', input: '~ x\n~ 2\n~ z' },
+];
+
+// ---------------------------------------------------------------------------------------------
 // Objects: surplus members, nesting, and how a failure names its path
 // ---------------------------------------------------------------------------------------------
 const objectsAndPaths: Case[] = [
@@ -355,6 +422,27 @@ const SUITES: Suite[] = [
     'Matching MORE than one alternative is still a match.',
     COMMON],
    unions],
+
+  ['binary', 'Binary values, and the `binary` schema type that is not registered yet',
+   ['Validation \u00b7 BINARY',
+    'Authoritative: outcomes produced by running io-js2 parse().',
+    'A binary VALUE (b"\u2026") works wherever a value is accepted. The TYPE NAME `binary` is a',
+    'different matter: the specification describes it, io-js2 registers no BinaryDef, and',
+    '`{b: binary}` reports `unknown-type`. ADR 0002 \u00a75 withheld `expected-binary` for exactly',
+    'that reason \u2014 no site could emit it. These rows pin where the line currently is.',
+    COMMON],
+   binary],
+
+  ['collections', 'Collection rules — ragged records, empty records, and per-record validation',
+   ['Validation \u00b7 COLLECTION RULES',
+    'Authoritative: outcomes produced by running io-js2 parse().',
+    'An empty record `~` is an empty OBJECT, valid only when every member may be absent. Note',
+    'that nullable is not optional: `name*: string` still requires the member to be PRESENT, so',
+    'an empty record fails it. Each rule here has an accepting and a rejecting row.',
+    'EVERY record is validated, not only the first \u2014 an implementation that validates the first',
+    'record and assumes the rest match passes most of this corpus and fails the last group.',
+    COMMON],
+   collections],
 
   ['objects-and-paths', 'Objects — surplus members against closed and open schemas, and failures at depth',
    ['Validation · OBJECTS, SURPLUS MEMBERS, and DEPTH',

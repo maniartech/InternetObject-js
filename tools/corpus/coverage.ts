@@ -81,7 +81,7 @@ const COVERS: Record<string, string[]> = {
 
   // ---- values --------------------------------------------------------------------------------
   'the-structure/values/array.md': ['parser/arrays', 'validation/arrays', 'serializer/containers'],
-  'the-structure/values/binary.md': ['tokenizer/strings-binary', 'parser/values', 'serializer/scalars'],
+  'the-structure/values/binary.md': ['tokenizer/strings-binary', 'parser/values', 'serializer/scalars', 'validation/binary'],
   'the-structure/values/booleans.md': ['tokenizer/booleans', 'parser/values', 'validation/booleans'],
   'the-structure/values/date-and-time.md': ['tokenizer/datetime', 'parser/values', 'validation/datetime'],
   'the-structure/values/null.md': ['tokenizer/nulls', 'parser/values', 'validation/any-null'],
@@ -96,8 +96,8 @@ const COVERS: Record<string, string[]> = {
   'the-structure/values/string/regular-strings.md': ['tokenizer/strings-regular', 'tokenizer/strings-escapes', 'tokenizer/strings-forms'],
 
   // ---- collections and sections ----------------------------------------------------------------
-  'the-collections/collection.md': ['parser/collections', 'document/structure'],
-  'the-collections/collection-rules.md': ['parser/collections', 'validation/accumulation-depth'],
+  'the-collections/collection.md': ['parser/collections', 'document/structure', 'validation/collections'],
+  'the-collections/collection-rules.md': ['parser/collections', 'validation/accumulation-depth', 'validation/collections'],
   'the-collections/creating-collection.md': ['parser/collections', 'serializer/documents'],
   'the-collections/data-streaming.md': ['streaming/framing', 'streaming/framing-depth'],
 
@@ -117,7 +117,7 @@ const COVERS: Record<string, string[]> = {
   'schema-definition-language/union-types.md': ['validation/unions'],
   'schema-definition-language/data-types/any.md': ['validation/any-null', 'schema/sized-types'],
   'schema-definition-language/data-types/array.md': ['schema/arrays', 'validation/arrays-depth'],
-  'schema-definition-language/data-types/binary.md': ['tokenizer/strings-binary'],
+  'schema-definition-language/data-types/binary.md': ['tokenizer/strings-binary', 'validation/binary'],
   'schema-definition-language/data-types/bool.md': ['validation/booleans', 'schema/primitives'],
   'schema-definition-language/data-types/date-and-time.md': ['validation/datetime', 'schema/sized-types'],
   'schema-definition-language/data-types/object.md': ['validation/objects-and-paths', 'schema/nested'],
