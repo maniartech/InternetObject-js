@@ -7,8 +7,8 @@
   Ensure server is running first.
 */
 
-import io from '../../src/facade';
-import { createStreamReader } from '../../src/streaming/reader';
+import io from '../../../src/facade';
+import { createStreamReader } from '../../../src/streaming/reader';
 
 const schemaDefs = io.defs`
   ~ $user: {id:int, name:string}

@@ -396,23 +396,29 @@ yarn build     # Build for production
 
 ### The conformance corpus
 
-Internet Object is a format, not a library, so correctness is defined outside this repo. The
-language-independent test corpus lives in the sibling repository
-[`io-test-cases`](https://github.com/maniartech/io-test-cases), and `yarn test` runs it as part of
-the suite — a reference implementation that does not run the contract on every commit is only a
-second opinion that happens to be nearby.
+Internet Object is a format, not a library, so correctness is defined outside this repo. A
+language-independent corpus of 1,500+ cases — written in Internet Object itself — is the contract
+every implementation must satisfy, in any language, and `npm test` runs it as part of this suite.
+A reference implementation that does not run the contract on every commit is only a second opinion
+that happens to be nearby.
 
-Check it out alongside this one to get that coverage:
+**The corpus repository is not public yet.** It is being finalised and will be released alongside
+the 1.0 specification. Until then this section is for maintainers who already have it.
+
+Check it out beside this repo and the tooling finds it automatically:
 
 ```
 your-workspace/
-  io-js2/          # this repo
-  io-test-cases/   # the corpus
+  InternetObject-js/            # this repo
+  InternetObject-test-cases/    # the corpus
+  InternetObject-specs/         # the specification
 ```
 
-If the sibling is absent the corpus suites **skip** rather than fail, so building from a tarball
-still works — but you are then running the library's own tests only. Cases are generated from the
-tables in `tools/corpus/suites-*.ts`; edit those, never the `.io` files.
+The lookup is by repository name, not by a hardcoded path, so any checkout layout works — set
+`IO_CORPUS_DIR` or `IO_SPECS_DIR` to point elsewhere. If a sibling is absent the corpus suites
+**skip** rather than fail, so a clone or a tarball build still works; you are then running the
+library's own tests only. Cases are generated from the tables in `tools/corpus/suites-*.ts` — edit
+those, never the `.io` files.
 
 ### Publishing
 

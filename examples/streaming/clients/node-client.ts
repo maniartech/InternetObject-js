@@ -1,6 +1,6 @@
 
 import http from 'node:http';
-import { createStreamReader } from '../../src/index'; // Adjust path to src/index.ts or dist/index.js
+import { createStreamReader } from '../../../src/index'; // Adjust path to src/index.ts or dist/index.js
 
 // Simple CLI argument parser
 const args = process.argv.slice(2);

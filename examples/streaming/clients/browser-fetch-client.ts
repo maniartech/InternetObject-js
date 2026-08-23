@@ -6,7 +6,7 @@
   for await (const item of stream) { ... }
 */
 
-import { createStreamReader } from '../../src/streaming/reader';
+import { createStreamReader } from '../../../src/streaming/reader';
 
 export async function runBrowserClient() {
   const res = await fetch('/stream');

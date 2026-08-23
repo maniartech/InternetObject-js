@@ -1,6 +1,6 @@
 /**
  * Documentation-as-tests: harvest the fenced code blocks from the streaming example
- * docs (docs/streaming-examples/*.md) and verify them against the REAL streaming API at runtime.
+ * docs (examples/streaming/*.md) and verify them against the REAL streaming API at runtime.
  *
  * - Every ```io wire-shape block is streamed through createStreamReader across multiple
  *   chunkings (whole / per-line / per-byte). The emitted items (or the fatal outcome)
@@ -19,7 +19,7 @@ import { fileURLToPath } from 'node:url';
 import { createStreamReader } from '../../src/streaming/reader';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
-const EXAMPLES_DIR = path.join(here, '..', '..', 'docs', 'streaming-examples');
+const EXAMPLES_DIR = path.join(here, '..', '..', 'examples', 'streaming');
 
 type Block = { lang: string; body: string };
 

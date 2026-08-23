@@ -12,10 +12,10 @@ import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import io from '../../src/facade';
-import Decimal from '../../src/core/decimal/decimal';
-import { createStreamWriter } from '../../src/streaming/writer';
-import { nodeHttpTransport } from '../../src/streaming/transports';
+import io from '../../../src/facade';
+import Decimal from '../../../src/core/decimal/decimal';
+import { createStreamWriter } from '../../../src/streaming/writer';
+import { nodeHttpTransport } from '../../../src/streaming/transports';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);

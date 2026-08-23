@@ -4,7 +4,7 @@ This directory contains scenario-based streaming examples.
 These documents explain how the frozen streaming contract is intended to be used for real cases on both the server and client sides.
 
 These files are explanatory, not normative. The contract is the streaming chapter of the
-specification, [`io-specs/streaming/`](../../../io-specs/streaming/); if an example and the
+specification, [`io-specs/streaming/`](https://docs.internetobject.org/streaming/); if an example and the
 specification ever disagree, the specification wins and the example is the bug.
 
 **These examples are executed in CI.** `tests/streaming/doc-examples.test.ts` harvests every `io` wire-shape
@@ -12,16 +12,15 @@ block here and streams it through the real reader across multiple chunkings (who
 asserting identical results; it also scans every `ts` snippet for removed/renamed API. So an example that
 drifts from the implementation fails the test. Run them on demand with `npm run test:streaming`.
 
-> **Why this directory is under `docs/` and not `src/`.** It used to sit at
-> `src/streaming/specs/examples/`, beside an in-repo copy of the protocol. That copy was superseded
-> by the specification and retired on 2026-08-23; the examples stayed, because they are executable and gated.
-> The *why* behind the protocol's rules is in [`../decisions/streaming/`](../decisions/streaming/).
+> **What is here.** The `.md` files are scenario walkthroughs, and they are EXECUTED: `tests/streaming/doc-examples.test.ts` harvests every `io` block and streams it through the real reader across three chunkings, so a drifted example fails CI. `clients/` holds runnable client and server programs — Node, fetch, and legacy XHR — which are read rather than executed.
+>
+> Scenario docs and runnable clients used to live in two different directories (`docs/` and `examples/`) for the same topic. They are one thing and now live in one place.
 
 ## How To Use These Examples
 
-- Start with [`io-specs/streaming/`](../../../io-specs/streaming/) for the contract.
+- Start with [`io-specs/streaming/`](https://docs.internetobject.org/streaming/) for the contract.
 - Use these examples to understand how that contract applies to concrete scenarios.
-- For the reasoning behind each rule, see the [streaming ADRs](../decisions/streaming/).
+- For the reasoning behind each rule, see the [streaming ADRs](https://docs.internetobject.org/streaming/).
 
 ## Example Conventions
 

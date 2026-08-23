@@ -62,6 +62,6 @@ for await (const item of reader) {
 
 ## Related Contract
 
-- the streaming specification: [`io-specs/streaming/`](../../../io-specs/streaming/)
-- the reasoning behind it: [streaming ADRs](../decisions/streaming/)
+- the streaming specification: [`io-specs/streaming/`](https://docs.internetobject.org/streaming/)
+- the reasoning behind it: [streaming ADRs](https://docs.internetobject.org/streaming/)
 - the JavaScript API: [README](../../README.md#9-streaming-api-chunked-io)
