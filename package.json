@@ -119,7 +119,8 @@
     "corpus:tokens": "tsx tools/corpus/verify-bootstrap.ts",
     "fuzz:triage": "tsx tools/fuzz/triage.ts",
     "verify:package": "node scripts/verify-package.mjs",
-    "security:audit": "bash scripts/security-audit.sh"
+    "security:audit": "bash scripts/security-audit.sh",
+    "examples": "node examples/_explorer/server.mjs"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",

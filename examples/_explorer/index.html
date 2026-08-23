@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Internet Object — Examples</title>
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <aside id="sidebar">
+    <header>
+      <h1>Internet Object</h1>
+      <p>Examples you can run</p>
+    </header>
+    <nav id="list" aria-label="Examples"><p class="hint">Loading…</p></nav>
+    <footer>
+      <p>Each example is one file.<br>The same file runs here, under <code>tsx</code>, and in the test suite.</p>
+    </footer>
+  </aside>
+
+  <main id="main">
+    <div id="empty" class="empty">
+      <h2>Pick an example</h2>
+      <p>Start at the top if Internet Object is new to you — they build on each other.</p>
+    </div>
+
+    <article id="content" hidden>
+      <header id="head">
+        <h2 id="title"></h2>
+        <p id="summary"></p>
+      </header>
+
+      <div class="tabs" role="tablist">
+        <button class="tab" role="tab" data-panel="concept" aria-selected="true">Concept</button>
+        <button class="tab" role="tab" data-panel="code" aria-selected="false">Code</button>
+        <button class="tab" role="tab" data-panel="output" aria-selected="false">Output</button>
+        <button id="run" title="Run this example again">Run again</button>
+      </div>
+
+      <section id="panel-concept" class="panel" role="tabpanel"></section>
+      <section id="panel-code" class="panel" role="tabpanel" hidden><pre><code id="source"></code></pre></section>
+      <section id="panel-output" class="panel" role="tabpanel" hidden>
+        <p class="hint" id="output-hint">This ran in your browser, just now.</p>
+        <pre id="output"></pre>
+      </section>
+    </article>
+  </main>
+
+  <script type="module" src="/app.js"></script>
+</body>
+</html>
