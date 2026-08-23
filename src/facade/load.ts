@@ -9,6 +9,9 @@ import Schema from '../schema/schema';
 import { loadObject as processObject, loadCollection as processCollection } from '../schema/load-processor';
 import IOError from '../errors/io-error';
 import ErrorCodes from '../errors/io-error-codes';
+import ValidationError from '../errors/io-validation-error';
+import { IOCommonOptions } from './options';
+import { resolveSchema } from './resolve-schema';
 
 /**
  * Creates an InternetObject from plain data without schema validation.
@@ -36,33 +39,8 @@ function createSchemalessCollection(dataArray: any[]): Collection<InternetObject
   return collection;
 }
 
-export interface LoadObjectOptions {
-  /**
-   * The name of the schema to use from definitions.
-   * If provided, the schema will be looked up by this name in the definitions.
-   * If not provided, uses `defs.defaultSchema` (`$schema`).
-   *
-   * @example
-   * ```typescript
-   * const defs = parseDefinitions('~ $User: { name, age }');
-   * const obj = loadObject(data, defs, { schemaName: '$User' });
-   * ```
-   */
-  schemaName?: string;
-
-  /**
-   * When true, throws on first validation error.
-   * When false (default), continues processing and collects errors.
-   * @default false
-   */
-  strict?: boolean;
-
-  /**
-   * Array to collect validation errors instead of throwing.
-   * Useful for processing collections where some items may be invalid.
-   */
-  errorCollector?: Error[];
-}
+/** Options for `loadObject` — see {@link IOCommonOptions} (shared, declared once — R8). */
+export type LoadObjectOptions = IOCommonOptions;
 
 /**
  * Load and validate plain JavaScript data according to an Internet Object schema.
@@ -93,12 +71,12 @@ export interface LoadObjectOptions {
  */
 // Overloads for loadObject
 export function loadObject(data: object): InternetObject;
-export function loadObject(data: object, defs: Definitions): InternetObject;
+export function loadObject(data: object, defs: Definitions | null): InternetObject;
 export function loadObject(data: object, options: LoadObjectOptions): InternetObject;
-export function loadObject(data: object, defs: Definitions, options: LoadObjectOptions): InternetObject;
+export function loadObject(data: object, defs: Definitions | null, options: LoadObjectOptions): InternetObject;
 export function loadObject(
   data: object,
-  defsOrOptions?: Definitions | LoadObjectOptions,
+  defsOrOptions?: Definitions | LoadObjectOptions | null,
   options?: LoadObjectOptions
 ): InternetObject {
   let resolvedSchema: Schema | undefined;
@@ -114,21 +92,12 @@ export function loadObject(
     resolvedOptions = defsOrOptions as LoadObjectOptions;
   }
 
-  // Resolve schema: by name from options, or default from definitions
-  if (definitions) {
-    if (resolvedOptions?.schemaName) {
-      resolvedSchema = definitions.get(resolvedOptions.schemaName) as Schema | undefined;
-      if (!resolvedSchema) {
-        throw new IOError(ErrorCodes.schemaNotFound, `Schema '${resolvedOptions.schemaName}' not found in definitions.`);
-      }
-    } else {
-      resolvedSchema = definitions.defaultSchema || undefined;
-    }
-  }
+  // Resolve schema uniformly — one primitive, one failure mode (R8).
+  resolvedSchema = resolveSchema(definitions, resolvedOptions?.schemaName);
 
   // Validate that data is an object, not an array
   if (Array.isArray(data)) {
-    throw new IOError(ErrorCodes.expectedObject, `loadObject expects an object, not an array. Use loadCollection for arrays.`);
+    throw new ValidationError(ErrorCodes.expectedObject, `loadObject expects an object, not an array. Use loadCollection for arrays.`);
   }
 
   // Schema-less mode: if no schema, load without validation
@@ -166,12 +135,12 @@ export type LoadCollectionOptions = LoadOptions;
  */
 // Overloads for loadCollection
 export function loadCollection(data: any[]): Collection<InternetObject>;
-export function loadCollection(data: any[], defs: Definitions): Collection<InternetObject>;
+export function loadCollection(data: any[], defs: Definitions | null): Collection<InternetObject>;
 export function loadCollection(data: any[], options: LoadCollectionOptions): Collection<InternetObject>;
-export function loadCollection(data: any[], defs: Definitions, options: LoadCollectionOptions): Collection<InternetObject>;
+export function loadCollection(data: any[], defs: Definitions | null, options: LoadCollectionOptions): Collection<InternetObject>;
 export function loadCollection(
   data: any[],
-  defsOrOptions?: Definitions | LoadCollectionOptions,
+  defsOrOptions?: Definitions | LoadCollectionOptions | null,
   options?: LoadCollectionOptions
 ): Collection<InternetObject> {
   let resolvedSchema: Schema | undefined;
@@ -189,20 +158,11 @@ export function loadCollection(
 
   // Validate that data is an array
   if (!Array.isArray(data)) {
-    throw new IOError(ErrorCodes.expectedArray, `loadCollection expects an array. Use loadObject for single objects.`);
+    throw new ValidationError(ErrorCodes.expectedArray, `loadCollection expects an array. Use loadObject for single objects.`);
   }
 
-  // Resolve schema: by name from options, or default from definitions
-  if (definitions) {
-    if (resolvedOptions?.schemaName) {
-      resolvedSchema = definitions.get(resolvedOptions.schemaName) as Schema | undefined;
-      if (!resolvedSchema) {
-        throw new IOError(ErrorCodes.schemaNotFound, `Schema '${resolvedOptions.schemaName}' not found in definitions.`);
-      }
-    } else {
-      resolvedSchema = definitions.defaultSchema || undefined;
-    }
-  }
+  // Resolve schema uniformly — one primitive, one failure mode (R8).
+  resolvedSchema = resolveSchema(definitions, resolvedOptions?.schemaName);
 
   // Schema-less mode: if no schema, load without validation
   if (!resolvedSchema) {
@@ -212,36 +172,8 @@ export function loadCollection(
   return processCollection(data, resolvedSchema, definitions, resolvedOptions?.errorCollector);
 }
 
-/**
- * Options for load function
- */
-export interface LoadOptions {
-  /**
-   * The name of the schema to use from definitions.
-   * If provided, the schema will be looked up by this name in the definitions.
-   * If not provided, uses `defs.defaultSchema` (`$schema`).
-   *
-   * @example
-   * ```typescript
-   * const defs = parseDefinitions('~ $User: { name, age }');
-   * const doc = load(data, defs, { schemaName: '$User' });
-   * ```
-   */
-  schemaName?: string;
-
-  /**
-   * When true, throws on first validation error.
-   * When false (default), continues processing and collects errors.
-   * @default false
-   */
-  strict?: boolean;
-
-  /**
-   * Array to collect validation errors instead of throwing.
-   * Useful for processing collections where some items may be invalid.
-   */
-  errorCollector?: Error[];
-}
+/** Options for `load` — see {@link IOCommonOptions} (shared, declared once — R8). */
+export type LoadOptions = IOCommonOptions;
 
 /**
  * Load plain JavaScript data into a complete IODocument with header and sections.
@@ -271,12 +203,12 @@ export interface LoadOptions {
  */
 // Overloads for load
 export function load(data: any): Document;
-export function load(data: any, defs: Definitions): Document;
+export function load(data: any, defs: Definitions | null): Document;
 export function load(data: any, options: LoadOptions): Document;
-export function load(data: any, defs: Definitions, options: LoadOptions): Document;
+export function load(data: any, defs: Definitions | null, options: LoadOptions): Document;
 export function load(
   data: any,
-  defsOrOptions?: Definitions | LoadOptions,
+  defsOrOptions?: Definitions | LoadOptions | null,
   options?: LoadOptions
 ): Document {
   let resolvedSchema: Schema | undefined;
@@ -292,17 +224,8 @@ export function load(
     resolvedOptions = defsOrOptions as LoadOptions;
   }
 
-  // Resolve schema: by name from options, or default from definitions
-  if (definitions) {
-    if (resolvedOptions?.schemaName) {
-      resolvedSchema = definitions.get(resolvedOptions.schemaName) as Schema | undefined;
-      if (!resolvedSchema) {
-        throw new IOError(ErrorCodes.schemaNotFound, `Schema '${resolvedOptions.schemaName}' not found in definitions.`);
-      }
-    } else {
-      resolvedSchema = definitions.defaultSchema || undefined;
-    }
-  }
+  // Resolve schema uniformly — one primitive, one failure mode (R8).
+  resolvedSchema = resolveSchema(definitions, resolvedOptions?.schemaName);
 
   // Create header with definitions (if available)
   const header = new Header();

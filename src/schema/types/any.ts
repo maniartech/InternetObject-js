@@ -10,6 +10,8 @@ import TypeDef                from '../../schema/typedef';
 import TypedefRegistry        from '../../schema/typedef-registry';
 import doCommonTypeCheck      from './common-type';
 import MemberDef              from './memberdef';
+import { inferDateTimeKind }  from '../../utils/datetime';
+import Decimal            from '../../core/decimal/decimal'
 
 const of = { type: "any", __memberdef: true }
 
@@ -52,7 +54,7 @@ export default class AnyDef implements TypeDef {
 
       const typeDef = TypedefRegistry.get(def.type)
       if (!typeDef) {
-        throw new InternetObjectError(ErrorCodes.invalidType, `Invalid type definition '${def.type}'`)
+        throw new ValidationError(ErrorCodes.unknownType, `Invalid type definition '${def.type}'`)
       }
 
       try {
@@ -65,7 +67,7 @@ export default class AnyDef implements TypeDef {
 
     // None of the types matched
     if (errors.length === anyOf.length) {
-      throw new ValidationError(ErrorCodes.invalidValue, `None of the constraints defined for '${memberDef.path}' matched.`, node)
+      throw new ValidationError(ErrorCodes.mismatchedAnyOf, `None of the constraints defined for '${memberDef.path}' matched.`, node)
     }
 
     return valueNode;
@@ -91,7 +93,7 @@ export default class AnyDef implements TypeDef {
       const typeDef = TypedefRegistry.get(def.type)
 
       if (!typeDef) {
-        throw new InternetObjectError(ErrorCodes.invalidType, `Invalid type definition '${def.type}'`)
+        throw new ValidationError(ErrorCodes.unknownType, `Invalid type definition '${def.type}'`)
       }
 
       try {
@@ -111,7 +113,7 @@ export default class AnyDef implements TypeDef {
     // None of the types matched
     if (errors.length === anyOf.length) {
       throw new ValidationError(
-        ErrorCodes.invalidValue,
+        ErrorCodes.mismatchedAnyOf,
         `None of the constraints defined for '${memberDef.path}' matched.`
       )
     }
@@ -178,6 +180,12 @@ export default class AnyDef implements TypeDef {
       return value ? 'T' : 'F'
     }
 
+    // Number — `Infinity`/`NaN` are JS spellings that do not re-parse as IO values.
+    if (typeof value === 'number' && !Number.isFinite(value)) {
+      if (Number.isNaN(value)) return 'NaN'
+      return value > 0 ? 'Inf' : '-Inf'
+    }
+
     // Number
     if (typeof value === 'number') {
       const numberDef = TypedefRegistry.get('number')
@@ -196,23 +204,50 @@ export default class AnyDef implements TypeDef {
       return value.toString()
     }
 
+    // Decimal — object-shaped in JS but a SCALAR on the wire, so it must be caught before the
+    // generic object branch below. Without this it fell through and printed its internals:
+    // `{coefficient: -101119n, exponent: 2, precision: 6, scale: 2}`. Same omission as the one
+    // fixed in io-formatter's nested-structure checks; this is a third site that re-derived
+    // "object-shaped but scalar" by hand and left Decimal out (see ARCHITECTURE-RETROSPECTIVE N2).
+    if (value instanceof Decimal) {
+      const decimalDef = TypedefRegistry.get('decimal')
+      if (decimalDef && 'stringify' in decimalDef && typeof decimalDef.stringify === 'function') {
+        return decimalDef.stringify(value, { type: 'decimal', path } as MemberDef, defs) ?? `${value}m`
+      }
+      return `${value}m`
+    }
+
     // String
     if (typeof value === 'string') {
       const stringDef = TypedefRegistry.get('string')
       if (stringDef && 'stringify' in stringDef && typeof stringDef.stringify === 'function') {
-        return stringDef.stringify(value, { type: 'string', path, format: 'open' } as MemberDef, defs) ?? value
+        // `auto`, never `open`. An open string is written bare, so a value that LOOKS like
+        // another type stops being a string on the way back: "0" returned as the number 0, "true"
+        // as a boolean, "  p" with its spaces trimmed. `auto` quotes exactly when leaving it bare
+        // would change the value, which is the whole point of an untyped member preserving what it
+        // was given.
+        return stringDef.stringify(value, { type: 'string', path, format: 'auto' } as MemberDef, defs) ?? value
       }
       return value
     }
 
     // Date - infer date/time/datetime based on components
     if (value instanceof Date) {
-      const inferredType = this._inferDateTimeType(value)
+      const inferredType = inferDateTimeKind(value)
       const datetimeDef = TypedefRegistry.get(inferredType)
       if (datetimeDef && 'stringify' in datetimeDef && typeof datetimeDef.stringify === 'function') {
         return datetimeDef.stringify(value, { type: inferredType, path } as MemberDef, defs) ?? value.toISOString()
       }
       return value.toISOString()
+    }
+
+    // Byte array -> base64 binary literal. Must precede the Array/Object branches: a
+    // Uint8Array is object-typed and would otherwise render as an object of byte indices.
+    if (value instanceof Uint8Array) {
+      const b64 = typeof Buffer !== 'undefined'
+        ? Buffer.from(value).toString('base64')
+        : btoa(Array.from(value, (b: number) => String.fromCharCode(b)).join(''))
+      return `b"${b64}"`
     }
 
     // Array
@@ -246,36 +281,6 @@ export default class AnyDef implements TypeDef {
 
     // Fallback
     return JSON.stringify(value)
-  }
-
-  /**
-   * Infer the datetime type (date, time, or datetime) based on the Date value.
-   * - If time is 00:00:00.000Z → 'date'
-   * - If date is 1900-01-01 → 'time'
-   * - Otherwise → 'datetime'
-   */
-  private _inferDateTimeType(date: Date): 'date' | 'time' | 'datetime' {
-    const hours = date.getUTCHours()
-    const minutes = date.getUTCMinutes()
-    const seconds = date.getUTCSeconds()
-    const ms = date.getUTCMilliseconds()
-
-    const year = date.getUTCFullYear()
-    const month = date.getUTCMonth() // 0-indexed
-    const day = date.getUTCDate()
-
-    // Time-only: date component is 1900-01-01 (the sentinel value used in parseTime)
-    if (year === 1900 && month === 0 && day === 1) {
-      return 'time'
-    }
-
-    // Date-only: time component is all zeros
-    if (hours === 0 && minutes === 0 && seconds === 0 && ms === 0) {
-      return 'date'
-    }
-
-    // Full datetime
-    return 'datetime'
   }
 
   public static get types() { return ['any'] }

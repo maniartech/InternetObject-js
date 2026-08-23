@@ -1,0 +1,13 @@
+{
+  "name": "header-only-stream",
+  "description": "Definitions then terminator then EOF; zero items, normal completion.",
+  "protocol": ["§12"],
+  "definitions": null,
+  "options": { "defaultSchema": null },
+  "input": "~ $User: { name: string }\n---\n",
+  "chunkings": ["whole", "per-line", "per-byte"],
+  "expected": {
+    "items": [],
+    "fatal": null
+  }
+}

@@ -163,8 +163,11 @@ describe('Defs Inferrer - Memory and Stress Tests', () => {
       const result = inferDefs(data);
       expect(result.rootSchema).toBeDefined();
 
-      // Should still create $item schema from non-null objects
-      expect(result.definitions.get('$item')).toBeDefined();
+      // A null-bearing array stays untyped (`[$item]` would reject the nulls the data
+      // contains), and a definition nothing references is dropped by canonicalization.
+      expect(result.rootSchema.defs['items'].type).toBe('array');
+      expect(result.rootSchema.defs['items'].schemaRef).toBeUndefined();
+      expect(result.definitions.get('$item')).toBeUndefined();
     });
 
     it('should handle undefined in arrays', () => {

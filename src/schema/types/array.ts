@@ -19,6 +19,8 @@ const schema = new Schema(
   { len:      { type: "number", optional: true,  null: false, min: 0 } },
   { minLen:   { type: "number", optional: true,  null: false, min: 0 } },
   { maxLen:   { type: "number", optional: true,  null: false, min: 0 } },
+  { optional: { type: "bool",   optional: true } },
+  { null:     { type: "bool",   optional: true } },
 )
 
 class ArrayDef implements TypeDef {
@@ -40,7 +42,7 @@ class ArrayDef implements TypeDef {
     // Type check
     if (!Array.isArray(value)) {
       throw new ValidationError(
-        ErrorCodes.notAnArray,
+        ErrorCodes.expectedArray,
         `Expecting an array value for '${memberDef.path}' but found ${typeof value}`
       )
     }
@@ -57,7 +59,7 @@ class ArrayDef implements TypeDef {
       typeDef = TypedefRegistry.get(memberDef.of.type)
       if (!typeDef) {
         throw new ValidationError(
-          ErrorCodes.invalidType,
+          ErrorCodes.unknownType,
           `Invalid type definition '${memberDef.of.type}'`
         )
       }
@@ -65,6 +67,9 @@ class ArrayDef implements TypeDef {
       arrayMemberDef.path = memberDef.path
     } else {
       typeDef = TypedefRegistry.get('any')
+      // Untyped array: elements are nullable-any — the same canonical form the schema compiler
+      // produces for `[]` (of: {type:'any', null:true}). Keeps `array` ≡ `[]` (issue #61).
+      arrayMemberDef.null = true
     }
 
     // Load each item using the TypeDef.load() method
@@ -105,7 +110,7 @@ class ArrayDef implements TypeDef {
     // Type check
     if (!Array.isArray(value)) {
       throw new ValidationError(
-        ErrorCodes.notAnArray,
+        ErrorCodes.expectedArray,
         `Expecting an array value for '${memberDef.path}' but found ${typeof value}`
       )
     }
@@ -133,6 +138,8 @@ class ArrayDef implements TypeDef {
       arrayMemberDef.path = memberDef.path
     } else {
       typeDef = TypedefRegistry.get('any')
+      // Untyped array: nullable-any elements (matches the compiler's `[]` canonical form).
+      arrayMemberDef.null = true
     }
 
     // Stringify each item
@@ -163,7 +170,7 @@ function _processNode(node: Node, memberDef: MemberDef, defs?: Definitions) {
   if (changed) return value
 
   if (valueNode instanceof ArrayNode === false) {
-    throw new ValidationError(ErrorCodes.notAnArray, `Expecting an array value for '${memberDef.path}'`, node)
+    throw new ValidationError(ErrorCodes.expectedArray, `Expecting an array value for '${memberDef.path}'`, node)
   }
 
   // Find the right typeDef
@@ -179,7 +186,7 @@ function _processNode(node: Node, memberDef: MemberDef, defs?: Definitions) {
   } else if (memberDef.of?.type) {
     typeDef = TypedefRegistry.get(memberDef.of.type)
     if (!typeDef) {
-      throw new ValidationError(ErrorCodes.invalidType, `Invalid type definition '${memberDef.of.type}'`, node)
+      throw new ValidationError(ErrorCodes.unknownType, `Invalid type definition '${memberDef.of.type}'`, node)
     }
     arrayMemberDef = memberDef.of
     arrayMemberDef.path = memberDef.path
@@ -187,6 +194,8 @@ function _processNode(node: Node, memberDef: MemberDef, defs?: Definitions) {
     assertNever(memberDef.of)
   } else {
     typeDef = TypedefRegistry.get('any')
+    // Untyped array: nullable-any elements (matches the compiler's `[]` canonical form).
+    arrayMemberDef.null = true
   }
 
   const array: any = []
@@ -222,7 +231,7 @@ function _validateLength(array: any[], memberDef: MemberDef, node?: Node): void 
 
   if (memberDef.len !== undefined && arrayLength !== memberDef.len) {
     throw new ValidationError(
-      ErrorCodes.invalidLength,
+      ErrorCodes.mismatchedLen,
       `The "${memberDef.path || 'array'}" must have exactly ${memberDef.len} items, but has ${arrayLength}.`,
       node
     )
@@ -230,7 +239,7 @@ function _validateLength(array: any[], memberDef: MemberDef, node?: Node): void 
 
   if (memberDef.minLen !== undefined && arrayLength < memberDef.minLen) {
     throw new ValidationError(
-      ErrorCodes.outOfRange,
+      ErrorCodes.mismatchedMinLen,
       `The "${memberDef.path || 'array'}" must have at least ${memberDef.minLen} items, but has ${arrayLength}.`,
       node
     )
@@ -238,7 +247,7 @@ function _validateLength(array: any[], memberDef: MemberDef, node?: Node): void 
 
   if (memberDef.maxLen !== undefined && arrayLength > memberDef.maxLen) {
     throw new ValidationError(
-      ErrorCodes.outOfRange,
+      ErrorCodes.mismatchedMaxLen,
       `The "${memberDef.path || 'array'}" must have at most ${memberDef.maxLen} items, but has ${arrayLength}.`,
       node
     )

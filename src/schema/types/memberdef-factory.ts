@@ -1,5 +1,6 @@
 import SyntaxError from '../../errors/io-syntax-error'
 import ErrorCodes from '../../errors/io-error-codes'
+import ValidationError from '../../errors/io-validation-error'
 import MemberDef from './memberdef'
 
 export interface CreateMemberDefInput extends Partial<MemberDef> {
@@ -20,10 +21,14 @@ export function createMemberDef(input: CreateMemberDefInput, opts?: { allowNamel
   const { name, type } = input
 
   if (!type || typeof type !== 'string') {
-    throw new SyntaxError(ErrorCodes.invalidType, 'MemberDef.type must be a non-empty string.')
+    throw new ValidationError(ErrorCodes.unknownType, 'MemberDef.type must be a non-empty string.')
   }
 
-  if (!allowNameless && (!name || typeof name !== 'string' || name.trim() === '')) {
+  // A name is invalid when it is ABSENT or EMPTY -- not when it is whitespace. `{" ": string}`
+  // (a member named with a single space) has always been accepted; `{" "}`, the same member
+  // written without a type, was rejected here by `.trim()`. A quoted name means "this name,
+  // exactly", so the two spellings must agree. `!name` still catches '' and undefined.
+  if (!allowNameless && (!name || typeof name !== 'string')) {
     throw new SyntaxError(ErrorCodes.invalidMemberDef, 'MemberDef must have a valid name.')
   }
 

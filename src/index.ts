@@ -38,7 +38,7 @@ export type { LoadObjectOptions                     } from './facade/load';
 export { loadInferred                               } from './facade/load-inferred';
 export type { LoadInferredOptions                   } from './facade/load-inferred';
 export { stringify                                  } from './facade/stringify';
-export { stringifyDocument                          } from './facade/stringify-document';
+export { stringifyDocument, stringifyHeader        } from './facade/stringify-document';
 export { toObject, toJSON } from './facade/to-object';
 export type { Jsonable } from './facade/to-object';
 export { validate, validateObject, validateCollection } from './facade/validate';
@@ -47,6 +47,7 @@ export type { ValidationResult } from './facade/validate';
 // Streaming
 export { createStreamReader, createStreamWriter, createPushSource, BufferTransport } from './streaming';
 export { IOStreamReader } from './streaming';
+export { IOStreamError, StreamErrorCode } from './streaming';
 export type { IOStreamTransport, IOStreamSource, StreamItem, StreamReaderOptions, StreamWriterOptions } from './streaming';
 
 // Main tag functions (also tree-shakable)

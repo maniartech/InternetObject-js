@@ -1,3 +1,4 @@
+import { toJSONValue } from '../utils/json-projection';
 import Schema from "../schema/schema";
 import IODefinitions from './definitions';
 
@@ -98,11 +99,12 @@ class IOHeader {
   }
 
   /**
-   * Alias for `toObject()`.
-   * Provides compatibility with `JSON.stringify()`.
+   * Converts to JSON — the same data as {@link toObject}, with every value spelled the way JSON
+   * can carry it (dates as ISO strings, decimals and bigints as strings, binary as base64), all
+   * the way down. See `toJSONValue`.
    */
   toJSON() {
-    return this.toObject();
+    return toJSONValue(this.toObject());
   }
 }
 

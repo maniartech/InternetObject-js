@@ -14,6 +14,7 @@ import MemberNode       from './nodes/members';
 import Node             from './nodes/nodes';
 import ObjectNode       from './nodes/objects';
 import SectionNode      from './nodes/section';
+import { DEFAULT_SECTION_NAME } from '../core/section';
 import TokenNode        from './nodes/tokens';
 
 /**
@@ -68,11 +69,13 @@ class ASTParser {
   private static readonly COMMA_ARRAY = [TokenType.COMMA] as const;
   private static readonly COLON_ARRAY = [TokenType.COLON] as const;
   private static readonly COLLECTION_OR_SECTION_ARRAY = [TokenType.COLLECTION_START, TokenType.SECTION_SEP] as const;
+  // Object keys must be STRINGS. Non-string literal tokens — numbers (TokenType.NUMBER) and the
+  // keywords `null`/`true`/`false` incl. short forms `N`/`T`/`F` (TokenType.NULL / TokenType.BOOLEAN)
+  // — are NOT eligible as bare keys and raise `invalid-key`. To use a number or keyword as a key,
+  // quote it (`"0"`, `"null"`) — a normal string key. Bare open-string identifiers (`name`, `a b`)
+  // tokenize as STRING and remain valid.
   private static readonly VALID_KEY_TYPES = [
     TokenType.STRING,
-    TokenType.NUMBER,
-    TokenType.BOOLEAN,
-    TokenType.NULL,
   ] as const;
 
   /**
@@ -91,6 +94,25 @@ class ASTParser {
    */
   public parse(): DocumentNode {
     return this.processDocument();
+  }
+
+  /**
+   * Parse a standalone token group as a single section's content — a `~` collection
+   * or a single object — reusing the exact same logic as full-document parsing
+   * (`parseSectionContent` → `processCollection`/`processObject`). Returns the content
+   * node and any accumulated parse errors.
+   *
+   * This is the per-record parse seam used by streaming (IMPLEMENTATION-GAPS.md Gap 20):
+   * the reader resolves the header once, then parses each record's token frame here and
+   * runs the normal schema processor over the result. Behavior is identical to the
+   * corresponding section in a whole-document parse.
+   */
+  public static parseSection(
+    tokens: readonly Token[]
+  ): { node: ObjectNode | CollectionNode | null; errors: ReadonlyArray<Error> } {
+    const parser = new ASTParser(tokens);
+    const node = parser.parseSectionContent();
+    return { node, errors: parser.errors };
   }
 
   /**
@@ -158,7 +180,18 @@ class ASTParser {
         }
       }
 
-      const section = this.processSection(first);
+      // Section-level error recovery (policy P1/P3/P4): a malformed section must NOT abort the whole
+      // document. Capture the designated error, skip to the next `---`, and represent the failed
+      // section by an empty SectionNode so sibling sections still parse. The `---` (and `~`) are the
+      // resume boundaries; finer delimiters are not.
+      let section: SectionNode;
+      try {
+        section = this.processSection(first);
+      } catch (error) {
+        this.errors.push(error as Error);
+        this.skipToNextSection();
+        section = new SectionNode(null, null, null);
+      }
 
       token = this.peek();
       if (!token) {
@@ -174,8 +207,8 @@ class ASTParser {
 
       if (first) first = false;
 
-      // If the next token is not a section separator, it means that
-      // the current section is not closed properly. Add error and stop
+      // If the next token is not a section separator, the current section did not consume everything
+      // (trailing junk). Record the error and RESUME at the next `---` instead of aborting.
       if (token.type !== TokenType.SECTION_SEP) {
         const error = new SyntaxError(
           ErrorCodes.unexpectedToken,
@@ -183,11 +216,12 @@ class ASTParser {
           token
         );
         this.errors.push(error);
-        break; // Stop parsing but return partial document
+        this.skipToNextSection();
+        token = this.peek();
+        if (!token) break; // nothing left after the junk
       }
 
-      // Move to the next token and check if it is a section separator
-      // or the end of file
+      // Move past the section separator to the next section (or end of file)
       this.advance();
     }
 
@@ -205,6 +239,13 @@ class ASTParser {
   private processSection(first: boolean): SectionNode {
     let token = this.peek();
 
+    // Where this section begins — its `---` when we are the one consuming it, otherwise the first
+    // token of its content (the caller may already have stepped past the separator). It is the
+    // position a duplicate-name error points at when the section carries no name token of its own.
+    // An error with NO position is easy for a consumer to drop on the floor — the playground
+    // filtered exactly those out — so every error raised here gets one.
+    const sectionStartToken = token ?? undefined;
+
     // Consume the section separator if present
     if (token?.type === TokenType.SECTION_SEP) {
       this.advance();
@@ -214,38 +255,42 @@ class ASTParser {
     // the section has started without a section name. A header
     // section does not have a name.
     const [schemaNode, nameNode] = this.parseSectionAndSchemaNames();
+    // Resolve the name ONCE, here. Everything downstream reads this value rather than
+    // re-deriving it, so a rename below cannot be silently lost (ISSUE-18).
     let name: string = nameNode?.value != null ? String(nameNode.value)
-      : (schemaNode?.value != null ? String(schemaNode.value).substring(1) : 'unnamed');
+      : (schemaNode?.value != null ? String(schemaNode.value).substring(1) : DEFAULT_SECTION_NAME);
     const originalName = name;
 
     // Check if the section name is already used - implement auto-rename for error recovery
     if (name && this.sectionNames[name]) {
       const error = new SyntaxError(
-        ErrorCodes.unexpectedToken,
+        ErrorCodes.duplicateSectionName,
         `Duplicate section name '${name}'. Each section must have a unique name within the document.`,
-        void 0, false
+        nameNode ?? sectionStartToken, false
       );
       this.errors.push(error); // Accumulate error
 
-      // Auto-rename: users -> users_2, users_3, etc.
+      // Auto-rename: users -> users_2, users_3, etc. (io-specs parsing-and-errors/error-accumulation.md).
+      // This applies to EVERY duplicate, including sections that carry no name of their own — those
+      // have no nameNode to write the new name into, which is why it is carried separately.
       let suffix = 2;
       while (this.sectionNames[`${originalName}_${suffix}`]) {
         suffix++;
       }
       name = `${originalName}_${suffix}`;
 
-      // Update the nameNode with the renamed value
+      // Keep the node's own token in step where there is one, so positions/text still line up.
       if (nameNode) {
         nameNode.value = name;
       }
     }
 
-    if (!first || (first && name !== 'unnamed' && this.peek()?.type !== TokenType.SECTION_SEP)) {
+    if (!first || (first && name !== DEFAULT_SECTION_NAME && this.peek()?.type !== TokenType.SECTION_SEP)) {
       this.sectionNames[name] = true;
     }
 
     const section = this.parseSectionContent();
-    return new SectionNode(section, nameNode, schemaNode);
+    return new SectionNode(section, nameNode, schemaNode, name);
   }
 
   private parseSectionAndSchemaNames(): [TokenNode | null, TokenNode | null] {
@@ -378,6 +423,21 @@ class ASTParser {
     // Skip tokens until we find next `~` (COLLECTION_START) or section end
     while (this.peek() &&
            !this.match(ASTParser.COLLECTION_OR_SECTION_ARRAY)) {
+      this.advance();
+    }
+  }
+
+  /**
+   * Skips tokens until the next section boundary (`---`).
+   *
+   * @remarks
+   * **Section-level error recovery.** After a section fails to parse, this advances the token stream
+   * to the next `SECTION_SEP` (leaving the cursor ON it, so the caller consumes it), allowing the
+   * document to continue with the following section. Mirrors {@link skipToNextCollectionItem} but for
+   * the coarser `---` boundary.
+   */
+  private skipToNextSection(): void {
+    while (this.peek() && !this.match(ASTParser.SECTION_SEP_ARRAY)) {
       this.advance();
     }
   }
@@ -529,7 +589,7 @@ class ASTParser {
     if (!isOpenObject) {
       if (!this.match(ASTParser.CURLY_CLOSE_ARRAY)) {
         throw this.createUnclosedConstructError(
-          ErrorCodes.expectingBracket,
+          ErrorCodes.expectedClosingBracket,
           `Missing closing brace '}'. Object must be properly closed.`,
           openBracket,
           members
@@ -563,7 +623,8 @@ class ASTParser {
         return new MemberNode(value, leftToken as TokenNode);
       } else {
         throw new SyntaxError(ErrorCodes.invalidKey,
-          `Invalid key '${leftToken.token}'. Object keys must be strings, numbers, booleans, or null.`,
+          `Invalid key '${leftToken.token}'. Object keys must be strings ` +
+          `(numbers and literal keywords like 0/null/true must be quoted to be used as keys).`,
           leftToken, false);
       }
     }
@@ -576,10 +637,15 @@ class ASTParser {
 
   private parseArray(): ArrayNode  {
     const arr: Array<Node | undefined> = [];
+    // A comma SEPARATES values, so one must precede it. Tracked explicitly because the
+    // look-AHEAD below cannot see backwards: it caught `[a,,c]` and `[a, ]`, but a LEADING comma
+    // has an ordinary value after it, so it passed the check and was simply consumed {EM} `[,a]`
+    // loaded as ["a"], silently discarding a position the author had written.
+    let sawValue = false;
     const openBracket = this.peek();
     if (!openBracket || openBracket.type !== TokenType.BRACKET_OPEN) {
       throw new SyntaxError(
-        ErrorCodes.expectingBracket,
+        ErrorCodes.expectedClosingBracket,
         `Expected opening bracket '[' to start array but found '${openBracket?.token || 'end of input'}'.`,
         openBracket === null ? void 0 : openBracket,
         openBracket === null
@@ -593,7 +659,7 @@ class ASTParser {
       if (!currentToken) {
         // Unexpected end of input
         throw this.createUnclosedConstructError(
-          ErrorCodes.expectingBracket,
+          ErrorCodes.expectedClosingBracket,
           `Unexpected end of input while parsing array. Expected closing bracket ']'.`,
           openBracket,
           arr
@@ -605,12 +671,19 @@ class ASTParser {
                  currentToken.type === TokenType.SECTION_SEP) {
         // Reached a synchronization boundary without closing the array
         throw this.createUnclosedConstructError(
-          ErrorCodes.expectingBracket,
+          ErrorCodes.expectedClosingBracket,
           `Missing closing bracket ']'. Array must be properly closed.`,
           openBracket,
           arr
         );
       } else if (currentToken.type === TokenType.COMMA) {
+        if (!sawValue) {
+          throw new SyntaxError(
+            ErrorCodes.unexpectedToken,
+            `Unexpected comma. An array cannot begin with a comma - remove it, or add a value before it.`,
+            currentToken, false
+          );
+        }
         // If the next token is a comma or a closing bracket, it implies an undefined
         // element in the array, which is not allowed. Throw an error.
         if (this.matchNext([TokenType.COMMA, TokenType.BRACKET_CLOSE])) {
@@ -623,6 +696,7 @@ class ASTParser {
         }
         // consume the current comma
         this.advance();
+        sawValue = false;
         continue;
       }
 
@@ -632,12 +706,13 @@ class ASTParser {
       } else {
         arr.push(member.value);
       }
+      sawValue = true;
     }
 
     // Now, expect a closing bracket
     if (!this.match(ASTParser.BRACKET_CLOSE_ARRAY)) {
       throw this.createUnclosedConstructError(
-        ErrorCodes.expectingBracket,
+        ErrorCodes.expectedClosingBracket,
         `Missing closing bracket ']'. Array must be properly closed.`,
         openBracket,
         arr
@@ -652,7 +727,7 @@ class ASTParser {
   private parseValue(): Node {
     const token = this.peek();
     if (!token) {
-      throw new SyntaxError(ErrorCodes.valueRequired,
+      throw new SyntaxError(ErrorCodes.expectedValue,
         `Unexpected end of input. Expected a value (string, number, boolean, null, array, or object).`,
         void 0, true);
     }
@@ -664,7 +739,10 @@ class ASTParser {
       case TokenType.DECIMAL:
       case TokenType.BOOLEAN:
       case TokenType.NULL:
-      case TokenType.DATETIME: {
+      case TokenType.DATETIME:
+      // BINARY (`b'…'`) is a first-class scalar value: the tokenizer has already decoded it to a
+      // native byte buffer (see tokenizer index.ts). It is usable anywhere a value is expected.
+      case TokenType.BINARY: {
         const node = new TokenNode(token);
         this.advance();
         return node;

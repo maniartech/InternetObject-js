@@ -55,27 +55,26 @@ describe('IOSectionCollection', () => {
     });
   });
 
-  describe('Proxy-based Access', () => {
-    it('should support numeric index access via proxy', () => {
+  // R7 — access is method-only (get); the Proxy that allowed `col[0]` / `col['name']` was removed.
+  describe('Method-only Access (get)', () => {
+    it('should support numeric index access via get()', () => {
       const col = new IOSectionCollection();
       col.push(new IOSection('first', 'sec1'));
       col.push(new IOSection('second', 'sec2'));
-      expect((col as any)[0]?.name).toBe('sec1');
-      expect((col as any)[1]?.name).toBe('sec2');
-      expect((col as any)['0']?.name).toBe('sec1');
+      expect(col.get(0)?.name).toBe('sec1');
+      expect(col.get(1)?.name).toBe('sec2');
     });
 
-    it('should support named access via proxy', () => {
+    it('should support named access via get()', () => {
       const col = new IOSectionCollection();
       col.push(new IOSection('userdata', 'users'));
-      expect((col as any)['users']?.data).toBe('userdata');
+      expect(col.get('users')?.data).toBe('userdata');
     });
 
-    it('should throw error on set attempt via proxy', () => {
+    it('returns undefined for a missing name/index (no proxy)', () => {
       const col = new IOSectionCollection();
-      expect(() => {
-        (col as any)['test'] = 'value';
-      }).toThrow('Cannot set a value on a IOSectionCollection');
+      expect(col.get('nope')).toBeUndefined();
+      expect(col.get(5)).toBeUndefined();
     });
   });
 

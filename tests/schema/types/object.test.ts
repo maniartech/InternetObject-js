@@ -121,8 +121,8 @@ describe('ObjectDef - Object Type', () => {
       const schema = 'item: { quantity: { int, min: 1, max: 100 } }'
 
       expect(() => parse(`${schema}\n---\n{{50}}`, null)).not.toThrow()
-      expect(() => parse(`${schema}\n---\n{{0}}`, null)).toThrow(/range/i)
-      expect(() => parse(`${schema}\n---\n{{101}}`, null)).toThrow(/range/i)
+      expect(() => parse(`${schema}\n---\n{{0}}`, null)).toThrow(expect.objectContaining({ errorCode: expect.stringMatching(/^mismatched-(min|max)$|^out-of-range-/) }))
+      expect(() => parse(`${schema}\n---\n{{101}}`, null)).toThrow(expect.objectContaining({ errorCode: expect.stringMatching(/^mismatched-(min|max)$|^out-of-range-/) }))
     })
 
     test('should validate pattern constraints', () => {
@@ -218,8 +218,8 @@ describe('ObjectDef - Object Type', () => {
       const result = parse(`${schema}\n---\n[{1, Item1}, {2, Item2}]`, null).toJSON()
 
       expect(result.items).toHaveLength(2)
-      expect(result.items[0].toJSON()).toEqual({ id: 1, name: 'Item1' })
-      expect(result.items[1].toJSON()).toEqual({ id: 2, name: 'Item2' })
+      expect(result.items[0]).toEqual({ id: 1, name: 'Item1' })
+      expect(result.items[1]).toEqual({ id: 2, name: 'Item2' })
     })
 
     test('should handle array in nested object', () => {

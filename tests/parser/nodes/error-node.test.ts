@@ -31,7 +31,7 @@ describe('ErrorNode', () => {
 
       expect(result).toEqual({
         __error: true,
-        category: 'runtime',
+        category: 'general',
         message: "Test error message",
         name: "Error",
         position: mockPosition
@@ -44,7 +44,7 @@ describe('ErrorNode', () => {
 
       expect(result).toEqual({
         __error: true,
-        category: 'runtime',
+        category: 'general',
         message: "Test error message",
         name: "Error",
         position: mockPosition,

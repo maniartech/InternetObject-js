@@ -2,22 +2,19 @@ import IOObject from '../../src/core/internet-object';
 
 describe('IOObject', () => {
   describe('Basic Properties', () => {
-    it('should return correct length for empty and non-empty objects, and Object.keys should reflect keys', () => {
+    it('should return correct length and expose keys via keysArray() (R7: data is method-only)', () => {
       const obj = new IOObject();
       expect(obj.length).toBe(0);
-      const userKeys0 = Object.keys(obj).filter(k => !['items', 'keyMap'].includes(k));
-      expect(userKeys0).toEqual([]);
+      expect(obj.keysArray()).toEqual([]);
       obj.set('a', 1);
       expect(obj.length).toBe(1);
-      const userKeys1 = Object.keys(obj).filter(k => !['items', 'keyMap'].includes(k));
-      expect(userKeys1).toEqual(['a']);
+      expect(obj.keysArray()).toEqual(['a']);
       obj.set('b', 2);
       expect(obj.length).toBe(2);
-      const userKeys2 = Object.keys(obj).filter(k => !['items', 'keyMap'].includes(k));
-      expect(userKeys2).toEqual(expect.arrayContaining(['a', 'b']));
-      // Dot notation access
-      expect(obj.a).toBe(1);
-      expect(obj.b).toBe(2);
+      expect(obj.keysArray()).toEqual(expect.arrayContaining(['a', 'b']));
+      // Data access is via get() — not dot notation / instance properties.
+      expect(obj.get('a')).toBe(1);
+      expect(obj.get('b')).toBe(2);
     });
 
     it('should report isEmpty correctly', () => {
@@ -114,26 +111,24 @@ describe('IOObject', () => {
   });
 
   describe('Mutators', () => {
-    it('should support mutators and deletion, and remove instance properties', () => {
+    it('should support mutators and deletion', () => {
       const obj = new IOObject();
       obj.set('a', 1);
       obj.set('b', 2);
       expect(obj.length).toBe(2);
-      expect(obj.a).toBe(1);
-      expect(obj.b).toBe(2);
+      expect(obj.get('a')).toBe(1);
+      expect(obj.get('b')).toBe(2);
       obj.delete('a');
       expect(obj.length).toBe(2); // length includes undefined slots
-      expect(obj.a).toBeUndefined();
+      expect(obj.get('a')).toBeUndefined();
       obj.compact();
       expect(obj.length).toBe(1);
       expect(obj.get('a')).toBeUndefined();
       expect(obj.get('b')).toBe(2);
-      expect(obj.b).toBe(2);
       // Clear all
       obj.clear();
-      const userKeysClear = Object.keys(obj).filter(k => !['items', 'keyMap'].includes(k));
-      expect(userKeysClear).toEqual([]);
-      expect(obj.b).toBeUndefined();
+      expect(obj.keysArray()).toEqual([]);
+      expect(obj.get('b')).toBeUndefined();
     });
 
     it('should push key-value pairs as arrays', () => {
@@ -225,23 +220,26 @@ describe('IOObject', () => {
     it('should create from array of key-value pairs', () => {
       const obj = IOObject.fromArray([['x', 100], ['y', 200], ['z', 300]]);
       expect(obj.length).toBe(3);
-      expect(obj.x).toBe(100);
-      expect(obj.y).toBe(200);
-      expect(obj.z).toBe(300);
+      expect(obj.get('x')).toBe(100);
+      expect(obj.get('y')).toBe(200);
+      expect(obj.get('z')).toBe(300);
     });
   });
 
-  describe('Dot Notation Access', () => {
-    it('should access simple properties via dot notation', () => {
+  // R7 — data access is method-only; dot notation / instance-property sync was removed.
+  describe('Method-only Access (no dot notation)', () => {
+    it('accesses properties via get(), and dot notation is NOT synced', () => {
       const obj = new IOObject({ name: 'John', age: 30 });
-      expect(obj.name).toBe('John');
-      expect(obj.age).toBe(30);
+      expect(obj.get('name')).toBe('John');
+      expect(obj.get('age')).toBe(30);
+      // dot notation intentionally returns undefined now (no instance-property sync)
+      expect((obj as any).name).toBeUndefined();
     });
 
-    it('should access nested IOObjects via chained dot notation', () => {
+    it('accesses nested IOObjects via get()', () => {
       const inner = new IOObject({ name: 'John' });
       const outer = new IOObject({ profile: inner });
-      expect(outer.profile.name).toBe('John');
+      expect((outer.get('profile') as IOObject).get('name')).toBe('John');
     });
   });
 

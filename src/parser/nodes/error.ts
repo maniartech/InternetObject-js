@@ -6,7 +6,7 @@ import Node from "./nodes";
 /**
  * Error categories for styling and filtering
  */
-export type ErrorCategory = 'syntax' | 'validation' | 'runtime';
+export type ErrorCategory = 'syntax' | 'validation' | 'general';
 
 /**
  * ErrorNode represents a parsing error that occurred during AST construction.
@@ -60,7 +60,7 @@ class ErrorNode implements Node {
    * Determines the error category based on the error type.
    * This enables UI to apply different styling (e.g., red for syntax, orange for validation).
    *
-   * @returns 'syntax' for parser/syntax errors, 'validation' for schema validation errors, 'runtime' for others
+   * @returns 'syntax' for parser/syntax errors, 'validation' for schema validation errors, 'general' for others
    */
   private getErrorCategory(): ErrorCategory {
     const errorName = this.error.name;
@@ -73,8 +73,8 @@ class ErrorNode implements Node {
       return 'validation';
     }
 
-    // Fallback to runtime for unknown error types
-    return 'runtime';
+    // Fallback to general for unknown error types (matches PROTOCOL.md category vocabulary)
+    return 'general';
   }
 
   /**

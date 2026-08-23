@@ -13,6 +13,9 @@ import TypeDef              from '../../schema/typedef';
 import TypedefRegistry      from '../../schema/typedef-registry';
 import doCommonTypeCheck    from './common-type';
 import MemberDef            from './memberdef';
+import { formatObjectKey, shouldEmitKey }  from '../../utils/string-formatter';
+import { undeclaredMemberDef } from '../utils/member-utils';
+import { unusableTypeCode } from './common-number'
 
 const schema = new Schema(
   "object",
@@ -62,7 +65,14 @@ class ObjectDef implements TypeDef {
       )
     }
 
-    const schema = memberDef.schema
+    // Resolve the schema the same way validate() and stringify() do: `memberDef.schema` may be a
+    // Schema, or a `$name` reference (TokenNode / string) into `defs`. load() used to read it raw,
+    // so a member declared as `address: $address` reached _loadObject as a TokenNode and blew up
+    // on `schema.names` — while the identical document parsed from text worked.
+    let schema = this._resolveSchema(memberDef.schema, defs)
+    if (!schema && memberDef.schemaRef && defs) {
+      schema = this._resolveSchema(memberDef.schemaRef, defs)
+    }
     if (!schema) {
       // No schema - return value as-is for open objects
       return value
@@ -118,7 +128,7 @@ class ObjectDef implements TypeDef {
 
       const typeDef = TypedefRegistry.get(memberDef.type)
       if (!typeDef) {
-        throw new IOError(ErrorCodes.invalidType, `Type '${memberDef.type}' is not registered.`)
+        throw new ValidationError(unusableTypeCode(memberDef.type), `Type '${memberDef.type}' is not registered.`)
       }
 
       // Use load() method if available
@@ -135,7 +145,7 @@ class ObjectDef implements TypeDef {
           result[name] = memberDef.default
         } else if (!memberDef.optional) {
           throw new ValidationError(
-            ErrorCodes.valueRequired,
+            ErrorCodes.missingValue,
             `Value required for field '${memberDef.path}'`
           )
         }
@@ -148,12 +158,8 @@ class ObjectDef implements TypeDef {
     if (schema.open) {
       for (const key in data) {
         if (!processedNames.has(key)) {
-          let extraMemberDef: MemberDef
-          if (typeof schema.open === 'object' && schema.open.type) {
-            extraMemberDef = { ...schema.open, path: basePath ? `${basePath}.${key}` : key }
-          } else {
-            extraMemberDef = { type: 'any', path: basePath ? `${basePath}.${key}` : key }
-          }
+          const extraMemberDef: MemberDef =
+            undeclaredMemberDef(basePath ? `${basePath}.${key}` : key, schema.open)
 
           const typeDef = TypedefRegistry.get(extraMemberDef.type)
           if (typeDef && 'load' in typeDef && typeof typeDef.load === 'function') {
@@ -241,29 +247,58 @@ class ObjectDef implements TypeDef {
             } else {
               strValue = JSON.stringify(value)
             }
-            parts.push(`${key}: ${strValue}`)
+            parts.push(`${formatObjectKey(key)}: ${strValue}`)
           }
         }
       }
     } else {
-      // No schema - output all properties
-      for (const key in data) {
-        const value = data[key]
-
-        // Skip undefined values
-        if (value === undefined) continue
+      // No schema - render in INDEX order. IO objects ALWAYS carry a positional index; a key is
+      // optional. A member with NO key, or whose key equals its positional index, is positional and is
+      // emitted WITHOUT a label; any other key is a real label emitted as `key: value` (numeric/keyword
+      // keys are quoted so they round-trip as string keys).
+      //
+      // Iterate POSITIONALLY via forEach so keyless (push) members are not lost: `for..in` only sees
+      // keyed members that were synced as instance properties, silently dropping positional ones (which
+      // is how a keyless nested object used to serialize as `{}`). Nested object/array values recurse
+      // through IO serialization (the `any` typedef), never JSON.stringify.
+      const anyDef = TypedefRegistry.get('any')
+      const renderValue = (value: any, key: string | undefined, index: number): void => {
+        if (value === undefined) return
 
         let strValue: string
         if (value === null) {
           strValue = 'N'
-        } else if (typeof value === 'string') {
-          strValue = value
         } else if (typeof value === 'boolean') {
           strValue = value ? 'T' : 'F'
+        } else if (typeof value === 'string') {
+          // Through the string typedef in `auto` form, NOT verbatim. Written bare, a string that
+          // looks like another type stops being a string on the way back: "0" returned as the
+          // number 0, "true" as a boolean, "  p" with its spaces trimmed. `auto` quotes exactly
+          // when leaving it bare would change the value. The open-schema branch above already
+          // did this; this branch — the no-schema one, which is where an untyped member's nested
+          // object lands — did not.
+          const stringDef = TypedefRegistry.get('string')
+          strValue = (stringDef && 'stringify' in stringDef && typeof stringDef.stringify === 'function'
+            ? stringDef.stringify(value, { type: 'string', path: basePath, format: 'auto' } as MemberDef, defs)
+            : undefined) ?? value
+        } else if (anyDef && 'stringify' in anyDef && typeof anyDef.stringify === 'function') {
+          // number / bigint / Decimal / Date / array / nested object → IO serialization (not JSON)
+          strValue = anyDef.stringify(value, { type: 'any', path: basePath } as MemberDef, defs) ?? JSON.stringify(value)
         } else {
           strValue = JSON.stringify(value)
         }
-        parts.push(`${key}: ${strValue}`)
+
+        const positional = !shouldEmitKey(key)
+        parts.push(positional ? strValue : `${formatObjectKey(key!)}: ${strValue}`)
+      }
+
+      if (data && typeof data.forEach === 'function') {
+        // IOObject: forEach yields (value, key, index) with the real positional index.
+        data.forEach((value: any, key: string | undefined, index: number) => renderValue(value, key, index))
+      } else {
+        // Plain JS object fallback.
+        let index = 0
+        for (const key in data) { renderValue(data[key], key, index); index++ }
       }
     }
 
@@ -348,6 +383,21 @@ class ObjectDef implements TypeDef {
   private _process = (
     node: Node, memberDef: MemberDef, defs?: Definitions
   ) => {
+    // A `schema:` member may REFERENCE a definition (`{object, schema: $address}`) rather than
+    // spell the shape inline. Keep the REFERENCE unresolved; do not substitute the schema it names.
+    //
+    // Resolving here was EAGER, and eager resolution cannot see a definition that is not finished
+    // being built. Two silent consequences, neither of which raised an error:
+    //   - a FORWARD reference bound the nested record positionally — `{x: 1}` decoded as `{"0": 1}`
+    //   - a RECURSIVE schema is always forward to ITSELF, so it did so every single time
+    // The short form (`home: $address`) has always stored the TokenNode and resolved on demand,
+    // which is why recursion works there. Both spellings now behave identically.
+    // See io-test-cases/ARCHITECTURE-RETROSPECTIVE.md (N3b).
+    if (memberDef.__schema && node instanceof TokenNode &&
+        typeof node.value === 'string' && node.value.startsWith('$')) {
+      return node
+    }
+
     const valueNode = defs?.getV(node) || node
     const { value, changed } = doCommonTypeCheck(memberDef, valueNode, node, defs)
 
@@ -357,6 +407,15 @@ class ObjectDef implements TypeDef {
 
     // Resolve schema - it might be a TokenNode reference (e.g., $schemaName)
     let schema = this._resolveSchema(memberDef.schema, defs)
+
+    // A `schema:` member may REFERENCE an already-compiled definition (`{object, schema: $address}`)
+    // rather than spell the shape inline. Such a reference resolves to a Schema, not an ObjectNode,
+    // so it has to be accepted before the object-shape check below -- otherwise the long memberdef
+    // form is rejected as `invalid-object`, and that form is the only way to mark a QUOTED member
+    // name optional or nullable (`"a,b"?:` is not valid syntax).
+    if (memberDef.__schema && valueNode instanceof Schema) {
+      return valueNode
+    }
 
     if (valueNode instanceof ObjectNode === false) {
       throw new ValidationError(ErrorCodes.invalidObject, `Expecting an object value for '${memberDef.path}'`, node)

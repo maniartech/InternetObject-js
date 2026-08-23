@@ -2,6 +2,7 @@ import Definitions      from '../core/definitions';
 import assertNever      from '../errors/asserts/asserts';
 import SyntaxError      from '../errors/io-syntax-error';
 import ErrorCodes       from '../errors/io-error-codes';
+import ValidationError  from '../errors/io-validation-error';
 import ArrayNode        from '../parser/nodes/array';
 import MemberNode       from '../parser/nodes/members';
 import Node             from '../parser/nodes/nodes';
@@ -17,6 +18,7 @@ import MemberDef        from './types/memberdef';
 import createMemberDef  from './types/memberdef-factory';
 import { canonicalizeAdditionalProps } from './utils/additional-props-canonicalizer';
 import { normalizeKeyToken } from './utils/member-utils';
+import { unusableTypeCode } from './types/common-number'
 
 // Register built-in types
 // registerTypes();
@@ -117,7 +119,7 @@ function parseObjectOrTypeDef(o: ObjectNode, path:string, defs?:Definitions) {
 
     // If the type is not registered, then it is an invalid type
     // name: { minLength: 10, maxLength: 20, type: xyz }
-    throw new SyntaxError(ErrorCodes.invalidType, `The specified value '${type}' is not a valid type.`, typeNode!);
+    throw new ValidationError(unusableTypeCode(type), `The specified value '${type}' is not a valid type.`, typeNode!);
   }
 
   // If the type is not defined, then consider it an object type with
@@ -205,7 +207,7 @@ function parseArrayOrTypeDef(a:ArrayNode, path:string, defs?:Definitions) :any {
   }
 
     // If the type is not registered, then it is an invalid type
-    throw new SyntaxError(ErrorCodes.invalidType,`The specified value (${child.value}) is not a valid type`, child);
+    throw new ValidationError(unusableTypeCode(String(child.value)),`The specified value (${child.value}) is not a valid type`, child);
   }
 
   // If the child is an object node, then it is a member type definition
@@ -239,6 +241,19 @@ function parseArrayOrTypeDef(a:ArrayNode, path:string, defs?:Definitions) :any {
 
 // }
 
+/**
+ * True when this token is the WILDCARD `*` rather than a member that happens to be named `*`.
+ *
+ * The tokenizer already separates the two: a bare `*` is an OPEN_STRING, a quoted `"*"` or `r'*'`
+ * is a REGULAR_STRING / RAW_STRING. Quoting means "this name, exactly" -- the same rule that
+ * governs the `?` / `*` member-name suffixes. Without this test a DATA key named `*` was read as
+ * the wildcard and its value checked against the wildcard's rules, so `{"*": null}` failed with
+ * `null-not-allowed` and `{"*": 42}` with `invalid-object`. See OPEN-DECISIONS D1.
+ */
+function isWildcardToken(token: any): boolean {
+  return token?.value === '*' && token?.subType === 'OPEN_STRING';
+}
+
 function parseObjectDef(o: ObjectNode, schema:Schema, path:string, defs?:Definitions): Schema {
   // Note: empty-object and no-names cases are handled explicitly below.
 
@@ -253,26 +268,20 @@ function parseObjectDef(o: ObjectNode, schema:Schema, path:string, defs?:Definit
     }
 
     // Handle additional properties (dynamic fields)
-    if (memberNode.key && memberNode.key.value === '*') {
+    if (memberNode.key && isWildcardToken(memberNode.key)) {
       // Use getMemberDef for additional property to properly compile nested schemas
       if (memberNode.value) {
         // For ObjectNode values, use parseObjectOrTypeDef to properly compile the schema
         if (memberNode.value instanceof ObjectNode) {
-          const additionalDef = parseObjectOrTypeDef(memberNode.value, '*', defs);
-          schema.defs['*'] = additionalDef as MemberDef;
-          schema.open = additionalDef as MemberDef;
+          schema.open = parseObjectOrTypeDef(memberNode.value, '*', defs) as MemberDef;
         }
         // For ArrayNode values, use parseArrayOrTypeDef
         else if (memberNode.value instanceof ArrayNode) {
-          const additionalDef = parseArrayOrTypeDef(memberNode.value, '*', defs);
-          schema.defs['*'] = additionalDef as MemberDef;
-          schema.open = additionalDef as MemberDef;
+          schema.open = parseArrayOrTypeDef(memberNode.value, '*', defs) as MemberDef;
         }
         // For TokenNode (simple types or schema refs), use canonicalizer
         else {
-          const additionalDef = canonicalizeAdditionalProps(memberNode.value, '*');
-          schema.defs['*'] = additionalDef;
-          schema.open = additionalDef;
+          schema.open = canonicalizeAdditionalProps(memberNode.value, '*');
         }
       } else {
         schema.open = true;
@@ -289,7 +298,8 @@ function parseObjectDef(o: ObjectNode, schema:Schema, path:string, defs?:Definit
       addMemberDef(memberDef, schema, path);
     } else {
       // If the last index and the value is *, then this is an open schema
-      const open = memberNode.value instanceof TokenNode && memberNode.value.type === TokenType.STRING && memberNode.value.value === '*';
+      const open = memberNode.value instanceof TokenNode && memberNode.value.type === TokenType.STRING &&
+        isWildcardToken(memberNode.value);
       if (open) {
         if (index !== o.children.length - 1) {
           throw new SyntaxError(ErrorCodes.invalidSchema, "The * is only allowed at the last position.", memberNode.value);
@@ -376,7 +386,7 @@ function parseMemberDef(type:string, o: ObjectNode, defs?: Definitions) {
 function addMemberDef(memberDef: MemberDef, schema: Schema, path:string) {
   // Duplicate member detection (compile-time)
   if (schema.defs[memberDef.name]) {
-    throw new SyntaxError(
+    throw new ValidationError(
       ErrorCodes.duplicateMember,
       `Member ${memberDef.name} is already defined in schema ${schema.name}.`,
       (schema.defs[memberDef.name] as any)
@@ -408,6 +418,15 @@ const parseName = (keyNode: Node): {
   const optionalExp = /\?$/
   const nullExp = /\*$/
   const optNullExp = /(\?\*)|(\*\?)$/
+
+  // The `?` / `*` suffixes are part of the BARE-name token, so they are only read as markers on a
+  // bare name. A quoted name is literal: `"a?"` is a member called `a?`, and `"*"` is a member
+  // called `*` -- not an empty name marked nullable, which is what stripping gave (the member then
+  // had no name at all and its value bound positionally). io-specs `memberdef.md` states the rule;
+  // a quoted name declares optional/nullable through the keyed options instead.
+  if (keyNode.subType !== 'OPEN_STRING') {
+    return { name: key, optional: false, null: false }
+  }
 
   // Optional and null
   if (key.match(optNullExp)) {
@@ -464,7 +483,7 @@ export function getMemberDef(memberDef:MemberNode, path:string, defs?:Definition
     }
 
     if (TypedefRegistry.isRegisteredType(type) === false) {
-      throw new SyntaxError(ErrorCodes.invalidType,
+      throw new ValidationError(unusableTypeCode(type),
         `The type '${type}' is not supported.`, node);
     }
 
@@ -492,7 +511,7 @@ export function getMemberDef(memberDef:MemberNode, path:string, defs?:Definition
     } as MemberDef;
   }
 
-  throw new SyntaxError(ErrorCodes.invalidType, `Found '${ node.toValue() }' but expecting a data type definition.`, node);
+  throw new ValidationError(ErrorCodes.unknownType, `Found '${ node.toValue() }' but expecting a data type definition.`, node);
 }
 
 // concacts the path and key

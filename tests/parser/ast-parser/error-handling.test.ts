@@ -4,6 +4,7 @@ import CollectionNode from "../../../src/parser/nodes/collections";
 import ObjectNode from "../../../src/parser/nodes/objects";
 import ErrorNode from "../../../src/parser/nodes/error";
 import SyntaxError from "../../../src/errors/io-syntax-error";
+import parse from "../../../src/parser/index";
 
 describe("AST Parser - Error Handling", () => {
   describe("Collection Error Recovery", () => {
@@ -251,78 +252,45 @@ describe("AST Parser - Error Handling", () => {
     });
   });
 
+  // Policy P1: the parser NEVER aborts a whole document on a structural error — it ACCUMULATES a
+  // designated error (getErrors) and recovers at the next `---`/`~` boundary. These single-object /
+  // section-structure errors, which previously threw, are now surfaced via getErrors().
   describe("Non-Collection Error Handling", () => {
-    it("should throw error for malformed single objects", () => {
-      const input = `{name: "Alice", age: 25`;  // Missing closing brace
+    function errorsFor(input: string): string[] {
+      const tokens = new Tokenizer(input).tokenize();
+      const docNode: any = new ASTParser(tokens).parse();
+      return (docNode.getErrors() ?? []).map((e: any) => e?.errorCode);
+    }
 
-      const tokenizer = new Tokenizer(input);
-      const tokens = tokenizer.tokenize();
-      const astParser = new ASTParser(tokens);
-
-      expect(() => astParser.parse()).toThrow();
+    it("should record error for malformed single objects", () => {
+      expect(errorsFor(`{name: "Alice", age: 25`).length).toBeGreaterThan(0);  // Missing }
     });
 
-    it("should throw error for invalid object keys", () => {
-      const input = `{{}: "value"}`;  // Object as key
-
-      const tokenizer = new Tokenizer(input);
-      const tokens = tokenizer.tokenize();
-      const astParser = new ASTParser(tokens);
-
-      expect(() => astParser.parse()).toThrow();
+    it("should record error for invalid object keys", () => {
+      expect(errorsFor(`{{}: "value"}`).length).toBeGreaterThan(0);  // Object as key
     });
 
-    it("should throw error for missing comma between object members", () => {
-      const input = `{name: "Alice" age: 25}`;  // Missing comma
-
-      const tokenizer = new Tokenizer(input);
-      const tokens = tokenizer.tokenize();
-      const astParser = new ASTParser(tokens);
-
-      expect(() => astParser.parse()).toThrow();
+    it("should record error for missing comma between object members", () => {
+      expect(errorsFor(`{name: "Alice" age: 25}`).length).toBeGreaterThan(0);
     });
 
-    it("should throw error for unclosed arrays", () => {
-      const input = `{data: [1, 2, 3}`;  // Missing closing bracket
-
-      const tokenizer = new Tokenizer(input);
-      const tokens = tokenizer.tokenize();
-      const astParser = new ASTParser(tokens);
-
-      expect(() => astParser.parse()).toThrow();
+    it("should record error for unclosed arrays", () => {
+      expect(errorsFor(`{data: [1, 2, 3}`).length).toBeGreaterThan(0);
     });
 
-    it("should throw error for empty array elements", () => {
-      const input = `{data: [1, , 3]}`;  // Empty element
-
-      const tokenizer = new Tokenizer(input);
-      const tokens = tokenizer.tokenize();
-      const astParser = new ASTParser(tokens);
-
-      expect(() => astParser.parse()).toThrow();
+    it("should record error for empty array elements", () => {
+      expect(errorsFor(`{data: [1, , 3]}`).length).toBeGreaterThan(0);
     });
 
-    it("should throw error for unexpected end of input", () => {
-      const input = `{name: "Alice", age:`;  // Incomplete value
-
-      const tokenizer = new Tokenizer(input);
-      const tokens = tokenizer.tokenize();
-      const astParser = new ASTParser(tokens);
-
-      expect(() => astParser.parse()).toThrow();
+    it("should record error for unexpected end of input", () => {
+      expect(errorsFor(`{name: "Alice", age:`).length).toBeGreaterThan(0);
     });
 
-    it("should throw error for unexpected tokens after object", () => {
-      const input = `{name: "Alice"} unexpected`;
-
-      const tokenizer = new Tokenizer(input);
-      const tokens = tokenizer.tokenize();
-      const astParser = new ASTParser(tokens);
-
-      expect(() => astParser.parse()).toThrow();
+    it("should record error for unexpected tokens after object", () => {
+      expect(errorsFor(`{name: "Alice"} unexpected`).length).toBeGreaterThan(0);
     });
 
-    it("should throw error for duplicate section names", () => {
+    it("should record error for duplicate section names", () => {
       const input = `
       --- users
       ~ "Alice", 25
@@ -343,32 +311,31 @@ describe("AST Parser - Error Handling", () => {
       expect(errors.some((e: Error) => e.message.includes('Duplicate section name'))).toBe(true);
     });
 
-    it("should throw error for missing section separator", () => {
+    it("should record error for missing section separator", () => {
       const input = `
       a,b,c # there should be a section separator here after this header line
       ~ 1,2,3
       `;
-
-      const tokenizer = new Tokenizer(input);
-      const tokens = tokenizer.tokenize();
-      const astParser = new ASTParser(tokens);
-
-      expect(() => astParser.parse()).toThrow();
+      expect(errorsFor(input).length).toBeGreaterThan(0);
     });
   });
 
+  // Policy P3/P4: BOTH `~` (record) and `---` (section) are resume boundaries. A malformed single
+  // object or section is captured as a designated error and parsing resumes at the next boundary —
+  // it no longer aborts the whole document.
   describe("Error Recovery Boundaries", () => {
-    it("should not recover from errors in single object sections", () => {
+    it("records an error for a malformed single object section (no throw)", () => {
       const input = `{name: "Alice" invalid syntax}`;
 
       const tokenizer = new Tokenizer(input);
       const tokens = tokenizer.tokenize();
       const astParser = new ASTParser(tokens);
 
-      expect(() => astParser.parse()).toThrow();
+      const docNode: any = astParser.parse();
+      expect(docNode.getErrors().length).toBeGreaterThan(0);
     });
 
-    it("should only recover in collection contexts", () => {
+    it("recovers at the --- boundary: a malformed section does not lose the next section", () => {
       const input = `
       --- section1
       {name: "Alice" invalid syntax}
@@ -376,11 +343,12 @@ describe("AST Parser - Error Handling", () => {
       ~ name: "Bob"
       `;
 
-      const tokenizer = new Tokenizer(input);
-      const tokens = tokenizer.tokenize();
-      const astParser = new ASTParser(tokens);
-
-      expect(() => astParser.parse()).toThrow();
+      // Use the facade parse for the value-model projection (raw ASTParser returns AST nodes only).
+      const doc: any = parse(input, null);
+      // the malformed section is recorded as a designated error...
+      expect(doc.getErrors().length).toBeGreaterThan(0);
+      // ...and section2 still parses (recovery at `---`), so `Bob` survives in the value model.
+      expect(JSON.stringify(doc.toJSON())).toContain('Bob');
     });
 
     it("should handle mixed valid sections and collection errors", () => {

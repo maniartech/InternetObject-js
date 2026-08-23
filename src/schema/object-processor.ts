@@ -11,6 +11,7 @@ import Schema             from './schema';
 import MemberDef          from './types/memberdef';
 import { processMember }  from './processing/member-processor';
 import { ProcessingContext } from './processing/processing-context';
+import { undeclaredMemberDef } from './utils/member-utils';
 
 /**
  * Resolves variable references in memberDef fields like default, min, max, choices.
@@ -85,6 +86,12 @@ function _processObject(
   context?: ProcessingContext
 ) {
   const o: InternetObject = new InternetObject();
+  // The same shape declaration as the load route. This one DOES move members: a document may
+  // write its keyed values in any order (`city: NYC, age: 30, name: Alice`), and without this
+  // the parsed object kept document order while the identical data loaded from JavaScript kept
+  // schema order -- so `getAt(1)` meant two different things depending on where the value came
+  // from.
+  o.attachSchema(schema);
   let positional = true;
   const processedNames = new Set<string>();
 
@@ -106,11 +113,50 @@ function _processObject(
     }
   };
 
-  // Special case: if schema has exactly one field and first data member has a key that doesn't match,
-  // treat the entire data object as the value for that single schema field
-  if (schema.names.length === 1 && data.children.length > 0) {
+  // Fill in every schema member not yet bound: applies `default`, permits `optional`, and raises
+  // `value-required` for the rest. Shared by the normal path and the lone-object absorption path
+  // below, so required members and defaults are honored either way.
+  //
+  // `lookupInData` is false for the absorption path: there the ENTIRE row was consumed as member
+  // 0's value, so re-reading a key out of it would bind the same data twice.
+  const fillMissingMembers = (lookupInData: boolean): void => {
+    for (const name in schema.defs) {
+      // Skip the wildcard additional property definition ('*') - not an actual member.
+      if (name === '*') continue;
+      if (processedNames.has(name)) continue;
+
+      const memberDef = _resolveMemberDefVariables(schema.defs[name], defs);
+      const member = lookupInData
+        ? data.children.find((m) => (m as any).key?.value === name)
+        : undefined;
+
+      try {
+        const val = processMember(member as any, memberDef, defs);
+        collectNestedErrors(val);
+        if (val !== undefined) o.set(name, val);
+      } catch (err) {
+        if (err instanceof ValidationError) {
+          // in case of missing member, set the position to the parent object.
+          err.positionRange = data;
+          handleError(err);
+        } else {
+          throw err;
+        }
+      }
+    }
+  };
+
+  // Lone-object record: when the row's first member is KEYED with a name the schema does not
+  // declare, the row cannot be the record itself, so it is the value of the first schema member.
+  // Applied at every arity for CLOSED schemas, so the reading no longer depends on how many
+  // members a schema happens to declare (io-test-cases ISSUE-15). An OPEN schema is excluded:
+  // there an undeclared key is a legal extra member, so there is nothing to disambiguate — except
+  // in the single-declared-member case, whose long-standing behavior is preserved.
+  if (data.children.length > 0 && (!schema.open || schema.names.length === 1)) {
     const firstMember = data.children[0] as MemberNode;
-    if (firstMember?.key && firstMember.key.value !== schema.names[0]) {
+    // Cast (not convert): keeps strict-equality semantics identical to the previous
+    // `key.value !== names[0]` comparison, so a numeric key never matches a string member name.
+    if (firstMember?.key && !schema.names.includes(firstMember.key.value as unknown as string)) {
       const name = schema.names[0];
       const memberDef = _resolveMemberDefVariables(schema.defs[name], defs);
       // Create a synthetic member with the entire data ObjectNode as its value
@@ -127,6 +173,10 @@ function _processObject(
           throw err;
         }
       }
+      // The row was consumed as member 0's value; every OTHER schema member is absent, so it must
+      // still get its default / optional / value-required treatment (it used to be skipped).
+      processedNames.add(name);
+      fillMissingMembers(false);
       // If top-level call (no context passed), throw the first error (backward compatible)
       if (isTopLevel && ctx.hasErrors()) {
         throw ctx.getErrors()[0];
@@ -160,7 +210,7 @@ function _processObject(
           // If optional and no default, allow later keyed assignment without triggering duplicate-member
           if (!memberDef.optional && memberDef.default === undefined) {
             // Required but undefined value – collect error
-            handleError(new ValidationError(ErrorCodes.valueRequired, `Expecting a value for ${memberDef.path}.`, data));
+            handleError(new ValidationError(ErrorCodes.missingValue, `Expecting a value for ${memberDef.path}.`, data));
           }
           // Optional missing: skip adding to processedNames now so a later keyed value may fill it.
         }
@@ -175,7 +225,7 @@ function _processObject(
     } else {
       // Member node entirely missing
       if (!memberDef.optional && memberDef.default === undefined) {
-        handleError(new ValidationError(ErrorCodes.valueRequired, `Expecting a value for ${memberDef.path}.`, data));
+        handleError(new ValidationError(ErrorCodes.missingValue, `Expecting a value for ${memberDef.path}.`, data));
         processedNames.add(name); // Mark as processed to avoid duplicate errors
       } else {
         try {
@@ -205,8 +255,13 @@ function _processObject(
     for (; i<data.children.length; i++) {
       const member = data.children[i] as MemberNode;
       if (!schema.open) {
-        // This is a syntax error, not a validation error - throw immediately
-        throw new SyntaxError(ErrorCodes.additionalValuesNotAllowed, `Additional values are not allowed in the ${schema.name}. The ${schema.name} schema is not open.`, member.value);
+        // A surplus positional value is the same fault as a surplus named member: a closed schema
+        // was given something it does not declare. One code, two messages -- and a VALIDATION
+        // error, matching the named case, because the data is at fault rather than the text.
+        throw new ValidationError(
+          ErrorCodes.unknownMember,
+          `The ${schema.name ? `${schema.name} ` : ''}schema declares ${schema.names.length} member(s); this value has no member to bind to.`,
+          member.value);
       }
       if (member.key) {
         positional = false;
@@ -215,7 +270,7 @@ function _processObject(
 
       const val = member.value.toValue(defs)
 
-      o.push(val);
+      o.pushValue(val);   // positional value — pushValue, not push (push would destructure an array value)
     }
   }
 
@@ -233,24 +288,23 @@ function _processObject(
 
     if (processedNames.has(name)) {
       // Syntax error - throw immediately
-      throw new SyntaxError(ErrorCodes.duplicateMember, `Member ${name} is already defined.`, member);
+      throw new ValidationError(ErrorCodes.duplicateMember, `Member ${name} is already defined.`, member);
     }
 
     // When the member is not found check if the schema is open to allow
     // additional properties. If not throw an error.
     if (!memberDef && !schema.open) {
-      // Syntax error - throw immediately
-      throw new SyntaxError(
+      // A VALIDATION error: the text is well-formed, the DATA carries a member the schema does not
+      // declare. This site used to raise it as a syntax error while the load path raised the same
+      // condition as a validation error, so one code surfaced under two categories depending on
+      // how the data arrived. CONFORMANCE.md 5.1 groups membership faults under validation.
+      throw new ValidationError(
         ErrorCodes.unknownMember, `The ${schema.name ? `${schema.name} ` : ''}schema does not define a member named '${name}'.`, member.key)
     }
 
     // In an open schema, the memberDef is not found. Use schema.open constraints if available, else type 'any'.
     if (!memberDef && schema.open) {
-      if (typeof schema.open === 'object' && schema.open.type) {
-        memberDef = { ...schema.open, path: name as string };
-      } else {
-        memberDef = { type: 'any', path: name as string };
-      }
+      memberDef = undeclaredMemberDef(name as string, schema.open);
     }
 
     processedNames.add(name);
@@ -271,33 +325,7 @@ function _processObject(
   // Check for missing required members and if the missing member has a
   // default value, then set the default value. Otherwise, throw an error.
   // But before throwing an error reset the position to the data node.
-  for (const name in schema.defs) {
-  // Skip the wildcard additional property definition ('*').
-  // It's not an actual member and must not participate in required checks.
-  if (name === '*') continue;
-
-    const memberDef = _resolveMemberDefVariables(schema.defs[name], defs);
-    if (!processedNames.has(name)) {
-      const member = data.children.find((m) => (m as any).key?.value === name)
-
-      try {
-        const val = processMember(member as any, memberDef, defs);
-        // Collect errors from nested InternetObjects
-        collectNestedErrors(val);
-        if (val !== undefined) {
-          o.set(name, val);
-        }
-      } catch (err) {
-        if (err instanceof ValidationError) {
-          // in case of missing member, set the position to the parent object.
-          err.positionRange = data;
-          handleError(err);
-        } else {
-          throw err;
-        }
-      }
-    }
-  }
+  fillMissingMembers(true);
 
   // Fallback: if schema is open and result is empty, process all data members as type 'any' or using schema.open constraints
   if ((schema.open === true || (typeof schema.open === 'object' && schema.open.type)) && o.isEmpty()) {
@@ -306,12 +334,7 @@ function _processObject(
       const memberNode = member as any;
       let name = memberNode.key ? memberNode.key.value : undefined;
       if (!name) continue;
-      let memberDef: MemberDef;
-      if (typeof schema.open === 'object' && schema.open.type) {
-        memberDef = { ...schema.open, path: name };
-      } else {
-        memberDef = { type: 'any', path: name };
-      }
+      const memberDef: MemberDef = undeclaredMemberDef(name, schema.open);
       try {
         const val = processMember(memberNode, memberDef, defs);
         // Collect errors from nested InternetObjects

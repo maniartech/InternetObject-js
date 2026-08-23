@@ -8,9 +8,15 @@ import Schema from '../../schema/schema'
 import TypeDef from '../../schema/typedef'
 import doCommonTypeCheck from './common-type'
 import MemberDef from './memberdef'
-import { NUMBER_TYPES, NUMBER_MAP, throwError } from './common-number'
+import { NUMBER_TYPES, NUMBER_MAP, RADIX_FORMATS, throwError, expectedCodeFor } from './common-number'
 import BigIntDef from './bigint'
 import DecimalDef from './decimal'
+
+// Schema number types that are integer-only (a fractional value is rejected as `not-an-integer`).
+// `number` / `float*` are excluded — they accept fractions.
+const INTEGER_NUMBER_TYPES = new Set([
+  'int', 'uint', 'int8', 'int16', 'int32', 'uint8', 'uint16', 'uint32'
+])
 
 const numberSchema = new Schema(
   "number",
@@ -98,11 +104,25 @@ class NumberDef implements TypeDef {
       return (this._delegateTypeDef as any).stringify(checkedValue, memberDef, defs)
     }
 
+    // `Infinity`/`NaN` are JS spellings that do not re-parse as IO values; IO spells them
+    // `Inf` / `-Inf` / `NaN`.
+    if (typeof checkedValue === 'number' && !Number.isFinite(checkedValue)) {
+      if (Number.isNaN(checkedValue)) return 'NaN'
+      return checkedValue > 0 ? 'Inf' : '-Inf'
+    }
+
     // Handle standard number types
     if (memberDef.format === 'scientific') { return checkedValue.toExponential() }
-    if (memberDef.format === 'hex') { return checkedValue.toString(16) }
-    if (memberDef.format === 'octal') { return checkedValue.toString(8) }
-    if (memberDef.format === 'binary') { return checkedValue.toString(2) }
+
+    // A radix `format` needs its IO prefix (`0xff`, not `ff`) or the output re-parses as an
+    // open string rather than a number. It also only makes sense for integers — a fractional
+    // value has no IO radix literal at all, so fall back to the decimal spelling.
+    const radix = RADIX_FORMATS[memberDef.format as keyof typeof RADIX_FORMATS]
+    if (radix && Number.isInteger(checkedValue)) {
+      const [prefix, base] = radix
+      const negative = checkedValue < 0
+      return `${negative ? '-' : ''}${prefix}${Math.abs(checkedValue).toString(base)}`
+    }
 
     return checkedValue.toString()
   }
@@ -115,16 +135,28 @@ class NumberDef implements TypeDef {
 
     if (valueType === "") {
       throw new ValidationError(
-        ErrorCodes.invalidType,
+        expectedCodeFor(memberDef.type),
         `Expecting a value of type '${memberDef.type}' for '${memberDef.path}'`,
         node
       )
     }
 
+    // A registry code, not one built from the declared type name -- see the note in bigint.ts.
     if (valueType !== "number") {
       throw new ValidationError(
-        `not-a-${memberDef.type}`,
+        expectedCodeFor(memberDef.type),
         `Invalid value encountered for '${memberDef.path}'`,
+        node
+      )
+    }
+
+    // `int` and the sized-int schema types are integer-only: a `number` value carrying a fractional
+    // part (e.g. `3.7`) is rejected with the designated `not-an-integer` code. `number`/`float`
+    // accept fractions. (Internet Object value types are number/decimal/bigint; int is a schema type.)
+    if (INTEGER_NUMBER_TYPES.has(this._type) && !Number.isInteger(value)) {
+      throw new ValidationError(
+        ErrorCodes.expectedInteger,
+        `Expecting an integer value for '${memberDef.path}', but received ${value}`,
         node
       )
     }
@@ -132,19 +164,34 @@ class NumberDef implements TypeDef {
     // Get type-specific bounds
     const { min: typeBoundMin, max: typeBoundMax } = this.getTypeBounds(this._type)
 
-    // Use memberDef.min/max if available, otherwise use type bounds
-    const effectiveMin = memberDef.min !== undefined && memberDef.min !== null ? memberDef.min : typeBoundMin
-    const effectiveMax = memberDef.max !== undefined && memberDef.max !== null ? memberDef.max : typeBoundMax
+    // TWO different faults, which one combined check used to report identically.
+    //
+    //   the TYPE's own range     `int8` given 200 -- the author declared no bound, the limit is
+    //                            intrinsic to the type, so the TYPE is at fault: out-of-range-integer
+    //   a DECLARED constraint    `{int, max: 120}` given 200 -- the author wrote `max`, so the
+    //                            CONSTRAINT is at fault: mismatched-max
+    //
+    // They also need opposite fixes: widen the type, or change the data. Reporting one code for both
+    // meant a caller could not tell which -- nor even whether the value was too low or too high,
+    // since the combined check collapsed the direction as well.
+    const declaredMin = memberDef.min !== undefined && memberDef.min !== null ? memberDef.min : null
+    const declaredMax = memberDef.max !== undefined && memberDef.max !== null ? memberDef.max : null
 
-    if ((effectiveMin !== null && value < effectiveMin) || (effectiveMax !== null && value > effectiveMax)) {
-      throwError(ErrorCodes.invalidRange, memberDef.path!, value, node)
+    if (declaredMin !== null && value < declaredMin) {
+      throwError(ErrorCodes.mismatchedMin, memberDef.path!, value, node)
+    }
+    if (declaredMax !== null && value > declaredMax) {
+      throwError(ErrorCodes.mismatchedMax, memberDef.path!, value, node)
+    }
+    if ((typeBoundMin !== null && value < typeBoundMin) || (typeBoundMax !== null && value > typeBoundMax)) {
+      throwError(ErrorCodes.outOfRangeInteger, memberDef.path!, value, node)
     }
 
     // Validate multipleOf constraint
     if (memberDef.multipleOf !== undefined && memberDef.multipleOf !== null) {
       if (value % memberDef.multipleOf !== 0) {
         throw new ValidationError(
-          ErrorCodes.invalidValue,
+          ErrorCodes.mismatchedMultipleOf,
           `The value ${value} for '${memberDef.path}' must be a multiple of ${memberDef.multipleOf}`,
           node
         )
@@ -177,7 +224,7 @@ class NumberDef implements TypeDef {
       case 'int64':
       case 'float32':
       case 'float64':
-        throw new InternetObjectError(ErrorCodes.unsupportedNumberType, `The number type '${type}' is not supported.`)
+        throw new ValidationError(ErrorCodes.reservedType, `The number type '${type}' is not supported.`)
       default:
         return { min: null, max: null }
     }

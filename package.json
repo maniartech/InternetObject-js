@@ -1,6 +1,6 @@
 {
   "name": "internet-object",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "description": "A lean, robust, and schema-first data interchange format for the Internet",
   "keywords": [
     "internet-object",
@@ -17,7 +17,7 @@
     "email": "contact@maniartech.com",
     "url": "https://maniartech.com"
   },
-  "license": "ISC",
+  "license": "Apache-2.0",
   "homepage": "https://internetobject.org",
   "repository": {
     "type": "git",
@@ -30,7 +30,10 @@
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
-  "sideEffects": false,
+  "sideEffects": [
+    "./dist/schema/types/index.js",
+    "./dist/schema/types/index.cjs"
+  ],
   "exports": {
     ".": {
       "import": {
@@ -59,14 +62,15 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
+    "test:streaming": "vitest run tests/streaming src/streaming/conformance.test.ts tests/parser/tokenizer/features/stream-tokenizer.test.ts tests/parser/ast-parser/parse-section.test.ts",
     "test:ui": "vitest --ui",
     "clean": "rm -rf dist coverage",
     "type-check": "tsc --noEmit",
     "lint": "echo 'Linting placeholder - add Biome later'",
     "precommit": "yarn lint && yarn type-check && yarn test",
     "prepublishOnly": "yarn clean && yarn build && yarn test",
-    "perf": "tsx performance.ts",
-    "perf:decimal": "tsx performance.decimal.ts",
+    "perf": "tsx tests/performance/performance.ts",
+    "perf:decimal": "tsx tests/performance/performance.decimal.ts",
     "stream:server:http": "tsx src/streaming/examples/node-http-server.ts",
     "stream:client:http": "tsx src/streaming/examples/node-http-client.ts",
     "check-release": "bash scripts/pre-publish-check.sh",
@@ -74,7 +78,12 @@
     "bundle:test-minimal": "bash scripts/bundle-test-minimal.sh",
     "bundle:test-full": "bash scripts/bundle-test-full.sh",
     "bundle:compare": "bash scripts/bundle-compare.sh",
-    "bundle:budget-check": "bash scripts/bundle-budget-check.sh"
+    "bundle:budget-check": "bash scripts/bundle-budget-check.sh",
+    "corpus": "tsx tools/corpus/verify.ts",
+    "corpus:bootstrap": "tsx tools/corpus/bootstrap-csv.ts",
+    "corpus:both": "tsx tools/corpus/verify-both.ts",
+    "corpus:tokens": "tsx tools/corpus/verify-bootstrap.ts",
+    "fuzz:triage": "tsx tools/fuzz/triage.ts"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",

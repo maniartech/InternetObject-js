@@ -4,11 +4,13 @@ import InternetObject from '../core/internet-object';
 import Collection from '../core/collection';
 import Section from '../core/section';
 import TypedefRegistry from '../schema/typedef-registry';
+import registerTypes from '../schema/types';
 import MemberDef from '../schema/types/memberdef';
-import { stringifyMemberDef } from '../schema/types/memberdef-stringify';
+import { stringifyMemberDef, stringifyMemberDeclaration, SchemaNames } from '../schema/types/memberdef-stringify';
 import { stringify, stringifyObject } from './stringify';
 import { StringifyOptions } from './stringify';
 import { IO_MARKERS, RESERVED_SECTION_NAMES, WILDCARD_KEY } from './serialization-constants';
+import { formatObjectKey } from '../utils/string-formatter';
 import { formatRecord, formatCollection, createIndentString, FormatContext } from './io-formatter';
 import { toObject } from './to-object';
 
@@ -80,6 +82,11 @@ export function stringifyDocument(
   doc: Document,
   options: StringifyDocumentOptions = {}
 ): string {
+  // Ensure built-in types are registered (see loadObject in load-processor). Serialization
+  // looks up the 'string'/'datetime' typedefs to format values, so an empty registry throws
+  // 'not registered' here too. Idempotent.
+  registerTypes();
+
   const parts: string[] = [];
   const includeHeader = options.includeHeader ?? true;
   const includeSectionNames = options.includeSectionNames ?? true;
@@ -87,27 +94,9 @@ export function stringifyDocument(
 
   // Stringify header (includes definitions, schemas, variables)
   if (includeHeader && doc.header) {
-    // Check if we're in schema-only mode (just $schema, no other definitions)
-    const isSchemaOnlyMode = doc.header.definitions?.defaultSchemaOnly ?? false;
-
-    if (isSchemaOnlyMode && doc.header.schema) {
-      // Schema-only mode: output bare schema line (backward compatible)
-      const schemaText = stringifySchema(doc.header.schema, { ...options, includeTypes: true });
-      if (schemaText) {
-        parts.push(schemaText);
-      }
-    } else if (doc.header.definitions && doc.header.definitions.length > 0) {
-      // Definitions mode: output all definitions (schemas, variables, metadata) in ~ format
-      const headerText = stringifyHeader(doc.header, defFormat, options);
-      if (headerText) {
-        parts.push(headerText);
-      }
-    } else if (doc.header.schema) {
-      // No definitions but has schema: output bare schema line
-      const schemaText = stringifySchema(doc.header.schema, { ...options, includeTypes: true });
-      if (schemaText) {
-        parts.push(schemaText);
-      }
+    const headerText = stringifyHeader(doc, options);
+    if (headerText) {
+      parts.push(headerText);
     }
   }
 
@@ -137,6 +126,14 @@ export function stringifyDocument(
       // Determine if we need a section separator
       // Skip --- when: no header, single section, no real name, no named schema
       const needsSeparator = includeHeader || sectionCount > 1 || hasRealName || hasNamedSchema;
+
+      // Readability: separate the defs block and each named/schema-bound section with a blank
+      // line (blank lines are insignificant to the parser). The bare single `---` form stays
+      // tight for backward compatibility.
+      const wantsBlankBefore = parts.length > 0 && ((includeSectionNames && hasRealName) || hasNamedSchema);
+      if (wantsBlankBefore) {
+        parts.push('');
+      }
 
       if (includeSectionNames && hasRealName) {
         if (hasNamedSchema) {
@@ -170,58 +167,103 @@ export function stringifyDocument(
 }
 
 /**
+ * Map every schema DEFINITION object to the name it was declared under (`$address`).
+ *
+ * Compiling `{object, schema: $address}` replaces the reference with the resolved Schema, so the
+ * writer would otherwise have no name to print and would inline the shape instead — growing the
+ * header by a copy per use and leaving the definition unreferenced. The resolved object is the
+ * SAME object held in definitions, so identity recovers the name exactly.
+ */
+function schemaNamesOf(defs: any): SchemaNames | undefined {
+  if (!defs || typeof defs.entries !== 'function') return undefined;
+  const named = new Map<object, string>();
+  for (const [key, defValue] of defs.entries()) {
+    if (defValue?.isSchema && defValue.value && typeof defValue.value === 'object') {
+      named.set(defValue.value, key);
+    }
+  }
+  return named.size > 0 ? named : undefined;
+}
+
+/**
  * Stringify a schema to IO format
  */
-function stringifySchema(schema: any, options: StringifyOptions): string {
-  if (!schema || !schema.names || schema.names.length === 0) return '';
+function stringifySchema(schema: any, options: StringifyOptions, named?: SchemaNames): string {
+  if (!schema || !schema.defs) return '';
+  // A wildcard-only schema ({*: $item}, or a bare {*}) has no declared names but must still emit
+  // its `*` member. A bare `*` is recorded as `open === true` rather than in defs.
+  const hasNames = schema.names && schema.names.length > 0;
+  // A MEMBER-LESS schema is always written `{}`, never `{*}`. The two are the same contract to the
+  // reader -- compile-object forces `open` on a schema that declares nothing -- so writing
+  // whichever one the in-memory flag happened to say made the writer non-idempotent: an inferred
+  // `~ $x: {}` read back open and re-serialized as `~ $x: {*}`.
+  if (!hasNames && !schema.wildcard) return '';
 
   const includeTypes = options.includeTypes ?? false;
   const parts: string[] = [];
 
-  for (const name of schema.names) {
+  for (const name of schema.names ?? []) {
     const memberDef: MemberDef = schema.defs[name];
     if (!memberDef) continue;
 
-    // Build field definition starting with the name
-    let fieldDef = name;
-
-    // Add optional marker (?) if the field is optional
-    if (memberDef.optional) {
-      fieldDef += '?';
-    }
-
-    // Add null marker (*) if the field is nullable
-    if (memberDef.null) {
-      fieldDef += '*';
-    }
-
-    // Delegate to stringifyMemberDef for type annotation
-    const typeAnnotation = stringifyMemberDef(memberDef, includeTypes);
-    if (typeAnnotation) {
-      fieldDef += `: ${typeAnnotation}`;
-    }
-
-    parts.push(fieldDef);
+    // Name, markers and type in one step. A name that needs quoting (`a:b`, `a,b`) cannot carry the
+    // short `?`/`*` markers, so it is declared through the long memberdef form instead -- see
+    // stringifyMemberDeclaration.
+    parts.push(stringifyMemberDeclaration(name, memberDef, includeTypes, named));
   }
 
-  // Append wildcard open schema definition if present
-  if (schema.defs && schema.defs[WILDCARD_KEY]) {
-    const openDef: MemberDef = schema.defs[WILDCARD_KEY];
+  // Append the wildcard member if present. A TYPED wildcard ({*: string}) lives in defs; a BARE
+  // one ({*}) is recorded only as `open === true`. Dropping either turns an open schema into a
+  // closed one, which is a different contract and rejects data the original accepted.
+  if (schema.wildcard) {
+    const openDef: MemberDef = schema.wildcard;
     let wildcard = WILDCARD_KEY;
-    const typeAnnotation = stringifyMemberDef(openDef, includeTypes);
+    const typeAnnotation = stringifyMemberDef(openDef, includeTypes, named);
     if (typeAnnotation) {
       wildcard += `:${typeAnnotation}`;
     }
     parts.push(wildcard);
+  } else if (schema.open === true) {
+    parts.push(WILDCARD_KEY);
   }
 
   return parts.join(', ');
 }
 
 /**
+ * Public: stringify ONLY a document's header (definitions/schema lines, no `---`, no data).
+ *
+ * The counterpart of `stringifyDocument(doc, { includeHeader: false })` — together they give
+ * consumers (e.g. the playground's "Separate Schema" view) the header/data split as an API,
+ * instead of each consumer re-splitting the serialized text on `---` (which breaks for
+ * multi-section documents, whose first marker is `--- name: $schema`, never a bare `---`).
+ */
+export function stringifyHeader(doc: Document, options: StringifyDocumentOptions = {}): string {
+  if (!doc?.header) return '';
+  const defFormat = options.definitionsFormat ?? 'io';
+
+  // Schema-only mode (just $schema, no other definitions): bare schema line (backward compatible)
+  const isSchemaOnlyMode = doc.header.definitions?.defaultSchemaOnly ?? false;
+  if (isSchemaOnlyMode && doc.header.schema) {
+    return stringifySchema(doc.header.schema, { ...options, includeTypes: true } as StringifyOptions,
+      schemaNamesOf(doc.header.definitions));
+  }
+  // Definitions mode: all definitions (schemas, variables, metadata) in ~ format
+  if (doc.header.definitions && doc.header.definitions.length > 0) {
+    return stringifyHeaderDefinitions(doc.header, defFormat, options as StringifyOptions);
+  }
+  // No definitions but has schema: bare schema line
+  if (doc.header.schema) {
+    return stringifySchema(doc.header.schema, { ...options, includeTypes: true } as StringifyOptions,
+      schemaNamesOf(doc.header.definitions));
+  }
+  return '';
+}
+
+/**
  * Stringify document header with definitions
  */
-function stringifyHeader(
+function stringifyHeaderDefinitions(
   header: any,
   format: 'io',
   options: StringifyOptions
@@ -229,6 +271,7 @@ function stringifyHeader(
   if (!header.definitions) return '';
 
   const defs = header.definitions;
+  const named = schemaNamesOf(defs);
   const defParts: string[] = [];
 
   // Iterate through all definitions: schemas, variables, and metadata
@@ -246,12 +289,12 @@ function stringifyHeader(
           formattedValue = schemaValue.value; // Output as $employee
         } else {
           // Non-reference TokenNode - try to stringify
-          const schemaText = stringifySchema(schemaValue, { ...options, includeTypes: true });
+          const schemaText = stringifySchema(schemaValue, { ...options, includeTypes: true }, named);
           formattedValue = schemaText ? `{${schemaText}}` : '{}';
         }
       } else {
         // It's a Schema instance - use stringifySchema to format the schema structure
-        const schemaText = stringifySchema(schemaValue, { ...options, includeTypes: true });
+        const schemaText = stringifySchema(schemaValue, { ...options, includeTypes: true }, named);
         formattedValue = schemaText ? `{${schemaText}}` : '{}';
       }
     }
@@ -295,7 +338,8 @@ function stringifySection(
     indentStr,
     level: 0,
     defs,
-    isNested: false
+    isNested: false,
+    emitKeys: options.emitKeys ?? 'extras'
   };
 
   // Collections should be serialized using IO '~' items for parser compatibility
@@ -319,7 +363,11 @@ function stringifySection(
 
   // Single object/value: use formatter for smart formatting
   if (data instanceof InternetObject) {
-    return formatRecord(data, schema, ctx);
+    const line = formatRecord(data, schema, ctx);
+    // An empty record formats to no text at all, and a data section with no text reads back as
+    // `null` -- so an empty record is written with its enclosure. A collection item needs no such
+    // help: its `~` already says a record is present.
+    return line === '' ? '{}' : line;
   }
 
   return stringifyObject(data, schema, defs, options);

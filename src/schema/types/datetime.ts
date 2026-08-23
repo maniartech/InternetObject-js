@@ -31,13 +31,34 @@ class DateTimeDef implements TypeDef {
 
   public constructor(type: string = 'datetime') { this.#type = type }
 
+  /**
+   * The type-mismatch code for THIS temporal type.
+   *
+   * One class serves `datetime`, `date` and `time`, and all three used to report
+   * `expected-datetime` — so a `date` member given a string named a type the schema never
+   * mentioned. Predicate-first naming exists so that reading the `expected-` codes as one list makes
+   * a gap visible; a shared code is that same gap, just harder to see. See ADR 0003 §4.
+   */
+  #expectedCode(): typeof ErrorCodes.expectedDate | typeof ErrorCodes.expectedTime | typeof ErrorCodes.expectedDateTime {
+    switch (this.#type) {
+      case 'date': return ErrorCodes.expectedDate
+      case 'time': return ErrorCodes.expectedTime
+      default:     return ErrorCodes.expectedDateTime
+    }
+  }
+
   parse(node: Node, memberDef: MemberDef, defs?: Definitions): Date {
     const valueNode = defs?.getV(node) || node
     const { value, changed } = doCommonTypeCheck(memberDef, valueNode, node, defs, this.#dateTimeEqualityComparator)
     if (changed) return value
 
+    // A value that is not a datetime TOKEN at all is a type mismatch -- `expected-datetime`.
+    // `invalid-datetime` means the opposite: it IS a datetime literal and it is malformed, which
+    // the tokenizer reports. datetime is the one type that legitimately owns both codes (ADR 0002
+    // §5.5); reporting the malformed-literal code for a wrong-type value collapsed the distinction
+    // and made a string and a broken timestamp indistinguishable to a caller.
     if (valueNode.type !== TokenType.DATETIME) {
-      throw new ValidationError(ErrorCodes.invalidDateTime, `Expecting a ${memberDef.type.toUpperCase()} value for ${memberDef.path}, currently ${valueNode.value}, a ${valueNode.type} value`, node as TokenNode)
+      throw new ValidationError(this.#expectedCode(), `Expecting a ${memberDef.type.toUpperCase()} value for ${memberDef.path}, currently ${valueNode.value}, a ${valueNode.type} value`, node as TokenNode)
     }
 
     // Validate the value
@@ -53,8 +74,8 @@ class DateTimeDef implements TypeDef {
     // Type validation - must be a Date object
     if (!(value instanceof Date)) {
       throw new ValidationError(
-        ErrorCodes.invalidType,
-        `Expecting a Date object for '${memberDef.path}', got ${typeof value}`
+        this.#expectedCode(),
+        `Expecting a ${this.#type.toUpperCase()} value for '${memberDef.path}', got ${typeof value}`
       )
     }
 
@@ -114,7 +135,7 @@ class DateTimeDef implements TypeDef {
       const min = this.#normalizeToDate(memberDef.min, defs)
       if (min && value < min) {
         throw new ValidationError(
-          ErrorCodes.outOfRange,
+          ErrorCodes.mismatchedMin,
           `Expecting the value ${memberDef.path ? `for '${memberDef.path}'` : ''} to be greater than or equal to '${dt.dateToSmartString(min, dateType)}'`,
           node
         )
@@ -125,7 +146,7 @@ class DateTimeDef implements TypeDef {
       const max = this.#normalizeToDate(memberDef.max, defs)
       if (max && value > max) {
         throw new ValidationError(
-          ErrorCodes.outOfRange,
+          ErrorCodes.mismatchedMax,
           `Expecting the value ${memberDef.path ? `for '${memberDef.path}'` : ''} to be less than or equal to '${dt.dateToSmartString(max, dateType)}'`,
           node
         )

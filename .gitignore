@@ -159,4 +159,6 @@ ehthumbs.db
 Thumbs.db
 
 
-docs
+# Private development notes — session artifacts, one-off review guides, scratch probes.
+# Kept out of the repo deliberately; see io-test-cases/IO-JS2-CLEANUP-PLAN.md.
+.private/

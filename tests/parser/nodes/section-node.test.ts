@@ -117,11 +117,11 @@ describe("SectionNode", () => {
       expect(section.name).toBe("userSchema");
     });
 
-    it("should return 'unnamed' when no nameNode or schemaNode", () => {
+    it("should return the default section name when no nameNode or schemaNode", () => {
       const objectChild = createSimpleObject();
       const section = new SectionNode(objectChild, null, null);
 
-      expect(section.name).toBe("unnamed");
+      expect(section.name).toBe("data");
     });
 
     it("should prefer nameNode over schemaNode", () => {
@@ -279,14 +279,14 @@ describe("SectionNode", () => {
       expect(result.schemaName).toBe("$userSchema");
     });
 
-    it("should use 'unnamed' when no name or schema", () => {
+    it("should use the default section name when no name or schema", () => {
       const objectChild = createSimpleObject();
       const section = new SectionNode(objectChild, null, null);
 
       const result = section.toValue();
 
       expect(result).toBeInstanceOf(Section);
-      expect(result.name).toBe("unnamed");
+      expect(result.name).toBe("data");
       expect(result.schemaName).toBe("$schema");
     });
 
@@ -294,12 +294,10 @@ describe("SectionNode", () => {
       const objectChild = createSimpleObject();
       const section = new SectionNode(objectChild, null, null);
 
-      // Mock definitions
-      const mockDefs = {
-        getV: (key: string) => {
-          return key === "test" ? "mockValue" : null;
-        }
-      } as any;
+      // Mock definitions. `getValue` is the value-returning sibling of `getV` and is what the
+      // projection path calls; a mock that carries only `getV` no longer stands in for Definitions.
+      const resolve = (key: string) => (key === "test" ? "mockValue" : null);
+      const mockDefs = { getV: resolve, getValue: resolve } as any;
 
       // Spy on child's toValue method
       const toValueSpy = vi.spyOn(objectChild, 'toValue');
@@ -362,7 +360,7 @@ describe("SectionNode", () => {
       const nameToken = new TokenNode(createMockToken(TokenType.STRING, "", 0));
       const section = new SectionNode(objectChild, nameToken, null);
 
-      expect(section.name).toBe("unnamed"); // Empty string falls back to 'unnamed'
+      expect(section.name).toBe("data"); // Empty string falls back to the default name
     });
 
     it("should handle schema names without $ prefix", () => {

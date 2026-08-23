@@ -2,17 +2,17 @@ import { IOStreamSource, IOStreamTransport, StreamChunk } from './types';
 
 /**
  * A helper to bridge event-based or callback-based data sources to the AsyncIterable
- * required by `openStream`.
+ * consumed by `createStreamReader`.
  *
  * @returns An object containing:
- * - `source`: The AsyncIterable to pass to `openStream`.
+ * - `source`: The AsyncIterable to pass to `createStreamReader`.
  * - `push`: A function to push a new chunk of data.
  * - `close`: A function to signal the end of the stream (or an error).
  *
  * @example
  * ```ts
  * const { source, push, close } = createPushSource();
- * openStream(source);
+ * const reader = createStreamReader(source);
  *
  * xhr.onprogress = () => push(xhr.responseText.substring(seen));
  * xhr.onload = () => close();
@@ -97,17 +97,22 @@ export function createPushSource(): {
  */
 export class BufferTransport implements IOStreamTransport {
   private chunks: string[] = [];
+  // A single streaming decoder preserves multibyte UTF-8 state across send() calls,
+  // so a code point split across two byte chunks decodes correctly (IMPLEMENTATION-GAPS Gap 2).
+  private decoder = new TextDecoder('utf-8');
 
   send(chunk: string | Uint8Array): void {
     if (typeof chunk === 'string') {
       this.chunks.push(chunk);
     } else {
-      // Best effort text decoding
-      this.chunks.push(new TextDecoder().decode(chunk));
+      this.chunks.push(this.decoder.decode(chunk, { stream: true }));
     }
   }
 
   getOutput(): string {
+    // Flush any bytes the decoder is still holding for an incomplete code point.
+    const tail = this.decoder.decode();
+    if (tail) this.chunks.push(tail);
     return this.chunks.join('');
   }
 }

@@ -91,4 +91,4 @@ Feel free to open an issue for any questions or reach out to the maintainers.
 
 ## License
 
-By contributing, you agree that your contributions will be licensed under the [ISC License](./LICENSE).
+By contributing, you agree that your contributions will be licensed under the [Apache License 2.0](./LICENSE), as stated in Section 5 of that license.

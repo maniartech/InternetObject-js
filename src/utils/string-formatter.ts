@@ -7,6 +7,8 @@
 import TypedefRegistry from '../schema/typedef-registry';
 import MemberDef from '../schema/types/memberdef';
 import { STRING_ENCLOSERS } from '../facade/serialization-constants';
+// One copy of the rule, in the module the serializer actually uses.
+import { readsBackAsANumber } from './strings';
 
 /**
  * String format types supported by Internet Object
@@ -91,11 +93,15 @@ function fallbackQuoteString(str: string, encloser: string): string {
  * @example
  * ```typescript
  * needsQuoting('hello')      // → false (safe identifier)
- * needsQuoting('123')        // → true (looks like number)
- * needsQuoting('0001')       // → true (looks like number, has leading zeros)
- * needsQuoting('true')       // → true (looks like boolean)
+ * needsQuoting('013ABSD')    // → false (a part code reads back as itself)
+ * needsQuoting('12mm')       // → false (a measurement; no marker, no claim)
+ * needsQuoting('1.2.3')      // → false (a version; not a complete number)
+ * needsQuoting('123')        // → true  (would read back as a NUMBER)
+ * needsQuoting('0001')       // → true  (likewise, and would lose its zeros)
+ * needsQuoting('0x123FG')    // → true  (the 0x marker would make it an ERROR)
+ * needsQuoting('true')       // → true  (looks like boolean)
  * needsQuoting('hello world') // → true (contains space)
- * needsQuoting('')           // → true (empty string)
+ * needsQuoting('')           // → true  (empty string)
  * ```
  */
 export function needsQuoting(str: string): boolean {
@@ -105,9 +111,8 @@ export function needsQuoting(str: string): boolean {
   // Check for whitespace
   if (/\s/.test(str)) return true;
 
-  // Check if it looks like a number (starts with digit, or -/+/. followed by digit)
-  // This catches: "123", "0001", "-5", ".5", "3.14", etc.
-  if (looksLikeNumber(str)) return true;
+  // Would the bare text read back as something OTHER than this string?
+  if (readsBackAsANumber(str)) return true;
 
   // Check if it looks like a boolean
   if (str === 'T' || str === 'F' || str === 'true' || str === 'false') return true;
@@ -125,26 +130,6 @@ export function needsQuoting(str: string): boolean {
   return false;
 }
 
-/**
- * Check if a string looks like a number when parsed.
- * Any string starting with a digit (or -/+/. followed by digit) looks like a number.
- */
-function looksLikeNumber(str: string): boolean {
-  if (str.length === 0) return false;
-
-  const first = str[0];
-  if (first === '-' || first === '+') {
-    if (str.length === 1) return false;
-    const second = str[1];
-    return (second >= '0' && second <= '9') || second === '.';
-  }
-  if (first === '.') {
-    if (str.length === 1) return false;
-    const second = str[1];
-    return second >= '0' && second <= '9';
-  }
-  return first >= '0' && first <= '9';
-}
 
 /**
  * Escapes special characters in a string value.
@@ -198,4 +183,58 @@ export function quoteHeaderString(str: string): string {
  */
 export function quoteExtraPropertyString(str: string): string {
   return quoteString(str, 'auto', STRING_ENCLOSERS.REGULAR);
+}
+
+/**
+ * Formats an object KEY for output. Object keys must serialize back as STRING keys: a purely numeric
+ * key (`0`, `42`, `3.14`) or a reserved literal keyword (`null`/`true`/`false` and the short forms
+ * `N`/`T`/`F`) would otherwise re-parse as a non-string token and raise `invalid-key`, so they are
+ * quoted. Ordinary identifier / open-string keys (`name`, `a b`) pass through unquoted.
+ *
+ * @param key The key to format
+ * @returns The key, quoted only if it would not round-trip as a bare string key
+ */
+export function formatObjectKey(key: string): string {
+  const isNumeric = /^[+-]?(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?$/.test(key);
+  // `Inf`/`-Inf`/`NaN` are keywords too -- a bare `Inf:` in a schema header is read as the
+  // special NUMBER, not a member name, and the definition is rejected (`invalid-definition`
+  // in the header, `invalid-key` in data). The signed forms are already caught by isNumeric.
+  const isKeyword = /^(?:true|false|null|T|F|N|Inf|NaN)$/.test(key);
+  // A bare (unquoted) key must be a plain identifier-like open string; anything else — colons
+  // (`ciqual_food_code:en`), braces, quotes, leading symbols, etc. — must be quoted or the emitted
+  // text won't re-parse (issue #61: JSON keys routinely contain such characters).
+  // `-` is legal in a bare key, but three in a row spell the SECTION SEPARATOR: a bare `a---b:` at
+  // the start of a line splits the document in two and the rest is read as a new section.
+  const isBareSafe = /^[$A-Za-z_][A-Za-z0-9_. -]*$/.test(key) && !/\s$/.test(key) && !key.includes('---');
+  return (isNumeric || isKeyword || !isBareSafe) ? `"${key.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"` : key;
+}
+
+/** How keys are emitted in serialized data rows (SERIALIZATION-DECISIONS.md). */
+export type EmitKeys = 'all' | 'extras' | 'none';
+
+/**
+ * The single rule every serializer shares — decide whether a member emits its key (`key: value`)
+ * or just its value (bare), per the `emitKeys` mode (SERIALIZATION-DECISIONS.md).
+ *
+ * - a **keyless / positional** member has no key → always bare, in every mode.
+ * - `'none'`   → never emit a key (values only; lossy when the schema can't recover the name).
+ * - `'all'`    → emit a key for every keyed member (fully self-describing).
+ * - `'extras'` (default) → emit a key only for a field NOT declared in the schema — i.e. an
+ *   open-schema extra OR (when there is no schema) every field, since all fields are then undeclared.
+ *   Fields declared in the schema stay bare (the name is recoverable from the schema/header).
+ *
+ * `schema` is duck-typed to `{ names }` so this stays dependency-free.
+ *
+ * @returns true → emit `key: value`; false → bare value
+ */
+export function shouldEmitKey(
+  key: string | undefined,
+  schema?: { names?: string[] },
+  emitKeys: EmitKeys = 'extras'
+): boolean {
+  if (key === undefined) return false;   // keyless → bare, always
+  if (emitKeys === 'none') return false;
+  if (emitKeys === 'all') return true;
+  // 'extras': emit only when the field is not declared in the schema (no schema ⇒ undeclared ⇒ emit)
+  return !schema || !Array.isArray(schema.names) || !schema.names.includes(key);
 }

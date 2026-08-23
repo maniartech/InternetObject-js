@@ -7,6 +7,11 @@
  * Unlike `load()` which requires explicit schema definitions, `loadInferred()`
  * analyzes the structure and types of your data to generate appropriate schemas.
  *
+ * **Experimental, and not part of the Internet Object format.** Inference is a convenience of this
+ * library: it guesses a schema, where every other part of the format is determined by its input.
+ * No port is required to provide it, no conformance suite covers it, and its output may change in
+ * any release. See ADR 0004.
+ *
  * @module facade/load-inferred
  */
 
@@ -16,29 +21,24 @@ import Section from '../core/section';
 import SectionCollection from '../core/section-collection';
 import InternetObject from '../core/internet-object';
 import Collection from '../core/collection';
-import { inferDefs } from '../schema/utils/defs-inferrer';
+import { inferDefs, inferMultiSectionDefs, isMultiSectionShape, isPlainRecord, isRecordCollection, ROOT_VALUE_MEMBER } from '../schema/utils/defs-inferrer';
 import { loadObject as processObject, loadCollection as processCollection } from '../schema/load-processor';
+import { IOCommonOptions } from './options';
 
 /**
- * Options for loadInferred function
+ * Options for `loadInferred` — the shared options minus `schemaName` (inference derives its own schema).
+ * See {@link IOCommonOptions} (shared, declared once — R8).
  */
-export interface LoadInferredOptions {
-  /**
-   * When true, throws on first validation error.
-   * When false (default), continues processing and collects errors.
-   * @default false
-   */
-  strict?: boolean;
-
-  /**
-   * Array to collect validation errors instead of throwing.
-   * Useful for processing collections where some items may be invalid.
-   */
-  errorCollector?: Error[];
-}
+export type LoadInferredOptions = Omit<IOCommonOptions, 'schemaName'>;
 
 /**
  * Load plain JavaScript data with **inferred schema** into a Document.
+ *
+ * @experimental Not part of the Internet Object format — a library convenience for data arriving
+ * from JSON. The inferred shape is a heuristic and carries no compatibility promise; it may change
+ * in any release, and a conforming implementation in another language need not provide it at all.
+ * See `docs/decisions/0004-schema-inference-is-out-of-scope-for-1.0.md`. For output you intend to
+ * keep or exchange, write the schema explicitly and use {@link load}.
  *
  * This function analyzes the structure of your data and automatically generates
  * appropriate schema definitions. The resulting Document includes:
@@ -99,6 +99,25 @@ export function loadInferred(
   data: any,
   options?: LoadInferredOptions
 ): Document {
+  // Multi-section shape ({accounting: [...], sales: [...]}): infer one named, schema-bound
+  // section per top-level key (`--- accounting: $accounting`) — IO's native form for grouped
+  // record sets — instead of nesting everything into one section. Document.toObject keys
+  // multi-section data by section name, so the value model round-trips unchanged.
+  if (isMultiSectionShape(data)) {
+    const { definitions, sectionSchemas } = inferMultiSectionDefs(data);
+    const header = new Header();
+    header.definitions.merge(definitions, true);
+
+    const sections = new SectionCollection();
+    for (const [key, arr] of Object.entries(data as Record<string, any[]>)) {
+      const schemaName = sectionSchemas.get(key)!;
+      const schema = definitions.getV(schemaName);
+      const collection = processCollection(arr, schema, definitions, options?.errorCollector);
+      sections.push(new Section(collection, key, schemaName));
+    }
+    return new Document(header, sections);
+  }
+
   // Infer definitions from the data structure
   const { definitions, rootSchema } = inferDefs(data);
 
@@ -110,8 +129,18 @@ export function loadInferred(
   // Load the data using the inferred schema
   let loadedData: InternetObject | Collection<InternetObject>;
 
-  if (Array.isArray(data)) {
-    loadedData = processCollection(data, rootSchema, definitions, options?.errorCollector);
+  // The loader must read the data the same way inference described it. A root array is a
+  // COLLECTION only when its items are records; an array of scalars or of arrays is instead
+  // wrapped in a single `value` member, and must be handed to the object loader wrapped the same
+  // way. Collection-processing it validated each ELEMENT against a schema meant for the whole
+  // array, which put one error object per element into the document.
+  if (isRecordCollection(data)) {
+    loadedData = processCollection(data as any[], rootSchema, definitions, options?.errorCollector);
+  } else if (!isPlainRecord(data)) {
+    // Everything that is not a record is a root VALUE: an array of scalars, a primitive, or a
+    // scalar-shaped object (Date, Decimal, byte array). Inference wraps all of them in the
+    // positional member, so the loader must hand them over wrapped the same way.
+    loadedData = processObject({ [ROOT_VALUE_MEMBER]: data }, rootSchema, definitions);
   } else {
     loadedData = processObject(data, rootSchema, definitions);
   }

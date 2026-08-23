@@ -1,5 +1,15 @@
+import { toJSONValue } from '../utils/json-projection';
 import IOCollection from "./collection";
 import IOObject from "./internet-object";
+
+/**
+ * The name a section takes when it carries neither a name nor a schema (a bare `---`).
+ *
+ * Per io-specs `the-structure/introduction/data.md`: "if both the name and schema are omitted,
+ * the section name defaults to `data`". Because the name is also the key a section is projected
+ * under, this string is part of the public output — not an internal placeholder.
+ */
+export const DEFAULT_SECTION_NAME = 'data';
 
 /**
  * IOSection represents a single data section within an Internet Object document.
@@ -65,6 +75,11 @@ class IOSection<T = any> {
     return errors;
   }
 
+  /** Uniform error-read API shared by every core container (R6); same result as the `errors` getter. */
+  public getErrors(): ReadonlyArray<Error> {
+    return this.errors;
+  }
+
   /**
    * Return a clean object for nodejs console logging.
    */
@@ -101,11 +116,12 @@ class IOSection<T = any> {
   }
 
   /**
-   * Alias for `toObject()`.
-   * Provides compatibility with `JSON.stringify()`.
+   * Converts to JSON — the same data as {@link toObject}, with every value spelled the way JSON
+   * can carry it (dates as ISO strings, decimals and bigints as strings, binary as base64), all
+   * the way down. See `toJSONValue`.
    */
   public toJSON(options?: { skipErrors?: boolean }): any {
-    return this.toObject(options);
+    return toJSONValue(this.toObject(options));
   }
 }
 

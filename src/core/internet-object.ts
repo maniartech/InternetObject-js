@@ -1,3 +1,21 @@
+import type Schema from '../schema/schema';
+import { toJSONValue } from '../utils/json-projection';
+
+/**
+ * One value on its way out of {@link IOObject.toObject} — containers flattened, everything else
+ * left alone.
+ *
+ * A `Date` / `Decimal` / byte array used to be converted here too, by calling its `toJSON()`. That
+ * made `toObject()` half a JSON projection: a top-level `Date` came back a string while the same
+ * `Date` one level down inside an array stayed a `Date`.
+ */
+function toPlainValue(value: any): any {
+  if (value === null || typeof value !== 'object') return value;
+  if (Array.isArray(value)) return value.map(toPlainValue);
+  if (typeof value.toObject === 'function') return value.toObject();
+  return value;
+}
+
 /**
  * IOObject is an ordered key-value collection that supports both keyed and positional access.
  *
@@ -7,7 +25,8 @@
  * - Provides O(1) key-based lookups via internal Map
  * - Implements Iterable for for..of loops
  * - Supports sparse deletions with optional compaction
- * - Synchronizes with object properties for dot-notation access
+ * - Method-only access (R7): data is read via `get`/`getAt` — there is NO dot-notation / instance-
+ *   property sync, so a data key can never collide with a method name or with `.errors`/`.length`.
  *
  * @template T The type of values stored in the object
  *
@@ -15,16 +34,26 @@
  * ```typescript
  * const obj = new IOObject<number>();
  * obj.set('a', 1);
- * obj.push(2);           // positional entry (no key)
+ * obj.pushValue(2);       // positional entry (no key)
  * obj.set('b', 3);
- * console.log(obj.a);    // 1 (dot notation)
- * console.log(obj.getAt(1)); // 2
+ * console.log(obj.get('a'));  // 1  (method access — NOT obj.a)
+ * console.log(obj.getAt(1));  // 2
  * ```
  */
 class IOObject<T = any> implements Iterable<[string | undefined, T]> {
-  [key: string]: any;
   private items!: ([string | undefined, T] | undefined)[];
   private keyMap!: Map<string, number>;
+  /**
+   * The shape this object was declared with, or `null`.
+   *
+   * OPTIONAL by design. Plenty of IOObjects have no schema -- a schema-less document produces
+   * them -- and without one there is no position guarantee at all: members sit where they were
+   * put, which is the only order anybody could mean. Everything below applies ONLY when a shape
+   * was declared.
+   */
+  private schema!: Schema | null;
+  /** `schema.names` as name -> declared index, so placement is a lookup rather than a scan. */
+  private schemaOrder!: Map<string, number> | null;
   public errors: Error[] = [];
 
   constructor(o?: Record<string, T>) {
@@ -47,12 +76,124 @@ class IOObject<T = any> implements Iterable<[string | undefined, T]> {
       enumerable: false,
       configurable: false
     });
+    // Non-enumerable like the rest of the internals, so a data key can never collide with them.
+    Object.defineProperty(this, 'schema', {
+      value: null,
+      writable: true,
+      enumerable: false,
+      configurable: false
+    });
+    Object.defineProperty(this, 'schemaOrder', {
+      value: null,
+      writable: true,
+      enumerable: false,
+      configurable: false
+    });
 
     if (o) {
       for (const [key, value] of Object.entries(o)) {
         this.set(key, value);
       }
     }
+  }
+
+  /**
+   * Declares this object's shape.
+   *
+   * Attaching is all this does. It does NOT touch the members already present -- reordering an
+   * existing object is {@link applySchemaOrder}, which a caller makes deliberately. What attaching
+   * changes is every write from here on:
+   *
+   * > **A member the schema declares is placed at the position the schema declares it, whatever
+   * > order it arrives in. A member the schema does not declare -- the extras an open (`*`) schema
+   * > permits -- is appended, and so follows the declared members in arrival order.**
+   *
+   * That is what makes `getAt(i)` mean the same thing however the object was built: parsed from
+   * text, loaded from JavaScript, or assembled one `set()` at a time.
+   *
+   * Passing `null` detaches the shape. It does not restore a previous order -- there is nothing to
+   * restore to -- it only stops the rule applying to later writes.
+   */
+  attachSchema(schema: Schema | null): this {
+    this.schema = schema ?? null;
+    this.schemaOrder = schema
+      ? new Map(schema.names.map((name, index) => [name, index]))
+      : null;
+    return this;
+  }
+
+  /** The shape declared for this object, or `null` when it has none. */
+  getSchema(): Schema | null {
+    return this.schema;
+  }
+
+  /**
+   * Puts the members already present into the declared shape's order: everything the schema
+   * declares first, in declaration order, then everything it does not, in the order it already
+   * had.
+   *
+   * Voluntary, and a no-op when no schema is attached. Use it when members went in before the
+   * shape was known -- {@link attachSchema} deliberately leaves them alone, because silently
+   * rearranging an object somebody just handed you is not a thing a setter should do.
+   *
+   * Compacts as it goes: entries left `undefined` by `delete()` are dropped, since a hole has no
+   * position in a declared shape.
+   */
+  applySchemaOrder(): this {
+    if (this.schemaOrder === null) return this;
+    const declared: [number, [string | undefined, T]][] = [];
+    const extras: [string | undefined, T][] = [];
+    for (const entry of this.items) {
+      if (entry === undefined) continue;
+      const at = this.orderOf(entry[0]);
+      if (at === -1) extras.push(entry);
+      else declared.push([at, entry]);
+    }
+    declared.sort((a, b) => a[0] - b[0]);
+    this.items = [...declared.map(([, entry]) => entry), ...extras];
+    this.reindex();
+    return this;
+  }
+
+  /** Where `key` sits in the declared shape, or -1 when it is keyless, undeclared, or unshaped. */
+  private orderOf(key: string | undefined): number {
+    if (key === undefined || this.schemaOrder === null) return -1;
+    return this.schemaOrder.get(key) ?? -1;
+  }
+
+  /**
+   * The index a declared member with shape-position `order` belongs at: ahead of the first entry
+   * that is either an extra (or keyless -- no name to place it by) or a declared member that comes
+   * later in the shape. Holes are skipped rather than treated as boundaries.
+   */
+  private slotFor(order: number): number {
+    for (let index = 0; index < this.items.length; index++) {
+      const entry = this.items[index];
+      if (entry === undefined) continue;
+      const at = this.orderOf(entry[0]);
+      if (at === -1 || at > order) return index;
+    }
+    return this.items.length;
+  }
+
+  /**
+   * Rebuilds `keyMap` from `items`. Wholesale, because patching indices around holes is the kind
+   * of cleverness that breaks the next time `delete()` is called.
+   */
+  private reindex(): void {
+    this.keyMap.clear();
+    for (let index = 0; index < this.items.length; index++) {
+      const entry = this.items[index];
+      if (entry !== undefined && entry[0] !== undefined) this.keyMap.set(entry[0], index);
+    }
+  }
+
+  /**
+   * Returns the validation/parse errors accumulated for this object.
+   * The uniform error-read API shared by every core container (R6); `.errors` stays available directly.
+   */
+  getErrors(): ReadonlyArray<Error> {
+    return [...this.errors];
   }
 
   /**
@@ -67,19 +208,21 @@ class IOObject<T = any> implements Iterable<[string | undefined, T]> {
       const index = this.keyMap.get(key)!;
       this.items[index] = [key, value];
     } else {
-      const index = this.items.length;
-      this.items.push([key, value]);
-      this.keyMap.set(key, index);
+      // With a shape declared, a member goes where the shape says -- not where it arrived. Without
+      // one, `orderOf` is -1 for everything and this is the plain append it always was.
+      const order = this.orderOf(key);
+      if (order === -1) {
+        const index = this.items.length;
+        this.items.push([key, value]);
+        this.keyMap.set(key, index);
+      } else {
+        this.items.splice(this.slotFor(order), 0, [key, value]);
+        this.reindex();
+      }
     }
-    // Synchronize instance property (but skip if it's a reserved internal property)
-    if (key !== 'items' && key !== 'keyMap') {
-      Object.defineProperty(this, key, {
-        value,
-        writable: true,
-        enumerable: true,
-        configurable: true
-      });
-    }
+    // R7: data is stored ONLY in items/keyMap and accessed via get()/getAt() — no instance-property
+    // sync. This makes access consistent (method-only) and frees `.errors`/`.length` and every method
+    // name from ever colliding with a data key (so no reserved-name guard is needed).
     return this;
   }
 
@@ -95,13 +238,32 @@ class IOObject<T = any> implements Iterable<[string | undefined, T]> {
         if (this.has(key)) {
           throw new Error(`Key '${key}' already exists`);
         }
-        const index = this.items.length;
-        this.items.push([key, value]);
-        this.keyMap.set(key, index);
+        const order = this.orderOf(key);
+        if (order === -1) {
+          const index = this.items.length;
+          this.items.push([key, value]);
+          this.keyMap.set(key, index);
+        } else {
+          this.items.splice(this.slotFor(order), 0, [key, value]);
+          this.reindex();
+        }
       } else {
   this.items.push([undefined, item]);
       }
     }
+  }
+
+  /**
+   * Appends a single value as a POSITIONAL (keyless) member.
+   *
+   * Unlike `push()`, this does NOT apply the `[key, value]`-tuple interpretation to array arguments —
+   * so an array DATA value (e.g. `["1984","T","N","Hello"]`) is stored intact as one positional value
+   * rather than being destructured into `key="1984", value="T"` (which silently drops elements).
+   * Use this for positional data values; use `push([k, v])` only when you genuinely mean a keyed pair.
+   */
+  pushValue(value: T): this {
+    this.items.push([undefined, value]);
+    return this;
   }
 
   /**
@@ -163,8 +325,6 @@ class IOObject<T = any> implements Iterable<[string | undefined, T]> {
     if (index !== undefined && this.items[index]) {
       this.items[index] = undefined;
       this.keyMap.delete(key);
-      // Remove instance property
-      delete this[key];
       return true;
     }
     return false;
@@ -270,10 +430,6 @@ class IOObject<T = any> implements Iterable<[string | undefined, T]> {
    * Clears all key-value pairs from the IOObject.
    */
   clear(): void {
-    // Remove all instance properties for keys
-    for (const key of this.keysArray()) {
-      delete this[key];
-    }
     this.items = [];
     this.keyMap.clear();
   }
@@ -460,41 +616,32 @@ class IOObject<T = any> implements Iterable<[string | undefined, T]> {
   }
 
   /**
-   * Converts the InternetObject to a plain JavaScript object.
+   * Converts the InternetObject to a plain JavaScript object, with its values LIVE.
    *
-   * Logic:
-   * - Recursively calls `toObject()` on child values if they exist.
-   * - Uses keys where available; otherwise uses numeric indices.
+   * Containers (nested records, collections, arrays) become plain objects and arrays; every other
+   * value is handed back as it is — a `Date` stays a `Date`, a `Decimal` a `Decimal`, bytes stay
+   * bytes. This is the form to work with in code. For the JSON spelling of those values, use
+   * {@link toJSON}.
    *
-   * @returns A plain JavaScript object.
+   * Keys are used where available; otherwise the positional index.
    */
   toObject(): any {
     const obj:any = {}
     this.forEach((value:any, key:string | undefined, index:number) => {
       if (typeof value === "undefined") return
-
-      if (typeof value === 'object') {
-        if (typeof value?.toObject === 'function') {
-           obj[key || index] = value.toObject();
-        } else if (typeof value?.toJSON === 'function') {
-           obj[key || index] = value.toJSON();
-        } else {
-           obj[key || index] = value;
-        }
-      } else {
-        obj[key || index] = value;
-      }
+      obj[key || index] = toPlainValue(value);
     });
 
     return obj;
   }
 
   /**
-   * Alias for toObject().
-   * Used when calling JSON.stringify.
+   * Converts the InternetObject to JSON — the same data as {@link toObject}, with every value
+   * spelled the way JSON can carry it (dates as ISO strings, decimals and bigints as strings,
+   * binary as base64), all the way down. See {@link toJSONValue}.
    */
   toJSON(): any {
-    return this.toObject();
+    return toJSONValue(this.toObject());
   }
 
   /**

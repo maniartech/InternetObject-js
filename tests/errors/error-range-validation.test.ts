@@ -246,12 +246,14 @@ describe('Error Range Validation - Parser Level (Arrays)', () => {
     }
   });
 
-  test('unclosed array at EOF should throw syntax error', () => {
+  test('unclosed array at EOF records a designated error (policy P1: no fatal parse)', () => {
     const doc = `colors: [red, green, blue`;
 
-    // Unclosed arrays at EOF currently throw instead of collecting errors
-    // This is expected behavior for critical syntax errors
-    expect(() => parse(doc, null)).toThrow(/expecting-bracket|Unexpected end of input/);
+    const errors: any[] = parse(doc, null).getErrors();
+    expect(errors.length).toBeGreaterThan(0);
+    expect(errors.some((e: any) =>
+      /expected-closing-bracket|Unexpected end of input/.test(`${e.errorCode} ${e.message}`)
+    )).toBe(true);
   });
 });
 
@@ -295,12 +297,14 @@ describe('Error Range Validation - Complex Scenarios', () => {
     });
   });
 
-  test('nested unclosed constructs should throw syntax error', () => {
+  test('nested unclosed constructs record a designated error (policy P1: no fatal parse)', () => {
     const doc = `data: {outer: {inner: [1, 2, 3}`;
 
-    // Complex nested unclosed constructs currently throw instead of collecting errors
-    // This is expected behavior - parser cannot reliably recover from deeply nested syntax errors
-    expect(() => parse(doc, null)).toThrow(/unexpected-token|expecting-bracket/);
+    const errors: any[] = parse(doc, null).getErrors();
+    expect(errors.length).toBeGreaterThan(0);
+    expect(errors.some((e: any) =>
+      /unexpected-token|expected-closing-bracket/.test(`${e.errorCode} ${e.message}`)
+    )).toBe(true);
   });
 });
 

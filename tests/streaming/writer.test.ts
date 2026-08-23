@@ -1,8 +1,7 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { createStreamWriter } from '../../src/streaming/writer';
 import { IOStreamTransport } from '../../src/streaming/types';
 import io from '../../src/facade';
-import Decimal from '../../src/core/decimal/decimal';
 
 class MockTransport implements IOStreamTransport {
   public chunks: string[] = [];
@@ -24,87 +23,167 @@ describe('IOStreamWriter', () => {
     transport.send(writer.write({ id: 1, name: 'Alice' }));
 
     expect(transport.chunks[0]).toContain('streamId: test-1');
-    expect(transport.chunks[1]).toContain('~ 1, Alice');
+    expect(transport.chunks[1]).toContain('~ id: 1, name: Alice');  // no schema → keyed (self-describing)
   });
 
-  it('handles validation errors with onError: "throw" (default)', () => {
+  it('includeSchemas: false omits schema definitions from the header', () => {
+    const defs = io.defs`~ $User: { name: string }`;
+    const writer = createStreamWriter(new MockTransport(), defs, { includeSchemas: false });
+    expect(writer.getHeader()).not.toContain('$User');
+  });
+
+  it('getHeader() caches and returns the same text on repeated calls', () => {
+    const writer = createStreamWriter(new MockTransport());
+    const h1 = writer.getHeader();
+    expect(writer.getHeader()).toBe(h1);
+  });
+
+  it('emits a bare --- for the default schema after a raw reset', async () => {
+    const out: string[] = [];
+    const writer = createStreamWriter({ send: (c) => { out.push(c.toString()); } });
+    await writer.send({ a: 1 }); // header + ~ 1 (default schema)
+    await writer.sendRaw('~ x\n'); // resets schema tracking
+    await writer.send({ b: 2 }); // default schema again => section(undefined) => '---'
+    const last = out[out.length - 1];
+    expect(last).toContain('---');
+    expect(last).toContain('~ b: 2');  // no schema → keyed
+  });
+
+  it('throws on a validation error during write() (Gap 16: no onError modes)', () => {
     const transport = new MockTransport();
     const schemaDefs = io.defs`~ $user: { name: {string, minLen: 5} }`;
-    const writer = createStreamWriter(transport, schemaDefs); // default onError: 'throw'
+    const writer = createStreamWriter(transport, schemaDefs);
 
     expect(() => {
-      writer.write({ name: 'Bob' }, '$user'); // Too short
+      writer.write({ name: 'Bob' }, '$user'); // too short
     }).toThrow('Invalid minLength');
   });
 
-  it('handles validation errors with onError: "ignore"', () => {
-    const transport = new MockTransport();
-    const schemaDefs = io.defs`~ $user: { name: {string, minLen: 5} }`;
-    const writer = createStreamWriter(transport, schemaDefs, { onError: 'ignore' });
-
-    const output = writer.write({ name: 'Bob' }, '$user');
-    expect(output).toBe('');
-  });
-
-  it('handles validation errors with onError: "emit"', () => {
-    const transport = new MockTransport();
-    const schemaDefs = io.defs`~ $user: { name: {string, minLen: 5} }`;
-    const writer = createStreamWriter(transport, schemaDefs, { onError: 'emit' });
-
-    const output = writer.write({ name: 'Bob' }, '$user');
-
-    expect(output).toContain('--- $error');
-    expect(output).toContain('invalid-min-length');
-
-    // Should switch back to schema for next valid item
-    const validOutput = writer.write({ name: 'Alice' }, '$user');
-    expect(validOutput).toContain('--- $user');
-    expect(validOutput).toContain('Alice');
-  });
-
-  describe('writeBatch and send usage', () => {
-    it('accepts a duck-typed Writable (Node.js style)', async () => {
-      const wrote: string[] = [];
-      const mockWritable = {
-        write: (chunk: string) => {
-          wrote.push(chunk);
-          return true;
-        },
-        end: () => {}
-      };
-
-      const writer = createStreamWriter(mockWritable as any);
-      // Use send() to trigger use of wrapper
-      await writer.send({ a: 1 });
-
-      expect(wrote.length).toBeGreaterThan(0);
-      expect(wrote.join('')).toContain('~ 1');
+  describe('writeBatch / sendBatch', () => {
+    it('writeBatch formats a batch with a single schema switch', () => {
+      const transport = new MockTransport();
+      const writer = createStreamWriter(transport);
+      const batch = writer.writeBatch([{ name: 'A' }, { name: 'B' }], 'users');
+      expect(batch).toContain('--- users');
+      expect(batch).toContain('~ name: A');  // 'users' not a defined schema → keyed
+      expect(batch).toContain('~ name: B');
     });
 
-    it('supports writeBatch and sendBatch', async () => {
-        const output: string[] = [];
-        const transport: IOStreamTransport = {
-            send: (c) => { output.push(c.toString()) }
-        };
-        const writer = createStreamWriter(transport);
+    it('sendBatch does not re-emit a section when the schema is unchanged', async () => {
+      const output: string[] = [];
+      const transport: IOStreamTransport = { send: (c) => { output.push(c.toString()); } };
+      const writer = createStreamWriter(transport);
 
-        // schemaName 'users'
-        const batch1 = writer.writeBatch([
-            { name: 'A' },
-            { name: 'B' }
-        ], 'users');
+      await writer.sendBatch([{ name: 'A' }, { name: 'B' }], 'users'); // header + --- users + A,B
+      await writer.sendBatch([{ name: 'C' }], 'users');                // users still active
 
-        expect(batch1).toContain('--- users');
-        expect(batch1).toContain('~ A');
-        expect(batch1).toContain('~ B');
+      const last = output[output.length - 1];
+      expect(last).toContain('~ name: C');  // no defined schema → keyed
+      expect(last).not.toContain('--- users');
+    });
+  });
 
-        // Check sendBatch (updates state)
-        await writer.sendBatch([{ name: 'C' }], 'users');
-        const lastOutput = output[output.length - 1];
+  describe('header lifecycle (Gap 4)', () => {
+    it('auto-emits the header on the first send', async () => {
+      const out: string[] = [];
+      const writer = createStreamWriter({ send: (c) => { out.push(c.toString()); } });
+      await writer.send({ a: 1 });
+      expect(out[0]).toBe('---\n');
+      expect(out[1]).toContain('~ a: 1');  // no schema → keyed
+    });
 
-        expect(lastOutput).toContain('~ C');
-        // 'users' matches 'users', so NO new header
-        expect(lastOutput).not.toContain('--- users');
+    it('emits the header at most once across sendHeader() + send()', async () => {
+      const out: string[] = [];
+      const writer = createStreamWriter({ send: (c) => { out.push(c.toString()); } });
+      await writer.sendHeader();
+      await writer.sendHeader(); // no-op
+      await writer.send({ a: 1 });
+      expect(out.filter((c) => c === '---\n')).toHaveLength(1);
+    });
+
+    it('accepts a duck-typed Node Writable', async () => {
+      const wrote: string[] = [];
+      const mockWritable = { write: (c: string) => { wrote.push(c); return true; }, end: () => {} };
+      const writer = createStreamWriter(mockWritable as any);
+      await writer.send({ a: 1 });
+      expect(wrote.join('')).toContain('~ a: 1');  // no schema → keyed
+    });
+  });
+
+  describe('raw forwarding resets schema tracking (Gap 15)', () => {
+    it('a structured send after sendRaw re-emits the section marker', async () => {
+      const out: string[] = [];
+      const defs = io.defs`~ $User: { name: string }`;
+      const writer = createStreamWriter({ send: (c) => { out.push(c.toString()); } }, defs);
+
+      await writer.send({ name: 'Alice' }, '$User');
+      await writer.sendRaw('~ extra\n');
+      await writer.send({ name: 'Bob' }, '$User');
+
+      const joined = out.join('');
+      const switches = joined.split('--- $User').length - 1;
+      expect(switches).toBe(2); // before Alice, and again after the raw reset before Bob
+    });
+
+    it('pipeRaw forwards every chunk from a source, including ArrayBuffer chunks', async () => {
+      const out: string[] = [];
+      const writer = createStreamWriter({
+        send: (c) => { out.push(typeof c === 'string' ? c : new TextDecoder().decode(c as Uint8Array)); },
+      });
+      async function* src() {
+        yield '---\n';
+        yield new TextEncoder().encode('~ { id: 1 }\n'); // Uint8Array
+        yield new TextEncoder().encode('~ { id: 2 }\n').buffer; // ArrayBuffer
+      }
+      await writer.pipeRaw(src() as any);
+      const joined = out.join('');
+      expect(joined).toContain('~ { id: 1 }');
+      expect(joined).toContain('~ { id: 2 }');
+    });
+  });
+
+  describe('poisoning after transport failure (Gap 15)', () => {
+    it('becomes unusable after a transport send rejects', async () => {
+      let n = 0;
+      const transport: IOStreamTransport = {
+        send: () => { n++; if (n === 1) return; throw new Error('boom'); }, // header ok, record fails
+      };
+      const writer = createStreamWriter(transport);
+      await expect(writer.send({ a: 1 })).rejects.toThrow('boom');
+      await expect(writer.send({ b: 2 })).rejects.toThrow(/unusable/);
+    });
+  });
+
+  describe('concurrency guard (Gap 15)', () => {
+    it('rejects overlapping calls', async () => {
+      const slow: IOStreamTransport = { send: () => new Promise<void>((r) => setTimeout(r, 20)) };
+      const writer = createStreamWriter(slow);
+      const p1 = writer.send({ a: 1 });
+      await expect(writer.send({ b: 2 })).rejects.toThrow(/concurrent/);
+      await p1;
+    });
+  });
+
+  describe('Node Writable backpressure (Gap 3)', () => {
+    it('awaits drain when write() returns false', async () => {
+      let calls = 0;
+      const drains: Array<() => void> = [];
+      const writable = {
+        write: () => { calls++; return calls === 1; }, // header accepted, record backpressured
+        once: (ev: string, cb: () => void) => { if (ev === 'drain') drains.push(cb); },
+        removeListener: () => {},
+      };
+      const writer = createStreamWriter(writable as any);
+
+      let done = false;
+      const p = writer.send({ a: 1 }).then(() => { done = true; });
+      for (let i = 0; i < 20 && drains.length === 0; i++) await Promise.resolve();
+
+      expect(done).toBe(false);     // record write is backpressured, awaiting drain
+      expect(drains).toHaveLength(1);
+      drains[0]();                  // fire drain
+      await p;
+      expect(done).toBe(true);
     });
   });
 });

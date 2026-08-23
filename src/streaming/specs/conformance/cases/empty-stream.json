@@ -1,0 +1,13 @@
+{
+  "name": "empty-stream",
+  "description": "Empty source emits zero items and completes normally.",
+  "protocol": ["§12"],
+  "definitions": null,
+  "options": { "defaultSchema": null },
+  "input": "",
+  "chunkings": ["whole"],
+  "expected": {
+    "items": [],
+    "fatal": null
+  }
+}

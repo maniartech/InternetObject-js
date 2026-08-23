@@ -1,0 +1,15 @@
+{
+  "name": "split-multibyte-utf8",
+  "description": "A multibyte UTF-8 code point split across chunk boundaries decodes correctly.",
+  "protocol": ["§11"],
+  "definitions": null,
+  "options": { "defaultSchema": null },
+  "input": "---\n~ { message: \"Hello 🚀\" }\n",
+  "chunkings": ["whole", "per-byte"],
+  "expected": {
+    "items": [
+      { "kind": "record", "recordIndex": 0, "value": { "message": "Hello 🚀" } }
+    ],
+    "fatal": null
+  }
+}

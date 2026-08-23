@@ -32,7 +32,7 @@ describe('Multi-section collection collectionIndex handling', () => {
     expect(collection1[1].__error).toBe(true);
     expect(collection1[1].category).toBe('syntax');
     expect(collection1[1].collectionIndex).toBe(1);
-    expect(collection1[1].message).toMatch(/expecting-bracket|Missing closing brace/i);
+    expect(collection1[1].message).toMatch(/expected-closing-bracket|Missing closing brace/i);
 
     // Collection2: both items have validation errors (age < 30)
     const collection2 = json.collection2;

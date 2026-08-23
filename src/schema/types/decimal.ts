@@ -42,15 +42,7 @@ class DecimalDef implements TypeDef {
     let { value, changed } = doCommonTypeCheck(memberDef, valueNode, node, defs)
     if (changed) return value
 
-    // Type check: reject regular numbers, only accept Decimal instances
-    if (typeof value === 'number') {
-      throwError(
-        ErrorCodes.invalidType,
-        memberDef.path!,
-        `Expected decimal value (with 'm' suffix), got number`,
-        node
-      )
-    }
+    this.#requireDecimal(value, memberDef, node)
 
     value = this.validate(memberDef, value, node)
 
@@ -61,7 +53,39 @@ class DecimalDef implements TypeDef {
     const { value: checkedValue, changed } = doCommonTypeCheck(memberDef, value)
     if (changed) return checkedValue
 
+    // The SAME guard the text path applies. This site had none at all, so a plain JS `12.5` or the
+    // string `"12.5"` was silently ACCEPTED as a decimal, and a boolean or array produced an
+    // uncoded `DecimalError` -- while the identical document was correctly rejected as
+    // `expected-decimal`. One rule, two entry points, one of them missing it. Found by X1
+    // (`npm run corpus:both`) the first time the new decimal suite ran through both paths.
+    this.#requireDecimal(value, memberDef)
+
     return this.validate(memberDef, value)
+  }
+
+  /**
+   * ONLY a Decimal is a decimal. Anything else -- a plain number, a string, a boolean, a record, an
+   * array, a byte string -- is a TYPE error, and must be reported as one rather than falling through
+   * to `Decimal.ensureDecimal`, which throws a bare `DecimalError` carrying neither an error code
+   * nor a position. An error with no code cannot be classified by any caller.
+   *
+   * Stated as "what IS allowed" on purpose: an earlier version listed what was not
+   * (`typeof value === 'object'`) and missed booleans -- the one-case-short shape that appears
+   * whenever a rule is written as a list of exclusions.
+   *
+   * `null` is excluded because `doCommonTypeCheck` owns nullability before either caller reaches
+   * this point.
+   */
+  #requireDecimal(value: any, memberDef: MemberDef, node?: Node): void {
+    if (value === null || value instanceof Decimal) return
+    throwError(
+      ErrorCodes.expectedDecimal,
+      memberDef.path!,
+      typeof value === 'number'
+        ? `Expected decimal value (with 'm' suffix), got number`
+        : `Expecting a value of type 'decimal' for '${memberDef.path}'`,
+      node
+    )
   }
 
   stringify(value: any, memberDef: MemberDef): string {
@@ -88,7 +112,7 @@ class DecimalDef implements TypeDef {
       const actualScale = valD.getScale()
       if (actualScale !== requiredScale) {
         throwError(
-          ErrorCodes.invalidScale,
+          ErrorCodes.mismatchedScale,
           memberDef.path!,
           `Value has scale ${actualScale}, expected ${requiredScale}`,
           node
@@ -108,7 +132,7 @@ class DecimalDef implements TypeDef {
 
         if (intDigits > maxIntDigits) {
           throwError(
-            ErrorCodes.invalidPrecision,
+            ErrorCodes.mismatchedPrecision,
             memberDef.path!,
             `Integer part has ${intDigits} digits, DECIMAL(${requiredPrecision},${requiredScale}) allows ${maxIntDigits}`,
             node
@@ -118,7 +142,7 @@ class DecimalDef implements TypeDef {
         // Mode 3: Precision-only validation
         if (actualPrecision > requiredPrecision) {
           throwError(
-            ErrorCodes.invalidPrecision,
+            ErrorCodes.mismatchedPrecision,
             memberDef.path!,
             `Value has precision ${actualPrecision}, max allowed is ${requiredPrecision}`,
             node
@@ -143,7 +167,7 @@ class DecimalDef implements TypeDef {
       const normalizedMin = minD.convert(targetPrecision, targetScale)
 
       if (normalizedVal.compareTo(normalizedMin) < 0) {
-        throwError(ErrorCodes.invalidRange, memberDef.path!, value, node)
+        throwError(ErrorCodes.mismatchedMin, memberDef.path!, value, node)
       }
     }
 
@@ -163,7 +187,7 @@ class DecimalDef implements TypeDef {
       const normalizedMax = maxD.convert(targetPrecision, targetScale)
 
       if (normalizedVal.compareTo(normalizedMax) > 0) {
-        throwError(ErrorCodes.invalidRange, memberDef.path!, value, node)
+        throwError(ErrorCodes.mismatchedMax, memberDef.path!, value, node)
       }
     }
 
@@ -185,7 +209,7 @@ class DecimalDef implements TypeDef {
       const zero = new Decimal(0, targetPrecision, targetScale)
       if (remainder.compareTo(zero) !== 0) {
         throwError(
-          ErrorCodes.invalidValue,
+          ErrorCodes.mismatchedMultipleOf,
           memberDef.path!,
           `Value must be a multiple of ${multipleOfD}`,
           node

@@ -8,7 +8,7 @@ describe('Decimal Min/Max Validation', () => {
 
     expect(() => {
       parse(io, null)
-    }).toThrow(/must be within the specified range/)
+    }).toThrow(expect.objectContaining({ errorCode: expect.stringMatching(/^mismatched-(min|max)$|^out-of-range-/) }))
   })
 
   it('should accept decimal value equal to min constraint', () => {
@@ -36,7 +36,7 @@ describe('Decimal Min/Max Validation', () => {
 
     expect(() => {
       parse(io, null)
-    }).toThrow(/must be within the specified range/)
+    }).toThrow(expect.objectContaining({ errorCode: expect.stringMatching(/^mismatched-(min|max)$|^out-of-range-/) }))
   })
 
   it('should accept decimal value equal to max constraint', () => {
@@ -63,12 +63,12 @@ describe('Decimal Min/Max Validation', () => {
     // Below min - should fail
     expect(() => {
       parse(`${schema}\n---\n5m`, null)
-    }).toThrow(/must be within the specified range/)
+    }).toThrow(expect.objectContaining({ errorCode: expect.stringMatching(/^mismatched-(min|max)$|^out-of-range-/) }))
 
     // Above max - should fail
     expect(() => {
       parse(`${schema}\n---\n150m`, null)
-    }).toThrow(/must be within the specified range/)
+    }).toThrow(expect.objectContaining({ errorCode: expect.stringMatching(/^mismatched-(min|max)$|^out-of-range-/) }))
 
     // Within range - should pass
     const result = parse(`${schema}\n---\n50m`, null)
@@ -81,7 +81,7 @@ describe('Decimal Min/Max Validation', () => {
     // Below min - should fail
     expect(() => {
       parse(`${schema}\n---\n999m`, null)
-    }).toThrow(/must be within the specified range/)
+    }).toThrow(expect.objectContaining({ errorCode: expect.stringMatching(/^mismatched-(min|max)$|^out-of-range-/) }))
 
     // Above min - should pass
     const result = parse(`${schema}\n---\n10000m`, null)

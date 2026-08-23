@@ -129,8 +129,11 @@ describe('Array Error Ranges - Critical Boundary Tests', () => {
   test('unclosed nested array in object should have correct range', () => {
     const doc = `data: {items: [1, 2, 3}`;
 
-    // This syntax error (] expected but } found) should throw
-    expect(() => parse(doc, null)).toThrow(/Unexpected token|Expected a valid value/);
+    // This syntax error (] expected but } found) is recorded (policy P1: no fatal parse)
+    const errors: any[] = parse(doc, null).getErrors();
+    expect(errors.some((e: any) =>
+      /Unexpected token|Expected a valid value|unexpected-token|expected-closing-bracket/.test(`${e.errorCode} ${e.message}`)
+    )).toBe(true);
   });
 
   test('multiple unclosed arrays should each have correct ranges', () => {
@@ -173,8 +176,11 @@ describe('Array Error Ranges - Critical Boundary Tests', () => {
     const doc = `colors: [
 next: value`;
 
-    // Without synchronization boundaries, this should throw
-    expect(() => parse(doc, null)).toThrow(/Unexpected end of input while parsing array|Missing closing bracket/);
+    // Without synchronization boundaries, this is recorded as a designated error (policy P1)
+    const errors: any[] = parse(doc, null).getErrors();
+    expect(errors.some((e: any) =>
+      /Unexpected end of input while parsing array|Missing closing bracket|expected-closing-bracket/.test(`${e.errorCode} ${e.message}`)
+    )).toBe(true);
   });
 });
 
@@ -183,15 +189,21 @@ describe('Array Error Ranges - Position Accuracy', () => {
   test('array start position should point to [', () => {
     const doc = `colors: [red, green`;
 
-    // Without synchronization boundaries, this should throw
-    expect(() => parse(doc, null)).toThrow(/Unexpected end of input while parsing array|Missing closing bracket/);
+    // Without synchronization boundaries, this is recorded as a designated error (policy P1)
+    const errors: any[] = parse(doc, null).getErrors();
+    expect(errors.some((e: any) =>
+      /Unexpected end of input while parsing array|Missing closing bracket|expected-closing-bracket/.test(`${e.errorCode} ${e.message}`)
+    )).toBe(true);
   });
 
   test('array end position should point after last element', () => {
     const doc = `colors: [red, green, blue`;
 
-    // Without synchronization boundaries, this should throw
-    expect(() => parse(doc, null)).toThrow(/Unexpected end of input while parsing array|Missing closing bracket/);
+    // Without synchronization boundaries, this is recorded as a designated error (policy P1)
+    const errors: any[] = parse(doc, null).getErrors();
+    expect(errors.some((e: any) =>
+      /Unexpected end of input while parsing array|Missing closing bracket|expected-closing-bracket/.test(`${e.errorCode} ${e.message}`)
+    )).toBe(true);
   });
 });
 
@@ -200,14 +212,20 @@ describe('Array Error Ranges - Edge Cases', () => {
   test('array at EOF should span to end of file', () => {
     const doc = `colors: [red, green, blue`;
 
-    // Without synchronization boundaries, this should throw
-    expect(() => parse(doc, null)).toThrow(/Unexpected end of input while parsing array|Missing closing bracket/);
+    // Without synchronization boundaries, this is recorded as a designated error (policy P1)
+    const errors: any[] = parse(doc, null).getErrors();
+    expect(errors.some((e: any) =>
+      /Unexpected end of input while parsing array|Missing closing bracket|expected-closing-bracket/.test(`${e.errorCode} ${e.message}`)
+    )).toBe(true);
   });
 
   test('array followed by another member should not include that member', () => {
     const doc = `data: [1, 2, 3, other: value`;
 
-    // Without synchronization boundaries, this should throw
-    expect(() => parse(doc, null)).toThrow(/Unexpected end of input while parsing array|Missing closing bracket/);
+    // Without synchronization boundaries, this is recorded as a designated error (policy P1)
+    const errors: any[] = parse(doc, null).getErrors();
+    expect(errors.some((e: any) =>
+      /Unexpected end of input while parsing array|Missing closing bracket|expected-closing-bracket/.test(`${e.errorCode} ${e.message}`)
+    )).toBe(true);
   });
 });

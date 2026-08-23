@@ -16,7 +16,7 @@ describe('Definitions variable resolution (@ vs $)', () => {
       defs.getV(token as any);
     } catch (e: any) {
       expect(e).toBeInstanceOf(ValidationError);
-      expect(e.code).toBe(ErrorCodes.schemaNotDefined);
+      expect(e.code).toBe(ErrorCodes.undefinedSchema);
       // When a token-like object is provided, it should be attached as position
       expect(e.position).toBeDefined();
     }
@@ -30,7 +30,7 @@ describe('Definitions variable resolution (@ vs $)', () => {
       defs.getV(token as any);
     } catch (e: any) {
       expect(e).toBeInstanceOf(ValidationError);
-      expect(e.code).toBe(ErrorCodes.variableNotDefined);
+      expect(e.code).toBe(ErrorCodes.undefinedVariable);
       expect(e.position).toBeDefined();
     }
   });

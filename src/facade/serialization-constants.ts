@@ -1,3 +1,4 @@
+import { DEFAULT_SECTION_NAME } from '../core/section';
 /**
  * Constants and configurations for Internet Object serialization.
  * Centralizes magic strings, standard properties, and format markers
@@ -85,7 +86,7 @@ export const DEFINITION_PREFIX = '~';
  * Reserved section names that should not appear in output
  */
 export const RESERVED_SECTION_NAMES = new Set([
-  'unnamed',
+  DEFAULT_SECTION_NAME,
   '$schema',
   'schema'
 ]);

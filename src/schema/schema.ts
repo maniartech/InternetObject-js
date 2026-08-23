@@ -1,5 +1,6 @@
 import IOError from '../errors/io-error'
 import ErrorCodes from '../errors/io-error-codes'
+import ValidationError from '../errors/io-validation-error'
 import MemberDef from "./types/memberdef";
 import { MemberMap } from "./schema-types";
 
@@ -49,6 +50,19 @@ export default class IOSchema {
     }
   }
 
+  /**
+   * The wildcard's MemberDef, when the schema is open WITH a type (`*: int`, `*: $item`).
+   *
+   * `undefined` for a bare `*` (open, unconstrained) and for a closed schema. The wildcard lives
+   * HERE and nowhere else. It used to be written to `defs['*']` as well -- the same object filed
+   * under a member name it does not have -- and `defs` is keyed by member NAME, so it collided with
+   * a schema that declares a member literally called `*` (written `"*"`). Bare `*` is grammar;
+   * quoted `"*"` is a name.
+   */
+  get wildcard(): MemberDef | undefined {
+    return typeof this.open === 'object' && this.open !== null ? this.open as MemberDef : undefined;
+  }
+
   /** Returns the member definition of the given member name. */
   get(name: string): MemberDef | undefined {
     return this.defs[name];
@@ -84,7 +98,7 @@ export class SchemaBuilder {
 
   addMember(name: string, def: MemberDef): this {
     if (this.defs[name]) {
-      throw new IOError(ErrorCodes.duplicateMember, `Member '${name}' already exists in schema '${this.name}'`);
+      throw new ValidationError(ErrorCodes.duplicateMember, `Member '${name}' already exists in schema '${this.name}'`);
     }
     this.names.push(name);
     this.defs[name] = { ...def, path: def.path || name };

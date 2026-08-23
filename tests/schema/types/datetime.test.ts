@@ -80,7 +80,7 @@ describe('DateTimeDef - DateTime, Date, and Time Types', () => {
 
       expect(() => parse(`${schema}\n---\ndt"2024-01-01T00:00:00"`, null)).not.toThrow()
       expect(() => parse(`${schema}\n---\ndt"2024-06-15T12:00:00"`, null)).not.toThrow()
-      expect(() => parse(`${schema}\n---\ndt"2023-12-31T23:59:59"`, null)).toThrow(/range/i)
+      expect(() => parse(`${schema}\n---\ndt"2023-12-31T23:59:59"`, null)).toThrow(expect.objectContaining({ errorCode: expect.stringMatching(/^mismatched-(min|max)$|^out-of-range-/) }))
     })
 
     test('should respect max constraint for datetime', () => {
@@ -88,15 +88,15 @@ describe('DateTimeDef - DateTime, Date, and Time Types', () => {
 
       expect(() => parse(`${schema}\n---\ndt"2024-12-31T23:59:59"`, null)).not.toThrow()
       expect(() => parse(`${schema}\n---\ndt"2024-06-15T12:00:00"`, null)).not.toThrow()
-      expect(() => parse(`${schema}\n---\ndt"2025-01-01T00:00:00"`, null)).toThrow(/range/i)
+      expect(() => parse(`${schema}\n---\ndt"2025-01-01T00:00:00"`, null)).toThrow(expect.objectContaining({ errorCode: expect.stringMatching(/^mismatched-(min|max)$|^out-of-range-/) }))
     })
 
     test('should respect both min and max constraints', () => {
       const schema = 'dt: { datetime, min: dt"2024-01-01", max: dt"2024-12-31" }'
 
       expect(() => parse(`${schema}\n---\ndt"2024-06-15"`, null)).not.toThrow()
-      expect(() => parse(`${schema}\n---\ndt"2023-12-31"`, null)).toThrow(/range/i)
-      expect(() => parse(`${schema}\n---\ndt"2025-01-01"`, null)).toThrow(/range/i)
+      expect(() => parse(`${schema}\n---\ndt"2023-12-31"`, null)).toThrow(expect.objectContaining({ errorCode: expect.stringMatching(/^mismatched-(min|max)$|^out-of-range-/) }))
+      expect(() => parse(`${schema}\n---\ndt"2025-01-01"`, null)).toThrow(expect.objectContaining({ errorCode: expect.stringMatching(/^mismatched-(min|max)$|^out-of-range-/) }))
     })
 
     test('should respect min constraint for date', () => {
@@ -104,7 +104,7 @@ describe('DateTimeDef - DateTime, Date, and Time Types', () => {
 
       expect(() => parse(`${schema}\n---\nd"2024-01-01"`, null)).not.toThrow()
       expect(() => parse(`${schema}\n---\nd"2024-06-15"`, null)).not.toThrow()
-      expect(() => parse(`${schema}\n---\nd"2023-12-31"`, null)).toThrow(/range/i)
+      expect(() => parse(`${schema}\n---\nd"2023-12-31"`, null)).toThrow(expect.objectContaining({ errorCode: expect.stringMatching(/^mismatched-(min|max)$|^out-of-range-/) }))
     })
 
     test('should respect max constraint for date', () => {
@@ -112,7 +112,7 @@ describe('DateTimeDef - DateTime, Date, and Time Types', () => {
 
       expect(() => parse(`${schema}\n---\nd"2024-12-31"`, null)).not.toThrow()
       expect(() => parse(`${schema}\n---\nd"2024-06-15"`, null)).not.toThrow()
-      expect(() => parse(`${schema}\n---\nd"2025-01-01"`, null)).toThrow(/range/i)
+      expect(() => parse(`${schema}\n---\nd"2025-01-01"`, null)).toThrow(expect.objectContaining({ errorCode: expect.stringMatching(/^mismatched-(min|max)$|^out-of-range-/) }))
     })
   })
 
@@ -155,10 +155,10 @@ describe('DateTimeDef - DateTime, Date, and Time Types', () => {
       const doc = parse(`${schema}\n---\n{{Meeting, dt"2024-06-15T10:00:00"}}`, null)
       const section = doc.sections?.get(0)
       const data = section?.data as any
-      const event = data.event
+      const event = data.get('event')   // R7: data access is method-only
 
-      expect(event.name).toBe('Meeting')
-      expect(event.date).toBeInstanceOf(Date)
+      expect(event.get('name')).toBe('Meeting')
+      expect(event.get('date')).toBeInstanceOf(Date)
 
       // Also verify serialization
       const jsonResult = doc.toJSON()
@@ -167,10 +167,13 @@ describe('DateTimeDef - DateTime, Date, and Time Types', () => {
 
     test('should handle datetime in arrays', () => {
       const schema = 'dates: [datetime]'
-      const result = parse(`${schema}\n---\n[dt"2024-01-01", dt"2024-06-15", dt"2024-12-31"]`, null).toJSON()
+      const doc = parse(`${schema}\n---\n[dt"2024-01-01", dt"2024-06-15", dt"2024-12-31"]`, null)
 
-      expect(result.dates).toHaveLength(3)
-      expect(result.dates[0]).toBeInstanceOf(Date)
+      // toObject() keeps values live -- a datetime is a Date, at any depth.
+      expect(doc.toObject().dates).toHaveLength(3)
+      expect(doc.toObject().dates[0]).toBeInstanceOf(Date)
+      // toJSON() is the JSON projection -- a datetime is an ISO-8601 string, at any depth.
+      expect(doc.toJSON().dates[0]).toBe('2024-01-01T00:00:00.000Z')
     })
 
     test('should handle boundary dates', () => {

@@ -243,9 +243,12 @@ describe('Schema Processors', () => {
         .setOpen(false)
         .build();
 
+      // Assert the CODE, not the message: codes are stable, messages may vary. A closed schema
+      // given a member it does not declare is `unknown-member` for every spelling of that fault --
+      // surplus positional value, surplus named member, or an undeclared memberdef option.
       expect(() => {
         processObject(objectNode, schema);
-      }).toThrow(/additional.*not allowed/i);
+      }).toThrow(expect.objectContaining({ errorCode: 'unknown-member' }));
     });
 
     test('should throw for duplicate keyed members', () => {

@@ -7,7 +7,10 @@ import ValidationError from '../errors/io-validation-error';
 import Schema from './schema';
 import MemberDef from './types/memberdef';
 import TypedefRegistry from './typedef-registry';
+import registerTypes from './types';
 import TokenNode from '../parser/nodes/tokens';
+import { undeclaredMemberDef } from './utils/member-utils';
+import { unusableTypeCode } from './types/common-number'
 
 /**
  * Resolves variable references in memberDef fields like default, min, max, choices.
@@ -77,14 +80,19 @@ export function loadObject(
   schema: Schema | string,
   defs?: Definitions
 ): InternetObject {
+  // Ensure built-in types are registered. Registration is otherwise only triggered as an import
+  // side effect of `facade.ts`, which bundlers drop under `sideEffects: false` — leaving the
+  // registry empty and `TypedefRegistry.get('string')` throwing 'not registered'. Idempotent.
+  registerTypes();
+
   // Resolve schema if it's a string reference
   if (typeof schema === 'string') {
     if (!defs) {
-      throw new IOError(ErrorCodes.definitionsRequired, `Schema reference '${schema}' requires definitions`);
+      throw new ValidationError(ErrorCodes.missingDefinitions, `Schema reference '${schema}' requires definitions`);
     }
     const resolvedSchema = defs.getV(schema);
     if (!(resolvedSchema instanceof Schema)) {
-      throw new IOError(ErrorCodes.schemaNotFound, `Schema '${schema}' not found or invalid`);
+      throw new ValidationError(ErrorCodes.undefinedSchema, `Schema '${schema}' not found or invalid`);
     }
     schema = resolvedSchema;
   }
@@ -105,6 +113,11 @@ export function loadObject(
  */
 function _loadObject(data: any, schema: Schema, defs?: Definitions): InternetObject {
   const result = new InternetObject();
+  // Declaring the shape is what makes member position a property of the SCHEMA rather than of
+  // the order the data happened to arrive in. The loop below already walks `schema.names`, so
+  // nothing moves here today -- it is later writes, and the parse route, that need the rule to
+  // exist at all.
+  result.attachSchema(schema);
   const processedNames = new Set<string>();
 
   // Process schema-defined members
@@ -114,7 +127,7 @@ function _loadObject(data: any, schema: Schema, defs?: Definitions): InternetObj
 
     const typeDef = TypedefRegistry.get(memberDef.type);
     if (!typeDef) {
-      throw new IOError(ErrorCodes.invalidType, `Type '${memberDef.type}' is not registered.`);
+      throw new ValidationError(unusableTypeCode(memberDef.type), `Type '${memberDef.type}' is not registered.`);
     }
 
     // Use loadObject() method if available
@@ -142,7 +155,7 @@ function _loadObject(data: any, schema: Schema, defs?: Definitions): InternetObj
         result.set(name, memberDef.default);
       } else if (!memberDef.optional) {
         throw new ValidationError(
-          ErrorCodes.valueRequired,
+          ErrorCodes.missingValue,
           `Value required for field '${name}'`
         );
       }
@@ -157,12 +170,7 @@ function _loadObject(data: any, schema: Schema, defs?: Definitions): InternetObj
       if (!processedNames.has(key)) {
         let memberDef: MemberDef;
 
-        // Use schema.open constraints if it's a MemberDef, otherwise type 'any'
-        if (typeof schema.open === 'object' && schema.open.type) {
-          memberDef = { ...schema.open, path: key };
-        } else {
-          memberDef = { type: 'any', path: key };
-        }
+        memberDef = undeclaredMemberDef(key, schema.open);
 
         const typeDef = TypedefRegistry.get(memberDef.type);
         if (typeDef && 'load' in typeDef && typeDef.load) {
@@ -220,14 +228,17 @@ export function loadCollection(
   defs?: Definitions,
   errorCollector?: Error[]
 ): Collection<InternetObject> {
+  // Ensure built-in types are registered (see loadObject). Idempotent.
+  registerTypes();
+
   // Resolve schema if it's a string reference
   if (typeof schema === 'string') {
     if (!defs) {
-      throw new IOError(ErrorCodes.definitionsRequired, `Schema reference '${schema}' requires definitions`);
+      throw new ValidationError(ErrorCodes.missingDefinitions, `Schema reference '${schema}' requires definitions`);
     }
     const resolvedSchema = defs.getV(schema);
     if (!(resolvedSchema instanceof Schema)) {
-      throw new IOError(ErrorCodes.schemaNotFound, `Schema '${schema}' not found or invalid`);
+      throw new ValidationError(ErrorCodes.undefinedSchema, `Schema '${schema}' not found or invalid`);
     }
     schema = resolvedSchema;
   }
@@ -235,7 +246,7 @@ export function loadCollection(
   // Type check
   if (!Array.isArray(dataArray)) {
     throw new ValidationError(
-      ErrorCodes.notAnArray,
+      ErrorCodes.expectedArray,
       `Expecting an array but found ${typeof dataArray}`
     );
   }
@@ -263,7 +274,7 @@ export function loadCollection(
         // This allows downstream code to know which items failed
         const errorObj = {
           __error: true,
-          category: error instanceof ValidationError ? 'validation' : 'runtime',
+          category: error instanceof ValidationError ? 'validation' : 'general',
           message: error.message,
           collectionIndex: i
         };

@@ -287,45 +287,29 @@ describe("AST Parser - Object Parsing", () => {
     });
   });
 
+  // Under the section-recovery policy (P1) the parser ACCUMULATES structural errors (getErrors)
+  // instead of throwing; each malformed input must still surface a designated error.
   describe("Object Error Handling", () => {
-    it("should throw error for invalid object keys", () => {
-      const input = `{{}: "value"}`;  // Object as key
+    function errorsFor(input: string): string[] {
+      const tokens = new Tokenizer(input).tokenize();
+      const docNode: any = new ASTParser(tokens).parse();
+      return (docNode.getErrors() ?? []).map((e: any) => e?.errorCode);
+    }
 
-      const tokenizer = new Tokenizer(input);
-      const tokens = tokenizer.tokenize();
-      const astParser = new ASTParser(tokens);
-
-      expect(() => astParser.parse()).toThrow();
+    it("should record error for invalid object keys", () => {
+      expect(errorsFor(`{{}: "value"}`).length).toBeGreaterThan(0);  // Object as key
     });
 
-    it("should throw error for missing comma between members", () => {
-      const input = `{name: "Alice" age: 25}`;  // Missing comma
-
-      const tokenizer = new Tokenizer(input);
-      const tokens = tokenizer.tokenize();
-      const astParser = new ASTParser(tokens);
-
-      expect(() => astParser.parse()).toThrow();
+    it("should record error for missing comma between members", () => {
+      expect(errorsFor(`{name: "Alice" age: 25}`).length).toBeGreaterThan(0);
     });
 
-    it("should throw error for unclosed object", () => {
-      const input = `{name: "Alice", age: 25`;  // Missing closing brace
-
-      const tokenizer = new Tokenizer(input);
-      const tokens = tokenizer.tokenize();
-      const astParser = new ASTParser(tokens);
-
-      expect(() => astParser.parse()).toThrow();
+    it("should record error for unclosed object", () => {
+      expect(errorsFor(`{name: "Alice", age: 25`).length).toBeGreaterThan(0);
     });
 
-    it("should throw error for unexpected end of input", () => {
-      const input = `{name: "Alice", age:`;  // Incomplete value
-
-      const tokenizer = new Tokenizer(input);
-      const tokens = tokenizer.tokenize();
-      const astParser = new ASTParser(tokens);
-
-      expect(() => astParser.parse()).toThrow();
+    it("should record error for unexpected end of input", () => {
+      expect(errorsFor(`{name: "Alice", age:`).length).toBeGreaterThan(0);
     });
   });
 });

@@ -52,7 +52,7 @@ describe('load() and stringify() - basic types', () => {
     test('validates range and multipleOf', () => {
       const memberDef: any = { type: 'number', path: 'age', min: 0, max: 120, multipleOf: 5 }
       expect(num.load(25, memberDef)).toBe(25)
-      expect(() => num.load(-1, memberDef)).toThrow(/range|out/i)
+      expect(() => num.load(-1, memberDef)).toThrow(expect.objectContaining({ errorCode: expect.stringMatching(/^mismatched-(min|max)$|^out-of-range-/) }))
       expect(() => num.load(26, memberDef)).toThrow(/multiple/i)
     })
   })
@@ -61,8 +61,12 @@ describe('load() and stringify() - basic types', () => {
     const num = new NumberDef('number') as any
 
     test('validates before formatting and supports formats', () => {
+      // A radix format keeps its IO prefix, or `ff` re-parses as an open string (ISSUE-16 row d).
       const memberDef: any = { type: 'number', path: 'n', format: 'hex' }
-      expect(num.stringify(255, memberDef)).toBe('ff')
+      expect(num.stringify(255, memberDef)).toBe('0xff')
+      expect(num.stringify(-255, memberDef)).toBe('-0xff')
+      // A fractional value has no radix literal — fall back to the decimal spelling.
+      expect(num.stringify(3.14, memberDef)).toBe('3.14')
     })
   })
 

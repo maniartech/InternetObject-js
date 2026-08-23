@@ -1,0 +1,16 @@
+{
+  "name": "multi-record-under-one-schema",
+  "description": "Two records share one explicit schema; one item per record.",
+  "protocol": ["§4", "§5", "§6"],
+  "definitions": null,
+  "options": { "defaultSchema": null },
+  "input": "~ $User: { name: string, age: int }\n--- $User\n~ Alice, 30\n~ Bob, 25\n",
+  "chunkings": ["whole", "per-line", "per-byte"],
+  "expected": {
+    "items": [
+      { "kind": "record", "recordIndex": 0, "schemaName": "$User", "value": { "name": "Alice", "age": 30 } },
+      { "kind": "record", "recordIndex": 1, "schemaName": "$User", "value": { "name": "Bob", "age": 25 } }
+    ],
+    "fatal": null
+  }
+}

@@ -18,13 +18,13 @@ describe('Definition Inference (inferDefs)', () => {
    *   1. Merge them into a single schema (e.g., $question, $choice)
    *   2. Apply multi-pass inference to detect optional/nullable fields
    *
-   * IMPACT: Causes "value-required" errors when loading data where some
+   * IMPACT: Causes "missing-value" errors when loading data where some
    * dynamic-keyed objects are missing fields that others have.
    */
   describe('BUG REPRODUCTION: Dynamic Key Objects', () => {
 
     it('REPRODUCTION: shows current behavior - separate schemas per dynamic key', () => {
-      // Simplified version of the Qualtrics survey JSON
+      // Simplified version of the survey-export JSON
       const data = {
         choices: {
           '1': { recode: '0', description: 'Zero' },
@@ -73,8 +73,8 @@ describe('Definition Inference (inferDefs)', () => {
       console.log('Object: $item exists:', !!itemSchemaFromObject);
     });
 
-    it('REPRODUCTION: Real-world Qualtrics survey structure that fails', () => {
-      // This structure causes "value-required" error on loadInferred
+    it('REPRODUCTION: real-world survey-export structure that fails', () => {
+      // This structure causes "missing-value" error on loadInferred
       const surveyData = {
         result: {
           questions: {
@@ -103,7 +103,7 @@ describe('Definition Inference (inferDefs)', () => {
       // 1. First choice encountered: QID1.choices.1 → creates $1 schema: {recode, description}
       // 2. Later: QID3.choices.1 is expected to match existing $1 schema
       // 3. But QID3.choices.1 is MISSING 'description'
-      // 4. loadInferred fails: "value-required" for description
+      // 4. loadInferred fails: "missing-value" for description
       //
       // DESIRED PATH:
       // 1. Recognize all choices.* values are same "type"
@@ -115,7 +115,7 @@ describe('Definition Inference (inferDefs)', () => {
 
   describe('Dynamic Key Objects with Varying Structures', () => {
     it('marks fields as optional when dynamic-keyed objects have different structures', () => {
-      // This is a real-world case from Qualtrics API where choices is an object
+      // A real-world survey-export case where `choices` is an object keyed by choice id
       // with numeric keys "1", "2", etc. and each choice may have different fields
       const data = {
         questions: {
@@ -156,7 +156,7 @@ describe('Definition Inference (inferDefs)', () => {
     });
 
     it('handles survey-like structure with questions having varying choice structures', () => {
-      // Simplified version of the Qualtrics survey JSON structure
+      // Simplified version of the survey-export JSON structure
       const surveyData = {
         result: {
           id: 'QID',
@@ -1429,5 +1429,54 @@ describe('Definition Inference (inferDefs)', () => {
         // expect(reparsed.toJSON()).toEqual(products);
       });
     });
+  });
+});
+
+/**
+ * Salvaged from the former `tests/trial.test.ts`, a scratch playground whose other two cases
+ * asserted nothing. This one does, and it pins a rule worth pinning: a string that LOOKS numeric
+ * stays a string.
+ *
+ * The trap is that `"0001"` is a plausible integer to the eye, and an inferrer that sniffs the
+ * text rather than the JS type will call it `number` — losing the leading zeros on the way back
+ * out. Inference is out of the 1.0 conformance contract (ADR 0004) and so has no corpus coverage;
+ * this suite is the only thing holding it.
+ */
+describe('Definition Inference — a numeric-looking string is still a string', () => {
+  const data = {
+    id: '0001',
+    type: 'donut',
+    name: 'Cake',
+    ppu: 0.55,
+    batters: {
+      batter: [
+        { id: '1001', type: 'Regular' },
+        { id: '1002', type: 'Chocolate' },
+      ],
+    },
+    topping: [
+      { id: '5001', type: 'None' },
+      { id: '5002', type: 'Glazed' },
+    ],
+  };
+
+  it('infers string, not number, at every depth', () => {
+    const { definitions, rootSchema } = inferDefs(data);
+
+    // `topping` and `batter` items share one shape ({id, type}), so canonicalization collapses
+    // them into a single definition and both members reference $batter.
+    expect(rootSchema.defs['topping'].schemaRef).toBe('$batter');
+
+    const batterSchema = definitions.get('$batter');
+    const toppingSchema = definitions.get(String(rootSchema.defs['topping'].schemaRef));
+
+    expect(rootSchema.defs['id'].type).toBe('string');
+    expect(batterSchema?.defs['id']?.type).toBe('string');
+    expect(toppingSchema?.defs['id']?.type).toBe('string');
+  });
+
+  it('carries the string type through to the emitted header', () => {
+    const iotext = stringify(loadInferred(data), { includeHeader: true });
+    expect(iotext).toContain('id: string');
   });
 });

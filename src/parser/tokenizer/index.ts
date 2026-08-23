@@ -257,7 +257,7 @@ class Tokenizer {
       const currentPos = createPosition(this.pos, this.row, this.col);
 
       const error = new SyntaxError(
-        ErrorCodes.stringNotClosed,
+        ErrorCodes.unterminatedString,
         `Unterminated string literal. Expected closing quote '"' before end of input.`,
         unclosedConstructRange(openingToken, currentPos),
         true
@@ -299,25 +299,30 @@ class Tokenizer {
     switch (this.input[this.pos]) {
       case "b":
         value += "\b";
+        this.advance(); // Move past the escape char
         break;
       case "f":
         value += "\f";
+        this.advance(); // Move past the escape char
         break;
       case "n":
         value += "\n";
+        this.advance(); // Move past the escape char
         break;
       case "r":
         value += "\r";
+        this.advance(); // Move past the escape char
         break;
       case "t":
         value += "\t";
+        this.advance(); // Move past the escape char
         break;
       case "u":
         const hex = this.input.substring(this.pos + 1, this.pos + 5);
         if (regexHex4.test(hex)) {
           // /^[0-9a-fA-F]{4}$/
           value += String.fromCharCode(parseInt(hex, 16));
-          this.advance(4); // Move past the 4 hex digits
+          this.advance(5); // Move past 'u' and the 4 hex digits
           needToNormalize = true;
         } else {
           throw new SyntaxError(
@@ -331,7 +336,7 @@ class Tokenizer {
         if (regexHex2.test(hexByte)) {
           // /^[0-9a-fA-F]{2}$/
           value += String.fromCharCode(parseInt(hexByte, 16));
-          this.advance(2); // Move past the 2 hex digits
+          this.advance(3); // Move past 'x' and the 2 hex digits
           needToNormalize = true;
         } else {
           throw new SyntaxError(
@@ -393,7 +398,7 @@ class Tokenizer {
       const currentPos = createPosition(this.pos, this.row, this.col);
 
       const error = new SyntaxError(
-        ErrorCodes.stringNotClosed,
+        ErrorCodes.unterminatedString,
         `Unterminated annotated string literal. Expected closing quote '${annotation.quote}' before end of input.`,
         unclosedConstructRange(openingToken, currentPos),
         true
@@ -407,26 +412,39 @@ class Tokenizer {
       this.advance();
     }
 
-    // If we reached the end without finding the closing quote,
-    // treat it as an annotated string that goes to EOF
-    const tokenText = this.input.substring(start, this.pos);
-    let value: string;
+    // The loop above ends either at the closing quote or at end of input. Only the first is a
+    // string.
+    //
+    // This used to "treat it as an annotated string that goes to EOF": `r'Unclosed` yielded the
+    // string "Unclosed" with no error, while the regular string `"Unclosed` correctly reported
+    // `unterminated-string`. Two spellings of one fault, one of them silent — and silent is the
+    // dangerous one, because a truncated value that parses is indistinguishable from an intended
+    // one. It applies to every annotation (`r`, `b`, `dt`, `d`, `t`), not just raw strings.
+    if (this.reachedEnd && this.input[this.pos] !== annotation.quote) {
+      const tokenText = this.input.substring(start, this.pos);
+      const openingToken = Token.init(start, startRow, startCol, annotation.name + annotation.quote, annotation.name, "STRING");
+      const currentPos = createPosition(this.pos, this.row, this.col);
 
-    if (this.reachedEnd) {
-      // Extract value from unclosed string (from after opening quote to EOF)
-      value = tokenText.substring(annotation.name.length + 1);
-    } else {
-      this.advance(); // Move past the closing quotation mark
-      const fullTokenText = this.input.substring(start, this.pos);
-      value = fullTokenText.substring(annotation.name.length + 1, fullTokenText.length - 1);
+      const error = new SyntaxError(
+        ErrorCodes.unterminatedString,
+        `Unterminated annotated string literal. Expected closing quote '${annotation.quote}' before end of input.`,
+        unclosedConstructRange(openingToken, currentPos),
+        true
+      );
+
+      return this.createErrorToken(error, start, startRow, startCol, tokenText);
     }
+
+    this.advance(); // Move past the closing quotation mark
+    const fullTokenText = this.input.substring(start, this.pos);
+    const value = fullTokenText.substring(annotation.name.length + 1, fullTokenText.length - 1);
 
     // Prepare the token
     const token = new Token();
     token.pos = start;
     token.row = startRow;
     token.col = startCol;
-    token.token = this.reachedEnd ? tokenText : this.input.substring(start, this.pos);
+    token.token = fullTokenText;
     token.value = value;
 
     return token;
@@ -457,7 +475,7 @@ class Tokenizer {
     const valueStr = token.value as string;
     if (!REGEX_CACHE.base64.test(valueStr)) {
       const error = new SyntaxError(
-        ErrorCodes.invalidBase64,
+        ErrorCodes.invalidBinary,
         `Invalid base64 format '${valueStr.length > 20 ? valueStr.substring(0, 20) + '...' : valueStr}'. Expected valid base64 characters (A-Z, a-z, 0-9, +, /) with optional '=' padding.`,
         token
       );
@@ -482,18 +500,24 @@ class Tokenizer {
 
     try {
       let fn = (value: string): Date | null => null
+      // The marker picks the error code, so a broken `d'...'` reports `invalid-date` rather than
+      // naming a type the author never wrote.
+      let code: string = ErrorCodes.invalidDateTime
 
       switch (annotation.name) {
         case "dt":
           fn = dtParser.parseDateTime;
+          code = ErrorCodes.invalidDateTime;
           token.subType = TokenType.DATETIME
           break;
         case "d":
           fn = dtParser.parseDate;
+          code = ErrorCodes.invalidDate;
           token.subType = TokenType.DATE
           break;
         case "t":
           fn = dtParser.parseTime;
+          code = ErrorCodes.invalidTime;
           token.subType = TokenType.TIME
           break;
         default:
@@ -502,7 +526,9 @@ class Tokenizer {
 
       const dt = typeof token.value === 'string' ? fn(token.value) : null;
       if (!dt) {
-        const error = new SyntaxError(ErrorCodes.invalidDateTime,
+        // The marker chose the code in the switch above, so the code always names the type the
+        // author actually wrote.
+        const error = new SyntaxError(code,
           `Invalid ${annotation.name === 'dt' ? 'datetime' : annotation.name === 'd' ? 'date' : 'time'} format '${token.value}'. Expected valid ISO 8601 format.`,
           token);
         return this.createErrorToken(error, token.pos, token.row, token.col, token.token);
@@ -525,6 +551,7 @@ class Tokenizer {
     let hasDecimal = false;
     let hasExponent = false;
     let prefix = "";
+    let signStr = "";
     let subType: string | undefined;
 
     // Check if current position points to a plus or minus sign.
@@ -546,6 +573,7 @@ class Tokenizer {
       // Otherwise, allow sign only if immediately followed by a digit or dot.
       if (is.isDigit(this.input[this.pos + 1]) || this.input[this.pos + 1] === ".") {
         rawValue += sign;
+        signStr = sign;
         this.advance();
       } else {
         return null;
@@ -568,20 +596,32 @@ class Tokenizer {
     if (this.input[this.pos] === ".") {
       // If there is a dot, ensure it is followed by a digit.
       if (!reFloatDigit.test(this.input[this.pos + 1])) {
+        // REWIND. A sign has already been consumed by this point, and bailing out without
+        // restoring the position left the caller resuming AFTER it — so the sign was dropped
+        // from the value entirely: `-.j` decoded as the string ".j", losing a character the author
+        // wrote. Every other bail-out in this function either rewinds or has not advanced yet.
+        this.pos = start;
+        this.row = startRow;
+        this.col = startCol;
+        this.reachedEnd = false;
         return null;
       }
     }
 
     // Determine the number format
     if (this.input[this.pos] === "0" && nonDecimalPrefixes.includes(this.input[this.pos + 1] as any)) {
+      // A sign is spelled BEFORE the base prefix (`-0xff`), never inside the digits. It was
+      // buffered into `rawValue` above for the decimal paths; move it into `prefix` here so the
+      // assembled literal reads `-0xff` and not `0x-ff` (which is not a number at all).
+      rawValue = "";
       switch (this.input[this.pos + 1]) {
         case "X":
         case "x":
           base = 16;
           subType = "HEX";
-          prefix = this.input[this.pos] + this.input[this.pos + 1];
+          prefix = signStr + this.input[this.pos] + this.input[this.pos + 1];
           this.advance(2);
-          while (reHex.test(this.input[this.pos])) {
+          while (!this.reachedEnd && reHex.test(this.input[this.pos])) {
             rawValue += this.input[this.pos];
             this.advance();
           }
@@ -591,9 +631,9 @@ class Tokenizer {
         case "o":
           base = 8;
           subType = "OCTAL";
-          prefix = this.input[this.pos] + this.input[this.pos + 1];
+          prefix = signStr + this.input[this.pos] + this.input[this.pos + 1];
           this.advance(2);
-          while (reOctal.test(this.input[this.pos])) {
+          while (!this.reachedEnd && reOctal.test(this.input[this.pos])) {
             rawValue += this.input[this.pos];
             this.advance();
           }
@@ -603,9 +643,9 @@ class Tokenizer {
         case "b":
           base = 2;
           subType = "BINARY";
-          prefix = this.input[this.pos] + this.input[this.pos + 1];
+          prefix = signStr + this.input[this.pos] + this.input[this.pos + 1];
           this.advance(2);
-          while (reBinary.test(this.input[this.pos])) {
+          while (!this.reachedEnd && reBinary.test(this.input[this.pos])) {
             rawValue += this.input[this.pos];
             this.advance();
           }
@@ -647,26 +687,137 @@ class Tokenizer {
       }
     }
 
+    // A non-decimal prefix (0x/0o/0b) that delivered NO valid digits: `0x`, `0o9`, `0b2`,
+    // `0b 1010`. The prefix ANNOUNCES a base, so failing to produce one is a failed number
+    // whatever follows it — the space in `0b 1010` does not rescue it.
+    //
+    // This is the load-bearing half of the rule. The other half is the merge-path check
+    // (`isFailedNumericLiteral`), which catches a prefix that decoded and then ran on into
+    // junk (`0b12`: `1` is valid binary, `2` is not).
+    //
+    // Between them they leave prose alone, because prose that begins with a prefix begins with
+    // a VALID one: `0xFFn) and bad-value fallbacks` decodes `0xFF` happily and is an open
+    // string. That distinction — did the prefix deliver anything? — is what separates a
+    // broken literal from a word, and it is why a run with no prefix at all (`013ABSD`, a code
+    // of the kind people write every day) is never touched. See ADR 0003 §2.
+    //
+    // Consume the whole alphanumeric run so the reported text is the literal the author wrote,
+    // and so nothing is left for the merge step to glue on.
+    if (base !== 10 && rawValue === "") {
+      while (!this.reachedEnd && /[0-9A-Za-z_]/.test(this.input[this.pos])) {
+        this.advance();
+      }
+      const tokenText = this.input.substring(start, this.pos);
+      const error = new SyntaxError(
+        ErrorCodes.invalidNumber,
+        `Invalid number literal '${tokenText}'. The '${tokenText.replace(/^[+-]?0/, '0').slice(0, 2)}' prefix requires at least one valid digit for its base (0x hex, 0o octal, 0b binary). To write this as text, quote it: "${tokenText}".`,
+        this.currentPosition
+      );
+      return this.createErrorToken(error, start, startRow, startCol, tokenText);
+    }
+
     let tokenType = TokenType.NUMBER;
     let numberValue: number | bigint | Decimal;
 
+    // An incomplete scientific mantissa — a dangling exponent like "5e" / "12E" / "5e+" — is not a
+    // pure number, so a following m/n suffix does NOT form a typed literal. Rewind and let the whole
+    // run become an OPEN_STRING (`5em` -> "5em", `5en` -> "5en"). A COMPLETE exponent (`12e5`) is
+    // unaffected and continues as a valid scientific bigint / decimal.
+    if (
+      hasExponent &&
+      (this.input[this.pos] === "n" || this.input[this.pos] === "m") &&
+      !/[eE][+-]?[0-9]+$/.test(rawValue)
+    ) {
+      this.pos = start;
+      this.row = startRow;
+      this.col = startCol;
+      this.reachedEnd = false;
+      return null;
+    }
+
     // if the next char is 'n', then it is a BigInt literal
     if (this.input[this.pos] === "n") {
+      // BigInt is integer-only. A decimal POINT is invalid (a bigint is not a decimal). Scientific
+      // notation IS allowed when it denotes an integer — i.e. a non-negative exponent (`12e5n`).
+      // Anything else is a designated invalid-bigint ERROR token (never throw, never an OPEN_STRING).
+      let bigIntValue: bigint | null = null;
+      if (!hasDecimal) {
+        if (hasExponent) {
+          const sci = (prefix + rawValue).match(/^([+-]?\d+)[eE]\+?(\d+)$/);
+          if (sci) {
+            bigIntValue = BigInt(sci[1]) * (10n ** BigInt(sci[2]));
+          }
+        } else {
+          // `BigInt()` accepts `0xff` and `-42`, but NOT a signed radix literal like `-0xff`.
+          // Negate the unsigned magnitude instead of handing it the sign.
+          const literal = prefix + rawValue;
+          bigIntValue = literal.startsWith("-")
+            ? -BigInt(literal.slice(1))
+            : BigInt(literal.startsWith("+") ? literal.slice(1) : literal);
+        }
+      }
+      if (bigIntValue === null) {
+        rawValue += "n";
+        this.advance(); // consume the 'n' so the token text spans the whole literal
+        const tokenText = prefix + rawValue;
+        const error = new SyntaxError(
+          ErrorCodes.invalidBigInt,
+          `Invalid BigInt literal '${tokenText}'. BigInt values must be integers (no decimal point; scientific notation requires a non-negative exponent).`,
+          this.currentPosition
+        );
+        return this.createErrorToken(error, start, startRow, startCol, tokenText);
+      }
       tokenType = TokenType.BIGINT;
-      numberValue = BigInt(prefix + rawValue);
+      numberValue = bigIntValue;
       rawValue += "n";
       this.advance();
     } else if (this.input[this.pos] === "m") {
-      // Decimal literal
+      // Decimal literal. A malformed mantissa (missing leading digit `.5m`, or missing trailing
+      // digit `123.m`) is invalid per the decimal spec — emit a designated invalid-decimal ERROR
+      // token (never throw, never silently an OPEN_STRING), mirroring invalid-bigint.
+      let decimalValue: Decimal;
+      try {
+        decimalValue = new Decimal(rawValue);
+      } catch {
+        rawValue += "m";
+        this.advance(); // consume 'm' so the token text spans the whole literal
+        const tokenText = prefix + rawValue;
+        const error = new SyntaxError(
+          ErrorCodes.invalidDecimal,
+          `Invalid Decimal literal '${tokenText}'. A decimal must have a digit before and after the decimal point (e.g. '0.5m').`,
+          this.currentPosition
+        );
+        return this.createErrorToken(error, start, startRow, startCol, tokenText);
+      }
       tokenType = TokenType.DECIMAL;
-      numberValue = new Decimal(rawValue);
-      rawValue += "f";
+      numberValue = decimalValue;
+      // The literal ends in 'm', so the token TEXT must too. This appended 'f' — an internal
+      // marker with no reader — and the text is not private: when a decimal is followed by more
+      // open-string characters the two tokens MERGE, and the marker left the tokenizer as data.
+      // `123.45mm` decoded as the string "123.45fm", an `f` the input never contained.
+      rawValue += "m";
       this.advance();
     } else {
       if (base === 10 && (hasDecimal || hasExponent)) {
+        // RULE 1, all or nothing. A dangling exponent — `1e`, `12E`, `5e+` — is not a complete
+        // number, so the whole run is an open string. It is NOT an error: `e` is an ordinary letter
+        // and makes no claim, so `1e` is no more a broken number than `013ABSD` is.
+        //
+        // What must never happen is the third option. `parseFloat("1e")` returns 1, so this used to
+        // decode as the NUMBER 1 — a value the author never wrote, with no text left to inspect.
+        // Rewinding is what forbids inventing a value from a partial parse.
+        if (hasExponent && !/[eE][+-]?[0-9]+$/.test(rawValue)) {
+          this.pos = start;
+          this.row = startRow;
+          this.col = startCol;
+          this.reachedEnd = false;
+          return null;
+        }
         numberValue = parseFloat(rawValue);
       } else {
+        // For a radix literal the sign now lives in `prefix`, so apply it to the magnitude.
         numberValue = parseInt(rawValue, base);
+        if (base !== 10 && prefix.startsWith("-")) numberValue = -numberValue;
         if (isNaN(numberValue as number)) {
           assertNever("Expected a number but got NaN", this.currentPosition.getStartPos());
         }
@@ -682,6 +833,25 @@ class Tokenizer {
       tokenType,
       subType
     );
+  }
+
+  /**
+   * Does this run carry a base-prefix CLAIM it failed to keep?
+   *
+   * RULE 2. `0x`, `0o` and `0b` can only mean "a number follows in this base" — nothing else in
+   * the format begins that way. A run that makes the claim and does not keep it is an error, not
+   * an open string. (The type suffixes `m` and `n` make the same kind of claim at the other end,
+   * and are handled where they are read, as `invalid-decimal` / `invalid-bigint`.)
+   *
+   * A run that makes NO claim is never touched by this: `013ABSD`, `1.2.3`, `10.0.0.1`, `12mm`,
+   * `3pm` and `1e` are all ordinary open strings under Rule 1 (all or nothing).
+   *
+   * The end-anchor is what keeps prose safe. Without it, an open string that merely begins with a
+   * prefix and runs on — "0xFFn) and bad-value fallbacks" — reads as a failed number and takes
+   * the whole document down with it. Once punctuation or a space appears, the run is text.
+   */
+  private static isFailedNumericLiteral(text: string): boolean {
+    return /^[+-]?0[xXoObB][0-9A-Za-z_]*$/.test(text)
   }
 
   private parseLiteralOrOpenString(): Token | null {
@@ -932,7 +1102,12 @@ class Tokenizer {
 
         const token = this.parseNumber();
 
-        if (token) {
+        if (token && token.type === TokenType.ERROR) {
+          // A designated error token is final. Merging it with whatever follows would splice the
+          // fault into a larger open string and lose it: `0b 1010` reported `invalid-number` for
+          // the `0b`, then glued it to ` 1010` and returned the string "0b 1010" with no error.
+          tokens[tokenIndex++] = token;
+        } else if (token) {
           const spaces = this.skipWhitespaces();
           if (!this.reachedEnd) {
             // If the next character (2abc) is not a symbol or whitespace, then
@@ -946,11 +1121,43 @@ class Tokenizer {
               if (nextToken) {
                 nextToken.type = TokenType.STRING;
                 nextToken.subType = "OPEN_STRING";
+                // Take the value from the TEXT, not from whatever the run parsed as. This token is
+                // being forced to an open string, and `parseLiteralOrOpenString` may have read it
+                // as a keyword — `T` comes back with the boolean value `true`. Concatenating that
+                // spelled the keyword out into the merged string, so `5T` decoded as "5true": two
+                // characters in, five out, and a word the author never wrote.
+                nextToken.value = nextToken.token;
                 if (spaces.length > 0) {
                   nextToken.token = spaces + nextToken.token;
                   nextToken.value = spaces + nextToken.value;
                 }
-                tokens[tokenIndex++] = this.mergeTokens(token, nextToken);
+                const merged = this.mergeTokens(token, nextToken);
+                // A merged run of only digits and dots (a multi-dot, non-numeric mantissa) ending
+                // in a lowercase m/n suffix is a botched typed literal, not a string — e.g.
+                // `12.34.56m`. Emit a designated error. The guard is deliberately narrow (digits and
+                // dots only) so number-prefixed words like `3pm`/`5km`/`2cm` stay OPEN_STRING.
+                const botched = (merged.token as string).match(/^[+-]?[0-9]*(?:\.[0-9]*){2,}([mn])$/);
+                if (botched) {
+                  const isDec = botched[1] === "m";
+                  const error = new SyntaxError(
+                    isDec ? ErrorCodes.invalidDecimal : ErrorCodes.invalidBigInt,
+                    `Invalid ${isDec ? "Decimal" : "BigInt"} literal '${merged.token}'. A ${isDec ? "decimal" : "bigint"} must be a valid number (a single decimal point at most).`,
+                    merged
+                  );
+                  tokens[tokenIndex++] = this.createErrorToken(error, merged.pos, merged.row, merged.col, merged.token as string);
+                } else if (Tokenizer.isFailedNumericLiteral(merged.token as string)) {
+                  // A numeric literal that did not decode. Reaching here means the number parser
+                  // rewound and the remainder was swept into an open string -- which is how `0xGH`
+                  // used to become the STRING "0xGH" with no error at all.
+                  const error = new SyntaxError(
+                    ErrorCodes.invalidNumber,
+                    `Invalid number literal '${merged.token}'. Expected digits valid for the declared base (0x hex, 0o octal, 0b binary) and at most one decimal point.`,
+                    merged
+                  );
+                  tokens[tokenIndex++] = this.createErrorToken(error, merged.pos, merged.row, merged.col, merged.token as string);
+                } else {
+                  tokens[tokenIndex++] = merged;
+                }
               } else {
                 tokens[tokenIndex++] = token;
               }
@@ -989,7 +1196,7 @@ class Tokenizer {
               break;
 
             default:
-              const error = new SyntaxError(ErrorCodes.unsupportedAnnotation,
+              const error = new SyntaxError(ErrorCodes.unknownAnnotation,
                 `Unsupported annotation '${annotation.name}'. Supported annotations are: 'r' (raw string), 'b' (binary), 'dt' (datetime), 'd' (date), 't' (time).`,
                 this.currentPosition);
               const tokenText = this.input.substring(this.pos, this.pos + annotation.name.length + 1);
@@ -1022,7 +1229,15 @@ class Tokenizer {
     this.advance(3); // Advance past the "---"
     this.skipWhitespaces(true);
 
-    const match = reSectionSchemaName.exec(this.input.substring(this.pos));
+    // Bound the schema/name lookahead to the current line rather than copying the
+    // entire remaining input. A section header's name/schema always sits on the
+    // same line as `---`, and reSectionSchemaName never matches across a newline,
+    // so this is behavior-preserving while keeping lookahead bounded — it avoids
+    // O(n^2) substring copies on large multi-section documents and unblocks
+    // incremental (chunk-fed) tokenization. See IMPLEMENTATION-GAPS.md Gap 18.
+    const newlineIdx = this.input.indexOf('\n', this.pos);
+    const lineEnd = newlineIdx === -1 ? this.inputLength : newlineIdx;
+    const match = reSectionSchemaName.exec(this.input.substring(this.pos, lineEnd));
 
     if (match) {
       let schema: string | undefined;
@@ -1070,7 +1285,7 @@ class Tokenizer {
 
           // Once the sep is detected, the schema must be present
           if (!schema) {
-            const error = new SyntaxError(ErrorCodes.schemaMissing,
+            const error = new SyntaxError(ErrorCodes.missingSchema,
               `Missing schema definition after section separator. Expected schema name starting with '$' (e.g., '$mySchema').`,
               this.currentPosition);
             tokens[tokenIndex++] = this.createErrorToken(error, this.pos, this.row, this.col, "");

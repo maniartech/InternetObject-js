@@ -207,55 +207,33 @@ describe("AST Parser - Array Parsing", () => {
     });
   });
 
+  // Under the section-recovery policy (P1) the parser ACCUMULATES structural errors in the document
+  // (getErrors) instead of throwing. Each malformed input must still surface a designated error.
   describe("Array Error Handling", () => {
-    it("should throw error for unclosed array", () => {
-      const input = `{data: [1, 2, 3}`;  // Missing closing bracket
+    function errorsFor(input: string): string[] {
+      const tokens = new Tokenizer(input).tokenize();
+      const docNode: any = new ASTParser(tokens).parse();
+      return (docNode.getErrors() ?? []).map((e: any) => e?.errorCode);
+    }
 
-      const tokenizer = new Tokenizer(input);
-      const tokens = tokenizer.tokenize();
-      const astParser = new ASTParser(tokens);
-
-      expect(() => astParser.parse()).toThrow();
+    it("should record error for unclosed array", () => {
+      expect(errorsFor(`{data: [1, 2, 3}`).length).toBeGreaterThan(0);
     });
 
-    it("should throw error for array without opening bracket", () => {
-      const input = `{data: 1, 2, 3]}`;  // Missing opening bracket
-
-      const tokenizer = new Tokenizer(input);
-      const tokens = tokenizer.tokenize();
-      const astParser = new ASTParser(tokens);
-
-      expect(() => astParser.parse()).toThrow();
+    it("should record error for array without opening bracket", () => {
+      expect(errorsFor(`{data: 1, 2, 3]}`).length).toBeGreaterThan(0);
     });
 
-    it("should throw error for consecutive commas in array", () => {
-      const input = `{data: [1, , 3]}`;  // Empty element
-
-      const tokenizer = new Tokenizer(input);
-      const tokens = tokenizer.tokenize();
-      const astParser = new ASTParser(tokens);
-
-      expect(() => astParser.parse()).toThrow();
+    it("should record error for consecutive commas in array", () => {
+      expect(errorsFor(`{data: [1, , 3]}`).length).toBeGreaterThan(0);
     });
 
-    it("should throw error for trailing comma followed by closing bracket", () => {
-      const input = `{data: [1, 2, 3,]}`;  // Trailing comma
-
-      const tokenizer = new Tokenizer(input);
-      const tokens = tokenizer.tokenize();
-      const astParser = new ASTParser(tokens);
-
-      expect(() => astParser.parse()).toThrow();
+    it("should record error for trailing comma followed by closing bracket", () => {
+      expect(errorsFor(`{data: [1, 2, 3,]}`).length).toBeGreaterThan(0);
     });
 
-    it("should throw error for unexpected end of input in array", () => {
-      const input = `{data: [1, 2,`;  // Incomplete array
-
-      const tokenizer = new Tokenizer(input);
-      const tokens = tokenizer.tokenize();
-      const astParser = new ASTParser(tokens);
-
-      expect(() => astParser.parse()).toThrow();
+    it("should record error for unexpected end of input in array", () => {
+      expect(errorsFor(`{data: [1, 2,`).length).toBeGreaterThan(0);
     });
   });
 

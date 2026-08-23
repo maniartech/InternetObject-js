@@ -9,10 +9,10 @@ describe("Escape Sequence Handling", () => {
       const tokens = tokenizer.tokenize();
 
       expect(tokens).toHaveLength(7);
-      expect(tokens[0].value).toBe("line1\nnline2"); // Actual tokenizer behavior
-      expect(tokens[2].value).toBe("tab\ttthere"); // Actual tokenizer behavior
+      expect(tokens[0].value).toBe("line1\nline2");
+      expect(tokens[2].value).toBe("tab\tthere");
       expect(tokens[4].value).toBe('quote"here');
-      expect(tokens[6].value).toBe("unicodeA1"); // Actual tokenizer behavior
+      expect(tokens[6].value).toBe("unicodeA");
     });
 
     it("should handle standard escape sequences", () => {
@@ -47,7 +47,7 @@ describe("Escape Sequence Handling", () => {
 
       expect(tokens).toHaveLength(1);
       expect(tokens[0].type).toBe(TokenType.STRING);
-      expect(tokens[0].value).toBe("A1B2C3"); // Actual tokenizer behavior
+      expect(tokens[0].value).toBe("ABC");
     });
 
     it("should handle unicode escape for special characters", () => {
@@ -57,7 +57,7 @@ describe("Escape Sequence Handling", () => {
 
       expect(tokens).toHaveLength(1);
       expect(tokens[0].type).toBe(TokenType.STRING);
-      expect(tokens[0].value).toBe("©9®E™2"); // Actual tokenizer behavior
+      expect(tokens[0].value).toBe("©®™");
     });
 
     it("should handle unicode escape for emoji", () => {
@@ -67,7 +67,7 @@ describe("Escape Sequence Handling", () => {
 
       expect(tokens).toHaveLength(1);
       expect(tokens[0].type).toBe(TokenType.STRING);
-      expect(tokens[0].value).toBe(String.fromCharCode(55357, 100, 56832, 48)); // Actual tokenizer behavior
+      expect(tokens[0].value).toBe(String.fromCharCode(55357, 56832)); // 😀 surrogate pair
     });
   });
 
@@ -79,7 +79,7 @@ describe("Escape Sequence Handling", () => {
 
       expect(tokens).toHaveLength(1);
       expect(tokens[0].type).toBe(TokenType.STRING);
-      expect(tokens[0].value).toBe("A1B2C3"); // Actual tokenizer behavior
+      expect(tokens[0].value).toBe("ABC");
     });
 
     it("should handle hex escape for control characters", () => {
@@ -89,7 +89,7 @@ describe("Escape Sequence Handling", () => {
 
       expect(tokens).toHaveLength(1);
       expect(tokens[0].type).toBe(TokenType.STRING);
-      expect(tokens[0].value).toBe("\x000\t9\nA\rD"); // Actual tokenizer behavior
+      expect(tokens[0].value).toBe(String.fromCharCode(0, 9, 10, 13));
     });
   });
 
@@ -223,7 +223,7 @@ describe("Escape Sequence Handling", () => {
       expect(tokens[0].type).toBe(TokenType.STRING);
       expect(tokens[2].type).toBe(TokenType.STRING);
       expect(tokens[4].type).toBe(TokenType.STRING);
-      expect(tokens[4].value).toBe("A1B2C3"); // Actual tokenizer behavior
+      expect(tokens[4].value).toBe("ABC");
     });
 
     it("should handle backslash at end of string", () => {

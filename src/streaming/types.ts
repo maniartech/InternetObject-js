@@ -22,36 +22,46 @@ export type IOStreamSource =
   | ReadableStream<Uint8Array>
   | AsyncIterable<Uint8Array | string>;
 
-export interface StreamItem<T = any> {
-  data: T;
-  schemaName: string;
-  index: number;
-  error?: Error;
-}
+/**
+ * The frozen v1 stream item (PROTOCOL.md §5). The reader yields exactly these two
+ * shapes; the discriminant names the protocol event, not the payload type.
+ */
+export type StreamItem<T = any> =
+  | {
+      kind: 'record';
+      recordIndex: number;
+      schemaName?: string;
+      data: T;
+      error?: undefined;
+    }
+  | {
+      kind: 'record-error';
+      recordIndex: number;
+      schemaName?: string;
+      data: null;
+      error: Error;
+    };
 
 export interface StreamReaderOptions {
   /** Optional default schema name if header does not provide $schema. */
   defaultSchema?: string;
 
   /**
-   * Soft guardrails for streaming buffers.
-   * This is not a security boundary, but prevents accidental unbounded growth.
+   * Hard cap on a single pending logical frame, in characters. Default 2_000_000.
+   * Exceeding it is a fatal stream error that rejects the iterator (not a record-error).
+   * It bounds one in-flight frame, not cumulative stream history.
    */
   maxBufferedChars?: number;
+
+  /**
+   * Optional AbortSignal. When it aborts, iteration rejects at the next pull
+   * boundary with the abort reason and the underlying source is released.
+   * Aborting is fatal to the stream and does not emit a record-error.
+   */
+  signal?: AbortSignal;
 }
 
 export interface StreamWriterOptions {
-  /** Default: true. If false, schemas are not written into the header. */
+  /** Default: true. If false, schema definitions are not written into the header. */
   includeSchemas?: boolean;
-
-  /** If set, inserts a stable hash/id into header metadata (design hook). */
-  defsId?: string;
-
-  /**
-   * How to handle validation/serialization errors during write().
-   * - 'throw': Throw the error (default).
-   * - 'ignore': Return empty string (skip the record).
-   * - 'emit': Emit an error record (e.g. `!error { ... }`).
-   */
-  onError?: 'throw' | 'ignore' | 'emit';
 }

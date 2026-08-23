@@ -1,0 +1,15 @@
+{
+  "name": "implicit-default-schema",
+  "description": "Record validated through default $schema with no explicit selector; schemaName absent; default applied.",
+  "protocol": ["§5", "§6"],
+  "definitions": null,
+  "options": { "defaultSchema": null },
+  "input": "~ $schema: { name: string, active: { bool, default: T } }\n---\n~ Alice\n",
+  "chunkings": ["whole", "per-line", "per-byte"],
+  "expected": {
+    "items": [
+      { "kind": "record", "recordIndex": 0, "value": { "name": "Alice", "active": true } }
+    ],
+    "fatal": null
+  }
+}

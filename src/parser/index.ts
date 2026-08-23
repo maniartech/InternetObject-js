@@ -6,6 +6,7 @@ import SectionCollection from '../core/section-collection';
 import assertNever from '../errors/asserts/asserts';
 import InternetObjectError from '../errors/io-error';
 import ErrorCodes from '../errors/io-error-codes';
+import IOSyntaxError from '../errors/io-syntax-error';
 import compileObject from '../schema/compile-object';
 import processSchema from '../schema/processor';
 import Schema from '../schema/schema';
@@ -134,6 +135,10 @@ export default function parse(
       }
     }
 
+    // NOTE (PARKED): when the source has a header, an explicit `schema`/schema-name argument is NOT
+    // honored — the in-document header's `$schema` governs (spec: document owns its schema). Parse-time
+    // schema override is Experimental; not supported here. It currently no-ops rather than throwing to
+    // avoid breaking callers; harden to a thrown error when un-parked. See io-test-cases/RECOMMENDATIONS.md.
     parseDataWithSchema(docNode, doc, errorCollector);
   } else {
     if (externalDefs) {
@@ -211,7 +216,7 @@ function parseDefs(doc: Document, cols: CollectionNode): void {
     }
 
     if (child instanceof ErrorNode) {
-      throw new InternetObjectError(ErrorCodes.invalidDefinition,
+      throw new IOSyntaxError(ErrorCodes.invalidDefinition,
         `Invalid definition: ${child.error.message}`,
         child);
     }
@@ -231,14 +236,14 @@ function parseDefs(doc: Document, cols: CollectionNode): void {
 
     // Must have only one child
     if (objectNode.children.length !== 1) {
-      // throw new InternetObjectError(ErrorCodes.invalidDefinition, objectNode.children?.[1], objectNode.children?[1])
+      // throw new IOSyntaxError(ErrorCodes.invalidDefinition, objectNode.children?.[1], objectNode.children?[1])
     }
 
     const memberNode = (objectNode.children[0] as MemberNode)
 
     // Must have a key
     if (!memberNode.key) {
-      throw new InternetObjectError(ErrorCodes.invalidDefinition,
+      throw new IOSyntaxError(ErrorCodes.invalidDefinition,
         `Invalid definition: missing key. Each definition must have a key (e.g., '$schema: {...}' or '@variable: value').`,
         memberNode.value)
     }

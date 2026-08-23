@@ -61,10 +61,10 @@ describe('Decimal Validation Modes', () => {
     })
 
     test('should validate min/max naturally with scale enforcement', () => {
-      expect(() => parse(`${schema}\n---\n9.99m`, null)).toThrow(/range/)
+      expect(() => parse(`${schema}\n---\n9.99m`, null)).toThrow(expect.objectContaining({ errorCode: expect.stringMatching(/^mismatched-(min|max)$|^out-of-range-/) }))
       expect(() => parse(`${schema}\n---\n10.00m`, null)).not.toThrow()
       expect(() => parse(`${schema}\n---\n100.00m`, null)).not.toThrow()
-      expect(() => parse(`${schema}\n---\n100.01m`, null)).toThrow(/range/)
+      expect(() => parse(`${schema}\n---\n100.01m`, null)).toThrow(expect.objectContaining({ errorCode: expect.stringMatching(/^mismatched-(min|max)$|^out-of-range-/) }))
     })
 
     test('should work for currency (USD)', () => {
@@ -75,7 +75,7 @@ describe('Decimal Validation Modes', () => {
       expect(() => parse(`${usdSchema}\n---\n999999.99m`, null)).not.toThrow()
 
       expect(() => parse(`${usdSchema}\n---\n19.9m`, null)).toThrow(/scale/)
-      expect(() => parse(`${usdSchema}\n---\n1000000.00m`, null)).toThrow(/range/)
+      expect(() => parse(`${usdSchema}\n---\n1000000.00m`, null)).toThrow(expect.objectContaining({ errorCode: expect.stringMatching(/^mismatched-(min|max)$|^out-of-range-/) }))
     })
 
     test('should work for percentages', () => {
@@ -86,7 +86,7 @@ describe('Decimal Validation Modes', () => {
       expect(() => parse(`${pctSchema}\n---\n100.00m`, null)).not.toThrow()
 
       expect(() => parse(`${pctSchema}\n---\n99.9m`, null)).toThrow(/scale/)
-      expect(() => parse(`${pctSchema}\n---\n100.01m`, null)).toThrow(/range/)
+      expect(() => parse(`${pctSchema}\n---\n100.01m`, null)).toThrow(expect.objectContaining({ errorCode: expect.stringMatching(/^mismatched-(min|max)$|^out-of-range-/) }))
     })
   })
 
@@ -208,7 +208,7 @@ describe('Decimal Validation Modes', () => {
 
       expect(() => parse(`${schema}\n---\n-50.00m`, null)).not.toThrow()
       expect(() => parse(`${schema}\n---\n-100.00m`, null)).not.toThrow()
-      expect(() => parse(`${schema}\n---\n-100.01m`, null)).toThrow(/range/)
+      expect(() => parse(`${schema}\n---\n-100.01m`, null)).toThrow(expect.objectContaining({ errorCode: expect.stringMatching(/^mismatched-(min|max)$|^out-of-range-/) }))
       expect(() => parse(`${schema}\n---\n-50.0m`, null)).toThrow(/scale/)
     })
 
@@ -241,7 +241,7 @@ describe('Decimal Validation Modes', () => {
       expect(() => parse(`${schema}\n---\n999.99m`, null)).not.toThrow()
 
       // Just outside boundaries
-      expect(() => parse(`${schema}\n---\n-0.01m`, null)).toThrow(/range/)
+      expect(() => parse(`${schema}\n---\n-0.01m`, null)).toThrow(expect.objectContaining({ errorCode: expect.stringMatching(/^mismatched-(min|max)$|^out-of-range-/) }))
       expect(() => parse(`${schema}\n---\n1000.00m`, null)).toThrow(/precision/) // exceeds precision
     })
   })

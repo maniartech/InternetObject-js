@@ -34,7 +34,7 @@ describe("Error Handling and Recovery", () => {
       // Third token: error token for the unclosed quote
       expect(tokens[2].type).toBe(TokenType.ERROR);
       expect((tokens[2].value as TokenErrorValue).__error).toBe(true);
-      expect((tokens[2].value as TokenErrorValue).message).toContain("string-not-closed");
+      expect((tokens[2].value as TokenErrorValue).message).toContain("unterminated-string");
     });
 
     it("should handle invalid escape sequences gracefully", () => {
@@ -134,15 +134,19 @@ describe("Error Handling and Recovery", () => {
       expect(tokens[2].value).toBe("next");
     });
 
-    it("should handle unclosed annotated strings", () => {
+    // An annotated string with NO closing quote anywhere is unterminated, exactly like the regular
+     // string `"unclosed` two describes above. It used to yield a clean RAW_STRING holding
+     // "unclosed raw string" — a truncated value that parses, and therefore indistinguishable from
+     // one the author meant to write. (Contrast the next case, where a LATER quote does close it:
+     // that is still a string, just not the one the author intended.)
+    it("reports unterminated-string for an annotated string with no closing quote", () => {
       const input = `r"unclosed raw string`;
       const tokenizer = new Tokenizer(input);
       const tokens = tokenizer.tokenize();
 
       expect(tokens).toHaveLength(1);
-      expect(tokens[0].type).toBe(TokenType.STRING);
-      expect(tokens[0].subType).toBe("RAW_STRING");
-      expect(tokens[0].value).toBe("unclosed raw string");
+      expect(tokens[0].type).toBe(TokenType.ERROR);
+      expect((tokens[0].value as TokenErrorValue).errorCode).toBe("unterminated-string");
     });
 
     it("should handle unclosed raw string correctly", () => {
@@ -216,7 +220,7 @@ describe("Error Handling and Recovery", () => {
       expect(tokens).toHaveLength(4); // error, parsed string, comma, valid string
       expect(tokens[0].type).toBe(TokenType.ERROR);
       expect((tokens[0].value as TokenErrorValue).__error).toBe(true);
-      expect((tokens[0].value as TokenErrorValue).message).toContain("unsupported-annotation");
+      expect((tokens[0].value as TokenErrorValue).message).toContain("unknown-annotation");
       expect(tokens[1].type).toBe(TokenType.STRING);
       expect(tokens[1].value).toBe("unsupported");
       expect(tokens[2].type).toBe(TokenType.COMMA);
@@ -252,7 +256,7 @@ describe("Error Handling and Recovery", () => {
       expect(tokens[1].subType).toBe(TokenType.SECTION_NAME);
       expect(tokens[2].type).toBe(TokenType.ERROR);
       expect((tokens[2].value as TokenErrorValue).__error).toBe(true);
-      expect((tokens[2].value as TokenErrorValue).message).toContain("schema-missing");
+      expect((tokens[2].value as TokenErrorValue).message).toContain("missing-schema");
     });
   });
 

@@ -160,8 +160,7 @@ const server = http.createServer(async (req, res) => {
     return originalSend(chunk);
   };
 
-  // Configure writer to emit error objects instead of crashing
-  const writer = createStreamWriter(transport, schemaDefs, { onError: 'emit' });
+  const writer = createStreamWriter(transport, schemaDefs);
 
   // --- BATCH STREAMING ---
   if (url === '/stream/batch') {

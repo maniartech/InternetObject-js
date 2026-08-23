@@ -48,6 +48,27 @@ const schema = new Schema(
  * - Value length <= maxLength
  * - Value length >= minLen
  */
+/**
+ * The length of a string in CODE POINTS — the unit `len`, `minLen` and `maxLen` are measured in.
+ *
+ * NOT `value.length`, which counts UTF-16 code units: an emoji or any other character outside the
+ * Basic Multilingual Plane measures 2 there, so `"🙂"` failed `len: 1`. That is a JavaScript
+ * implementation detail leaking into the format's semantics, and it is invisible in testing until
+ * a non-BMP character appears — `"café"` measures 4 under every interpretation.
+ *
+ * Code points are the only unit that is a property of the TEXT rather than of an encoding or a
+ * runtime, and Internet Object is UTF-8 on the wire, where UTF-16 units have no meaning at all.
+ * Choosing them makes Python, Go's `utf8.RuneCountInString` and Rust's `.chars().count()` correct
+ * by default, and leaves JavaScript as the one implementation needing an explicit spread.
+ *
+ * See io-test-cases ISSUE-24.
+ */
+function codePointLength(value: string): number {
+  let n = 0
+  for (const _ of value) n++
+  return n
+}
+
 export default class StringDef implements TypeDef {
   private _type: string
 
@@ -74,22 +95,22 @@ export default class StringDef implements TypeDef {
     if (changed) return checkedValue
     // Type check
     if (typeof value !== 'string') {
-      throw new ValidationError(ErrorCodes.notAString, `Expecting a string value for '${memberDef.path}' but found ${JSON.stringify(value)}.`)
+      throw new ValidationError(ErrorCodes.expectedString, `Expecting a string value for '${memberDef.path}' but found ${JSON.stringify(value)}.`)
     }
     // Shared validations
     _validatePattern(memberDef, value)
     // Len checks
     const len = memberDef.len
-    if (len !== undefined && typeof len === 'number' && value.length !== len) {
-      throw new ValidationError(ErrorCodes.invalidLength, `Invalid length for ${memberDef.path}.`)
+    if (len !== undefined && typeof len === 'number' && codePointLength(value) !== len) {
+      throw new ValidationError(ErrorCodes.mismatchedLen, `Invalid length for ${memberDef.path}.`)
     }
     const maxLen = memberDef.maxLen
-    if (maxLen !== undefined && typeof maxLen === 'number' && value.length > maxLen) {
-      throw new ValidationError(ErrorCodes.invalidMaxLength, `Invalid maxLength for ${memberDef.path}.`)
+    if (maxLen !== undefined && typeof maxLen === 'number' && codePointLength(value) > maxLen) {
+      throw new ValidationError(ErrorCodes.mismatchedMaxLen, `Invalid maxLength for ${memberDef.path}.`)
     }
     const minLen = memberDef.minLen
-    if (minLen !== undefined && typeof minLen === 'number' && value.length < minLen) {
-      throw new ValidationError(ErrorCodes.invalidMinLength, `Invalid minLength for ${memberDef.path}.`)
+    if (minLen !== undefined && typeof minLen === 'number' && codePointLength(value) < minLen) {
+      throw new ValidationError(ErrorCodes.mismatchedMinLen, `Invalid minLength for ${memberDef.path}.`)
     }
     return value
   }
@@ -125,7 +146,7 @@ function _process(node: Node, memberDef: MemberDef, defs?: Definitions): string 
   if (changed) return value
 
   if (valueNode instanceof TokenNode === false || valueNode.type !== TokenType.STRING) {
-    throw new ValidationError(ErrorCodes.notAString,
+    throw new ValidationError(ErrorCodes.expectedString,
       `Expecting a string value for '${memberDef.path}' but found ${valueNode.toValue()}.`,
       node)
   }
@@ -136,9 +157,9 @@ function _process(node: Node, memberDef: MemberDef, defs?: Definitions): string 
   // Len check
   const len = memberDef.len
   if (len !== undefined && typeof len === 'number') {
-    if (value.length !== len) {
+    if (codePointLength(value) !== len) {
       throw new ValidationError(
-        ErrorCodes.invalidLength,
+        ErrorCodes.mismatchedLen,
         `Invalid length for ${memberDef.path}.`, valueNode
       )
     }
@@ -147,9 +168,9 @@ function _process(node: Node, memberDef: MemberDef, defs?: Definitions): string 
   // Max length check
   const maxLen = memberDef.maxLen
   if (maxLen !== undefined && typeof maxLen === 'number') {
-    if (value.length > maxLen) {
+    if (codePointLength(value) > maxLen) {
       throw new ValidationError(
-        ErrorCodes.invalidMaxLength,
+        ErrorCodes.mismatchedMaxLen,
         `Invalid maxLength for ${memberDef.path}.`, valueNode
         )
       }
@@ -158,9 +179,9 @@ function _process(node: Node, memberDef: MemberDef, defs?: Definitions): string 
     // Max length check
     const minLen = memberDef.minLen
     if (minLen !== undefined && typeof minLen === 'number') {
-    if (value.length < minLen) {
+    if (codePointLength(value) < minLen) {
       throw new ValidationError(
-        ErrorCodes.invalidMinLength,
+        ErrorCodes.mismatchedMinLen,
         `Invalid minLen for ${memberDef.path}.`, valueNode
       )
     }
@@ -187,11 +208,11 @@ function _validatePattern(memberDef: MemberDef, value: string, node?: Node) {
         }
         memberDef.re = re // Cache the compiled expression
       } catch {
-        throw new ValidationError(ErrorCodes.invalidPattern, value, node)
+        throw new ValidationError(ErrorCodes.mismatchedPattern, value, node)
       }
     }
     if (!re.test(value)) {
-      throw new ValidationError(ErrorCodes.invalidPattern,
+      throw new ValidationError(ErrorCodes.mismatchedPattern,
         `The value '${value}' does not match the pattern '${memberDef.pattern}'.`, node)
     }
   }

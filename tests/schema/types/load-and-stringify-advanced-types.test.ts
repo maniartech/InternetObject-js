@@ -45,24 +45,27 @@ describe('load() and stringify() - advanced types', () => {
   describe('BigIntDef.stringify', () => {
     const bigint = new BigIntDef()
 
+    // A `format` changes the BASE only. The base prefix and the `n` suffix are both part of the
+    // literal, or the output stops being a bigint on re-parse (ISSUE-16 row d).
     test('stringifies to decimal format by default', () => {
       const memberDef: any = { type: 'bigint', path: 'value', format: 'decimal' }
-      expect(bigint.stringify(42n, memberDef)).toBe('42')
+      expect(bigint.stringify(42n, memberDef)).toBe('42n')
     })
 
     test('stringifies to hex format', () => {
       const memberDef: any = { type: 'bigint', path: 'value', format: 'hex' }
-      expect(bigint.stringify(255n, memberDef)).toBe('ff')
+      expect(bigint.stringify(255n, memberDef)).toBe('0xffn')
+      expect(bigint.stringify(-255n, memberDef)).toBe('-0xffn')
     })
 
     test('stringifies to octal format', () => {
       const memberDef: any = { type: 'bigint', path: 'value', format: 'octal' }
-      expect(bigint.stringify(8n, memberDef)).toBe('10')
+      expect(bigint.stringify(8n, memberDef)).toBe('0o10n')
     })
 
     test('stringifies to binary format', () => {
       const memberDef: any = { type: 'bigint', path: 'value', format: 'binary' }
-      expect(bigint.stringify(5n, memberDef)).toBe('101')
+      expect(bigint.stringify(5n, memberDef)).toBe('0b101n')
     })
 
     test('validates before stringifying', () => {
@@ -162,10 +165,33 @@ describe('load() and stringify() - advanced types', () => {
       expect(datetime.load(null, memberDef)).toBe(null)
     })
 
+    // Assert the CODE, not the message. Messages are explicitly non-normative (a port may reword
+    // or translate them), so pinning one makes the suite fail on a pure wording change — which is
+    // how this test broke when `date` and `time` gained their own codes and the message stopped
+    // saying "Date object", a JavaScript term that had leaked into user-facing text.
     test('rejects non-Date values', () => {
       const memberDef: any = { type: 'datetime', path: 'value' }
-      expect(() => datetime.load('2024-01-15', memberDef)).toThrow(/Date object/)
-      expect(() => datetime.load(1234567890, memberDef)).toThrow(/Date object/)
+      for (const bad of ['2024-01-15', 1234567890]) {
+        expect(() => datetime.load(bad, memberDef)).toThrow(
+          expect.objectContaining({ errorCode: 'expected-datetime' })
+        )
+      }
+    })
+
+    // Each temporal type names ITSELF. One class serves all three, and reporting
+    // `expected-datetime` for a `date` member named a type the schema never mentioned.
+    test('date and time report their own type-mismatch codes', () => {
+      const cases: Array<[string, string]> = [
+        ['date', 'expected-date'],
+        ['time', 'expected-time'],
+        ['datetime', 'expected-datetime'],
+      ]
+      for (const [type, code] of cases) {
+        const def = new DateTimeDef(type)
+        expect(() => def.load('not a date', { type, path: 'value' } as any)).toThrow(
+          expect.objectContaining({ errorCode: code })
+        )
+      }
     })
 
     test('enforces min constraint', () => {

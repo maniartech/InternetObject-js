@@ -20,6 +20,11 @@ import Schema from '../schema/schema';
 import MemberDef from '../schema/types/memberdef';
 import TypedefRegistry from '../schema/typedef-registry';
 import { IO_MARKERS } from './serialization-constants';
+import { formatObjectKey, shouldEmitKey, EmitKeys } from '../utils/string-formatter';
+import { toBase64 } from '../utils/base64';
+export { toBase64 };
+import Decimal from '../core/decimal/decimal';
+import { inferDateTimeKind } from '../utils/datetime';
 
 /**
  * Formatting context passed through recursive calls
@@ -33,6 +38,8 @@ export interface FormatContext {
   defs?: Definitions;
   /** Whether we're inside a nested structure (affects expansion decisions) */
   isNested: boolean;
+  /** How keys are emitted in data rows (SERIALIZATION-DECISIONS.md). Default 'extras'. */
+  emitKeys?: EmitKeys;
 }
 
 /**
@@ -57,7 +64,10 @@ function getIndent(ctx: FormatContext): string {
 function isPrimitive(val: any): boolean {
   if (val === null || val === undefined) return true;
   if (typeof val === 'boolean' || typeof val === 'number' || typeof val === 'string') return true;
+  if (typeof val === 'bigint') return true;      // serialized as `<n>n`
+  if (val instanceof Decimal) return true;       // serialized as `<n>m`
   if (val instanceof Date) return true;
+  if (val instanceof Uint8Array) return true;    // serialized as `b"<base64>"`
   return false;
 }
 
@@ -74,8 +84,15 @@ function isArrayOfPrimitives(arr: any[]): boolean {
 function isArrayOfObjects(arr: any[]): boolean {
   return arr.some(item => {
     if (item === null || item === undefined) return false;
-    if (typeof item === 'object' && !(item instanceof Date)) return true;
-    return false;
+    // A nested ARRAY is `typeof 'object'` but is not an object: `[[a, b], [c, d]]` is an array of
+    // arrays and must keep its bracket form. Counting it here expanded it one-item-per-line AND
+    // routed each inner array through the object formatter, which printed it with positional keys
+    // (`{"0": a, "1": b}`) -- a different shape on the page from the one in the data.
+    if (Array.isArray(item)) return false;
+    // isPrimitive covers every value that is object-shaped in JS but scalar on the wire --
+    // Decimal, Date, Uint8Array. Listing them here by hand is how Decimal came to be expanded as
+    // an object and printed as { coefficient, exponent, ... }.
+    return !isPrimitive(item);
   });
 }
 
@@ -86,7 +103,7 @@ function isArrayOfObjects(arr: any[]): boolean {
  */
 function hasNestedStructure(obj: any): boolean {
   if (obj === null || typeof obj !== 'object') return false;
-  if (obj instanceof Date) return false;
+  if (isPrimitive(obj)) return false;
   if (Array.isArray(obj)) return isArrayOfObjects(obj);
 
   // Check all values - handle both InternetObject and plain objects
@@ -94,7 +111,7 @@ function hasNestedStructure(obj: any): boolean {
   for (const [key, val] of entries) {
     if (!key) continue;
     // Check if this value is a non-primitive (object or array)
-    if (typeof val === 'object' && val !== null && !(val instanceof Date)) {
+    if (!isPrimitive(val)) {
       return true; // Has nested structure
     }
   }
@@ -110,6 +127,18 @@ function isSimpleObject(obj: any): boolean {
 }
 
 /**
+ * Write a number as an IO literal. `Infinity`/`NaN` are JavaScript spellings that do NOT
+ * re-parse as IO values (they read back as open strings / null); IO spells them `Inf`, `-Inf`
+ * and `NaN`.
+ */
+export function formatNumberLiteral(val: number): string {
+  if (Number.isNaN(val)) return 'NaN';
+  if (val === Infinity) return 'Inf';
+  if (val === -Infinity) return '-Inf';
+  return String(val);
+}
+
+/**
  * Stringify a primitive value
  */
 function stringifyPrimitive(val: any, defs?: Definitions): string {
@@ -121,7 +150,22 @@ function stringifyPrimitive(val: any, defs?: Definitions): string {
   }
 
   if (typeof val === 'number') {
-    return String(val);
+    return formatNumberLiteral(val);
+  }
+
+  // Byte array -> the base64 binary literal, so it re-parses as binary rather than as an
+  // object of byte indices.
+  if (val instanceof Uint8Array) {
+    return `b"${toBase64(val)}"`;
+  }
+
+  // bigint / Decimal keep their IO literal suffix so they re-parse as the same type (not a number).
+  if (typeof val === 'bigint') {
+    return val.toString() + 'n';
+  }
+
+  if (val instanceof Decimal) {
+    return val.toString() + 'm';
   }
 
   if (typeof val === 'string') {
@@ -142,9 +186,13 @@ function stringifyPrimitive(val: any, defs?: Definitions): string {
   }
 
   if (val instanceof Date) {
-    const dateDef = TypedefRegistry.get('datetime');
+    // No schema here, so no declared kind: infer which temporal literal the value evidences
+    // rather than flattening everything to `dt"…"` (which also leaked the 1900 time sentinel
+    // into output). Shared with AnyDef so the two schema-less paths cannot drift apart.
+    const kind = inferDateTimeKind(val);
+    const dateDef = TypedefRegistry.get(kind);
     if (dateDef && 'stringify' in dateDef && typeof dateDef.stringify === 'function') {
-      return (dateDef.stringify as any)(val, { type: 'datetime' }) ?? val.toISOString();
+      return (dateDef.stringify as any)(val, { type: kind }) ?? val.toISOString();
     }
     // Fallback
     return `dt'${val.toISOString()}'`;
@@ -166,8 +214,9 @@ function formatArray(arr: any[], ctx: FormatContext, schema?: Schema): string {
 
   const parts: string[] = [];
   for (const item of arr) {
-    if (shouldExpand && typeof item === 'object' && item !== null && !(item instanceof Date)) {
-      // For expanded arrays, format each object inline (wrapped in braces)
+    if (shouldExpand && !isPrimitive(item) && !Array.isArray(item)) {
+      // For expanded arrays, format each object inline (wrapped in braces). A nested array is
+      // excluded: it goes through formatValue below and keeps its brackets.
       parts.push(formatNestedObject(item, { ...ctx, isNested: true, level: ctx.level + 1 }, schema));
     } else {
       parts.push(formatValue(item, { ...ctx, isNested: true }, schema));
@@ -192,9 +241,21 @@ function formatArray(arr: any[], ctx: FormatContext, schema?: Schema): string {
  * Format a nested object (always wrapped in braces, stays inline)
  * This is for objects inside arrays or as field values
  */
+/**
+ * Prefix a SCHEMA-DECLARED member's formatted value with its key when `emitKeys: 'all'`.
+ *
+ * Declared members are positional by default (the name is recoverable from the header), so the
+ * key is normally omitted. `'all'` asks for a fully self-describing document, and that applies
+ * at EVERY depth — a nested `{y, z}` must spell out `{c: y, d: z}` too, or `'all'` is only
+ * honoured on the top row. Extras go through `shouldEmitKey` directly; this is the declared path.
+ */
+function withDeclaredKey(name: string, formatted: string, ctx: FormatContext): string {
+  return ctx.emitKeys === 'all' ? `${formatObjectKey(name)}: ${formatted}` : formatted;
+}
+
 function formatNestedObject(obj: any, ctx: FormatContext, schema?: Schema): string {
   if (obj === null) return IO_MARKERS.NULL;
-  if (obj instanceof Date) return stringifyPrimitive(obj, ctx.defs);
+  if (isPrimitive(obj)) return stringifyPrimitive(obj, ctx.defs);
 
   const isFormatted = ctx.indentStr.length > 0;
   const parts: string[] = [];
@@ -203,25 +264,70 @@ function formatNestedObject(obj: any, ctx: FormatContext, schema?: Schema): stri
   if (obj instanceof InternetObject) {
     if (schema && schema.names && Array.isArray(schema.names)) {
       for (const name of schema.names) {
-        if (!obj.has(name)) continue;
-        const val = obj.get(name);
-        if (val === undefined) continue;
-        const memberDef = schema.defs[name];
-        parts.push(formatValueWithMemberDef(val, memberDef, { ...ctx, isNested: true }));
+        const memberDef = schema.defs[name] as any;
+        const val = obj.has(name) ? obj.get(name) : undefined;
+        if (val === undefined) {
+          // Absent optional member: keep an empty positional placeholder so later members do not
+          // SHIFT into the wrong slot on re-parse ({p, , q} — same contract as formatRecord).
+          if (memberDef?.optional && memberDef?.default === undefined) parts.push('');
+          continue;
+        }
+        parts.push(withDeclaredKey(name, formatValueWithMemberDef(val, memberDef, { ...ctx, isNested: true }), ctx));
+      }
+      // Trailing empty placeholders are redundant — trim before appending keyed extras.
+      while (parts.length > 0 && parts[parts.length - 1] === '') parts.pop();
+      // Open-schema extras (incl. wildcard-only schemas like {*: $item}): undeclared keys are
+      // KEYED and format with the wildcard MemberDef so `$item`-shaped values stay positional.
+      // Without this, a schema-bound nested object silently dropped its extras.
+      for (const [key, val] of obj.entries()) {
+        if ((key && schema.defs[key]) || val === undefined) continue;
+        const memberDef = key ? schema.wildcard : undefined;
+        const formatted = formatValueWithMemberDef(val, memberDef, { ...ctx, isNested: true });
+        const isPositional = !shouldEmitKey(key, schema, ctx.emitKeys);
+        parts.push(isPositional ? formatted : `${formatObjectKey(key!)}: ${formatted}`);
       }
     } else {
-      for (const [key, val] of obj.entries()) {
-        if (!key || val === undefined) continue;
-        parts.push(formatValue(val, { ...ctx, isNested: true }));
+      // No schema: iterate POSITIONALLY so keyless (push) members are NOT skipped (that skip is why a
+      // keyless nested object used to serialize as `{}`). Keyless / index-matching members are
+      // positional (bare); any other key emits `key: value` (numeric/keyword keys quoted).
+      obj.forEach((val: any, key: string | undefined, index: number) => {
+        if (val === undefined) return;
+        const formatted = formatValue(val, { ...ctx, isNested: true });
+        const isPositional = !shouldEmitKey(key, schema, ctx.emitKeys);
+        parts.push(isPositional ? formatted : `${formatObjectKey(key!)}: ${formatted}`);
+      });
+    }
+  } else if (schema && schema.names && Array.isArray(schema.names)) {
+    // Plain JS object WITH schema (the JS-facade load path keeps nested values as plain objects):
+    // declared members positionally in schema order (with empty placeholders for absent optionals
+    // so later members don't shift), then open-schema extras keyed with the wildcard MemberDef —
+    // same contract as the InternetObject branch above.
+    for (const name of schema.names) {
+      const memberDef = schema.defs[name] as any;
+      const val = obj[name];
+      if (val === undefined) {
+        if (memberDef?.optional && memberDef?.default === undefined) parts.push('');
+        continue;
       }
+      parts.push(withDeclaredKey(name, formatValueWithMemberDef(val, memberDef, { ...ctx, isNested: true }), ctx));
+    }
+    while (parts.length > 0 && parts[parts.length - 1] === '') parts.pop();
+    for (const key of Object.keys(obj)) {
+      if (schema.defs[key] || obj[key] === undefined) continue;
+      const formatted = formatValueWithMemberDef(obj[key], schema.wildcard, { ...ctx, isNested: true });
+      const isPositional = !shouldEmitKey(key, schema, ctx.emitKeys);
+      parts.push(isPositional ? formatted : `${formatObjectKey(key!)}: ${formatted}`);
     }
   } else {
-    // Plain object
+    // Plain object, no schema: emit keys per emitKeys (default 'extras' → keyed) — without a
+    // schema the names are unrecoverable, so bare positional values cannot round-trip.
     for (const key in obj) {
       if (!obj.hasOwnProperty(key)) continue;
       const val = obj[key];
       if (val === undefined) continue;
-      parts.push(formatValue(val, { ...ctx, isNested: true }));
+      const formatted = formatValue(val, { ...ctx, isNested: true });
+      const isPositional = !shouldEmitKey(key, schema, ctx.emitKeys);
+      parts.push(isPositional ? formatted : `${formatObjectKey(key!)}: ${formatted}`);
     }
   }
 
@@ -246,25 +352,61 @@ function formatComplexObject(obj: any, ctx: FormatContext, schema?: Schema): str
   if (obj instanceof InternetObject) {
     if (schema && schema.names && Array.isArray(schema.names)) {
       for (const name of schema.names) {
-        if (!obj.has(name)) continue;
-        const val = obj.get(name);
-        if (val === undefined) continue;
-        const memberDef = schema.defs[name];
-        parts.push(formatValueWithMemberDef(val, memberDef, { ...ctx, isNested: true, level: ctx.level + 1 }));
+        const memberDef = schema.defs[name] as any;
+        const val = obj.has(name) ? obj.get(name) : undefined;
+        if (val === undefined) {
+          // Absent optional: positional placeholder so later members don't shift on re-parse.
+          if (memberDef?.optional && memberDef?.default === undefined) parts.push('');
+          continue;
+        }
+        parts.push(withDeclaredKey(name, formatValueWithMemberDef(val, memberDef, { ...ctx, isNested: true, level: ctx.level + 1 }), ctx));
+      }
+      while (parts.length > 0 && parts[parts.length - 1] === '') parts.pop();
+      // Open-schema extras — same contract as formatNestedObject: keyed, wildcard MemberDef.
+      for (const [key, val] of obj.entries()) {
+        if ((key && schema.defs[key]) || val === undefined) continue;
+        const memberDef = key ? schema.wildcard : undefined;
+        const formatted = formatValueWithMemberDef(val, memberDef, { ...ctx, isNested: true, level: ctx.level + 1 });
+        const isPositional = !shouldEmitKey(key, schema, ctx.emitKeys);
+        parts.push(isPositional ? formatted : `${formatObjectKey(key!)}: ${formatted}`);
       }
     } else {
-      for (const [key, val] of obj.entries()) {
-        if (!key || val === undefined) continue;
-        parts.push(formatValue(val, { ...ctx, isNested: true, level: ctx.level + 1 }));
+      // No schema: iterate POSITIONALLY so keyless (push) members are NOT skipped. Keyless / index-
+      // matching members are positional (bare); any other key emits `key: value` (quoted if needed).
+      obj.forEach((val: any, key: string | undefined, index: number) => {
+        if (val === undefined) return;
+        const formatted = formatValue(val, { ...ctx, isNested: true, level: ctx.level + 1 });
+        const isPositional = !shouldEmitKey(key, schema, ctx.emitKeys);
+        parts.push(isPositional ? formatted : `${formatObjectKey(key!)}: ${formatted}`);
+      });
+    }
+  } else if (schema && schema.names && Array.isArray(schema.names)) {
+    // Plain JS object WITH schema — same contract as formatNestedObject's plain-object branch.
+    for (const name of schema.names) {
+      const memberDef = schema.defs[name] as any;
+      const val = obj[name];
+      if (val === undefined) {
+        if (memberDef?.optional && memberDef?.default === undefined) parts.push('');
+        continue;
       }
+      parts.push(withDeclaredKey(name, formatValueWithMemberDef(val, memberDef, { ...ctx, isNested: true, level: ctx.level + 1 }), ctx));
+    }
+    while (parts.length > 0 && parts[parts.length - 1] === '') parts.pop();
+    for (const key of Object.keys(obj)) {
+      if (schema.defs[key] || obj[key] === undefined) continue;
+      const formatted = formatValueWithMemberDef(obj[key], schema.wildcard, { ...ctx, isNested: true, level: ctx.level + 1 });
+      const isPositional = !shouldEmitKey(key, schema, ctx.emitKeys);
+      parts.push(isPositional ? formatted : `${formatObjectKey(key!)}: ${formatted}`);
     }
   } else {
-    // Plain object
+    // Plain object, no schema: keyed per emitKeys — see formatNestedObject's no-schema branch.
     for (const key in obj) {
       if (!obj.hasOwnProperty(key)) continue;
       const val = obj[key];
       if (val === undefined) continue;
-      parts.push(formatValue(val, { ...ctx, isNested: true, level: ctx.level + 1 }));
+      const formatted = formatValue(val, { ...ctx, isNested: true, level: ctx.level + 1 });
+      const isPositional = !shouldEmitKey(key, schema, ctx.emitKeys);
+      parts.push(isPositional ? formatted : `${formatObjectKey(key!)}: ${formatted}`);
     }
   }
 
@@ -294,6 +436,28 @@ function formatValue(val: any, ctx: FormatContext, schema?: Schema): string {
 }
 
 /**
+ * Resolve a nested-object schema reference to a Schema. Handles a Schema instance, a TokenNode
+ * variable-ref (duck-typed via `.value`, e.g. `$inner`), or a `$`-prefixed string — recursively.
+ * Returns undefined when nothing resolves (caller then renders as no-schema, keeping names).
+ * Mirrors ObjectDef._resolveSchema (schema/types/object.ts:297-322).
+ */
+function resolveNestedSchema(schema: any, defs?: Definitions): Schema | undefined {
+  if (!schema) return undefined;
+  if (schema instanceof Schema) return schema;
+  const ref = typeof schema === 'string'
+    ? schema
+    : (typeof schema.value === 'string' ? schema.value : undefined);
+  if (ref && ref.startsWith('$') && defs) {
+    try {
+      const resolved = defs.getV(ref);
+      if (resolved instanceof Schema) return resolved;
+      return resolveNestedSchema(resolved, defs);
+    } catch { return undefined; }
+  }
+  return undefined;
+}
+
+/**
  * Format a value using its MemberDef for type-aware stringification
  */
 function formatValueWithMemberDef(val: any, memberDef: MemberDef | undefined, ctx: FormatContext): string {
@@ -308,18 +472,32 @@ function formatValueWithMemberDef(val: any, memberDef: MemberDef | undefined, ct
   const typeDef = TypedefRegistry.get(memberDef.type);
 
   // For object type with nested arrays of objects, we may need special handling
-  if (memberDef.type === 'object' && typeof val === 'object' && !Array.isArray(val) && !(val instanceof Date)) {
+  if (memberDef.type === 'object' && !isPrimitive(val) && !Array.isArray(val)) {
+    // Resolve the nested schema so a schema-bound nested object renders POSITIONALLY (in schema
+    // order) rather than falling into the no-schema branch. `memberDef.schema` may be a Schema, a
+    // TokenNode variable-ref ($inner), or a string; also honour `schemaRef`. Mirrors
+    // ObjectDef._resolveSchema (object.ts:297-322).
+    const nestedSchema = resolveNestedSchema(memberDef.schema, ctx.defs)
+      ?? resolveNestedSchema(memberDef.schemaRef, ctx.defs);
     // Check if this object is simple or complex
     const simple = isSimpleObject(val);
     if (!simple && !ctx.isNested) {
-      return formatComplexObject(val, ctx, memberDef.schema);
+      return formatComplexObject(val, ctx, nestedSchema);
     }
-    return formatNestedObject(val, ctx, memberDef.schema);
+    return formatNestedObject(val, ctx, nestedSchema);
   }
 
-  // For array type
+  // For array type — resolve the item schema from every shape it can arrive in: an inline Schema
+  // (`of`), a compiled element def (`of.schema`/`of.schemaRef`), or the array-level `schemaRef`
+  // that inference emits for `[$item]`. Without this, `[$item]` arrays serialized their items
+  // schemaless (keyed/unordered) and re-parse misaligned them positionally.
   if (memberDef.type === 'array' && Array.isArray(val)) {
-    const itemSchema = memberDef.of instanceof Schema ? memberDef.of : undefined;
+    const of: any = memberDef.of;
+    const itemSchema = of instanceof Schema
+      ? of
+      : resolveNestedSchema(of?.schema, ctx.defs)
+        ?? resolveNestedSchema(of?.schemaRef, ctx.defs)
+        ?? resolveNestedSchema(memberDef.schemaRef, ctx.defs);
     return formatArray(val, ctx, itemSchema);
   }
 
@@ -383,10 +561,11 @@ export function formatRecord(
             // Check expansion needs
             const expandsArray = isFormatted && Array.isArray(val) && isArrayOfObjects(val);
             const expandsObject = isFormatted && !Array.isArray(val) &&
-              typeof val === 'object' && val !== null && !(val instanceof Date) && !isSimpleObject(val);
+              !isPrimitive(val) && !isSimpleObject(val);
 
             const formatted = formatValueWithMemberDef(val, memberDef, { ...ctx, isNested: false });
-            parts.push({ value: formatted, expandsArray, expandsObject });
+            // Schema-declared field: bare by default; spelled out only when emitKeys === 'all'.
+            parts.push({ value: withDeclaredKey(name, formatted, ctx), expandsArray, expandsObject });
           }
         } else {
           // Missing optional member with no default: preserve positional placeholder
@@ -403,33 +582,50 @@ export function formatRecord(
         parts.pop();
       }
 
-      // Append any additional properties (wildcard or open schema extras)
+      // Append any additional properties (wildcard / open-schema extras). A KEYLESS member is
+      // positional (bare value); a KEYED member emits `key: value` (numeric/keyword keys quoted).
+      // Keyless members must NOT be skipped — that silently drops positional data (FINDINGS #25).
       for (const [key, val] of obj.entries()) {
-        if (!key) continue;
-        if (handled.has(key)) continue;
+        if (key && handled.has(key)) continue;
+        if (val === undefined) continue;
 
-        const memberDef = schema!.defs[key];
+        // Wildcard fallback: under an open schema with a typed constraint ({*: $item}), extras
+        // format with the wildcard MemberDef so $item-shaped values render positionally.
+        const memberDef = key ? (schema!.defs[key] ?? schema!.wildcard) : undefined;
         const expandsArray = isFormatted && Array.isArray(val) && isArrayOfObjects(val);
         const expandsObject = isFormatted && !Array.isArray(val) &&
-          typeof val === 'object' && val !== null && !(val instanceof Date) && !isSimpleObject(val);
+          !isPrimitive(val) && !isSimpleObject(val);
 
-        // Extra properties retain their key label
         const formatted = memberDef
           ? formatValueWithMemberDef(val, memberDef, { ...ctx, isNested: false })
           : formatValue(val, { ...ctx, isNested: false });
-        parts.push({ value: `${key}: ${formatted}`, expandsArray, expandsObject });
+        // Extra (not schema-declared) or keyless member — honor emitKeys ('none' suppresses keys).
+        const emitKey = shouldEmitKey(key, schema, ctx.emitKeys);
+        parts.push({
+          value: emitKey ? `${formatObjectKey(key!)}: ${formatted}` : formatted,
+          expandsArray, expandsObject
+        });
       }
     } else {
-      for (const [key, val] of obj.entries()) {
-        if (!key || val === undefined) continue;
+      // No usable schema. A member is positional when it has no key OR its key equals its own IOObject
+      // INDEX position (`"0"`,`"1"`,…). The index MUST be the object's real index — the same one
+      // toObject() projects with (via forEach) — not a re-derived counter, which would drift after a
+      // deletion (gap). Positional members emit a bare value; any other key is a real label ->
+      // `key: value` (numeric/keyword keys quoted).
+      obj.forEach((val: any, key: string | undefined, index: number) => {
+        if (val === undefined) return;
 
         const expandsArray = isFormatted && Array.isArray(val) && isArrayOfObjects(val);
         const expandsObject = isFormatted && !Array.isArray(val) &&
-          typeof val === 'object' && val !== null && !(val instanceof Date) && !isSimpleObject(val);
+          !isPrimitive(val) && !isSimpleObject(val);
 
         const formatted = formatValue(val, { ...ctx, isNested: false });
-        parts.push({ value: formatted, expandsArray, expandsObject });
-      }
+        const isPositional = !shouldEmitKey(key, schema, ctx.emitKeys);
+        parts.push({
+          value: isPositional ? formatted : `${formatObjectKey(key!)}: ${formatted}`,
+          expandsArray, expandsObject
+        });
+      });
     }
   } else if (typeof obj === 'object' && obj !== null) {
     // Plain object
@@ -446,8 +642,19 @@ export function formatRecord(
       const formatted = memberDef
         ? formatValueWithMemberDef(val, memberDef, { ...ctx, isNested: false })
         : formatValue(val, { ...ctx, isNested: false });
-      parts.push({ value: formatted, expandsArray, expandsObject });
+      // Declared members of a plain JS record follow the same emitKeys contract as an IOObject's.
+      const value = hasValidSchema
+        ? withDeclaredKey(key, formatted, ctx)
+        : (shouldEmitKey(key, schema, ctx.emitKeys) ? `${formatObjectKey(key)}: ${formatted}` : formatted);
+      parts.push({ value, expandsArray, expandsObject });
     }
+  }
+
+  // A record whose ONLY member is a braced object is ambiguous bare: the parser reads the row's
+  // outer braces as the RECORD wrapper, deleting one nesting level ({eco:{a:5}} row `{5}` would
+  // bind 5 to eco's first member). Wrap the row explicitly: `{{5}}`.
+  if (parts.length === 1 && parts[0].value.startsWith('{')) {
+    return `{${parts[0].value}}`;
   }
 
   if (!isFormatted || parts.length === 0) {

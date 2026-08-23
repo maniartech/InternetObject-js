@@ -93,7 +93,10 @@ John, 30
 {{5}}
 `)
       const result = stringify(doc, { includeTypes: false })
-      expect(result).toBe('{5}')
+      // A record whose ONLY member is an object needs the explicit record wrapper: `{5}` would
+      // re-parse with the outer braces as the record itself, binding 5 to x's first member.
+      // `{{5}}` matches the source document text and round-trips.
+      expect(result).toBe('{{5}}')
       expect(result).not.toContain('$def')
     })
   })
@@ -105,7 +108,7 @@ John, 30
 ---
 John, 30
 `)
-      const result = stringify(doc, { includeTypes: true })
+      const result = stringify(doc, { includeTypes: true, includeHeader: true })
       // In schema-only mode, outputs bare schema (backward compatible)
       expect(result).toContain('name: string')
       expect(result).toContain('age: int')
@@ -120,7 +123,7 @@ John, 30
 ---
 Alice
 `)
-      const result = stringify(doc, { includeTypes: true })
+      const result = stringify(doc, { includeTypes: true, includeHeader: true })
       expect(result).toContain('~ @version:')
       expect(result).toContain('$schema')
     })
@@ -145,7 +148,7 @@ John, 30
 --- p: $person
 John, 30
 `)
-      const result = stringify(doc, { includeTypes: true })
+      const result = stringify(doc, { includeTypes: true, includeHeader: true })
       expect(result).toContain('~ $person: {name: string, age: int}')
       expect(result).toContain('--- p: $person')
       expect(result).toContain('John, 30')

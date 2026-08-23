@@ -7,6 +7,7 @@ import Collection from '../../src/core/collection';
 import Document from '../../src/core/document';
 import ValidationError from '../../src/errors/io-validation-error';
 import IOError from '../../src/errors/io-error';
+import Decimal from '../../src/core/decimal/decimal';
 
 /**
  * Helper function to create definitions with a schema
@@ -561,11 +562,20 @@ describe('Edge Cases and Integration', () => {
 
     it('handles decimal values', () => {
       const defs = createDefs('~ $schema: { price: decimal }');
-      const data = { price: '19.99' };
-      const result = loadObject(data, defs);
+      const result = loadObject({ price: new Decimal('19.99') }, defs);
       const obj = result as InternetObject;
 
       expect(obj.get('price')).toHaveProperty('coefficient');
+    });
+
+    // The load path used to COERCE a string into a Decimal while the text path rejected the same
+    // value with `expected-decimal` — one rule, two entry points, two answers. Validation is
+    // defined on the value, not on how it arrived (io-specs conformance/validation-model.md), so
+    // both now reject. A quoted string is a string; the `m` suffix is what makes a decimal.
+    it('rejects a string for a decimal member, as the text path does', () => {
+      const defs = createDefs('~ $schema: { price: decimal }');
+      expect(() => loadObject({ price: '19.99' }, defs))
+        .toThrow(expect.objectContaining({ errorCode: 'expected-decimal' }));
     });
 
     it('handles datetime values', () => {
