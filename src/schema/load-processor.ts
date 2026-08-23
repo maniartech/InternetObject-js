@@ -113,6 +113,11 @@ export function loadObject(
  */
 function _loadObject(data: any, schema: Schema, defs?: Definitions): InternetObject {
   const result = new InternetObject();
+  // Declaring the shape is what makes member position a property of the SCHEMA rather than of
+  // the order the data happened to arrive in. The loop below already walks `schema.names`, so
+  // nothing moves here today -- it is later writes, and the parse route, that need the rule to
+  // exist at all.
+  result.attachSchema(schema);
   const processedNames = new Set<string>();
 
   // Process schema-defined members

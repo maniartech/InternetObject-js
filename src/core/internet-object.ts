@@ -1,3 +1,4 @@
+import type Schema from '../schema/schema';
 import { toJSONValue } from '../utils/json-projection';
 
 /**
@@ -42,6 +43,17 @@ function toPlainValue(value: any): any {
 class IOObject<T = any> implements Iterable<[string | undefined, T]> {
   private items!: ([string | undefined, T] | undefined)[];
   private keyMap!: Map<string, number>;
+  /**
+   * The shape this object was declared with, or `null`.
+   *
+   * OPTIONAL by design. Plenty of IOObjects have no schema -- a schema-less document produces
+   * them -- and without one there is no position guarantee at all: members sit where they were
+   * put, which is the only order anybody could mean. Everything below applies ONLY when a shape
+   * was declared.
+   */
+  private schema!: Schema | null;
+  /** `schema.names` as name -> declared index, so placement is a lookup rather than a scan. */
+  private schemaOrder!: Map<string, number> | null;
   public errors: Error[] = [];
 
   constructor(o?: Record<string, T>) {
@@ -64,11 +76,115 @@ class IOObject<T = any> implements Iterable<[string | undefined, T]> {
       enumerable: false,
       configurable: false
     });
+    // Non-enumerable like the rest of the internals, so a data key can never collide with them.
+    Object.defineProperty(this, 'schema', {
+      value: null,
+      writable: true,
+      enumerable: false,
+      configurable: false
+    });
+    Object.defineProperty(this, 'schemaOrder', {
+      value: null,
+      writable: true,
+      enumerable: false,
+      configurable: false
+    });
 
     if (o) {
       for (const [key, value] of Object.entries(o)) {
         this.set(key, value);
       }
+    }
+  }
+
+  /**
+   * Declares this object's shape.
+   *
+   * Attaching is all this does. It does NOT touch the members already present -- reordering an
+   * existing object is {@link applySchemaOrder}, which a caller makes deliberately. What attaching
+   * changes is every write from here on:
+   *
+   * > **A member the schema declares is placed at the position the schema declares it, whatever
+   * > order it arrives in. A member the schema does not declare -- the extras an open (`*`) schema
+   * > permits -- is appended, and so follows the declared members in arrival order.**
+   *
+   * That is what makes `getAt(i)` mean the same thing however the object was built: parsed from
+   * text, loaded from JavaScript, or assembled one `set()` at a time.
+   *
+   * Passing `null` detaches the shape. It does not restore a previous order -- there is nothing to
+   * restore to -- it only stops the rule applying to later writes.
+   */
+  attachSchema(schema: Schema | null): this {
+    this.schema = schema ?? null;
+    this.schemaOrder = schema
+      ? new Map(schema.names.map((name, index) => [name, index]))
+      : null;
+    return this;
+  }
+
+  /** The shape declared for this object, or `null` when it has none. */
+  getSchema(): Schema | null {
+    return this.schema;
+  }
+
+  /**
+   * Puts the members already present into the declared shape's order: everything the schema
+   * declares first, in declaration order, then everything it does not, in the order it already
+   * had.
+   *
+   * Voluntary, and a no-op when no schema is attached. Use it when members went in before the
+   * shape was known -- {@link attachSchema} deliberately leaves them alone, because silently
+   * rearranging an object somebody just handed you is not a thing a setter should do.
+   *
+   * Compacts as it goes: entries left `undefined` by `delete()` are dropped, since a hole has no
+   * position in a declared shape.
+   */
+  applySchemaOrder(): this {
+    if (this.schemaOrder === null) return this;
+    const declared: [number, [string | undefined, T]][] = [];
+    const extras: [string | undefined, T][] = [];
+    for (const entry of this.items) {
+      if (entry === undefined) continue;
+      const at = this.orderOf(entry[0]);
+      if (at === -1) extras.push(entry);
+      else declared.push([at, entry]);
+    }
+    declared.sort((a, b) => a[0] - b[0]);
+    this.items = [...declared.map(([, entry]) => entry), ...extras];
+    this.reindex();
+    return this;
+  }
+
+  /** Where `key` sits in the declared shape, or -1 when it is keyless, undeclared, or unshaped. */
+  private orderOf(key: string | undefined): number {
+    if (key === undefined || this.schemaOrder === null) return -1;
+    return this.schemaOrder.get(key) ?? -1;
+  }
+
+  /**
+   * The index a declared member with shape-position `order` belongs at: ahead of the first entry
+   * that is either an extra (or keyless -- no name to place it by) or a declared member that comes
+   * later in the shape. Holes are skipped rather than treated as boundaries.
+   */
+  private slotFor(order: number): number {
+    for (let index = 0; index < this.items.length; index++) {
+      const entry = this.items[index];
+      if (entry === undefined) continue;
+      const at = this.orderOf(entry[0]);
+      if (at === -1 || at > order) return index;
+    }
+    return this.items.length;
+  }
+
+  /**
+   * Rebuilds `keyMap` from `items`. Wholesale, because patching indices around holes is the kind
+   * of cleverness that breaks the next time `delete()` is called.
+   */
+  private reindex(): void {
+    this.keyMap.clear();
+    for (let index = 0; index < this.items.length; index++) {
+      const entry = this.items[index];
+      if (entry !== undefined && entry[0] !== undefined) this.keyMap.set(entry[0], index);
     }
   }
 
@@ -92,9 +208,17 @@ class IOObject<T = any> implements Iterable<[string | undefined, T]> {
       const index = this.keyMap.get(key)!;
       this.items[index] = [key, value];
     } else {
-      const index = this.items.length;
-      this.items.push([key, value]);
-      this.keyMap.set(key, index);
+      // With a shape declared, a member goes where the shape says -- not where it arrived. Without
+      // one, `orderOf` is -1 for everything and this is the plain append it always was.
+      const order = this.orderOf(key);
+      if (order === -1) {
+        const index = this.items.length;
+        this.items.push([key, value]);
+        this.keyMap.set(key, index);
+      } else {
+        this.items.splice(this.slotFor(order), 0, [key, value]);
+        this.reindex();
+      }
     }
     // R7: data is stored ONLY in items/keyMap and accessed via get()/getAt() — no instance-property
     // sync. This makes access consistent (method-only) and frees `.errors`/`.length` and every method
@@ -114,9 +238,15 @@ class IOObject<T = any> implements Iterable<[string | undefined, T]> {
         if (this.has(key)) {
           throw new Error(`Key '${key}' already exists`);
         }
-        const index = this.items.length;
-        this.items.push([key, value]);
-        this.keyMap.set(key, index);
+        const order = this.orderOf(key);
+        if (order === -1) {
+          const index = this.items.length;
+          this.items.push([key, value]);
+          this.keyMap.set(key, index);
+        } else {
+          this.items.splice(this.slotFor(order), 0, [key, value]);
+          this.reindex();
+        }
       } else {
   this.items.push([undefined, item]);
       }

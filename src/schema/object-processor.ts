@@ -86,6 +86,12 @@ function _processObject(
   context?: ProcessingContext
 ) {
   const o: InternetObject = new InternetObject();
+  // The same shape declaration as the load route. This one DOES move members: a document may
+  // write its keyed values in any order (`city: NYC, age: 30, name: Alice`), and without this
+  // the parsed object kept document order while the identical data loaded from JavaScript kept
+  // schema order -- so `getAt(1)` meant two different things depending on where the value came
+  // from.
+  o.attachSchema(schema);
   let positional = true;
   const processedNames = new Set<string>();
 

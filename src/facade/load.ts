@@ -71,12 +71,12 @@ export type LoadObjectOptions = IOCommonOptions;
  */
 // Overloads for loadObject
 export function loadObject(data: object): InternetObject;
-export function loadObject(data: object, defs: Definitions): InternetObject;
+export function loadObject(data: object, defs: Definitions | null): InternetObject;
 export function loadObject(data: object, options: LoadObjectOptions): InternetObject;
-export function loadObject(data: object, defs: Definitions, options: LoadObjectOptions): InternetObject;
+export function loadObject(data: object, defs: Definitions | null, options: LoadObjectOptions): InternetObject;
 export function loadObject(
   data: object,
-  defsOrOptions?: Definitions | LoadObjectOptions,
+  defsOrOptions?: Definitions | LoadObjectOptions | null,
   options?: LoadObjectOptions
 ): InternetObject {
   let resolvedSchema: Schema | undefined;
@@ -135,12 +135,12 @@ export type LoadCollectionOptions = LoadOptions;
  */
 // Overloads for loadCollection
 export function loadCollection(data: any[]): Collection<InternetObject>;
-export function loadCollection(data: any[], defs: Definitions): Collection<InternetObject>;
+export function loadCollection(data: any[], defs: Definitions | null): Collection<InternetObject>;
 export function loadCollection(data: any[], options: LoadCollectionOptions): Collection<InternetObject>;
-export function loadCollection(data: any[], defs: Definitions, options: LoadCollectionOptions): Collection<InternetObject>;
+export function loadCollection(data: any[], defs: Definitions | null, options: LoadCollectionOptions): Collection<InternetObject>;
 export function loadCollection(
   data: any[],
-  defsOrOptions?: Definitions | LoadCollectionOptions,
+  defsOrOptions?: Definitions | LoadCollectionOptions | null,
   options?: LoadCollectionOptions
 ): Collection<InternetObject> {
   let resolvedSchema: Schema | undefined;
@@ -203,12 +203,12 @@ export type LoadOptions = IOCommonOptions;
  */
 // Overloads for load
 export function load(data: any): Document;
-export function load(data: any, defs: Definitions): Document;
+export function load(data: any, defs: Definitions | null): Document;
 export function load(data: any, options: LoadOptions): Document;
-export function load(data: any, defs: Definitions, options: LoadOptions): Document;
+export function load(data: any, defs: Definitions | null, options: LoadOptions): Document;
 export function load(
   data: any,
-  defsOrOptions?: Definitions | LoadOptions,
+  defsOrOptions?: Definitions | LoadOptions | null,
   options?: LoadOptions
 ): Document {
   let resolvedSchema: Schema | undefined;

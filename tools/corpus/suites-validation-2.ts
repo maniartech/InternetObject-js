@@ -460,6 +460,32 @@ const objectsAndPaths: Case[] = [
   { name: 'three_levels_valid', schema: 'o: {p: {q: {r: int}}}', input: '~ o: {p: {q: {r: 1}}}' },
   { name: 'three_levels_inner_wrong_type', schema: 'o: {p: {q: {r: int}}}', input: '~ o: {p: {q: {r: x}}}' },
 
+  // A member the SCHEMA declares sits at the schema's position for it, whatever order the document
+  // wrote it in; members the schema does not declare follow, in the order they arrived. Until
+  // 2026-08-23 that held on the native route and not on the text route, so the same data reached
+  // two different layouts depending on which door it came through -- and nothing here noticed,
+  // because no case wrote keyed members out of schema order. The X1 both-paths runner compares the
+  // two routes order-sensitively, so these rows are what makes it able to see the difference.
+  { group: 'member order follows the schema, not the document',
+    name: 'keyed_in_schema_order', schema: 'a: int, b: int, c: int', input: 'a: 1, b: 2, c: 3',
+    note: 'the control -- written in schema order already' },
+  { name: 'keyed_out_of_schema_order', schema: 'a: int, b: int, c: int', input: 'c: 3, b: 2, a: 1',
+    note: 'reversed; must load identically to the control above' },
+  { name: 'keyed_middle_first', schema: 'a: int, b: int, c: int', input: 'b: 2, a: 1, c: 3' },
+  { name: 'keyed_last_first', schema: 'a: int, b: int, c: int', input: 'c: 3, a: 1, b: 2' },
+  { name: 'keyed_out_of_order_with_optional_omitted',
+    schema: 'a: int, b?: int, c: int', input: 'c: 3, a: 1' },
+  { name: 'keyed_out_of_order_nested', schema: 'o: {x: int, y: int}', input: '~ o: {y: 2, x: 1}' },
+  { name: 'open_extras_after_declared', schema: 'a: int, b: int, *', input: 'z: 9, b: 2, a: 1',
+    note: 'declared members first, in schema order; the extra follows them' },
+  // Two DECLARED members, deliberately. With exactly ONE, an open schema still takes the
+  // record-absorption path -- `object-processor.ts` guards it with
+  // `!schema.open || schema.names.length === 1`, so a leading undeclared key is read as the whole
+  // record being member 0's value. That is the ISSUE-15 enclosure ambiguity, it is intentional,
+  // and it is pinned separately by `open_object_accepts_extra`. Routing an ordering case through
+  // it would test the ambiguity instead of the ordering.
+  { name: 'open_two_extras_keep_arrival_order', schema: 'a: int, b: int, *', input: 'z: 9, y: 8, b: 2, a: 1' },
+
   // A record whose text begins with `{` is AMBIGUOUS: the braces can enclose the record itself,
   // or be the value of its first member. io-js2 resolves it by what the braces contain, and the
   // corpus records that rather than pretending the ambiguity is not there (see ISSUE-15 and the
