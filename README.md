@@ -3,25 +3,62 @@
 [![npm version](https://img.shields.io/npm/v/internet-object?style=flat-square)](https://www.npmjs.com/package/internet-object)
 [![License](https://img.shields.io/npm/l/internet-object?style=flat-square)](https://github.com/maniartech/InternetObject-js/blob/master/LICENSE)
 [![Downloads](https://img.shields.io/npm/dm/internet-object?style=flat-square)](https://www.npmjs.com/package/internet-object)
-[![Build Status](https://img.shields.io/github/actions/workflow/status/maniartech/internetobject-js/ci.yml?branch=main&style=flat-square)](https://github.com/maniartech/InternetObject-js/actions)
+[![Build Status](https://img.shields.io/github/actions/workflow/status/maniartech/internetobject-js/ci.yml?branch=master&style=flat-square)](https://github.com/maniartech/InternetObject-js/actions)
 
-A compact, human-readable data format with built-in schema validation — like JSON, but smaller and type-safe.
+**A data format for the wire and for humans — JSON's data model, a schema on the first line, and
+about half the bytes for a collection.** Validated as it is parsed, with errors that say what and
+where.
 
 ```ruby
-name: string, age: int
+id: int, name: string, email: email, age: int, active: bool
 ---
-~ Alice, 30
-~ Bob, 25
+~ 1, Alice Johnson, alice@example.com, 30, T
+~ 2, Bob Smith,     bob@example.com,   25, F
+~ 3, Carol White,   carol@example.com, 28, T
 ```
 
-This is Internet Object. The `~` lines define a schema; `---` separates data sections. Values are comma-separated and validated automatically.
+The first line is the **schema**. `---` ends the header. Each `~` line is one **record** — values
+only, in schema order, because the names were already said once. Three records above is 190 bytes
+against 243 as JSON; at a hundred records it is **48% smaller**, and the gap only widens, because
+JSON repeats every key on every row and Internet Object never does.
+
+**Try it live at [play.internetobject.org](https://play.internetobject.org/)** — paste the block
+above, break something, and watch the error land on the exact token.
 
 ## Why Internet Object?
 
-- **Schema-First**: Validation is built-in, not an afterthought. define structure types once, ensure data integrity everywhere.
-- **Type-Safe**: Supports rich types like `int`, `bool`, `date`, `datetime`, and `email` out of the box.
-- **Compact**: Removes repetitive keys using a CSV-like structure for collections, reducing payload size significantly.
-- **Human-Friendly**: Cleaner syntax than JSON, more structured than YAML.
+- **Smaller on the wire.** Keys are written once, in the schema, not once per record. The saving
+  grows with the data.
+- **Validated as it parses.** A wrong type, a missing value, a bad email — reported with a code,
+  a message, and a line and column. Not a separate validation step you forget to run.
+- **Typed, with the types you actually need.** `int`, `number`, `decimal`, `bigint`, `bool`,
+  `string`, `email`, `url`, `date`, `time`, `datetime`, `base64`, arrays, objects, nullable and
+  optional members, choices, ranges, patterns — in the schema, not in your code.
+- **Readable by a person.** Open strings need no quotes, records read like a table, and a
+  document with a header is self-describing.
+- **A format, not a library.** An [open specification](https://docs.internetobject.org) with a
+  language-independent conformance corpus of 1,500+ cases, so an implementation in another language
+  reads your data the same way this one does.
+
+```
+JSON                                            Internet Object
+[                                               name: string, age: int
+  {"name": "Alice", "age": 30},                 ---
+  {"name": "Bob",   "age": 25}                  ~ Alice, 30
+]                                               ~ Bob, 25
+```
+
+## At a glance
+
+| | |
+| - | - |
+| **Install** | `npm install internet-object` |
+| **Dependencies** | none |
+| **Runtime** | Node ≥ 18 and modern browsers |
+| **Modules** | ESM and CommonJS, TypeScript types included |
+| **Size** | ~43 KB min+gzip for the full library, parser + schema + streaming |
+| **License** | Apache 2.0 |
+| **Spec** | [docs.internetobject.org](https://docs.internetobject.org) · **Playground** [play.internetobject.org](https://play.internetobject.org/) |
 
 ## Install
 
@@ -124,7 +161,6 @@ const user = loadObject({ name: 'Alice', age: 30 }, defs);
 
 // By key
 console.log(user.get('name')); // 'Alice'
-console.log(user.name);        // 'Alice' (dot notation works too)
 
 // By position (insertion order)
 console.log(user.getAt(0));    // 'Alice'
@@ -143,7 +179,7 @@ const users = loadCollection([
 ], defs);
 
 console.log(users.getAt(0).get('name')); // 'Alice'
-console.log(users.getAt(1).name);        // 'Bob'
+console.log(users.getAt(1).get('name')); // 'Bob'
 ```
 
 ### 6. Validate JavaScript Data
@@ -259,22 +295,30 @@ Works with Node.js streams, WHATWG streams, `AsyncIterable`, or simple strings.
 
 ### Parse with external definitions
 
+Keep the schema out of the document — say, shared between a server and its clients — and pass it
+in. Only `$schema` is applied to the data; other `$names` are there to be referenced.
+
 ```ts
 import { parse, parseDefinitions } from 'internet-object';
 
-const defs = parseDefinitions('~ $User: { name: string, age: int }');
+const defs = parseDefinitions('~ $schema: { name: string, age: int }');
 const doc = parse('Alice, 30', defs);
+console.log(doc.toObject());
+// { name: 'Alice', age: 30 }
 ```
 
 ### Collect errors instead of throwing
+
+Pass an array and `parse()` keeps going, reporting every problem it can rather than stopping at
+the first. Each error carries a stable `errorCode`, a message, and the row and column of the token.
 
 ```ts
 const errors: Error[] = [];
 const doc = parse(text, defs, errors);
 
-if (errors.length > 0) {
-  console.error('Validation failed:', errors);
-}
+for (const e of errors) console.error(e.errorCode, e.message);
+// invalid-email     Invalid email address: not-an-email     at 3:13
+// expected-integer  Expecting a value of type 'int' for 'age'  at 4:28
 ```
 
 ### Infer schema from data (experimental)
@@ -330,12 +374,12 @@ import {
 
 - Parsing: ✅
 - Schema validation: ✅
-- Type system: ✅ (string, int, number, bool, datetime, arrays, objects, base64)
+- Type system: ✅ (string, int, number, decimal, bigint, bool, email, url, date, time, datetime, base64, arrays, objects, nullable/optional, choices, ranges, patterns)
 - Load/validate API: ✅
 - Stringify API: ✅
-- Error handling: ✅
-- Schema inference: ✅
+- Error handling: ✅ (codes, messages, positions; accumulate or throw)
 - Streaming: ✅
+- Schema inference: 🧪 experimental — a convenience of this library, not part of the format
 
 Per-feature **stability tiers** and the versioning policy live in the Internet Object **specification**
 ([docs.internetobject.org](https://docs.internetobject.org)). The current published implementation version is
@@ -371,6 +415,11 @@ If the sibling is absent the corpus suites **skip** rather than fail, so buildin
 still works — but you are then running the library's own tests only. Cases are generated from the
 tables in `tools/corpus/suites-*.ts`; edit those, never the `.io` files.
 
+### Publishing
+
+Maintainers: `bash scripts/publish-latest.sh` for a stable release, `bash scripts/publish-next.sh`
+for a preview on the `next` tag.
+
 
 ## Contributing & Community
 
@@ -381,11 +430,6 @@ We welcome contributions! Please see our [CONTRIBUTING.md](CONTRIBUTING.md) for 
 - **X**: [@internetobject](https://x.com/internetobject)
 
 ## License
-
-
-Maintainers: publish via `bash scripts/publish-latest.sh` or `bash scripts/publish-next.sh`.
-
----
 
 For the full specification, visit [docs.internetobject.org](https://docs.internetobject.org).
 
