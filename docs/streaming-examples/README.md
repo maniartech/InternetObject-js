@@ -14,7 +14,7 @@ drifts from the implementation fails the test. Run them on demand with `npm run 
 
 > **Why this directory is under `docs/` and not `src/`.** It used to sit at
 > `src/streaming/specs/examples/`, beside an in-repo copy of the protocol. That copy was superseded
-> by io-specs and retired on 2026-08-23; the examples stayed, because they are executable and gated.
+> by the specification and retired on 2026-08-23; the examples stayed, because they are executable and gated.
 > The *why* behind the protocol's rules is in [`../decisions/streaming/`](../decisions/streaming/).
 
 ## How To Use These Examples

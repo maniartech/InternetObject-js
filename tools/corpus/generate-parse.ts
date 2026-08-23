@@ -4,11 +4,11 @@ import parse from '../../src/parser/index';
 
 /**
  * Generate a whole-document corpus suite (`document/`, `parser/`, `regression/`), deriving every
- * expectation by RUNNING io-js2.
+ * expectation by RUNNING the reference implementation.
  *
  * The corpus's golden rule is that expected values are *observed*, never guessed. A hand-written
  * expectation is a second implementation, and when it disagrees with the reference nobody can tell
- * which one is wrong. So a case here supplies only the INPUT; the outcome is whatever io-js2
+ * which one is wrong. So a case here supplies only the INPUT; the outcome is whatever the reference implementation
  * actually produces.
  *
  * That puts the intellectual work where it belongs: choosing cases that matter. A generator cannot
@@ -16,7 +16,7 @@ import parse from '../../src/parser/index';
  * once you have said so, the recorded answer is true.
  *
  * IMPORTANT: generated output is a STARTING POINT, not law. Every row must still be read against
- * the spec, because io-js2 can be wrong — several corpus cases exist precisely to pin a behaviour
+ * the spec, because the reference implementation can be wrong — several corpus cases exist precisely to pin a behaviour
  * later found to be a bug. Rows whose outcome looks suspect are flagged `# REVIEW:` rather than
  * silently accepted, and an UNCODED error is always flagged: a port cannot assert on a bare
  * message.

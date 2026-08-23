@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import { corpusDir, corpusPath, specsDir } from '../../tools/corpus/sibling-repos'
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -8,7 +9,7 @@ import { runFile, kindOf, ELSEWHERE, isSuiteFile, type FileResult } from '../../
  * The language-independent conformance corpus, as part of `npm test`.
  *
  * `io-test-cases` is the contract every implementation of Internet Object must satisfy — Go, Rust,
- * C#, Dart — and io-js2 is the reference. A reference implementation that does not run the contract
+ * C#, Dart — and the reference implementation is the reference. A reference implementation that does not run the contract
  * on every commit is not a reference; it is a second opinion that happens to be nearby.
  *
  * This suite exists because that was literally true here. The corpus was checked only by a script
@@ -17,7 +18,7 @@ import { runFile, kindOf, ELSEWHERE, isSuiteFile, type FileResult } from '../../
  *   - 85 cases (the whole `schema/` and `streaming/` suites) had no comparator at all and were
  *     reported as "skipped" for months;
  *   - running them for the first time found two real defects and thirteen stale error codes;
- *   - a bug fix in io-js2 could silently invalidate corpus rows with nothing to say so.
+ *   - a bug fix in the reference implementation could silently invalidate corpus rows with nothing to say so.
  *
  * Every case is a separate `it()`, so a failure names the case rather than the file.
  *
@@ -27,7 +28,7 @@ import { runFile, kindOf, ELSEWHERE, isSuiteFile, type FileResult } from '../../
  */
 
 const here = path.dirname(fileURLToPath(import.meta.url));
-const CORPUS = path.resolve(here, '../../../io-test-cases');
+const CORPUS = corpusDir() ?? '';
 
 /** Every `.io` suite file, recursively, in a stable order. */
 function corpusFiles(dir: string): string[] {

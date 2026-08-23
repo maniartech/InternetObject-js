@@ -5,7 +5,7 @@ import IOObject from "./internet-object";
 /**
  * The name a section takes when it carries neither a name nor a schema (a bare `---`).
  *
- * Per io-specs `the-structure/introduction/data.md`: "if both the name and schema are omitted,
+ * Per the specification `the-structure/introduction/data.md`: "if both the name and schema are omitted,
  * the section name defaults to `data`". Because the name is also the key a section is projected
  * under, this string is part of the public output — not an internal placeholder.
  */

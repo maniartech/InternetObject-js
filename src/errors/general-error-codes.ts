@@ -2,7 +2,7 @@
  * General error codes that apply across different phases.
  *
  * Naming follows ADR 0002: `<predicate>-<subject>`, predicate drawn from the closed 13-word
- * vocabulary. See docs/decisions/0002-error-code-grammar-and-taxonomy.md.
+ * vocabulary. See ADR 0002, the error-code grammar and taxonomy — decision record kept with the maintainers (not shipped).
  */
 enum GeneralErrorCodes {
   // A mandatory thing is ABSENT. `missing-` is a presence problem; `expected-` is a type problem.

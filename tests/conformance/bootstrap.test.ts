@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import { corpusDir, corpusPath, specsDir } from '../../tools/corpus/sibling-repos'
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -18,7 +19,7 @@ import { loadCases, runTokenCase } from '../../tools/corpus/bootstrap-runner';
  */
 
 const here = path.dirname(fileURLToPath(import.meta.url));
-const CSV = path.resolve(here, '../../../io-test-cases/bootstrap/tokenizer.csv');
+const CSV = corpusPath('bootstrap', 'tokenizer.csv') ?? '';
 
 const present = fs.existsSync(CSV);
 

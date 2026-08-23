@@ -2,7 +2,7 @@
  * Base64 helpers, kept free of any Node-only dependency so they work in a browser build too.
  *
  * Lives in `utils` rather than beside the formatter because both the serializer and the value
- * model need it: IO writes a byte array as `b"<base64>"`, and per io-specs `json-compatibility.md`
+ * model need it: IO writes a byte array as `b"<base64>"`, and per the specification `json-compatibility.md`
  * a `binary` value projects to JSON as a base64 **string**.
  */
 

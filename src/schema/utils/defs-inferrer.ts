@@ -87,7 +87,7 @@ export function isRecordCollection(data: any): boolean {
  * of a document then resolve to ONE inferred schema name, and the schema built from one of them is
  * bound to the other's data — which fails against a shape it was never built from. The symptom
  * varies with the input (`expected-boolean`, `missing-value`, `unknown-member`); the cause is
- * always that two things were filed under one label. See io-test-cases ISSUES.md, ISSUE-25.
+ * always that two things were filed under one label. See the conformance corpus ISSUES.md, ISSUE-25.
  *
  * `claimed` maps each name already handed out to the key that holds it, so a name is reused only
  * by the key that earned it. A different key that would collide counts past the names already

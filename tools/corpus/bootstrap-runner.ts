@@ -1,4 +1,5 @@
 import { readFileSync } from 'fs';
+import { corpusPath } from './sibling-repos'
 import Tokenizer from '../../src/parser/tokenizer/index';
 
 /**
@@ -22,7 +23,7 @@ import Tokenizer from '../../src/parser/tokenizer/index';
 
 const BACKSLASH = String.fromCharCode(92);
 
-export const DEFAULT_CSV = '../io-test-cases/bootstrap/tokenizer.csv';
+export const DEFAULT_CSV = corpusPath('bootstrap', 'tokenizer.csv') ?? '';
 
 /** Split one CSV line into fields. RFC 4180: quoted fields, `""` for a literal quote. */
 export function splitCsvLine(line: string): string[] {

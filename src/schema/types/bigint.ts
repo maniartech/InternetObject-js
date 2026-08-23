@@ -56,7 +56,7 @@ class BigIntDef implements TypeDef {
 
     // A display `format` only changes the BASE, never the type. The base prefix and the `n`
     // suffix are both required, or the output no longer re-parses as the bigint it came from
-    // (bare `ff` is an open string, and `0xff` is a number). See io-specs
+    // (bare `ff` is an open string, and `0xff` is a number). See the specification
     // `serialization/value-formatting.md`.
     const radix = RADIX_FORMATS[memberDef.format as keyof typeof RADIX_FORMATS]
     if (radix) {

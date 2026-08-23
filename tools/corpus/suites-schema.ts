@@ -1,4 +1,5 @@
 import { emitSchemaSuite, assertUniqueSchemaNames, type SchemaCase, type SchemaSuiteSpec } from './generate-schema';
+import { requireCorpusPath } from './sibling-repos'
 
 /**
  * Case tables for the `schema/` corpus suites.
@@ -15,7 +16,7 @@ import { emitSchemaSuite, assertUniqueSchemaNames, type SchemaCase, type SchemaS
  * one when the compiler could plausibly fold it into another.
  */
 
-const OUT = '../io-test-cases/schema';
+const OUT = requireCorpusPath('schema');
 
 // ---------------------------------------------------------------------------------------------
 // Constraints — the keys a memberdef carries
@@ -189,7 +190,7 @@ const SUITES: SchemaSuiteSpec[] = [
     description: 'Constraint keys the compiler carries onto a memberdef, per type',
     header: [
       'Schema · CONSTRAINT KEYS',
-      'Authoritative: compiled shapes produced by running io-js2\'s parseSchema().',
+      'Authoritative: compiled shapes produced by running the reference implementation\'s parseSchema().',
       'The compiler CARRIES constraints; it does not enforce them (that is validation/).',
       'A constraint declared for a type that has no use for it is recorded as observed —',
       'whether it is carried or rejected is exactly the sort of thing a port must match.',
@@ -201,7 +202,7 @@ const SUITES: SchemaSuiteSpec[] = [
     description: 'Every registered type name compiles verbatim — sized numerics, string and temporal families',
     header: [
       'Schema · TYPE NAMES',
-      'Authoritative: compiled shapes produced by running io-js2\'s parseSchema().',
+      'Authoritative: compiled shapes produced by running the reference implementation\'s parseSchema().',
       'A sized name compiles to a memberdef with that `type` VERBATIM. A port that folds',
       '`int8` into `int` at compile time loses the bound and passes validation it should fail.',
       '',
@@ -216,7 +217,7 @@ const SUITES: SchemaSuiteSpec[] = [
     description: 'Array member definitions — bracket form, object form, nesting, and element paths',
     header: [
       'Schema · ARRAYS',
-      'Authoritative: compiled shapes produced by running io-js2\'s parseSchema().',
+      'Authoritative: compiled shapes produced by running the reference implementation\'s parseSchema().',
       'An array\'s element definition lives under `of`. Both spellings — `[string]` and',
       '`{array, of: string}` — must compile to the same shape.',
     ],
@@ -227,7 +228,7 @@ const SUITES: SchemaSuiteSpec[] = [
     description: 'Malformed schema definitions and the designated codes they produce',
     header: [
       'Schema · MALFORMED DEFINITIONS (extended)',
-      'Authoritative: codes produced by running io-js2\'s parseSchema().',
+      'Authoritative: codes produced by running the reference implementation\'s parseSchema().',
       'Compilation fails fast, so each row lists exactly one code. An UNCODED error is flagged',
       'REVIEW rather than recorded: a port cannot assert on a bare message.',
     ],

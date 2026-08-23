@@ -61,7 +61,7 @@ const schema = new Schema(
  * Choosing them makes Python, Go's `utf8.RuneCountInString` and Rust's `.chars().count()` correct
  * by default, and leaves JavaScript as the one implementation needing an explicit spread.
  *
- * See io-test-cases ISSUE-24.
+ * See the conformance corpus ISSUE-24.
  */
 function codePointLength(value: string): number {
   let n = 0

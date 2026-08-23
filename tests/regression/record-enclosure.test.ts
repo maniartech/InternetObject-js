@@ -8,7 +8,7 @@ import parse from '../../src/parser/index';
  * schema validation, across brace depth 0..4, empty braces, keyed vs positional members, mixed
  * nesting, collections (`~` rows), and schema references.
  *
- * Spec: io-specs `the-structure/values/object.md` — "Record Enclosure Under Schema Validation"
+ * Spec: the specification `the-structure/values/object.md` — "Record Enclosure Under Schema Validation"
  *       and "Precautions and Ambiguity Prevention".
  *
  * Cases known to be UNRESOLVED are grouped under `ISSUE-15` at the bottom and asserted against
