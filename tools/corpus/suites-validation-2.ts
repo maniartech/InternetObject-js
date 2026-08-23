@@ -126,7 +126,12 @@ const choices: Case[] = [
   { name: 'int_choice_negative', schema: 'c: {int, choices: [-1, 1]}', input: '-1' },
   { name: 'number_choice_fractional', schema: 'c: {number, choices: [0.5, 1.5]}', input: '1.5' },
 
-  { group: 'boolean choices', name: 'bool_choice_true_only', schema: 'c: {bool, choices: [T]}', input: 'T' },
+  // `choices` is NOT a key a bool memberdef accepts — the compiler reports `unknown-member`, so
+  // these rows pin that rather than any choice behaviour. Kept because "which types accept which
+  // constraint keys" is exactly what a port needs told, and a bool with two possible values has
+  // little use for a choices list anyway.
+  { group: 'bool does not accept a choices list at all',
+    name: 'bool_choice_true_only', schema: 'c: {bool, choices: [T]}', input: 'T' },
   { name: 'bool_choice_true_only_violated', schema: 'c: {bool, choices: [T]}', input: 'F' },
 
   { group: 'choices with the other modifiers', name: 'choice_optional_omitted',

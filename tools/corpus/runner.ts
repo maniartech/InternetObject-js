@@ -57,6 +57,21 @@ export function kindOf(file: string): Kind {
   return 'parse';
 }
 
+/**
+ * Files that live in the corpus, end in `.io`, and are NOT suites.
+ *
+ * `catalog.io` is the generated index: one row per suite file, carrying counts rather than cases.
+ * A walker that picks it up reports eighty rows with no `input` and calls them inert, which is
+ * true and useless. Kept as a list rather than a path check so the reason stays written down.
+ */
+const NON_SUITE_FILES: ReadonlySet<string> = new Set(['catalog.io']);
+
+/** True when a path is a runnable suite rather than corpus bookkeeping. */
+export function isSuiteFile(file: string): boolean {
+  const name = file.replace(/\\/g, '/').split('/').pop() ?? '';
+  return name.endsWith('.io') && !NON_SUITE_FILES.has(name);
+}
+
 /** Kinds this runner executes. */
 export const SUPPORTED: ReadonlySet<Kind> = new Set<Kind>(
   ['parse', 'validation', 'roundtrip', 'schemaDef', 'stream']);

@@ -65,6 +65,19 @@ describe('variable resolution in the value model (no schema)', () => {
     }
   });
 
+  it('allows a schema to reference ITSELF — a recursive type is not a cycle', () => {
+    // The guard above must not catch this. Inference emits a self-referencing schema whenever a
+    // map's values can contain the map, and the round-trip fuzzer found the over-broad guard
+    // within one run of ~24,000 documents:
+    //
+    //   ~ $node: {"*": {any, "null": T}, child: {object, schema: {*: $node}, optional: T}}
+    //
+    // A schema referring to itself is how a recursive type is written. A VARIABLE referring to
+    // itself has no value. Only the second is an error.
+    const src = '~ $node: {v?: int, child: {object, schema: {*: $node}, optional: T}}\n---\n~ v: 1';
+    expect(() => parse(src, null).toObject()).not.toThrow();
+  });
+
   it('still resolves through the schema path', () => {
     // The schema path decodes separately and must keep working — this is what the first attempt
     // at the fix broke, by making `getV` return values.

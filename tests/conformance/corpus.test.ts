@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { runFile, kindOf, ELSEWHERE, type FileResult } from '../../tools/corpus/runner';
+import { runFile, kindOf, ELSEWHERE, isSuiteFile, type FileResult } from '../../tools/corpus/runner';
 
 /**
  * The language-independent conformance corpus, as part of `npm test`.
@@ -36,7 +36,7 @@ function corpusFiles(dir: string): string[] {
   for (const entry of fs.readdirSync(dir, { withFileTypes: true }).sort((a, b) => a.name < b.name ? -1 : 1)) {
     const full = path.join(dir, entry.name);
     if (entry.isDirectory()) out.push(...corpusFiles(full));
-    else if (entry.name.endsWith('.io')) out.push(full);
+    else if (isSuiteFile(entry.name)) out.push(full);
   }
   return out;
 }

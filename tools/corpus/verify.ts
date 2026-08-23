@@ -1,4 +1,4 @@
-import { runFile, ELSEWHERE } from './runner';
+import { runFile, ELSEWHERE, isSuiteFile } from './runner';
 
 /**
  * Corpus verifier CLI — runs the language-independent conformance corpus (io-test-cases) against
@@ -25,6 +25,11 @@ let elsewhere = 0;   // executed by another runner, NOT unchecked
 let unchecked = 0;   // no comparator at all
 
 for (const file of files) {
+  // A `find ... -name '*.io'` hands us the generated catalogue too; it holds counts, not cases.
+  if (!isSuiteFile(file)) {
+    console.log(`skip ${file.padEnd(52)}     the corpus catalogue, not a suite`);
+    continue;
+  }
   const result = await runFile(file);
 
   if (result.suiteError) {

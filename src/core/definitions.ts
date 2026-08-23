@@ -228,11 +228,22 @@ class IODefinitions {
    *   the text as an ordinary string).
    */
   public getValue(k: any): any {
+    const key = this.keyOf(k);
     const found = this.getV(k);
     if (found === null || found === undefined) return found;
+
+    // ONLY a variable is decoded here. A `$` reference resolves to a Schema, and a schema is
+    // allowed to refer to ITSELF {EM} that is how a recursive type is written, and inference emits
+    // one whenever a map's values can contain the map:
+    //
+    //   ~ $node: {"*": {any, "null": T}, child: {object, schema: {*: $node}, optional: T}}
+    //
+    // Guarding those as cycles broke every recursive schema, which the round-trip fuzzer caught
+    // within one run. A VARIABLE defined in terms of itself has no value and must still be
+    // reported, so the guard stays {EM} scoped to `@`.
+    if (!key.startsWith('@')) return found;
     if (typeof (found as any).toValue !== 'function') return found;
 
-    const key = this.keyOf(k);
     if (this._resolvingValues.has(key)) {
       throw new ValidationError(
         ErrorCodes.invalidDefinition,
