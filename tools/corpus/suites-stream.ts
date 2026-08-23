@@ -45,13 +45,43 @@ const OUT_DIR = '../io-test-cases/streaming';
 type Chunking = 'whole' | 'per-line' | 'per-byte';
 const CHUNKINGS: Chunking[] = ['whole', 'per-line', 'per-byte'];
 
+/**
+ * A quoted IO string for a text column.
+ *
+ * INVISIBLE characters are escaped rather than written literally. A byte-order mark inside a
+ * quoted string looks like nothing at all: a reader cannot see that the case is about a BOM, and
+ * an editor or a git filter may silently drop it, turning the case into its own control without
+ * anyone noticing. Legible non-ASCII — accents, CJK, emoji — is left alone, because escaping that
+ * would make the cases harder to read for no gain.
+ *
+ * The test is numeric rather than a regex character class, so no control character appears
+ * literally in THIS file either.
+ */
 function ioText(s: string): string {
-  const esc = s
-    .replace(/\\/g, '\\\\')
-    .replace(/\n/g, '\\n')
-    .replace(/\t/g, '\\t')
-    .replace(/\r/g, '\\r');
+  let esc = '';
+  for (const ch of s) {
+    const code = ch.codePointAt(0)!;
+    if (ch === '\\') { esc += '\\\\'; continue; }
+    if (code === 0x0a) { esc += '\\n'; continue; }
+    if (code === 0x09) { esc += '\\t'; continue; }
+    if (code === 0x0d) { esc += '\\r'; continue; }
+    if (isInvisible(code)) {
+      esc += '\\u' + code.toString(16).padStart(4, '0');
+      continue;
+    }
+    esc += ch;
+  }
   return esc.includes('"') ? `'${esc.replace(/'/g, "\\'")}'` : `"${esc}"`;
+}
+
+/** Characters that render as nothing, and so must never be written literally into a case. */
+function isInvisible(code: number): boolean {
+  if (code < 0x20 || code === 0x7f) return true;          // C0 controls and DEL
+  if (code >= 0x80 && code <= 0x9f) return true;          // C1 controls
+  if (code >= 0x200b && code <= 0x200f) return true;      // zero-width and bidi marks
+  if (code === 0x2028 || code === 0x2029) return true;    // line and paragraph separators
+  if (code === 0xfeff) return true;                       // byte-order mark
+  return false;
 }
 
 const KEYWORDS = new Set(['null', 'N', 'T', 'F', 'true', 'false', 'NaN', 'Inf']);
@@ -185,6 +215,55 @@ const framing: StreamCase[] = [
 ];
 
 // ---------------------------------------------------------------------------------------------
+// Wire format — the framing obligations of a streamed document
+// ---------------------------------------------------------------------------------------------
+const wireFormat: StreamCase[] = [
+  { group: 'a marker inside a QUOTED value is content, not framing',
+    name: 'newline_inside_quoted_value', input: '---\n~ a: "line1\nline2"\n',
+    note: 'a newline inside a quoted string does not start a new record (wire-format.md)' },
+  { name: 'tilde_inside_quoted_value', input: '---\n~ a: "x ~ y"\n' },
+  { name: 'separator_inside_quoted_value', input: '---\n~ a: "x --- y"\n' },
+  { name: 'newline_inside_raw_string', input: "---\n~ a: r'line1\nline2'\n" },
+  { name: 'markers_inside_a_nested_value', input: '---\n~ a: {b: "~ not a record"}\n' },
+
+  { group: 'only the FIRST --- separates header from data',
+    name: 'second_separator_is_a_switch', input: '---\n~ A\n---\n~ B\n',
+    note: 'a later `---` resets the schema context; it is not a second header boundary' },
+  { name: 'three_separators', input: '---\n~ A\n---\n~ B\n---\n~ C\n' },
+  { name: 'separator_immediately_after_separator', input: '---\n---\n~ A\n' },
+  { name: 'header_then_separator_then_data', input: '~ $P: {n:string}\n--- $P\n~ A\n' },
+
+  { group: 'the legacy headerless form is TOLERATED by readers',
+    name: 'legacy_headerless_two_records', input: '~ Alice\n~ Bob\n',
+    note: 'a document with no `---` at all. Readers accept it so a non-streaming document stays '
+        + 'equivalent; a WRITER must never produce it, because it cannot be emitted incrementally' },
+  { name: 'legacy_headerless_one_record', input: '~ Alice\n' },
+  { name: 'terminator_present_is_the_normal_form', input: '---\n~ Alice\n~ Bob\n',
+    note: 'the control: the same data written the way a conforming writer emits it' },
+
+  { group: 'newline convention MUST NOT affect framing', name: 'crlf_framing',
+    input: '---\r\n~ Alice\r\n~ Bob\r\n' },
+  { name: 'lone_cr_framing', input: '---\r~ Alice\r~ Bob\r',
+    note: 'a lone CR is normalized too — some producers still emit classic-Mac line endings' },
+  { name: 'mixed_line_endings', input: '---\r\n~ Alice\n~ Bob\r' },
+  { name: 'lf_framing_control', input: '---\n~ Alice\n~ Bob\n' },
+
+  { group: 'a byte-order mark is stripped only at the very start',
+    name: 'bom_at_start_is_stripped', input: '\uFEFF---\n~ Alice\n' },
+  { name: 'bom_elsewhere_is_content', input: '---\n~ "a\uFEFFb"\n',
+    note: 'a BOM-like character anywhere but the start is ordinary content and MUST survive' },
+  { name: 'bom_before_a_header', input: '\uFEFF~ $P: {n:string}\n--- $P\n~ Alice\n' },
+
+  { group: 'multibyte text survives a chunk boundary',
+    name: 'accented_characters', input: '---\n~ "h\u00e9llo"\n',
+    note: 'every case runs per-BYTE as well as whole, so a code point split across two chunks is '
+        + 'exercised by construction — the decoder must keep state across the boundary' },
+  { name: 'emoji_four_byte', input: '---\n~ "a \ud83d\ude00 b"\n' },
+  { name: 'cjk_three_byte', input: '---\n~ "\u65e5\u672c\u8a9e"\n' },
+  { name: 'mixed_scripts', input: '---\n~ "\u00e9\u65e5\ud83d\ude00x"\n' },
+];
+
+// ---------------------------------------------------------------------------------------------
 // Errors — recoverable versus fatal
 // ---------------------------------------------------------------------------------------------
 const errors: StreamCase[] = [
@@ -275,6 +354,25 @@ const SUITES: StreamSuite[] = [
     ],
     cases: framing,
   },
+  {
+    file: 'wire-format',
+    description: 'Wire format — quoted content vs framing, the header terminator, line endings, BOM, and multibyte text',
+    header: [
+      'Streaming \u00b7 WIRE FORMAT',
+      'Authoritative: items produced by running io-js2\'s createStreamReader, verified IDENTICAL',
+      'across whole / per-line / per-byte chunkings.',
+      '',
+      'Framing is determined by the MARKERS, never by where a packet happens to end. A `~` or a',
+      '`---` inside a quoted value is content. Only the FIRST `---` separates header from data;',
+      'any later one is a schema switch. CRLF and a lone CR are normalized for framing only.',
+      'A byte-order mark is stripped at the very start of the stream and nowhere else.',
+      '',
+      'The per-byte chunking is what exercises multibyte decoding: a four-byte emoji is split',
+      'across four chunks by construction, so a decoder that does not keep state fails here.',
+    ],
+    cases: wireFormat,
+  },
+
   {
     file: 'errors-depth',
     description: 'Recoverable record errors versus fatal terminations, and where the category comes from',

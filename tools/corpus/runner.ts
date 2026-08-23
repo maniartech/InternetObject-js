@@ -453,12 +453,15 @@ function valueCase(row: any): string[] {
     : row.input;
 
   let actual: any = null;
+  let recoveredValue: any = null;
   let codes: string[] = [];
   try {
     const result: any = parse(source, null);
     codes = (result.getErrors?.() ?? []).map((e: any) => e.errorCode);
-    // A case that expects errors asserts the CODES; its value is not meaningful.
+    // A case that expects errors asserts the CODES; its value is not meaningful UNLESS the case
+    // also declares `recovered`, which is exactly the accumulate-and-continue promise.
     actual = codes.length > 0 ? null : result.toObject();
+    recoveredValue = result.toObject();
   } catch (e: any) {
     codes = [e?.errorCode ?? String(e?.message ?? e)];
   }
@@ -470,6 +473,20 @@ function valueCase(row: any): string[] {
   }
   if (expectedCodes.length === 0 && show(actual) !== show(row.expected)) {
     problems.push(`value  expected=${show(row.expected)}\n          actual  =${show(actual)}`);
+  }
+
+  // RECOVERED: what the document still loads to DESPITE the errors.
+  //
+  // Error accumulation is a normative promise {EM} "the loaded result includes the records that
+  // succeeded" {EM} and it was untestable here, because a row carried either a value or codes and
+  // never both. So a suite could assert that duplicate section names report
+  // `duplicate-section-name`, but not that the sections are still all present and correctly
+  // renamed, which is the part a recovering parser is most likely to get wrong.
+  //
+  // `recovered` is separate from `expected` rather than a relaxation of it: `expected` means "no
+  // errors, and this value", `recovered` means "these errors, AND this value survived".
+  if (row.recovered !== undefined && show(recoveredValue) !== show(row.recovered)) {
+    problems.push(`recovered  expected=${show(row.recovered)}\n              actual  =${show(recoveredValue)}`);
   }
   return problems;
 }

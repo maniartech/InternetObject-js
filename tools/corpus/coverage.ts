@@ -70,7 +70,7 @@ const COVERS: Record<string, string[]> = {
   // ---- the structure -------------------------------------------------------------------------
   'the-structure/case-sensitivity.md': ['tokenizer/booleans', 'tokenizer/nulls', 'validation/booleans'],
   'the-structure/comments.md': ['tokenizer/comments', 'tokenizer/structure-tokens', 'document/structure'],
-  'the-structure/encoding.md': ['tokenizer/strings-escapes', 'serializer/scalars'],
+  'the-structure/encoding.md': ['tokenizer/strings-escapes', 'serializer/scalars', 'streaming/wire-format'],
   'the-structure/syntax-errors.md': ['parser/errors', 'parser/errors-extended', 'tokenizer/errors'],
   'the-structure/introduction/data.md': ['document/structure', 'parser/objects', 'parser/collections', 'parser/sections'],
   'the-structure/introduction/header.md': ['document/structure', 'document/definitions', 'parser/header'],
@@ -99,7 +99,7 @@ const COVERS: Record<string, string[]> = {
   'the-collections/collection.md': ['parser/collections', 'document/structure', 'validation/collections'],
   'the-collections/collection-rules.md': ['parser/collections', 'validation/accumulation-depth', 'validation/collections'],
   'the-collections/creating-collection.md': ['parser/collections', 'serializer/documents'],
-  'the-collections/data-streaming.md': ['streaming/framing', 'streaming/framing-depth'],
+  'the-collections/data-streaming.md': ['streaming/framing', 'streaming/framing-depth', 'streaming/wire-format'],
 
   // ---- definitions ------------------------------------------------------------------------------
   'the-definitions/definitions.md': ['document/definitions', 'parser/header'],
@@ -130,8 +130,8 @@ const COVERS: Record<string, string[]> = {
   // ---- parsing and errors -----------------------------------------------------------------------
   'parsing-and-errors/error-model.md': ['parser/errors', 'parser/errors-extended', 'schema/errors-extended'],
   'parsing-and-errors/error-codes.md': ['parser/errors-extended', 'schema/errors', 'schema/errors-extended', 'validation/type-names'],
-  'parsing-and-errors/error-accumulation.md': ['validation/accumulation', 'validation/accumulation-depth'],
-  'parsing-and-errors/parser-behavior.md': ['parser/errors', 'parser/errors-extended'],
+  'parsing-and-errors/error-accumulation.md': ['validation/accumulation', 'validation/accumulation-depth', 'document/recovery'],
+  'parsing-and-errors/parser-behavior.md': ['parser/errors', 'parser/errors-extended', 'document/recovery'],
 
   // ---- serialization ------------------------------------------------------------------------------
   'serialization/document-output.md': ['serializer/documents', 'serializer/headers'],
@@ -140,11 +140,11 @@ const COVERS: Record<string, string[]> = {
   'serialization/value-formatting.md': ['serializer/quoting', 'serializer/scalars'],
 
   // ---- streaming ------------------------------------------------------------------------------------
-  'streaming/wire-format.md': ['streaming/framing', 'streaming/framing-depth'],
+  'streaming/wire-format.md': ['streaming/framing', 'streaming/framing-depth', 'streaming/wire-format'],
   'streaming/stream-items.md': ['streaming/framing-depth', 'streaming/errors-depth'],
   'streaming/error-model.md': ['streaming/errors', 'streaming/errors-depth'],
   'streaming/schema-and-state.md': ['streaming/schema-state', 'streaming/schema-state-depth'],
-  'streaming/readers-and-writers.md': ['streaming/framing-depth'],
+  'streaming/readers-and-writers.md': ['streaming/framing-depth', 'streaming/wire-format'],
 
   // ---- conformance and grammar ----------------------------------------------------------------------
   'conformance/validation-model.md': ['validation/optionality', 'validation/objects-and-paths'],

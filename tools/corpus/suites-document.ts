@@ -136,6 +136,45 @@ const definitions: Case[] = [
 ];
 
 // ---------------------------------------------------------------------------------------------
+// Error recovery — what still loads when something is wrong
+// ---------------------------------------------------------------------------------------------
+const recovery: Case[] = [
+  // The renaming rule is stated EXACTLY in the spec, because two implementations that disagree
+  // here produce differently-named sections from the same document. Every example on that page is
+  // a row below, and each carries `recovered` — the code alone would not prove the sections
+  // survived, which is the whole promise of accumulate-and-continue.
+  { group: 'a duplicate section name is RENAMED, never dropped or overwritten',
+    name: 'three_sections_same_name', input: '--- users\n~ 1\n--- users\n~ 2\n--- users\n~ 3',
+    recovered: true, note: 'users, users_2, users_3 — the counter is per NAME' },
+  { name: 'two_names_each_repeated', input: '--- a\n~ 1\n--- b\n~ 2\n--- a\n~ 3\n--- b\n~ 4',
+    recovered: true, note: 'a, b, a_2, b_2 — NOT a_2, b_3: the counter is per name, not per document' },
+  { name: 'explicit_name_is_not_displaced',
+    input: '--- users\n~ 1\n--- users_2\n~ 2\n--- users\n~ 3', recovered: true,
+    note: 'the third section skips users_2, which the author already spelled out, and takes users_3' },
+  { name: 'two_sections_same_name', input: '--- users\n~ 1\n--- users\n~ 2', recovered: true },
+
+  { group: 'unnamed sections take the default name and are renamed the same way',
+    name: 'two_unnamed_sections', input: '---\n~ 1\n---\n~ 2', recovered: true,
+    note: 'both are the implicit `data` section' },
+  { name: 'three_unnamed_sections', input: '---\n~ 1\n---\n~ 2\n---\n~ 3', recovered: true },
+  { name: 'unnamed_then_named_data', input: '---\n~ 1\n--- data\n~ 2', recovered: true,
+    note: 'an explicit `data` collides with the implicit one' },
+
+  { group: 'per-record validation errors do not stop the other records',
+    name: 'valid_invalid_valid',
+    input: '~ $schema: {name: string, age: {int, max: 25}}\n---\n~ James, 20\n~ Alex, 30\n~ Bob, 22',
+    note: 'the spec\'s own example: two valid records and one error entry, not a fatal failure. ' +
+          'The failing record is marked in place rather than removed, so the collection keeps its ' +
+          'length and the surviving records keep their positions' },
+  { name: 'first_record_invalid',
+    input: '~ $schema: {age: {int, max: 25}}\n---\n~ 30\n~ 20' },
+  { name: 'last_record_invalid',
+    input: '~ $schema: {age: {int, max: 25}}\n---\n~ 20\n~ 30' },
+  { name: 'all_records_valid',
+    input: '~ $schema: {age: {int, max: 25}}\n---\n~ 20\n~ 22', note: 'the control' },
+];
+
+// ---------------------------------------------------------------------------------------------
 // Projection — how values are keyed in the value model
 // ---------------------------------------------------------------------------------------------
 const projection: Case[] = [
@@ -200,6 +239,26 @@ const SUITES: SuiteSpec[] = [
     ],
     cases: definitions,
   },
+  {
+    file: 'recovery',
+    description: 'Error recovery — duplicate section renaming, and per-record errors that do not stop the rest',
+    header: [
+      'Document \u00b7 ERROR RECOVERY',
+      'Authoritative: outcomes produced by running io-js2 parse() then doc.toObject().',
+      '',
+      'A conformant processor ACCUMULATES rather than stopping at the first problem, and returns',
+      'the errors alongside whatever loaded successfully. Rows here carry a `recovered` column for',
+      'that reason: the error code alone would not prove the surviving data is intact, which is',
+      'exactly the promise a recovering parser breaks first.',
+      '',
+      'The duplicate-section renaming rule is stated exactly in the specification, because two',
+      'implementations that disagree produce differently-named sections from one document. Append',
+      '`_2` to the ORIGINAL name, then `_3`, `_4`, counting names ALREADY TAKEN — including names',
+      'a later section spelled out for itself. Per name, not per document.',
+    ],
+    cases: recovery,
+  },
+
   {
     file: 'projection',
     description: 'Value projection — positional keys, empty containers, nesting, and null',

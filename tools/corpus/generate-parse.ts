@@ -42,6 +42,13 @@ export interface Case {
    * may be a bug" — without which a defect quietly becomes law the moment it is written down.
    */
   review?: string;
+  /**
+   * Also record what the document still LOADS TO despite its errors, as a `recovered` column.
+   *
+   * Set this for a case about accumulate-and-continue: it is the only way to assert that the
+   * surviving data is intact, which is the promise a recovering parser most often breaks.
+   */
+  recovered?: boolean;
 }
 
 /** Bare words the reader resolves to a value rather than a string. */
@@ -83,16 +90,17 @@ export function ioText(s: string): string {
   return escaped.includes('"') ? `'${escaped.replace(/'/g, "\\'")}'` : `"${escaped}"`;
 }
 
-export interface Outcome { codes: string[]; value: any }
+export interface Outcome { codes: string[]; value: any; recovered: any }
 
 /** Run one case exactly the way `tools/corpus/runner.ts` will, so the two cannot disagree. */
 export function observe(input: string): Outcome {
   try {
     const doc: any = parse(input, null);
     const codes = (doc.getErrors?.() ?? []).map((e: any) => e.errorCode ?? `<${e?.name ?? 'uncoded'}>`);
-    return { codes, value: codes.length > 0 ? null : doc.toObject() };
+    const loaded = doc.toObject();
+    return { codes, value: codes.length > 0 ? null : loaded, recovered: loaded };
   } catch (e: any) {
-    return { codes: [e?.errorCode ?? `<${e?.name ?? 'uncoded'}>`], value: null };
+    return { codes: [e?.errorCode ?? `<${e?.name ?? 'uncoded'}>`], value: null, recovered: null };
   }
 }
 
@@ -113,7 +121,10 @@ export function generate(spec: SuiteSpec): { content: string; flagged: number } 
   out.push(`~ description: ${ioText(spec.description)}`);
   // `expected` must accept N: a case whose outcome is a null value, or whose document is empty,
   // records `N` here — and `any` is NOT nullable by default.
-  out.push('~ $schema: { name: string, input: string, expected?: {any, "null": T}, error_codes?: array }');
+  const anyRecovered = spec.cases.some(c => c.recovered);
+  out.push(anyRecovered
+    ? '~ $schema: { name: string, input: string, expected?: {any, "null": T}, error_codes?: array, recovered?: {any, "null": T} }'
+    : '~ $schema: { name: string, input: string, expected?: {any, "null": T}, error_codes?: array }');
   out.push('---');
 
   let lastGroup = '';
@@ -128,7 +139,7 @@ export function generate(spec: SuiteSpec): { content: string; flagged: number } 
     if (c.note) out.push(`# ${c.note}`);
     if (c.review) out.push(`# REVIEW: ${c.review}`);
 
-    const { codes, value } = observe(c.input);
+    const { codes, value, recovered } = observe(c.input);
 
     // An UNCODED error is never acceptable in the corpus: a port cannot assert on a bare message.
     if (codes.some(x => x.startsWith('<'))) {
@@ -136,7 +147,8 @@ export function generate(spec: SuiteSpec): { content: string; flagged: number } 
       flagged++;
     }
 
-    const tail = codes.length > 0 ? `error_codes: [${codes.join(', ')}]` : ioLiteral(value);
+    let tail = codes.length > 0 ? `error_codes: [${codes.join(', ')}]` : ioLiteral(value);
+    if (c.recovered) tail += `, recovered: ${ioLiteral(recovered)}`;
     out.push(`~ ${c.name}, ${ioText(c.input)}, ${tail}`);
   }
 
