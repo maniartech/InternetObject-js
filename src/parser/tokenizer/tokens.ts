@@ -34,7 +34,8 @@ export type TokenValue =
   | boolean                 // BOOLEAN
   | null                    // NULL
   | Date                    // DATETIME, DATE, TIME
-  | Buffer                  // BINARY
+  | Uint8Array              // BINARY -- a Node Buffer where one exists (Buffer extends
+                            // Uint8Array), a plain Uint8Array in the browser
   | TokenErrorValue         // ERROR
   | undefined;              // UNDEFINED
 

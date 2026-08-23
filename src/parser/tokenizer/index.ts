@@ -5,6 +5,7 @@ import ErrorCodes     from '../../errors/io-error-codes';
 import SyntaxError    from '../../errors/io-syntax-error';
 import { unclosedConstructRange, createPosition } from '../../errors/error-range-utils';
 import * as dtParser  from '../../utils/datetime';
+import { fromBase64 } from '../../utils/base64'
 import * as is        from './is';
 import { CHAR_CODES, isDigitCode, isWhitespaceCode } from './is';
 import Literals       from './literals';
@@ -486,7 +487,7 @@ class Tokenizer {
     token.subType = "BINARY_STRING";
 
     // Convert the base64 string to a byte array
-    token.value = Buffer.from(valueStr, "base64");
+    token.value = fromBase64(valueStr);
     return token;
   }
 
