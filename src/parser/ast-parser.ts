@@ -102,7 +102,7 @@ class ASTParser {
    * (`parseSectionContent` → `processCollection`/`processObject`). Returns the content
    * node and any accumulated parse errors.
    *
-   * This is the per-record parse seam used by streaming (IMPLEMENTATION-GAPS.md Gap 20):
+   * This is the per-record parse seam used by streaming (streaming gap tracker (.private/docs/streaming-IMPLEMENTATION-GAPS.md, kept out of the repo), Gap 20):
    * the reader resolves the header once, then parses each record's token frame here and
    * runs the normal schema processor over the result. Behavior is identical to the
    * corresponding section in a whole-document parse.

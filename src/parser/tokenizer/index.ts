@@ -1234,7 +1234,7 @@ class Tokenizer {
     // same line as `---`, and reSectionSchemaName never matches across a newline,
     // so this is behavior-preserving while keeping lookahead bounded — it avoids
     // O(n^2) substring copies on large multi-section documents and unblocks
-    // incremental (chunk-fed) tokenization. See IMPLEMENTATION-GAPS.md Gap 18.
+    // incremental (chunk-fed) tokenization. See the streaming gap tracker (.private/docs/streaming-IMPLEMENTATION-GAPS.md, kept out of the repo), Gap 18.
     const newlineIdx = this.input.indexOf('\n', this.pos);
     const lineEnd = newlineIdx === -1 ? this.inputLength : newlineIdx;
     const match = reSectionSchemaName.exec(this.input.substring(this.pos, lineEnd));
