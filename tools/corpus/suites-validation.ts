@@ -60,8 +60,10 @@ const datetimes: Case[] = [
   { group: 'malformed literals', name: 'rejects_malformed_datetime', schema: 'd: datetime', input: 'dt"not-a-date"',
     review: 'ISSUE-23 — the tokenizer raises `invalid-datetime` for this literal, but under a schema the later type check reports `expected-datetime` first and masks it. The root cause is the more useful code.' },
   { name: 'rejects_impossible_month', schema: 'd: datetime', input: 'dt"2024-13-01T00:00:00.000Z"' },
-  { name: 'impossible_day_rolls_over', schema: 'd: date', input: 'd"2024-02-31"',
-    review: 'ISSUE-22 — an impossible date is SILENTLY rolled over (2024-02-31 becomes 2024-03-02) with no error. Pinned as observed, not endorsed.' },
+  { name: 'rejects_impossible_day', schema: 'd: date', input: 'd"2024-02-31"',
+    note: 'ISSUE-22, FIXED 2026-08-23. This used to roll over silently to 2024-03-02 — a document '
+        + 'that said one date decoding as another, with nothing raised. See validation/temporal-depth.io '
+        + 'for the calendar rules in full.' },
 
   { group: 'min / max bounds', name: 'within_bounds', schema: 'd: {datetime, min: dt"2024-01-01T00:00:00.000Z", max: dt"2024-12-31T00:00:00.000Z"}', input: 'dt"2024-06-01T00:00:00.000Z"' },
   { name: 'below_min', schema: 'd: {datetime, min: dt"2024-01-01T00:00:00.000Z"}', input: 'dt"2023-06-01T00:00:00.000Z"' },

@@ -284,6 +284,153 @@ const collections: Case[] = [
 ];
 
 // ---------------------------------------------------------------------------------------------
+// Temporal boundaries
+// ---------------------------------------------------------------------------------------------
+const temporalDepth: Case[] = [
+  { group: 'month lengths', name: 'jan_31', schema: 'd: date', input: 'd"2024-01-31"' },
+  { name: 'jan_32', schema: 'd: date', input: 'd"2024-01-32"' },
+  { name: 'apr_30', schema: 'd: date', input: 'd"2024-04-30"' },
+  { name: 'apr_31', schema: 'd: date', input: 'd"2024-04-31"', note: 'April has 30 days' },
+  { name: 'month_00', schema: 'd: date', input: 'd"2024-00-15"' },
+  { name: 'month_12', schema: 'd: date', input: 'd"2024-12-15"' },
+  { name: 'month_13', schema: 'd: date', input: 'd"2024-13-15"' },
+  { name: 'day_00', schema: 'd: date', input: 'd"2024-01-00"' },
+
+  { group: 'leap years — the rule is not just divisible-by-four',
+    name: 'leap_2024_feb_29', schema: 'd: date', input: 'd"2024-02-29"' },
+  { name: 'non_leap_2023_feb_29', schema: 'd: date', input: 'd"2023-02-29"' },
+  { name: 'century_1900_feb_29', schema: 'd: date', input: 'd"1900-02-29"',
+    note: '1900 is NOT a leap year: divisible by 100 and not by 400' },
+  { name: 'century_2000_feb_29', schema: 'd: date', input: 'd"2000-02-29"',
+    note: '2000 IS a leap year: divisible by 400' },
+  { name: 'feb_28_any_year', schema: 'd: date', input: 'd"2023-02-28"' },
+
+  { group: 'time-of-day boundaries', name: 'midnight', schema: 't: time', input: 't"00:00:00.000"' },
+  { name: 'one_ms_before_midnight', schema: 't: time', input: 't"23:59:59.999"' },
+  { name: 'hour_24', schema: 't: time', input: 't"24:00:00.000"' },
+  { name: 'minute_60', schema: 't: time', input: 't"12:60:00.000"' },
+  { name: 'second_60', schema: 't: time', input: 't"12:00:60.000"',
+    note: 'a leap second, if it is accepted at all' },
+  { name: 'second_59', schema: 't: time', input: 't"12:00:59.000"' },
+
+  { group: 'datetime precision and zone', name: 'datetime_utc_z',
+    schema: 'd: datetime', input: 'dt"2024-03-20T14:30:45.000Z"' },
+  { name: 'datetime_millis_kept', schema: 'd: datetime', input: 'dt"2024-03-20T14:30:45.123Z"' },
+  { name: 'datetime_positive_offset', schema: 'd: datetime', input: 'dt"2024-03-20T14:30:45.000+05:30"' },
+  { name: 'datetime_negative_offset', schema: 'd: datetime', input: 'dt"2024-03-20T14:30:45.000-08:00"' },
+  { name: 'datetime_no_zone', schema: 'd: datetime', input: 'dt"2024-03-20T14:30:45.000"' },
+  { name: 'datetime_no_millis', schema: 'd: datetime', input: 'dt"2024-03-20T14:30:45Z"' },
+  { name: 'datetime_minutes_only', schema: 'd: datetime', input: 'dt"2024-03-20T14:30Z"' },
+  { name: 'datetime_date_only', schema: 'd: datetime', input: 'dt"2024-03-20"' },
+
+  { group: 'the three annotations are not interchangeable',
+    name: 'date_given_a_datetime', schema: 'd: date', input: 'dt"2024-03-20T00:00:00.000Z"' },
+  { name: 'datetime_given_a_date', schema: 'd: datetime', input: 'd"2024-03-20"' },
+  { name: 'time_given_a_date', schema: 'd: time', input: 'd"2024-03-20"' },
+  { name: 'date_given_a_time', schema: 'd: date', input: 't"12:00:00.000"' },
+
+  { group: 'year boundaries', name: 'year_0001', schema: 'd: date', input: 'd"0001-01-01"' },
+  { name: 'year_9999', schema: 'd: date', input: 'd"9999-12-31"' },
+  { name: 'year_two_digit', schema: 'd: date', input: 'd"24-01-01"' },
+  { name: 'year_five_digit', schema: 'd: date', input: 'd"12024-01-01"' },
+];
+
+// ---------------------------------------------------------------------------------------------
+// Numeric precision at the edges
+// ---------------------------------------------------------------------------------------------
+const numericDepth: Case[] = [
+  { group: 'the double-precision boundary', name: 'max_safe_integer',
+    schema: 'n: int', input: '9007199254740991' },
+  { name: 'max_safe_integer_plus_one', schema: 'n: int', input: '9007199254740992' },
+  { name: 'max_safe_integer_plus_two', schema: 'n: int', input: '9007199254740993',
+    note: 'a double cannot represent this; whether it is rejected or silently rounded is the rule' },
+  { name: 'min_safe_integer', schema: 'n: int', input: '-9007199254740991' },
+  { name: 'beyond_as_bigint', schema: 'n: bigint', input: '9007199254740993n',
+    note: 'the same magnitude as a bigint, which CAN hold it exactly' },
+
+  { group: 'zero and its sign', name: 'positive_zero', schema: 'n: number', input: '0' },
+  { name: 'negative_zero', schema: 'n: number', input: '-0' },
+  { name: 'zero_decimal', schema: 'n: decimal', input: '0m' },
+  { name: 'negative_zero_decimal', schema: 'n: decimal', input: '-0m' },
+  { name: 'zero_bigint', schema: 'n: bigint', input: '0n' },
+  { name: 'negative_zero_bigint', schema: 'n: bigint', input: '-0n' },
+
+  { group: 'exponent range', name: 'small_exponent', schema: 'n: number', input: '1e-300' },
+  { name: 'large_exponent', schema: 'n: number', input: '1e300' },
+  { name: 'exponent_overflow', schema: 'n: number', input: '1e400',
+    note: 'beyond a double\'s range' },
+  { name: 'exponent_underflow', schema: 'n: number', input: '1e-400' },
+
+  { group: 'bounds probed AT the boundary', name: 'min_exactly', schema: 'n: {int, min: 10}', input: '10' },
+  { name: 'min_one_below', schema: 'n: {int, min: 10}', input: '9' },
+  { name: 'max_exactly', schema: 'n: {int, max: 10}', input: '10' },
+  { name: 'max_one_above', schema: 'n: {int, max: 10}', input: '11' },
+  { name: 'min_equals_max_satisfied', schema: 'n: {int, min: 5, max: 5}', input: '5' },
+  { name: 'min_equals_max_violated', schema: 'n: {int, min: 5, max: 5}', input: '6' },
+  { name: 'negative_bound_exactly', schema: 'n: {int, min: -5}', input: '-5' },
+  { name: 'negative_bound_one_below', schema: 'n: {int, min: -5}', input: '-6' },
+  { name: 'fractional_bound_exactly', schema: 'n: {number, max: 1.5}', input: '1.5' },
+  { name: 'fractional_bound_just_above', schema: 'n: {number, max: 1.5}', input: '1.6' },
+
+  { group: 'multipleOf at the edges', name: 'multiple_of_zero_value',
+    schema: 'n: {int, multipleOf: 3}', input: '0', note: 'zero is a multiple of everything' },
+  { name: 'multiple_of_negative_value', schema: 'n: {int, multipleOf: 3}', input: '-9' },
+  { name: 'multiple_of_exact', schema: 'n: {int, multipleOf: 3}', input: '9' },
+  { name: 'multiple_of_off_by_one', schema: 'n: {int, multipleOf: 3}', input: '10' },
+  { name: 'multiple_of_one', schema: 'n: {int, multipleOf: 1}', input: '7' },
+
+  { group: 'decimal scale is significant', name: 'scale_preserved',
+    schema: 'd: decimal', input: '1.50m' },
+  { name: 'scale_zero', schema: 'd: decimal', input: '1m' },
+  { name: 'scale_at_limit', schema: 'd: {decimal, scale: 2}', input: '1.23m' },
+  { name: 'scale_over_limit', schema: 'd: {decimal, scale: 2}', input: '1.234m' },
+  { name: 'scale_under_limit', schema: 'd: {decimal, scale: 2}', input: '1.2m' },
+  { name: 'precision_at_limit', schema: 'd: {decimal, precision: 3}', input: '123m' },
+  { name: 'precision_over_limit', schema: 'd: {decimal, precision: 3}', input: '1234m' },
+];
+
+// ---------------------------------------------------------------------------------------------
+// String length is counted in CODE POINTS
+// ---------------------------------------------------------------------------------------------
+const stringDepth: Case[] = [
+  { group: 'ASCII length, at the boundary', name: 'len_exactly',
+    schema: 's: {string, len: 3}', input: 'abc' },
+  { name: 'len_one_short', schema: 's: {string, len: 3}', input: 'ab' },
+  { name: 'len_one_long', schema: 's: {string, len: 3}', input: 'abcd' },
+  { name: 'min_len_exactly', schema: 's: {string, minLen: 3}', input: 'abc' },
+  { name: 'min_len_one_short', schema: 's: {string, minLen: 3}', input: 'ab' },
+  { name: 'max_len_exactly', schema: 's: {string, maxLen: 3}', input: 'abc' },
+  { name: 'max_len_one_long', schema: 's: {string, maxLen: 3}', input: 'abcd' },
+  { name: 'empty_string_min_len_zero', schema: 's: {string, minLen: 0}', input: '""' },
+  { name: 'empty_string_min_len_one', schema: 's: {string, minLen: 1}', input: '""' },
+
+  // LENGTH IS CODE POINTS. JavaScript's .length counts UTF-16 units and would make an emoji 2;
+  // UTF-8 bytes would make it 4. Go should use utf8.RuneCountInString, Rust .chars().count(),
+  // Python len(); JavaScript needs an explicit spread. These rows are where that shows.
+  { group: 'one emoji is ONE code point, not two units or four bytes',
+    name: 'emoji_len_one', schema: 's: {string, len: 1}', input: '"\ud83d\ude00"' },
+  { name: 'emoji_len_two_rejected', schema: 's: {string, len: 2}', input: '"\ud83d\ude00"' },
+  { name: 'two_emoji_len_two', schema: 's: {string, len: 2}', input: '"\ud83d\ude00\ud83d\ude01"' },
+  { name: 'emoji_max_len_one', schema: 's: {string, maxLen: 1}', input: '"\ud83d\ude00"' },
+  { name: 'emoji_plus_ascii_len_two', schema: 's: {string, len: 2}', input: '"a\ud83d\ude00"' },
+
+  { group: 'other multi-byte scripts', name: 'cjk_len_three',
+    schema: 's: {string, len: 3}', input: '"\u65e5\u672c\u8a9e"',
+    note: 'three CJK characters are three code points and nine UTF-8 bytes' },
+  { name: 'accented_len_one', schema: 's: {string, len: 1}', input: '"\u00e9"' },
+  { name: 'cyrillic_len_four', schema: 's: {string, len: 4}', input: '"\u0442\u0435\u0441\u0442"' },
+  { name: 'mixed_scripts_len', schema: 's: {string, len: 4}', input: '"a\u00e9\u65e5\ud83d\ude00"' },
+
+  { group: 'patterns against the same strings', name: 'pattern_ascii_matches',
+    schema: 's: {string, pattern: "^[a-z]+$"}', input: 'abc' },
+  { name: 'pattern_ascii_rejects_digit', schema: 's: {string, pattern: "^[a-z]+$"}', input: 'ab1' },
+  { name: 'pattern_anchored_start_only', schema: 's: {string, pattern: "^ab"}', input: 'abxyz' },
+  { name: 'pattern_unanchored', schema: 's: {string, pattern: "b"}', input: 'abc' },
+  { name: 'pattern_on_empty_string', schema: 's: {string, pattern: "^$"}', input: '""' },
+  { name: 'pattern_with_unicode_input', schema: 's: {string, pattern: "^.$"}', input: '"\u00e9"' },
+];
+
+// ---------------------------------------------------------------------------------------------
 // Objects: surplus members, nesting, and how a failure names its path
 // ---------------------------------------------------------------------------------------------
 const objectsAndPaths: Case[] = [
@@ -443,6 +590,33 @@ const SUITES: Suite[] = [
     'record and assumes the rest match passes most of this corpus and fails the last group.',
     COMMON],
    collections],
+
+  ['temporal-depth', 'Temporal boundaries — month lengths, leap years, time-of-day, zones, and annotation identity',
+   ['Validation \u00b7 TEMPORAL BOUNDARIES',
+    'Authoritative: outcomes produced by running io-js2 parse().',
+    'Probed AT the boundary and one step past it, which is where an off-by-one is observable and',
+    'nowhere else. The leap-year rows are the ones to read: 1900 is not a leap year and 2000 is,',
+    'so an implementation testing only divisible-by-four passes 2024 and fails both.',
+    COMMON],
+   temporalDepth],
+
+  ['numeric-depth', 'Numeric precision at the edges — the double boundary, signed zero, exponents, and bounds',
+   ['Validation \u00b7 NUMERIC PRECISION',
+    'Authoritative: outcomes produced by running io-js2 parse().',
+    'Every bound is probed AT its limit and one step outside. Past 2^53 a double cannot hold every',
+    'integer, which is why bigint exists and why the same magnitude appears in both forms here.',
+    COMMON],
+   numericDepth],
+
+  ['strings-depth', 'String length in CODE POINTS, and patterns against the same strings',
+   ['Validation \u00b7 STRING LENGTH and PATTERNS (depth)',
+    'Authoritative: outcomes produced by running io-js2 parse().',
+    'LENGTH IS MEASURED IN CODE POINTS. One emoji is 1 \u2014 not the 2 UTF-16 units JavaScript',
+    'counts, nor the 4 UTF-8 bytes. Go should use utf8.RuneCountInString, Rust .chars().count(),',
+    'Python len(); JavaScript needs an explicit spread, since .length is wrong. The emoji rows are',
+    'the only place that difference is visible, and they are why they are here.',
+    COMMON],
+   stringDepth],
 
   ['objects-and-paths', 'Objects — surplus members against closed and open schemas, and failures at depth',
    ['Validation · OBJECTS, SURPLUS MEMBERS, and DEPTH',
