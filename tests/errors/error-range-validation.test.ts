@@ -249,7 +249,7 @@ describe('Error Range Validation - Parser Level (Arrays)', () => {
   test('unclosed array at EOF records a designated error (policy P1: no fatal parse)', () => {
     const doc = `colors: [red, green, blue`;
 
-    const errors: any[] = parse(doc, null).getErrors();
+    const errors: any[] = [...parse(doc, null).getErrors()];
     expect(errors.length).toBeGreaterThan(0);
     expect(errors.some((e: any) =>
       /expected-closing-bracket|Unexpected end of input/.test(`${e.errorCode} ${e.message}`)
@@ -300,7 +300,7 @@ describe('Error Range Validation - Complex Scenarios', () => {
   test('nested unclosed constructs record a designated error (policy P1: no fatal parse)', () => {
     const doc = `data: {outer: {inner: [1, 2, 3}`;
 
-    const errors: any[] = parse(doc, null).getErrors();
+    const errors: any[] = [...parse(doc, null).getErrors()];
     expect(errors.length).toBeGreaterThan(0);
     expect(errors.some((e: any) =>
       /unexpected-token|expected-closing-bracket/.test(`${e.errorCode} ${e.message}`)

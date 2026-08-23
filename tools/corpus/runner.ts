@@ -6,7 +6,7 @@ import { stringifyDocument } from '../../src/facade/stringify-document';
 
 /**
  * The conformance corpus runner — the single implementation of "what does this case assert, and
- * does io-js2 satisfy it".
+ * does the reference implementation satisfy it".
  *
  * Two things drive it and they MUST NOT drift apart:
  *
@@ -111,7 +111,7 @@ export const show = (v: any) => JSON.stringify(norm(v));
 // ---------------------------------------------------------------------------------------------
 // SUBSET matching, used by the schemaDef comparator.
 //
-// A compiled schema carries bookkeeping a port has no reason to reproduce — io-js2 puts
+// A compiled schema carries bookkeeping a port has no reason to reproduce — the reference implementation puts
 // `format: "auto"`, `encloser` and `escapeLines: false` on every string memberdef, and spells
 // `optional: false` where the corpus simply omits it. So schema/README.md fixes matching as
 // SUBSET/contains: every key the case LISTS must be present and equal, and anything else is the
@@ -152,7 +152,7 @@ export function subsetMismatches(expected: any, actual: any, at: string, out: st
 
 /**
  * Project a compiled schema onto the corpus's neutral shape: an ORDERED `members` list plus
- * `open`. io-js2 holds members as `names` (order) + `defs` (lookup); every implementation will
+ * `open`. the reference implementation holds members as `names` (order) + `defs` (lookup); every implementation will
  * hold them differently, and the corpus should not have to care which.
  */
 export function projectSchema(schema: any): any {
@@ -162,7 +162,7 @@ export function projectSchema(schema: any): any {
   const typedOpen = schema.open !== null && typeof schema.open === 'object';
 
   // The additional-property def is a MEMBER named `*` in the corpus's encoding, in last position
-  // (schema/README.md). io-js2 keeps it only under `open` and out of `names`, so it is appended
+  // (schema/README.md). the reference implementation keeps it only under `open` and out of `names`, so it is appended
   // here rather than asserted away — a bare `*` sets `open: true` and adds no member, and a typed
   // `*: string` sets `open` to the def AND appears as the final member.
   //

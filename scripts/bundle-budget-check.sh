@@ -1,7 +1,24 @@
 #!/bin/bash
-
-# Bundle Optimization CI Script
-# Runs in CI to enforce bundle size budgets
+#
+# Bundle size budget — the CI gate.
+#
+# Bundles two imports and checks both against a budget AND against the last recorded baseline:
+#
+#   minimal  `import { IOObject }`        target <10KB, max <15KB
+#   full     everything via the facade     target <25KB, max <50KB
+#
+# It fails on exceeding a maximum, or on a >10% regression from the baseline in
+# `.bundle-baseline-{minimal,full}.txt`. Those baselines are committed, so a size regression shows
+# up as a failing check rather than as a number nobody looks at.
+#
+#   npm run bundle:budget-check     # or: bash scripts/bundle-budget-check.sh
+#
+# UPDATING THE BASELINE is a deliberate act. Growth is legitimate when the library genuinely gained
+# code; it is not legitimate as a way to silence this script. Re-measure with
+# `bundle-test-minimal.sh` / `bundle-test-full.sh`, write the gzipped BYTE counts into the two
+# baseline files, and say in the commit message what the new bytes bought.
+#
+# Requires: a build. Exit: 0 pass, 1 budget exceeded or regression.
 
 set -e
 

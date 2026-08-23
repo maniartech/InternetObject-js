@@ -1,7 +1,15 @@
 #!/bin/bash
-
-# Bundle Analysis Script for Internet Object
-# Analyzes bundle sizes, tree-shaking, and provides optimization insights
+#
+# Bundle analysis — where the bytes are.
+#
+# Reports the size of each build output, runs the minimal and full tree-shaking tests, and lists
+# the largest modules so you can see what is actually costing you. Read-only: it never fails the
+# build, it just tells you what is there. Use `bundle-budget-check.sh` when you want a gate.
+#
+#   npm run bundle:analyze          # or: bash scripts/bundle-analyze.sh
+#
+# Requires: a build (`npm run build`) — it reads dist/, it does not create it.
+# Exit: 0 always, unless dist/ is missing.
 
 set -e
 
@@ -72,7 +80,7 @@ get_gzipped_size() {
 echo "📊 ESM Build Analysis:"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
-ESM_INDEX="dist/index.js"
+ESM_INDEX="dist/esm/index.js"
 if [ -f "$ESM_INDEX" ]; then
     ESM_SIZE=$(get_size "$ESM_INDEX")
     ESM_GZIP=$(get_gzipped_size "$ESM_INDEX")
@@ -102,7 +110,7 @@ echo ""
 echo "📦 CJS Build Analysis:"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
-CJS_INDEX="dist/index.cjs"
+CJS_INDEX="dist/cjs/index.js"
 if [ -f "$CJS_INDEX" ]; then
     CJS_SIZE=$(get_size "$CJS_INDEX")
     CJS_GZIP=$(get_gzipped_size "$CJS_INDEX")
@@ -118,9 +126,9 @@ print_section "2. Module Count & Structure"
 
 # With tsup, we have single bundle files instead of multiple modules
 echo "  Bundle Format: Single file bundles (esbuild via tsup)"
-echo "  ESM: dist/index.js"
-echo "  CJS: dist/index.cjs"
-echo "  DTS: dist/index.d.ts, dist/index.d.cts"
+echo "  ESM: dist/esm/index.js  (per-module, tree-shakeable)"
+echo "  CJS: dist/cjs/index.js  (bundled)"
+echo "  DTS: dist/esm/index.d.ts, dist/cjs/index.d.cts"
 
 print_section "3. Dependency Analysis"
 

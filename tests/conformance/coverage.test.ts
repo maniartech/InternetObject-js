@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import { corpusDir, corpusPath, specsDir } from '../../tools/corpus/sibling-repos'
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -21,8 +22,8 @@ import { buildCoverage } from '../../tools/corpus/coverage';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const REPO = path.resolve(here, '../..');
-const COVERAGE = path.resolve(REPO, '../io-test-cases/COVERAGE.md');
-const SPECS = path.resolve(REPO, '../io-specs');
+const COVERAGE = corpusPath('COVERAGE.md') ?? '';
+const SPECS = specsDir() ?? '';
 
 // Both sibling checkouts are needed; a consumer building from a tarball has neither.
 const present = fs.existsSync(SPECS) && fs.existsSync(path.resolve(REPO, '../io-test-cases'));

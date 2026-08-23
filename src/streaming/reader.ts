@@ -18,7 +18,7 @@ const SCHEMA_NAME_RE = /\$[\p{L}\p{M}\p{N}\-_]+/u;
  * A streaming reader for Internet Object data.
  *
  * Record boundaries are detected at the token level via {@link StreamTokenizer}
- * (streaming ADR 0006, docs/decisions/streaming; gap tracker Gap 21): a top-level `~` (COLLECTION_START) or
+ * (streaming ADR 0006; gap tracker Gap 21): a top-level `~` (COLLECTION_START) or
  * `---` (SECTION_SEP) token marks a frame boundary. The tokenizer is the single
  * lexical authority, so `~`/`---` inside strings, comments, or nested containers are
  * never mistaken for boundaries — there is no second hand-rolled scanner. Each frame's

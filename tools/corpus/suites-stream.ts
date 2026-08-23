@@ -1,9 +1,10 @@
 import { writeFileSync, mkdirSync } from 'fs';
+import { requireCorpusPath } from './sibling-repos'
 import parse from '../../src/parser/index';
 import { createStreamReader } from '../../src/streaming';
 
 /**
- * Generate `streaming/*.io` corpus suites, deriving every item sequence by RUNNING io-js2.
+ * Generate `streaming/*.io` corpus suites, deriving every item sequence by RUNNING the reference implementation.
  *
  *   npx tsx tools/corpus/suites-stream.ts
  *
@@ -41,7 +42,7 @@ interface StreamSuite {
   cases: StreamCase[];
 }
 
-const OUT_DIR = '../io-test-cases/streaming';
+const OUT_DIR = requireCorpusPath('streaming');
 type Chunking = 'whole' | 'per-line' | 'per-byte';
 const CHUNKINGS: Chunking[] = ['whole', 'per-line', 'per-byte'];
 
@@ -274,7 +275,7 @@ const errors: StreamCase[] = [
     input: '~ $P: {n:string, a:int}\n--- $P\n~ A, x\n~ B, y\n' },
   { name: 'bad_record_between_good_ones',
     input: '~ $P: {n:string, a:int}\n--- $P\n~ A, 1\n~ B, x\n~ C, 3\n' },
-  // Streaming ADR 0007 / io-specs streaming/error-model.md: validation may find SEVERAL problems
+  // Streaming ADR 0007 / the specification streaming/error-model.md: validation may find SEVERAL problems
   // in one record, but the stream emits exactly ONE record-error item for it, carrying the FIRST.
   // Three members, all the wrong type -- one item, and it names the first failure. Carried over
   // from the JSON fixture `multi-validation-error-one-item` when that second runner was retired.
@@ -423,7 +424,7 @@ const SUITES: StreamSuite[] = [
     description: 'Framing in depth — the header terminator, record boundaries, and the record index',
     header: [
       'Streaming · FRAMING (depth)',
-      'Authoritative: items produced by running io-js2\'s createStreamReader, verified IDENTICAL',
+      'Authoritative: items produced by running the reference implementation\'s createStreamReader, verified IDENTICAL',
       'across whole / per-line / per-byte chunkings (the chunking invariant).',
       'A `~` inside a container is not a boundary; nesting is tracked. `recordIndex` is',
       'zero-based, dense and stream-global — it increments for record AND record-error, and',
@@ -436,7 +437,7 @@ const SUITES: StreamSuite[] = [
     description: 'Wire format — quoted content vs framing, the header terminator, line endings, BOM, and multibyte text',
     header: [
       'Streaming \u00b7 WIRE FORMAT',
-      'Authoritative: items produced by running io-js2\'s createStreamReader, verified IDENTICAL',
+      'Authoritative: items produced by running the reference implementation\'s createStreamReader, verified IDENTICAL',
       'across whole / per-line / per-byte chunkings.',
       '',
       'Framing is determined by the MARKERS, never by where a packet happens to end. A `~` or a',
@@ -455,7 +456,7 @@ const SUITES: StreamSuite[] = [
     description: 'Recoverable record errors versus fatal terminations, and where the category comes from',
     header: [
       'Streaming · ERRORS (depth)',
-      'Authoritative: items/fatal produced by running io-js2\'s createStreamReader, verified',
+      'Authoritative: items/fatal produced by running the reference implementation\'s createStreamReader, verified',
       'identical across all three chunkings.',
       'RECOVERABLE errors surface as exactly one `record-error` item and consume a recordIndex,',
       'then iteration continues. FATAL errors terminate iteration and appear only in `fatal`,',
@@ -469,7 +470,7 @@ const SUITES: StreamSuite[] = [
     description: 'Atomic header resolution, explicit vs default selection, and precedence with preloaded definitions',
     header: [
       'Streaming \u00b7 SCHEMA STATE and PRECEDENCE',
-      'Authoritative: items produced by running io-js2\'s createStreamReader, verified IDENTICAL',
+      'Authoritative: items produced by running the reference implementation\'s createStreamReader, verified IDENTICAL',
       'across whole / per-line / per-byte chunkings.',
       '',
       'The header is buffered to the terminating `---` and resolved as ONE atomic frame, so a',
@@ -492,7 +493,7 @@ const SUITES: StreamSuite[] = [
     description: 'The active schema as the stream advances — selectors, defaults, and preloaded definitions',
     header: [
       'Streaming · SCHEMA STATE (depth)',
-      'Authoritative: items produced by running io-js2\'s createStreamReader, verified identical',
+      'Authoritative: items produced by running the reference implementation\'s createStreamReader, verified identical',
       'across all three chunkings.',
       '`schemaName` is present ONLY while an explicit selector applies; a record validated through',
       'the default schema carries none. It is stored here SIGIL-STRIPPED — a runner prepends `$`',
@@ -510,7 +511,7 @@ async function main(): Promise<void> {
   for (const suite of SUITES) {
     const rows: string[] = [];
     rows.push(...suite.header.map(l => `# ${l}`));
-    rows.push('# GENERATED by io-js2 tools/corpus/suites-stream.ts — edit the case table there.');
+    rows.push('# GENERATED by the reference implementation tools/corpus/suites-stream.ts — edit the case table there.');
     rows.push('# A case MISSING from this file produced DIFFERENT results under different chunkings');
     rows.push('# and was refused: chunk boundaries are not semantic, so that is a defect, not a row.');
     rows.push('~ version: 1.0');

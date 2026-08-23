@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import { corpusDir, corpusPath, specsDir } from '../../tools/corpus/sibling-repos'
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -17,7 +18,7 @@ import { runFile, kindOf, ELSEWHERE, isSuiteFile } from '../../tools/corpus/runn
  */
 
 const here = path.dirname(fileURLToPath(import.meta.url));
-const CORPUS = path.resolve(here, '../../../io-test-cases');
+const CORPUS = corpusDir() ?? '';
 const CATALOG = path.join(CORPUS, 'catalog.io');
 
 const present = fs.existsSync(CATALOG);

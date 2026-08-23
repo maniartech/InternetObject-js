@@ -37,7 +37,7 @@ export type LoadInferredOptions = Omit<IOCommonOptions, 'schemaName'>;
  * @experimental Not part of the Internet Object format — a library convenience for data arriving
  * from JSON. The inferred shape is a heuristic and carries no compatibility promise; it may change
  * in any release, and a conforming implementation in another language need not provide it at all.
- * See `docs/decisions/0004-schema-inference-is-out-of-scope-for-1.0.md`. For output you intend to
+ * See ADR 0004, inference is out of scope for 1.0 — decision record kept with the maintainers (not shipped). For output you intend to
  * keep or exchange, write the schema explicitly and use {@link load}.
  *
  * This function analyzes the structure of your data and automatically generates

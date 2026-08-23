@@ -23,7 +23,7 @@ class TokenNode extends Token implements Node {
    *
    * Note that a reference is recognised by the token's VALUE, not its subType, so `"@a"` and
    * `r'@a'` are references exactly as a bare `@a` is. That is deliberate — confirmed
-   * 2026-06-30, io-test-cases FINDINGS #3 — and it means a literal `@`/`$`-leading string
+   * 2026-06-30, the conformance corpus FINDINGS #3 — and it means a literal `@`/`$`-leading string
    * cannot be written as data.
    *
    * @param defs Definitions to resolve a reference against, when the token names one.

@@ -422,7 +422,7 @@ const parseName = (keyNode: Node): {
   // The `?` / `*` suffixes are part of the BARE-name token, so they are only read as markers on a
   // bare name. A quoted name is literal: `"a?"` is a member called `a?`, and `"*"` is a member
   // called `*` -- not an empty name marked nullable, which is what stripping gave (the member then
-  // had no name at all and its value bound positionally). io-specs `memberdef.md` states the rule;
+  // had no name at all and its value bound positionally). the specification `memberdef.md` states the rule;
   // a quoted name declares optional/nullable through the keyed options instead.
   if (keyNode.subType !== 'OPEN_STRING') {
     return { name: key, optional: false, null: false }

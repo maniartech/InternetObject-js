@@ -1,4 +1,5 @@
 import { readFileSync, writeFileSync, mkdirSync, readdirSync } from 'fs';
+import { requireCorpusPath } from './sibling-repos'
 import { join, basename } from 'path';
 import parse from '../../src/parser/index';
 
@@ -39,8 +40,8 @@ import parse from '../../src/parser/index';
  * against its own value rendered the same way.
  */
 
-const SRC_DIR = '../io-test-cases/tokenizer';
-const OUT_DIR = '../io-test-cases/bootstrap';
+const SRC_DIR = requireCorpusPath('tokenizer');
+const OUT_DIR = requireCorpusPath('bootstrap');
 const OUT_FILE = join(OUT_DIR, 'tokenizer.csv');
 
 const HEADER = ['suite', 'case', 'input', 'index', 'type', 'sub_type', 'value', 'token', 'error_code'];

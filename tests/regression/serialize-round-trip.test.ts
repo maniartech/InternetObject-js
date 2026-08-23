@@ -7,7 +7,7 @@ import Decimal from '../../src/core/decimal/decimal';
 /**
  * ISSUE-16 — serializer round-trip defects found while writing the serialization spec.
  *
- * Each case violated round-trip invariant 2 from io-specs `serialization/round-trip.md`:
+ * Each case violated round-trip invariant 2 from the specification `serialization/round-trip.md`:
  * a writer's output MUST parse, and MUST yield the same value model.
  */
 
@@ -222,7 +222,7 @@ describe('a schema-less temporal value infers its literal kind', () => {
   test('inference is value-preserving even when the spelling flips', () => {
     // A midnight datetime writes as a date, and a 1900-01-01 datetime as a time. Both re-parse
     // to the very same instant — only the literal differs from the input text, which is what
-    // io-specs permits ("infer only what the value evidences").
+    // the specification permits ("infer only what the value evidences").
     expect(data('---\n{a: dt"2024-03-20T00:00:00.000Z"}')).toBe('a: d"2024-03-20"');
     expect(data('---\n{a: dt"1900-01-01T14:30:00.000Z"}')).toBe('a: t"14:30:00"');
     for (const src of [

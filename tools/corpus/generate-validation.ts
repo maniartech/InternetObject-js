@@ -2,21 +2,21 @@ import { writeFileSync } from 'fs';
 import parse from '../../src/parser/index';
 
 /**
- * Generate a `validation/*.io` corpus suite, deriving every expectation by RUNNING io-js2.
+ * Generate a `validation/*.io` corpus suite, deriving every expectation by RUNNING the reference implementation.
  *
  *   npx tsx tools/corpus/generate-validation.ts <suite-name>
  *
  * The corpus's golden rule is that expected values are *observed*, never guessed — a hand-written
  * expectation is a second implementation, and when it disagrees with the reference nobody can tell
  * which one is wrong. So a case here supplies only the INPUT (a name, a schema fragment, a data
- * fragment); the outcome is whatever io-js2 actually produces.
+ * fragment); the outcome is whatever the reference implementation actually produces.
  *
  * That puts the intellectual work where it belongs: choosing cases that matter. A generator cannot
  * decide that `int8` should be probed at 127 and 128; it can only make sure that once you have said
  * so, the recorded answer is true.
  *
  * IMPORTANT: generated output is a STARTING POINT, not law. Every row must still be read by a human
- * against the spec, because io-js2 can be wrong — several corpus cases exist precisely to pin a
+ * against the spec, because the reference implementation can be wrong — several corpus cases exist precisely to pin a
  * behaviour that was later found to be a bug. Rows whose outcome looks wrong are flagged with
  * `# REVIEW:` rather than silently accepted.
  */

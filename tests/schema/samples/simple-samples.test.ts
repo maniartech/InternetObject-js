@@ -12,7 +12,7 @@ function parseDoc(doc: string) {
   return ast;
 }
 
-// These tests require external files from io-playground - skip for now
+// These tests require external files from the playground - skip for now
 describe.skip('Sample Data - Simple', () => {
   test('single object doc parses and processes without schema (open object)', () => {
     const sample = require('../../../../io-playground/src/sample-data/simple/simple-object').default;

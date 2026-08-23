@@ -1,4 +1,5 @@
 import { readFileSync, writeFileSync, readdirSync, statSync, existsSync } from 'fs';
+import { requireCorpusPath, specsDir } from './sibling-repos'
 import { join, relative } from 'path';
 import { isSuiteFile } from './runner';
 
@@ -26,8 +27,8 @@ import { isSuiteFile } from './runner';
  * somebody says what covers it.
  */
 
-const SPECS = '../io-specs';
-const CORPUS = '../io-test-cases';
+const SPECS = specsDir() ?? '';
+const CORPUS = requireCorpusPath();
 
 /**
  * Pages that state no testable rule: introductions, rationale, process, and reference material

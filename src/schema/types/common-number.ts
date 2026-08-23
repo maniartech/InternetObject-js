@@ -22,7 +22,7 @@ export const NUMBER_TYPES = [
  * Before ADR 0002 this family split by accident: `uint64`, `float32` and `float64` are registered
  * here and reported `unsupported-number-type`, while `int64` is not registered and reported
  * `invalid-type` -- the same code as a plain typo. The implementation's registry was deciding the
- * error code. See docs/decisions/0002-error-code-grammar-and-taxonomy.md §3.
+ * error code. See ADR 0002, the error-code grammar and taxonomy — decision record kept with the maintainers (not shipped) §3.
  */
 export const RESERVED_TYPES = new Set(['int64', 'uint64', 'float32', 'float64'])
 

@@ -1,4 +1,5 @@
 import { readFileSync, readdirSync } from 'fs';
+import { corpusPath } from './sibling-repos'
 import { join } from 'path';
 import parse from '../../src/parser/index';
 import parseDefinitions from '../../src/parser/parse-defs';
@@ -10,7 +11,7 @@ import { loadObject, loadCollection } from '../../src/facade/load';
  *   npm run corpus:both
  *   npx tsx tools/corpus/verify-both.ts ../io-test-cases/validation/*.io
  *
- * io-js2 validates from two directions, and they are SEPARATELY implemented:
+ * the reference implementation validates from two directions, and they are SEPARATELY implemented:
  *
  *   text          -> parse()      -> src/schema/object-processor.ts   (359 lines)
  *   native values -> loadObject() -> src/schema/load-processor.ts     (289 lines)
@@ -32,7 +33,7 @@ import { loadObject, loadCollection } from '../../src/facade/load';
 
 // Default to the whole validation corpus. npm does not expand globs on Windows, so the directory
 // is walked here rather than by the shell -- `npm run corpus:both` must work on every platform.
-const DEFAULT_DIR = '../io-test-cases/validation';
+const DEFAULT_DIR = corpusPath('validation') ?? '';
 const args = process.argv.slice(2);
 const files = args.length > 0
   ? args
@@ -146,7 +147,7 @@ const DEFERRED: ReadonlySet<Unbridgeable> = new Set<Unbridgeable>(['DEFERRED:acc
  * POSITIONAL surplus (`Alice, 30, extra`) used to be listed here too, under its own code
  * `additional-values-not-allowed`. It no longer is: both spellings of "a closed schema was given a
  * member it does not declare" now report `unknown-member`, so the case is genuinely compared rather
- * than carved out. See docs/decisions/0002-error-code-grammar-and-taxonomy.md 6.4.
+ * than carved out. See ADR 0002, the error-code grammar and taxonomy 6.4.
  */
 const TEXT_ONLY: ReadonlyMap<string, Unbridgeable> = new Map<string, Unbridgeable>([
   ['duplicate-member', 'text-only:duplicate-member'],

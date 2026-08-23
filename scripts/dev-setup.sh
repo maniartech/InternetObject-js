@@ -1,7 +1,17 @@
 #!/bin/bash
-
-# Development setup script for Internet Object project
-# This script sets up the development environment
+#
+# One-time development environment setup.
+#
+# Installs dependencies, runs a build and the test suite, and reports the toolchain versions — so a
+# fresh clone either works or tells you why not.
+#
+#   bash scripts/dev-setup.sh
+#
+# NOTE the conformance corpus lives in the SIBLING repository `io-test-cases`, checked out beside
+# this one. Without it the corpus suites skip (they do not fail), and you are running the library's
+# own tests only. See the README section "The conformance corpus".
+#
+# Exit: 0 on success, non-zero if install, build or tests fail.
 
 set -e
 

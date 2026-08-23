@@ -187,7 +187,7 @@ export const dateToSmartString = (date: Date | null, type: "datetime" | "date" |
  * Infer which temporal literal best spells a bare `Date`.
  *
  * The value model keeps one `Date` for all three temporal types, so a value written WITHOUT a
- * schema has no declared kind to fall back on. Per io-specs `serialization/value-formatting.md`,
+ * schema has no declared kind to fall back on. Per the specification `serialization/value-formatting.md`,
  * a writer then infers "only what the value evidences":
  *
  * - the **1900-01-01** date component is the sentinel `parseTime` assigns to a time-only value

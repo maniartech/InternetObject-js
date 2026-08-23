@@ -41,7 +41,7 @@ describe('round-trip · header schema forms', () => {
     ['explicit $schema',            '~ $schema: {name, age}\n---\nJohn, 20'],
     ['schema with typed members',   '~ $schema: {name: string, age: number}\n---\nJohn, 20'],
     ['header-only, no data',        '~ $schema: {name, age}\n---'],
-  ])('%s', (_l, src) => expectRoundTrip(src))
+  ])('%s', (_l, src) => { expectRoundTrip(src); })
 })
 
 describe('round-trip · single object shapes', () => {
@@ -53,7 +53,7 @@ describe('round-trip · single object shapes', () => {
     ['array member',               '~ $schema: {name, tags: [string]}\n---\nJohn, [a, b, c]'],
     ['array of objects',            '~ $schema: {items: [{x, y}]}\n---\n{[{1, 2}, {3, 4}]}'],
     ['empty array',                 '~ $schema: {tags: [string]}\n---\n{[]}'],
-  ])('%s', (_l, src) => expectRoundTrip(src))
+  ])('%s', (_l, src) => { expectRoundTrip(src); })
 })
 
 describe('round-trip · collections', () => {
@@ -61,7 +61,7 @@ describe('round-trip · collections', () => {
     ['collection of records',       '~ $schema: {name, age}\n---\n~ John, 20\n~ Jane, 25'],
     ['single-record collection',    '~ $schema: {name}\n---\n~ Alice'],
     ['collection of nested',        '~ $schema: {name, addr: {city}}\n---\n~ A, {NYC}\n~ B, {LA}'],
-  ])('%s', (_l, src) => expectRoundTrip(src))
+  ])('%s', (_l, src) => { expectRoundTrip(src); })
 })
 
 describe('round-trip · value types', () => {
@@ -80,14 +80,14 @@ describe('round-trip · value types', () => {
     ['datetime',                    "~ $schema: {a: datetime}\n---\nd'2024-01-15'"],
     ['bool T/F',                    '~ $schema: {a: bool, b: bool}\n---\nT, F'],
     ['null (nullable member)',      '~ $schema: {a, b, c*}\n---\n42, T, N'],
-  ])('%s', (_l, src) => expectRoundTrip(src))
+  ])('%s', (_l, src) => { expectRoundTrip(src); })
 })
 
 describe('round-trip · optional / nullable members', () => {
   test.each([
     ['optional + nullable, empty',  '~ $schema: {name, age?*}\n---\nJohn,'],
     ['nullable given null',         '~ $schema: {name, age*}\n---\nJohn, N'],
-  ])('%s', (_l, src) => expectRoundTrip(src))
+  ])('%s', (_l, src) => { expectRoundTrip(src); })
 })
 
 describe('round-trip · open {*} schema (no field mapping)', () => {
@@ -95,7 +95,7 @@ describe('round-trip · open {*} schema (no field mapping)', () => {
     ['positional only',             '~ $schema: {*}\n---\n{Alice, Bob}'],
     ['keyed only',                  '~ $schema: {*}\n---\n{name: Alice, age: 25}'],
     ['mixed positional + keyed',    '~ $schema: {*}\n---\n{Alice, "5": 100}'],
-  ])('%s', (_l, src) => expectRoundTrip(src))
+  ])('%s', (_l, src) => { expectRoundTrip(src); })
 })
 
 describe('round-trip · no schema at all', () => {
@@ -106,20 +106,20 @@ describe('round-trip · no schema at all', () => {
     ['quoted numeric key',          '{"5": 100, name: Bob}'],
     ['bigint value',                '{count: 42n, name: X}'],
     ['decimal value',               '{price: 3.14m, name: X}'],
-  ])('%s', (_l, src) => expectRoundTrip(src))
+  ])('%s', (_l, src) => { expectRoundTrip(src); })
 })
 
 describe('round-trip · multiple named sections', () => {
   test.each([
     ['two named sections',          '~ $schema: {name}\n--- one\n~ Alice\n--- two\n~ Bob'],
-  ])('%s', (_l, src) => expectRoundTrip(src))
+  ])('%s', (_l, src) => { expectRoundTrip(src); })
 })
 
 describe('round-trip · with includeTypes', () => {
   test.each([
     ['typed schema + data',         '~ $schema: {name: string, age: number}\n---\nJohn, 20'],
     ['open {*} mixed',              '~ $schema: {*}\n---\n{Alice, "5": 100}'],
-  ])('%s', (_l, src) => expectRoundTrip(src, { includeTypes: true }))
+  ])('%s', (_l, src) => { expectRoundTrip(src, { includeTypes: true }); })
 })
 
 describe('data-only (includeHeader: false) emits valid, re-parseable IO', () => {

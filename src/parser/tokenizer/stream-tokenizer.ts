@@ -4,7 +4,7 @@ import Token, { TokenErrorValue } from './tokens';
 import TokenType from './token-types';
 
 /**
- * Chunk-feedable tokenizer (streaming ADRs 0006 / 0011 in docs/decisions/streaming; gap tracker Gap 19).
+ * Chunk-feedable tokenizer (streaming ADRs 0006 / 0011; gap tracker Gap 19).
  *
  * Wraps the batch {@link Tokenizer} without modifying it. Callers `feed()` decoded
  * text chunks and receive tokens as they become *safely complete*; `end()` flushes

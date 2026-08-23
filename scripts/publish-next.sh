@@ -1,4 +1,15 @@
-#!/usr/bin/env bash
+#!/bin/bash
+#
+# Publish the current version to the npm "next" dist-tag — a preview that `npm install` does NOT
+# pick up. Consumers opt in with `npm install internet-object@next`.
+#
+#   bash scripts/publish-next.sh
+#
+# Use this for anything you want real-world exercise on before it becomes the default. Same
+# prerequisites as publish-latest.sh, and equally irreversible for that version number.
+#
+# Exit: 0 published, non-zero on any failure.
+
 set -euo pipefail
 
 # Publishes the current package version to the npm dist-tag: "next".

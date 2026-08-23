@@ -1,7 +1,14 @@
 #!/bin/bash
-
-# Bundle Size Comparison Script
-# Compares current bundle sizes with baselines and historical data
+#
+# Bundle size history — is it drifting?
+#
+# Measures the current minimal and full bundles, compares them with the committed baselines, and
+# appends a row to `.bundle-history.csv` so the trend over time is visible rather than inferred.
+# Reporting only; `bundle-budget-check.sh` is the one that fails.
+#
+#   npm run bundle:compare          # or: bash scripts/bundle-compare.sh
+#
+# Requires: a build. Exit: 0 always.
 
 set -e
 

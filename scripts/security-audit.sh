@@ -1,7 +1,14 @@
 #!/bin/bash
-
-# Security audit and fix script for Internet Object project
-# This script performs comprehensive security checks and fixes
+#
+# Dependency security audit.
+#
+# Runs `npm audit`, reports what it finds by severity, and can apply non-breaking fixes. The
+# library itself has ZERO runtime dependencies, so anything reported here is a devDependency —
+# real for contributors, not shipped to consumers.
+#
+#   npm run security:audit          # if wired; otherwise: bash scripts/security-audit.sh
+#
+# Exit: 0 clean, non-zero if vulnerabilities remain.
 
 set -e
 

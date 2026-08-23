@@ -1,4 +1,17 @@
-#!/usr/bin/env bash
+#!/bin/bash
+#
+# Publish the current version to the npm "latest" dist-tag — the one `npm install` gives people.
+#
+#   bash scripts/publish-latest.sh
+#
+# Before running: `npm run check-release` must pass, the version in package.json must be bumped and
+# committed, the CHANGELOG must have an entry for it, and you must be logged in (`npm whoami`).
+#
+# This is IRREVERSIBLE — npm does not allow re-publishing a version number, and unpublishing is
+# restricted. Use `publish-next.sh` if you want a preview release instead.
+#
+# Exit: 0 published, non-zero on any failure.
+
 set -euo pipefail
 
 # Publishes the current package version to the default npm dist-tag: "latest".
