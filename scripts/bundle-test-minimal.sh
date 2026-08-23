@@ -1,7 +1,15 @@
 #!/bin/bash
-
-# Test minimal import tree-shaking
-# Creates a temporary test that imports only IOObject and bundles it
+#
+# Tree-shaking test: MINIMAL import.
+#
+# Bundles `import { IOObject } from 'dist/esm/index.js'` — one symbol — with esbuild, minified, and
+# reports the raw and gzipped size. If tree-shaking works this is a tiny fraction of the full
+# import (~1.6KB against ~39KB); if it ever approaches the full size, per-module output has been
+# lost and every consumer is paying for code they do not use.
+#
+#   npm run bundle:test-minimal     # or: bash scripts/bundle-test-minimal.sh
+#
+# Requires: a build. Exit: 0 always. Writes to .bundle-test/ (gitignored).
 
 set -e
 
@@ -29,7 +37,7 @@ print_info "Creating minimal import test..."
 
 # Create test file that imports only IOObject
 cat > "$TEMP_DIR/minimal.js" << 'EOF'
-import { IOObject } from '../dist/index.js';
+import { IOObject } from '../dist/esm/index.js';
 
 // Use it to ensure it's not tree-shaken
 const obj = new IOObject();

@@ -1,7 +1,17 @@
 #!/bin/bash
-
-# Test full import bundling
-# Creates a temporary test that imports everything via facade
+#
+# Tree-shaking test: FULL import.
+#
+# Bundles `import io from 'dist/esm/index.js'` — everything — with esbuild, minified, and reports
+# the raw and gzipped size. This is the ceiling: what a consumer pays who uses the whole library.
+# Pair it with `bundle-test-minimal.sh`; the gap between the two IS the tree-shaking.
+#
+#   npm run bundle:test-full        # or: bash scripts/bundle-test-full.sh
+#
+# NOTE it reads dist/esm/ deliberately. Only the ESM build is per-module and therefore
+# tree-shakeable; dist/cjs/ is a single bundled file by design (see tsup.config.ts).
+#
+# Requires: a build. Exit: 0 always. Writes to .bundle-test/ (gitignored).
 
 set -e
 
@@ -29,7 +39,7 @@ print_info "Creating full import test..."
 
 # Create test file that imports via facade
 cat > "$TEMP_DIR/full.js" << 'EOF'
-import io from '../dist/index.js';
+import io from '../dist/esm/index.js';
 
 // Use multiple features
 const doc = io.doc`name, age --- Alice, 30`;
