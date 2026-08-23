@@ -1,7 +1,7 @@
 # <img src="https://unpkg.com/internet-object@latest/logo/internet-object-logo.png" height="24px" alt="Internet Object" title="Internet Object"> Internet Object
 
 [![npm version](https://img.shields.io/npm/v/internet-object?style=flat-square)](https://www.npmjs.com/package/internet-object)
-[![License](https://img.shields.io/npm/l/internet-object?style=flat-square)](https://github.com/maniartech/InternetObject-js/blob/master/LICENSE)
+[![License](https://img.shields.io/badge/license-Apache%202.0-blue?style=flat-square)](https://github.com/maniartech/InternetObject-js/blob/master/LICENSE)
 [![Downloads](https://img.shields.io/npm/dm/internet-object?style=flat-square)](https://www.npmjs.com/package/internet-object)
 [![Build Status](https://img.shields.io/github/actions/workflow/status/maniartech/internetobject-js/ci.yml?branch=master&style=flat-square)](https://github.com/maniartech/InternetObject-js/actions)
 
