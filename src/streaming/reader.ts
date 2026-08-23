@@ -71,6 +71,19 @@ export class IOStreamReader implements AsyncIterable<StreamItem> {
     let activeSchema: Schema | null = null;        // schema to validate records against
     let activeSchemaName: string | undefined;       // explicit selector name, else undefined
 
+    // The definitions a record is validated with, carrying the active schema as its default.
+    //
+    // A compiled schema does NOT hold its own references: a member declared `a: $Inner` keeps
+    // `$Inner` as an unresolved token and looks it up in the DEFINITIONS at validation time.
+    // Handing core the schema alone therefore breaks every `$Ref` in a streamed document —
+    // `undefined-schema` on the first record — while the identical document parses correctly
+    // through `parse()`, which passes definitions. The specification is explicit that a reader
+    // delegates schema resolution to core rather than reimplementing it (schema-and-state.md).
+    //
+    // Rebuilt only when the section header changes, not per record, so the reader still reuses
+    // resolved schema objects across records as it must.
+    let activeDefs: Definitions | null = null;
+
     const decoder = new ChunkDecoder();
     const st = new StreamTokenizer();
 
@@ -115,6 +128,25 @@ export class IOStreamReader implements AsyncIterable<StreamItem> {
         activeSchema = resolveDefaultSchema();
         activeSchemaName = undefined;
       }
+      activeDefs = defsForActiveSchema();
+    };
+
+    /**
+     * Definitions to validate the next records with: everything the stream has defined, plus the
+     * active schema installed as `$schema` so core selects it. Returns null when there is no
+     * active schema, in which case the plain definitions are used and core applies its own default.
+     */
+    const defsForActiveSchema = (): Definitions | null => {
+      if (!activeSchema) return null;
+      const scoped = new Definitions();
+      if (defs) {
+        for (let i = 0; i < defs.length; i++) {
+          const { key, value } = defs.at(i);
+          scoped.push(key, value.value, value.isSchema, value.isVariable);
+        }
+      }
+      scoped.set('$schema', activeSchema);
+      return scoped;
     };
 
     const processHeader = (headerText: string): void => {
@@ -164,8 +196,10 @@ export class IOStreamReader implements AsyncIterable<StreamItem> {
       const errors: Error[] = [];
       let doc: any;
       try {
-        doc = activeSchema
-          ? parse(text, activeSchema, errors)
+        // Definitions FIRST, always: the active schema rides along as `$schema` inside them, so a
+        // member's `$Ref` still has somewhere to resolve. Passing the bare schema loses that.
+        doc = activeDefs
+          ? parse(text, activeDefs, errors)
           : (defs ? parse(text, defs, errors) : parse(text, null, errors));
       } catch (err: any) {
         // On the no-`---` legacy flush (header never terminated — e.g. a `---` masked by an

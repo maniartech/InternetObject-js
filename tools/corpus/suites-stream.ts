@@ -300,6 +300,77 @@ const errors: StreamCase[] = [
 ];
 
 // ---------------------------------------------------------------------------------------------
+// Schema state — atomic header resolution, selection, and precedence with preloaded definitions
+// ---------------------------------------------------------------------------------------------
+const schemaPrecedence: StreamCase[] = [
+  { group: 'the header resolves ATOMICALLY, so references inside it are position-independent',
+    name: 'reference_defined_later_in_header',
+    input: '~ $schema: {a: $Inner}\n~ $Inner: {x: int}\n---\n~ a: {x: 1}\n',
+    note: '$Inner is used before it is defined. The header is buffered to the terminating `---` '
+        + 'and resolved as ONE frame, so order cannot matter — a reader that resolved piecemeal '
+        + 'would fail this and pass the reversed case below' },
+  { name: 'reference_defined_earlier_in_header',
+    input: '~ $Inner: {x: int}\n~ $schema: {a: $Inner}\n---\n~ a: {x: 1}\n',
+    note: 'the control: the same document with the definitions swapped' },
+  { name: 'chain_of_three_references',
+    input: '~ $A: {b: $B}\n~ $B: {c: $C}\n~ $C: {n: int}\n~ $schema: {a: $A}\n---\n~ a: {b: {c: {n: 1}}}\n' },
+  { name: 'variable_defined_after_use_in_header',
+    input: '~ $schema: {c: {string, choices: [@r]}}\n~ @r: red\n---\n~ red\n' },
+
+  { group: 'schemaName is the EXPLICIT selector, and is absent without one',
+    name: 'explicit_selector_reports_a_name', input: '~ $U: {n:string}\n--- $U\n~ Alice\n' },
+  { name: 'default_schema_reports_no_name', input: '~ $schema: {n:string}\n---\n~ Alice\n',
+    note: 'a reader MUST NOT synthesize `$schema` as a name merely because a default was active' },
+  { name: 'schemaless_reports_no_name', input: '---\n~ Alice\n' },
+  { name: 'bare_separator_clears_a_previous_name',
+    input: '~ $U: {n:string}\n~ $schema: {n:string}\n--- $U\n~ A\n---\n~ B\n',
+    note: 'the first record carries $U, the second falls back to the default and carries none' },
+  { name: 'two_explicit_selectors_report_their_own',
+    input: '~ $U: {n:string}\n~ $O: {id:int}\n--- $U\n~ Alice\n--- $O\n~ 1001\n',
+    note: "the specification's own example — two items, two names, and the two `---` control "
+        + 'frames emitted as nothing' },
+
+  { group: 'preloaded definitions — the shared, out-of-band deployment mode',
+    name: 'preloaded_only_data_on_the_wire',
+    input: '---\n~ Alice\n', definitions: '~ $P: {n:string}', defaultSchema: 'P',
+    note: 'the wire carries no schema at all; the reader validates against one it already holds' },
+  { name: 'preloaded_with_explicit_selector',
+    input: '--- $P\n~ Alice\n', definitions: '~ $P: {n:string}' },
+  { name: 'preloaded_plus_metadata_header',
+    input: '~ page: 1\n---\n~ Alice\n', definitions: '~ $P: {n:string}', defaultSchema: 'P',
+    note: 'a header carrying metadata but no schema still leaves the fallback active' },
+  { name: 'preloaded_variable_used_by_data',
+    input: '---\n~ a: @v\n', definitions: '~ @v: 42' },
+
+  { group: 'precedence: in-stream overrides preloaded',
+    name: 'in_stream_definition_overrides_preloaded',
+    input: '~ $P: {n:int}\n--- $P\n~ 1\n', definitions: '~ $P: {n:string}',
+    note: 'the in-stream $P wins for the matching key, so an int validates and a string would not' },
+  { name: 'in_stream_definition_overrides_and_rejects',
+    input: '~ $P: {n:int}\n--- $P\n~ Alice\n', definitions: '~ $P: {n:string}',
+    note: 'the same pair proved the other way: the PRELOADED string schema would have accepted this' },
+  { name: 'in_stream_schema_overrides_fallback_default',
+    input: '~ $schema: {n:int}\n---\n~ 1\n', definitions: '~ $P: {n:string}', defaultSchema: 'P' },
+  { name: 'fallback_remains_when_stream_defines_no_schema',
+    input: '---\n~ Alice\n', definitions: '~ $P: {n:string}', defaultSchema: 'P' },
+  { name: 'unrelated_in_stream_definition_leaves_preloaded_intact',
+    input: '~ $Q: {m:int}\n--- $P\n~ Alice\n', definitions: '~ $P: {n:string}' },
+
+  { group: 'definitions are HEADER-ONLY in v1', name: 'definition_after_data_is_not_a_definition',
+    input: '---\n~ A\n~ $Late: {n:string}\n',
+    note: 'the header phase ends at the first data record, so this `~` line is a DATA record whose '
+        + 'content happens to look like a definition — there is no midstream definition syntax' },
+  { name: 'selector_for_a_late_definition_is_fatal',
+    input: '---\n~ A\n~ $Late: {n:string}\n--- $Late\n~ B\n' },
+
+  { group: 'a bare --- with no default selects the SCHEMALESS context',
+    name: 'bare_separator_without_any_default', input: '---\n~ a: 1\n' },
+  { name: 'bare_separator_after_a_selector_without_default',
+    input: '~ $U: {n:string}\n--- $U\n~ A\n---\n~ b: 2\n',
+    note: 'no `$schema` is defined, so the bare `---` returns to schemaless rather than inventing one' },
+];
+
+// ---------------------------------------------------------------------------------------------
 // Schema state — how the active schema changes as the stream advances
 // ---------------------------------------------------------------------------------------------
 const schemaState: StreamCase[] = [
@@ -387,6 +458,29 @@ const SUITES: StreamSuite[] = [
     ],
     cases: errors,
   },
+  {
+    file: 'schema-precedence',
+    description: 'Atomic header resolution, explicit vs default selection, and precedence with preloaded definitions',
+    header: [
+      'Streaming \u00b7 SCHEMA STATE and PRECEDENCE',
+      'Authoritative: items produced by running io-js2\'s createStreamReader, verified IDENTICAL',
+      'across whole / per-line / per-byte chunkings.',
+      '',
+      'The header is buffered to the terminating `---` and resolved as ONE atomic frame, so a',
+      'definition may reference another regardless of order. A reader that resolved the header',
+      'piecemeal passes the ordered cases here and fails the unordered ones.',
+      '',
+      '`schemaName` reports the EXPLICIT selector and is ABSENT without one — a reader must not',
+      'synthesize `$schema` merely because a default was active. It is stored sigil-stripped here;',
+      'a runner prepends `$` (FINDINGS #3).',
+      '',
+      'Precedence, which is what makes the shared out-of-band mode work: in-stream definitions',
+      'override matching preloaded keys, an in-stream `$schema` overrides the fallback default,',
+      'and a stream that defines no `$schema` leaves the fallback active.',
+    ],
+    cases: schemaPrecedence,
+  },
+
   {
     file: 'schema-state-depth',
     description: 'The active schema as the stream advances — selectors, defaults, and preloaded definitions',

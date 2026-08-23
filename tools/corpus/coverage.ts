@@ -104,7 +104,7 @@ const COVERS: Record<string, string[]> = {
   // ---- definitions ------------------------------------------------------------------------------
   'the-definitions/definitions.md': ['document/definitions', 'parser/header'],
   'the-definitions/variables.md': ['document/definitions'],
-  'the-definitions/schema-references.md': ['document/definitions', 'schema/nested'],
+  'the-definitions/schema-references.md': ['document/definitions', 'schema/nested', 'streaming/schema-precedence'],
   'the-definitions/error-handling.md': ['parser/errors-extended', 'document/definitions'],
 
   // ---- schema definition language ---------------------------------------------------------------
@@ -143,7 +143,7 @@ const COVERS: Record<string, string[]> = {
   'streaming/wire-format.md': ['streaming/framing', 'streaming/framing-depth', 'streaming/wire-format'],
   'streaming/stream-items.md': ['streaming/framing-depth', 'streaming/errors-depth'],
   'streaming/error-model.md': ['streaming/errors', 'streaming/errors-depth'],
-  'streaming/schema-and-state.md': ['streaming/schema-state', 'streaming/schema-state-depth'],
+  'streaming/schema-and-state.md': ['streaming/schema-state', 'streaming/schema-state-depth', 'streaming/schema-precedence'],
   'streaming/readers-and-writers.md': ['streaming/framing-depth', 'streaming/wire-format'],
 
   // ---- conformance and grammar ----------------------------------------------------------------------
