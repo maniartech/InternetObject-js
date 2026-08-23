@@ -1,10 +1,42 @@
 import Definitions    from '../../core/definitions';
+import ErrorCodes     from '../../errors/io-error-codes';
+import ValidationError from '../../errors/io-validation-error';
 import InternetObject from '../../core/internet-object';
 import { Position } from '../../core/positions';
 import Token from '../tokenizer/tokens';
 import ContainerNode  from './containers';
 import ErrorNode      from './error';
 import MemberNode     from './members';
+
+/**
+ * Reject a member name that has already been used in this object.
+ *
+ * `duplicate-member` is stated unconditionally in the specification — "a member name appears more
+ * than once" — and the row beside it qualifies itself explicitly ("a **strict** schema was given
+ * a member it does not declare"), so the absence of a qualifier here is deliberate.
+ *
+ * Only the SCHEMA path enforced it. Without a schema the object was assembled with `set()`, which
+ * overwrites, so `a: 1, a: 2` quietly loaded as `{a: 2}` and the first value was gone with no
+ * diagnostic. Same shape as every other silent-corruption defect in this format: the document said
+ * one thing and the value model held another.
+ *
+ * It was also a porting trap. A port that builds records into a map gets last-wins for free, so
+ * the implementation that does the natural thing passed every corpus row and the one that bothered
+ * to check failed them — the corpus was encoding a JavaScript accident as law.
+ *
+ * The check lives here rather than in `InternetObject.set`, which is a general API where
+ * overwriting is legitimate and expected.
+ */
+function assertNotDuplicate(seen: Set<string>, key: string, member: MemberNode): void {
+  if (seen.has(key)) {
+    throw new ValidationError(
+      ErrorCodes.duplicateMember,
+      `Member '${key}' appears more than once.`,
+      member.key
+    );
+  }
+  seen.add(key);
+}
 
 class ObjectNode extends ContainerNode {
   openBracket?: Token;
@@ -24,11 +56,14 @@ class ObjectNode extends ContainerNode {
 
   toObject(defs?: Definitions): any {
     const value: any = {};
+    const seen = new Set<string>();
     let index = 0;
     for (const child of this.children as Array<MemberNode>) {
       if (child && child.value) {
         if (child.key) {
-          value[child.key.value as string] = child.value.toValue(defs);
+          const key = child.key.value as string;
+          assertNotDuplicate(seen, key, child);
+          value[key] = child.value.toValue(defs);
         } else {
           value[index] = child.value.toValue(defs);
         }
@@ -59,12 +94,14 @@ class ObjectNode extends ContainerNode {
 
   toValue (defs?: Definitions): InternetObject {
     const o = new InternetObject();
+    const seen = new Set<string>();
     for (let i=0; i<this.children.length; i++) {
       const member = this.children[i] as MemberNode;
       if (member && member.value) {
         if (member.key) {
-          // o[member.key.value] = member.value.toValue(defs);
-          o.set(member.key.value as string, member.value.toValue(defs));
+          const key = member.key.value as string;
+          assertNotDuplicate(seen, key, member);
+          o.set(key, member.value.toValue(defs));
         } else {
           // Positional member: store WITHOUT a key via pushValue (NOT push — push would misread an
           // array value like ["a","b"] as a [key,value] tuple and drop elements). The author wrote no

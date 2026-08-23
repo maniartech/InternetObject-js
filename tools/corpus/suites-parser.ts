@@ -113,11 +113,12 @@ const keys: Case[] = [
   { name: 'array_as_key', input: '[a]: 1' },
   { name: 'object_as_key', input: '{a}: 1' },
 
-  // OPEN QUESTION, raised in OPEN-DECISIONS.md: schemaless duplicates are silently LAST-WINS,
-  // while the same document under a schema reports `duplicate-member`. The first value is
-  // discarded with no diagnostic. Recorded as observed; whether the schemaless path should also
-  // report is Aamir's call, and a port should read the decision rather than copy these rows.
-  { group: 'duplicate keys — SCHEMALESS: silently last-wins (see OPEN-DECISIONS)',
+  // OPEN-DECISIONS D5, DECIDED 2026-08-23 by Aamir: "throw duplicate member error, period, even
+  // when no schema". Until then the schemaless path silently kept the last value, so `a: 1, a: 2`
+  // loaded as `{a: 2}` and the first value was gone with no diagnostic — while the SAME document
+  // under a schema reported `duplicate-member`. The specification had always stated the rule
+  // unconditionally ("a member name appears more than once"); only the schemaless path missed it.
+  { group: 'a duplicate member name is an error, schema or no schema (D5)',
     name: 'duplicate_key', input: 'a: 1, a: 2' },
   { name: 'duplicate_key_quoted_and_bare', input: 'a: 1, "a": 2',
     note: 'quoting does not make it a different key' },
