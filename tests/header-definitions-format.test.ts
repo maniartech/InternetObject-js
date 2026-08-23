@@ -1,12 +1,12 @@
 /**
- * Demonstration of correct header definitions format
+ * Header definitions are newline-separated, one `~` per definition.
  * Each definition is on its own line with ~ prefix (not comma-separated)
  */
 
 import { parse, stringify } from '../src/index';
 import Document from '../src/core/document';
 
-describe('Header Definitions Format Demo', () => {
+describe('Header definitions format', () => {
   test('header definitions are newline-separated, not comma-separated', () => {
     const io = `
 ~ @var: "val"
@@ -25,7 +25,6 @@ Alice, 28, alice@example.com
     // Should NOT have comma-separated definitions
     expect(serialized).not.toContain('~ @var: val, ~ $schema:');
 
-    console.log('Correct format:\n', serialized);
   });
 
   test('complex header with multiple definition types', () => {
@@ -54,6 +53,5 @@ Alice, 28, alice@example.com
     expect(defLines[4]).toContain('~ $address: {street, city}');
     expect(defLines[5]).toContain('~ $schema: {id, name, $address}');
 
-    console.log('Complex header format:\n', serialized);
   });
 });

@@ -1,10 +1,20 @@
-import { inferDefs } from '../src/schema/utils/defs-inferrer';
-import { loadInferred } from '../src/facade/load-inferred';
-import { stringify } from '../src/index';
+import { inferDefs } from '../../../src/schema/utils/defs-inferrer';
+import { loadInferred } from '../../../src/facade/load-inferred';
+import { stringify } from '../../../src/index';
 
-describe('Qualtrics Survey Structure', () => {
-  // Simplified Qualtrics-like survey structure
-  const qualtricsSurvey = {
+/**
+ * Inference over an object whose KEYS are data — a survey export keyed by question id.
+ *
+ * The shape is synthetic but modelled on a real survey-platform export (the one behind issue #61).
+ * What makes it hard is that `questions` and `choices` are keyed by identifiers rather than by
+ * field names, so a naive inferrer emits one schema per key ($QID1, $QID2, $1, $2 ...) instead of
+ * recognising that every value has the same shape.
+ *
+ * Inference is out of the 1.0 conformance contract (ADR 0004), so nothing in the corpus covers
+ * this. These cases are the only thing holding it.
+ */
+describe('Definition Inference — objects keyed by data', () => {
+  const survey = {
     result: {
       questions: {
         QID1: {
@@ -33,8 +43,8 @@ describe('Qualtrics Survey Structure', () => {
     }
   };
 
-  it('infers schema from Qualtrics-like survey', () => {
-    const { definitions, rootSchema } = inferDefs(qualtricsSurvey);
+  it('merges same-shaped values under one schema instead of one per key', () => {
+    const { definitions, rootSchema } = inferDefs(survey);
 
     // Should create schemas for the nested structures
     expect(definitions.get('$result')).toBeDefined();
@@ -64,14 +74,13 @@ describe('Qualtrics Survey Structure', () => {
     }
   });
 
-  it('loadInferred succeeds with Qualtrics-like survey', () => {
-    // This was the original failure point - should no longer fail
-    const doc = loadInferred(qualtricsSurvey);
+  it('loadInferred succeeds — the original failure point', () => {
+    const doc = loadInferred(survey);
     expect(doc).toBeDefined();
   });
 
-  it('stringify succeeds with Qualtrics-like survey', () => {
-    const doc = loadInferred(qualtricsSurvey);
+  it('stringify succeeds', () => {
+    const doc = loadInferred(survey);
     const ioText = stringify(doc, { includeHeader: true });
     expect(ioText).toBeDefined();
     expect(ioText.length).toBeGreaterThan(0);

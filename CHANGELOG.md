@@ -5,6 +5,44 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## Unreleased — repository cleanup
+
+Housekeeping ahead of the merge to `master`. **No library behavior changes.**
+
+### Fixed
+
+- `npm run perf` and `npm run perf:decimal` pointed at `performance.ts` / `performance.decimal.ts`
+  at the repo root; the files are under `tests/performance/`. Both scripts had been broken and are
+  now correct.
+
+### Changed
+
+- `tests/qualtrics-test.test.ts` → `tests/schema/utils/infer-dynamic-keyed-objects.test.ts`, and
+  the vendor name dropped throughout. The test is about inferring a schema for an object whose
+  **keys are data**; the survey-export shape it uses is synthetic.
+- `tests/header-format-demo.test.ts` → `tests/header-definitions-format.test.ts`. A real test that
+  was wearing the word "demo".
+
+### Removed
+
+- Development notes that were records of how we got here rather than documentation:
+  `REVIEW-GUIDE.md`, `DEV-ISSUES.md`, `SERIALIZATION-SPEC.md`. The serialization model is specified
+  in `io-specs/serialization/`; the four ADRs under `docs/decisions/` stay.
+- Scratch tests that asserted nothing (`doc-parser`, `debug-playground`, `debug-serialize`,
+  `debug/stringify-debug`, and two of the three cases in `trial.test.ts` — the third was salvaged
+  into `tests/schema/utils/defs-inferrer.test.ts`). Suite goes 5,034 → 5,028: five removed `it()`s
+  that could not fail, two real ones added.
+- Eleven scripts under `tests/errors/` named `test-*.ts` / `test-*.js`, which vitest's
+  `tests/**/*.test.ts` pattern never matched, plus a `test-parser-crash.ts` probe at the repo root.
+  This also drops five long-standing `tsc --noEmit` errors (22 → 17, none in `src/`).
+
+### Added
+
+- README now documents the conformance corpus: it lives in the sibling `io-test-cases` checkout,
+  `yarn test` runs it, and the suites skip rather than fail when the sibling is absent.
+
+---
+
 ## Unreleased — BREAKING: error-code rename (ADR 0002)
 
 Every public `errorCode` string now follows `<predicate>-<subject>` — predicate first, drawn from a

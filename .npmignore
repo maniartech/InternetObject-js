@@ -62,3 +62,7 @@ coverage/
 *.tgz
 io-go/
 io-js.code-workspace
+
+# Private development notes (also gitignored — npm uses THIS file and ignores .gitignore,
+# and its default exclusion list does not cover arbitrary dot-directories).
+.private/

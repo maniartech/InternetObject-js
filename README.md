@@ -351,6 +351,26 @@ yarn test      # Run tests
 yarn build     # Build for production
 ```
 
+### The conformance corpus
+
+Internet Object is a format, not a library, so correctness is defined outside this repo. The
+language-independent test corpus lives in the sibling repository
+[`io-test-cases`](https://github.com/maniartech/io-test-cases), and `yarn test` runs it as part of
+the suite — a reference implementation that does not run the contract on every commit is only a
+second opinion that happens to be nearby.
+
+Check it out alongside this one to get that coverage:
+
+```
+your-workspace/
+  io-js2/          # this repo
+  io-test-cases/   # the corpus
+```
+
+If the sibling is absent the corpus suites **skip** rather than fail, so building from a tarball
+still works — but you are then running the library's own tests only. Cases are generated from the
+tables in `tools/corpus/suites-*.ts`; edit those, never the `.io` files.
+
 
 ## Contributing & Community
 

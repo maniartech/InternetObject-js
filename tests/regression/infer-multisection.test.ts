@@ -4,7 +4,7 @@ import { stringifyDocument, stringifyHeader } from '../../src/facade/stringify-d
 import parse from '../../src/parser/index';
 
 /**
- * DEV-ISSUES "Multisection Document Inference": a top-level object whose every value is a
+ * Multisection document inference: a top-level object whose every value is a
  * non-empty array of records infers as a multi-section document (`--- key: $item` per key) —
  * IO's native form — instead of one nested single-section document.
  */

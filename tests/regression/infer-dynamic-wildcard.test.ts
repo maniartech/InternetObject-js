@@ -4,8 +4,8 @@ import { stringifyDocument } from '../../src/facade/stringify-document';
 import parse from '../../src/parser/index';
 
 /**
- * Inference + serialization round-trip fixes (DEV-ISSUES "Invalid Def-inferrance for Additional
- * Properties" + GitHub issue #61 "[Import JSON] Schema inference error").
+ * Inference + serialization round-trip fixes for GitHub issue #61, "[Import JSON] Schema
+ * inference error", and the related "invalid inference for additional properties" report.
  *
  * The contract under test: for JSON-shaped input, `loadInferred` → `stringifyDocument` produces an
  * IO document that (a) parses with zero errors and (b) yields the same value model back.
@@ -20,7 +20,7 @@ function roundtrip(data: any): { io: string; back: any } {
   return { io, back: JSON.parse(JSON.stringify(doc.toJSON())) };
 }
 
-describe('dynamic-key (map) inference links via wildcard container [DEV-ISSUES]', () => {
+describe('dynamic-key (map) inference links via wildcard container', () => {
   const data = {
     result: {
       questions: {
@@ -148,7 +148,7 @@ describe('issue #61 representative structure end-to-end', () => {
   });
 });
 
-describe('record-wrapper brace matrix (SERIALIZATION-SPEC §13)', () => {
+describe('record-wrapper brace matrix (io-specs serialization/document-output.md, record enclosure)', () => {
   test('bare single-object row is accepted, but is the ambiguous form (why writers wrap)', () => {
     // Since the ISSUE-15 fix this binds uniformly instead of raising `unknown-member`. It is still
     // the form best practice tells authors to avoid — writers always emit the enclosed form below.
