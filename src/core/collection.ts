@@ -29,15 +29,21 @@ import IOObject from "./internet-object";
  * ```
  */
 class IOCollection<T = IOObject> {
-  private _items: T[];
-  public errors: Error[] = [];
+  private _items!: T[];
+  public errors!: Error[];
 
   /**
    * Constructs a new IOCollection instance.
    * @param items - An optional array of items to initialize the collection with.
    */
   constructor(items: T[] = []) {
-    this._items = items;
+    // Internals are defined non-enumerable, the same way IOObject defines `items`/`keyMap`.
+    // A plain field assignment would make them own ENUMERABLE properties, and then every native
+    // protocol that walks own keys leaks them: `{ ...collection }` and `structuredClone(collection)`
+    // both hand back `{ _items: [...], errors: [] }` instead of the collection's data. `errors` stays
+    // publicly readable (R6) — non-enumerable is not private, it is merely not part of the key walk.
+    Object.defineProperty(this, '_items', { value: items, writable: true, enumerable: false, configurable: false });
+    Object.defineProperty(this, 'errors', { value: [], writable: true, enumerable: false, configurable: false });
   }
 
   /**

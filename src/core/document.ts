@@ -34,14 +34,18 @@ import IOSectionCollection from "./section-collection";
  * ```
  */
 class IODocument {
-  private _header: IOHeader;
-  private _sections: IOSectionCollection | null;
-  private _ownErrors: Error[] = []; // Accumulated errors during parsing
+  private _header!: IOHeader;
+  private _sections!: IOSectionCollection | null;
+  private _ownErrors!: Error[]; // Accumulated errors during parsing
 
   constructor(header: IOHeader, sections: IOSectionCollection | null, errors: Error[] = []) {
-    this._header = header;
-    this._sections = sections;
-    this._ownErrors = errors;
+    // Non-enumerable, matching IOObject: plain assignment would make these own enumerable keys, and
+    // `{ ...doc }` would hand back `{ _header, _sections, _ownErrors }` — internals, where a caller
+    // expected data. Accessors (`header`, `sections`, `errors`) are unaffected.
+    const hidden = { writable: true, enumerable: false, configurable: false };
+    Object.defineProperty(this, '_header', { value: header, ...hidden });
+    Object.defineProperty(this, '_sections', { value: sections, ...hidden });
+    Object.defineProperty(this, '_ownErrors', { value: errors, ...hidden });
   }
 
   public get header(): IOHeader {
