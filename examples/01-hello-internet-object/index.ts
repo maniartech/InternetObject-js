@@ -26,6 +26,20 @@ console.log(`\n${person.name} is ${person.age}.`);
 const quoted = parse(`title: "Hello, world", note: 'single quotes work too'`);
 console.log('\nQuoted values:', quoted.toObject());
 
+// ── toObject() is a choice, not a step ────────────────────────────────────────
+
+// `toObject()` converts to plain JavaScript. You do NOT have to call it: the parsed
+// document is usable as it is, and reading it directly keeps the record's order and
+// its native values.
+const doc = parse(asIo);
+const record: any = doc.sections.get(0).data;
+console.log('\nread directly  :', record.get('name'), record.get('age'));
+console.log('by position    :', record.getAt(0));
+console.log('converted      :', doc.toObject());
+
+// Use toObject() when you want ordinary JS objects to hand to other code. Skip it
+// when you are just reading. Example 10 covers what you get by skipping it.
+
 // ── That is the whole idea ────────────────────────────────────────────────────
 
 // Same data model as JSON — objects, arrays, strings, numbers, booleans, null —

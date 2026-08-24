@@ -39,6 +39,15 @@ Take them in order the first time. Each one assumes only what came before it.
 | 13 | Template literals | Write Internet Object inline in your code, with editor support. |
 | — | Streaming | Read records as they arrive, without holding the whole document. |
 
+## One thing worth knowing up front
+
+Most examples call `toObject()` to print a result, which can make it look required. It is not.
+
+`parse()` and `load()` return a **document** you can read directly — `get`, `getAt`, `map`,
+`filter`, `for..of`. `toObject()` is a *conversion* for handing data to other code, and
+`toJSON()` is a conversion for sending it somewhere else. Use them at the boundary, not as a
+first move.
+
 ## How to read an example
 
 Each one is short and self-contained, with the concept in comments right where it happens. If a

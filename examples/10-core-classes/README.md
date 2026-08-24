@@ -19,6 +19,25 @@ That is what makes positional access meaningful at all. If order followed whatev
 
 Members the schema does not declare — the extras an open schema allows — follow the declared ones, in arrival order.
 
+## A collection is a real collection
+
+`IOCollection` is not a wrapper you have to escape from. The methods you already use are on it,
+and it is iterable:
+
+```ts
+rows.map(r => r.get('name'));
+rows.filter(r => r.get('age') > 26);
+rows.find(r => r.get('name') === 'Bob');
+for (const r of rows) { ... }
+```
+
+One thing to know: **`map` and `filter` return an `IOCollection`, not an `Array`.** They stay in
+the collection so you can keep chaining. Spread it — `[...rows]` — when you want a real array.
+
+So you can read an entire document without ever calling `toObject()`. That matters more than it
+sounds: converting early throws away order and native types, and then you find yourself needing
+them back.
+
 ## Two projections
 
 | Method | Gives you | Use when |
