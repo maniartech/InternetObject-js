@@ -91,7 +91,7 @@ const server = createServer(async (req, res) => {
 
   try {
     if (route === '/' || route === '/index.html') {
-      res.writeHead(200, { 'content-type': MIME['.html'] });
+      res.writeHead(200, { 'content-type': MIME['.html'], 'cache-control': 'no-store' });
       return res.end(await readFile(path.join(HERE, 'index.html')));
     }
 
@@ -131,7 +131,12 @@ const server = createServer(async (req, res) => {
     // Static client assets, restricted to this folder.
     const file = path.join(HERE, route.replace(/^\/+/, ''));
     if (file.startsWith(HERE) && existsSync(file) && (await stat(file)).isFile()) {
-      res.writeHead(200, { 'content-type': MIME[path.extname(file)] ?? 'application/octet-stream' });
+      // no-store: this is a dev server you edit while it runs. A cached app.js means your change
+      // appears not to have worked, which costs more time than the request ever saves.
+      res.writeHead(200, {
+        'content-type': MIME[path.extname(file)] ?? 'application/octet-stream',
+        'cache-control': 'no-store',
+      });
       return res.end(await readFile(file));
     }
 
