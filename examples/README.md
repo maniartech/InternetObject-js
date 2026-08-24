@@ -37,7 +37,22 @@ Take them in order the first time. Each one assumes only what came before it.
 | 11 | Precise numbers | `decimal` and `bigint` — money and large ids that survive the round trip. |
 | 12 | JSON interop | Move between the two formats in both directions, losing nothing. |
 | 13 | Template literals | Write Internet Object inline in your code, with editor support. |
-| — | Streaming | Read records as they arrive, without holding the whole document. |
+| 14 | Streaming | Read records as they arrive, without holding the whole document. |
+| 15 | **The kitchen sink** | Everything above in one file — including header edits and the projection rule. |
+
+In a hurry? **Example 15 is the kitchen sink** — every concept in one runnable file.
+
+## The shape you get back
+
+Worth knowing before anything else, because it is also what the
+[playground](https://play.internetobject.org/) prints — paste a document there, read the JSON panel,
+and write code against exactly that:
+
+| Document | You get |
+| -------- | ------- |
+| One section holding a collection | an array |
+| One section holding a single object | an object |
+| Several sections | keyed by section name |
 
 ## One thing worth knowing up front
 
