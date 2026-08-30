@@ -3,7 +3,7 @@
  *
  * Run me:  npx tsx examples/12-json-interop/index.ts
  */
-import { parse, load, loadCollection, parseDefinitions, stringify, toJSON } from '../../src/index';
+import { parseDocument, load, loadCollection, parseDefinitions, stringify, toJSON } from '../../src/index';
 
 // You will have JSON on one side of most systems. Moving between the two is
 // meant to be dull, and it is.
@@ -26,7 +26,7 @@ console.log('as IO text :', JSON.stringify(stringify(collection as any)));
 
 // ── JSON out ──────────────────────────────────────────────────────────────────
 
-const doc = parse(`name: string, joined: date, avatar: any
+const doc = parseDocument(`name: string, joined: date, avatar: any
 ---
 ~ Alice, d"2026-08-24", b"SGVsbG8="`);
 
@@ -42,7 +42,7 @@ console.log('JSON.stringify:', JSON.stringify(doc.toJSON()));
 
 // Use toJSON() when the value is leaving your program. Use toObject() when it
 // is staying.
-const helper = toJSON(parse('when: dt"2026-08-24T09:00:00.000Z"'));
+const helper = toJSON(parseDocument('when: dt"2026-08-24T09:00:00.000Z"'));
 console.log('\ntoJSON() helper:', JSON.stringify(helper));
 
 console.log(`

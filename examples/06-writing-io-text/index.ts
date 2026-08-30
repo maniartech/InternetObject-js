@@ -3,7 +3,7 @@
  *
  * Run me:  npx tsx examples/06-writing-io-text/index.ts
  */
-import { parse, load, parseDefinitions, stringify, stringifyDocument } from '../../src/index';
+import { parseDocument, load, parseDefinitions, stringify, stringifyDocument } from '../../src/index';
 
 // Parsing turns text into values. This is the other direction.
 
@@ -40,7 +40,7 @@ console.log(`
 
 // Text -> values -> text should give you back what you started with.
 const original = 'name: string, age: int\n---\n~ Alice, 30\n~ Bob, 25';
-const roundTripped = stringify(parse(original));
+const roundTripped = stringify(parseDocument(original));
 console.log('\noriginal data :', JSON.stringify('~ Alice, 30\n~ Bob, 25'));
 console.log('after a trip  :', JSON.stringify(roundTripped));
 console.log('same?          ', roundTripped === '~ Alice, 30\n~ Bob, 25');

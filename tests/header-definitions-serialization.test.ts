@@ -6,7 +6,7 @@
  * - Mixed combinations of all three
  */
 
-import { parse, stringify } from '../src/index';
+import { parseDocument, stringify } from '../src/index';
 import Document from '../src/core/document';
 
 describe('Header Definitions Serialization', () => {
@@ -17,9 +17,9 @@ describe('Header Definitions Serialization', () => {
 ~ $address: {street, city, state}
 ---
 `;
-      const doc = parse(io, null) as Document;
+      const doc = parseDocument(io, null) as Document;
       const serialized = stringify(doc, { includeTypes: true, includeHeader: true });
-      const doc2 = parse(serialized, null) as Document;
+      const doc2 = parseDocument(serialized, null) as Document;
 
       // Verify definitions structure
       expect(doc2.header.definitions.length).toBe(1);
@@ -33,9 +33,9 @@ describe('Header Definitions Serialization', () => {
 ~ $person: {name, age, $address}
 ---
 `;
-      const doc = parse(io, null) as Document;
+      const doc = parseDocument(io, null) as Document;
       const serialized = stringify(doc, { includeTypes: true, includeHeader: true });
-      const doc2 = parse(serialized, null) as Document;
+      const doc2 = parseDocument(serialized, null) as Document;
 
       // Verify definitions structure
       expect(doc2.header.definitions.length).toBe(2);
@@ -50,9 +50,9 @@ describe('Header Definitions Serialization', () => {
 ~ $schema: {id, name, email}
 ---
 `;
-      const doc = parse(io, null) as Document;
+      const doc = parseDocument(io, null) as Document;
       const serialized = stringify(doc, { includeTypes: true, includeHeader: true });
-      const doc2 = parse(serialized, null) as Document;
+      const doc2 = parseDocument(serialized, null) as Document;
 
       // When only $schema exists, outputs as bare schema line
       expect(doc2.header.definitions.length).toBe(1);
@@ -70,9 +70,9 @@ describe('Header Definitions Serialization', () => {
 ~ $schema: {name, active}
 ---
 `;
-      const doc = parse(io, null) as Document;
+      const doc = parseDocument(io, null) as Document;
       const serialized = stringify(doc, { includeTypes: true, includeHeader: true });
-      const doc2 = parse(serialized, null) as Document;
+      const doc2 = parseDocument(serialized, null) as Document;
 
       // Verify definitions structure
       expect(doc2.header.definitions.length).toBe(3);
@@ -94,9 +94,9 @@ describe('Header Definitions Serialization', () => {
 ~ $schema: {name, status}
 ---
 `;
-      const doc = parse(io, null) as Document;
+      const doc = parseDocument(io, null) as Document;
       const serialized = stringify(doc, { includeTypes: true, includeHeader: true });
-      const doc2 = parse(serialized, null) as Document;
+      const doc2 = parseDocument(serialized, null) as Document;
 
       // Verify definitions structure
       expect(doc2.header.definitions.length).toBe(3);
@@ -119,9 +119,9 @@ describe('Header Definitions Serialization', () => {
 ~ totalRecords: 100
 ---
 `;
-      const doc = parse(io, null) as Document;
+      const doc = parseDocument(io, null) as Document;
       const serialized = stringify(doc, { includeTypes: true, includeHeader: true });
-      const doc2 = parse(serialized, null) as Document;
+      const doc2 = parseDocument(serialized, null) as Document;
 
       // Verify definitions structure
       expect(doc2.header.definitions.length).toBe(3);
@@ -138,9 +138,9 @@ describe('Header Definitions Serialization', () => {
 ~ active: T
 ---
 `;
-      const doc = parse(io, null) as Document;
+      const doc = parseDocument(io, null) as Document;
       const serialized = stringify(doc, { includeTypes: true, includeHeader: true });
-      const doc2 = parse(serialized, null) as Document;
+      const doc2 = parseDocument(serialized, null) as Document;
 
       // Verify definitions structure
       expect(doc2.header.definitions.length).toBe(3);
@@ -161,9 +161,9 @@ describe('Header Definitions Serialization', () => {
 ~ 1, Alice, alice@example.com
 ~ 2, Bob, bob@example.com
 `;
-      const doc = parse(io, null) as Document;
+      const doc = parseDocument(io, null) as Document;
       const serialized = stringify(doc, { includeTypes: true, includeHeader: true });
-      const doc2 = parse(serialized, null) as Document;
+      const doc2 = parseDocument(serialized, null) as Document;
 
       // Verify definitions structure
       expect(doc2.header.definitions.length).toBe(3);
@@ -193,9 +193,9 @@ describe('Header Definitions Serialization', () => {
 ~ Bob, F
 ~ Charlie, T
 `;
-      const doc = parse(io, null) as Document;
+      const doc = parseDocument(io, null) as Document;
       const serialized = stringify(doc, { includeTypes: true, includeHeader: true });
-      const doc2 = parse(serialized, null) as Document;
+      const doc2 = parseDocument(serialized, null) as Document;
 
       // Verify definitions structure
       expect(doc2.header.definitions.length).toBe(4);
@@ -228,9 +228,9 @@ describe('Header Definitions Serialization', () => {
 ~ 1, Alice, {123 Main St, Boston}
 ~ 2, Bob, {456 Oak Ave, Seattle}
 `;
-      const doc = parse(io, null) as Document;
+      const doc = parseDocument(io, null) as Document;
       const serialized = stringify(doc, { includeTypes: true, includeHeader: true });
-      const doc2 = parse(serialized, null) as Document;
+      const doc2 = parseDocument(serialized, null) as Document;
 
       // Verify definitions structure
       expect(doc2.header.definitions.length).toBe(5);
@@ -267,9 +267,9 @@ describe('Header Definitions Serialization', () => {
 ~ version: 1.0
 ---
 `;
-      const doc = parse(io, null) as Document;
+      const doc = parseDocument(io, null) as Document;
       const serialized = stringify(doc, { includeTypes: true, includeHeader: true });
-      const doc2 = parse(serialized, null) as Document;
+      const doc2 = parseDocument(serialized, null) as Document;
 
       // Verify definitions order is preserved
       expect(doc2.header.definitions.length).toBe(4);
@@ -288,9 +288,9 @@ describe('Header Definitions Serialization', () => {
 ~ $schema: {id, name, email?}
 ---
 `;
-      const doc = parse(io, null) as Document;
+      const doc = parseDocument(io, null) as Document;
       const serialized = stringify(doc, { includeTypes: true, includeHeader: true });
-      const doc2 = parse(serialized, null) as Document;
+      const doc2 = parseDocument(serialized, null) as Document;
 
       // Verify schema structure with optional marker
       expect(doc2.header.schema).toBeDefined();
@@ -303,9 +303,9 @@ describe('Header Definitions Serialization', () => {
 ~ $schema: {id, name, middleName*}
 ---
 `;
-      const doc = parse(io, null) as Document;
+      const doc = parseDocument(io, null) as Document;
       const serialized = stringify(doc, { includeTypes: true, includeHeader: true });
-      const doc2 = parse(serialized, null) as Document;
+      const doc2 = parseDocument(serialized, null) as Document;
 
       // Verify schema structure with nullable marker
       expect(doc2.header.schema).toBeDefined();
@@ -318,9 +318,9 @@ describe('Header Definitions Serialization', () => {
 ~ $schema: {id, name, nickname?*, email?}
 ---
 `;
-      const doc = parse(io, null) as Document;
+      const doc = parseDocument(io, null) as Document;
       const serialized = stringify(doc, { includeTypes: true, includeHeader: true });
-      const doc2 = parse(serialized, null) as Document;
+      const doc2 = parseDocument(serialized, null) as Document;
 
       // Verify schema structure with both markers
       expect(doc2.header.schema).toBeDefined();
@@ -338,9 +338,9 @@ describe('Header Definitions Serialization', () => {
 ~ $schema: {id, name, $address}
 ---
 `;
-      const doc = parse(io, null) as Document;
+      const doc = parseDocument(io, null) as Document;
       const serialized = stringify(doc, { includeTypes: true, includeHeader: true });
-      const doc2 = parse(serialized, null) as Document;
+      const doc2 = parseDocument(serialized, null) as Document;
 
       // Verify nested schema structure
       expect(doc2.header.definitions.length).toBe(2);
@@ -357,9 +357,9 @@ describe('Header Definitions Serialization', () => {
 ~ $schema: {id, name, $address}
 ---
 `;
-      const doc = parse(io, null) as Document;
+      const doc = parseDocument(io, null) as Document;
       const serialized = stringify(doc, { includeTypes: true, includeHeader: true });
-      const doc2 = parse(serialized, null) as Document;
+      const doc2 = parseDocument(serialized, null) as Document;
 
       // Verify deeply nested schema structure
       expect(doc2.header.definitions.length).toBe(3);
@@ -376,9 +376,9 @@ describe('Header Definitions Serialization', () => {
 ~ $empty: {}
 ---
 `;
-      const doc = parse(io, null) as Document;
+      const doc = parseDocument(io, null) as Document;
       const serialized = stringify(doc, { includeTypes: true, includeHeader: true });
-      const doc2 = parse(serialized, null) as Document;
+      const doc2 = parseDocument(serialized, null) as Document;
 
       // Verify empty schema is preserved
       expect(doc2.header.definitions.length).toBe(1);
@@ -394,9 +394,9 @@ describe('Header Definitions Serialization', () => {
 ~ description: "Test, with comma"
 ---
 `;
-      const doc = parse(io, null) as Document;
+      const doc = parseDocument(io, null) as Document;
       const serialized = stringify(doc, { includeTypes: true, includeHeader: true });
-      const doc2 = parse(serialized, null) as Document;
+      const doc2 = parseDocument(serialized, null) as Document;
 
       // Verify special characters are preserved
       expect(doc2.header.definitions.length).toBe(2);
@@ -411,9 +411,9 @@ describe('Header Definitions Serialization', () => {
 ~ $schema: {id, name}
 ---
 `;
-      const doc = parse(io, null) as Document;
+      const doc = parseDocument(io, null) as Document;
       const serialized = stringify(doc, { includeTypes: true, includeHeader: true });
-      const doc2 = parse(serialized, null) as Document;
+      const doc2 = parseDocument(serialized, null) as Document;
 
       // Verify all definitions are preserved
       expect(doc2.header.definitions.length).toBe(3);
@@ -433,9 +433,9 @@ describe('Header Definitions Serialization', () => {
 ~ Alice, alice@test.com, {Main St, NYC}
 ~ Bob, bob@test.com, {Oak Ave, LA}
 `;
-      const doc1 = parse(io, null) as Document;
+      const doc1 = parseDocument(io, null) as Document;
       const serialized = stringify(doc1, { includeTypes: true, includeHeader: true });
-      const doc2 = parse(serialized, null) as Document;
+      const doc2 = parseDocument(serialized, null) as Document;
 
       // Compare original and round-tripped documents
       expect(doc2.header.definitions.length).toBe(doc1.header.definitions.length);
@@ -462,9 +462,9 @@ describe('Header Definitions Serialization', () => {
 ~ 2, Bob, F
 ~ 3, Charlie, T
 `;
-      const doc1 = parse(io, null) as Document;
+      const doc1 = parseDocument(io, null) as Document;
       const serialized = stringify(doc1, { includeTypes: true, includeHeader: true });
-      const doc2 = parse(serialized, null) as Document;
+      const doc2 = parseDocument(serialized, null) as Document;
 
       // Compare definitions
       expect(doc2.header.definitions.length).toBe(doc1.header.definitions.length);
@@ -498,9 +498,9 @@ describe('Header Definitions Serialization', () => {
 ~ 2, Bob, bob@example.com, {Oak Ave, Seattle}
 ~ 3, Charlie, charlie@example.com, {Pine Rd, Austin}
 `;
-      const doc1 = parse(io, null) as Document;
+      const doc1 = parseDocument(io, null) as Document;
       const serialized = stringify(doc1, { includeTypes: true, includeHeader: true });
-      const doc2 = parse(serialized, null) as Document;
+      const doc2 = parseDocument(serialized, null) as Document;
 
       // Compare all definitions
       expect(doc2.header.definitions.length).toBe(5);

@@ -1,4 +1,4 @@
-import { parse } from '../../../src'
+import { parseDocument } from '../../../src'
 
 describe('Variable References in Defaults', () => {
   test('should resolve variable references in default values', () => {
@@ -10,7 +10,7 @@ describe('Variable References in Defaults', () => {
 ~ Book
     `.trim()
 
-    const result = parse(io, null).toJSON()
+    const result = parseDocument(io, null).toJSON()
 
     expect(result).toEqual([
       {
@@ -35,7 +35,7 @@ describe('Variable References in Defaults', () => {
 ~ Hat
     `.trim()
 
-    const result = parse(io, null).toJSON()
+    const result = parseDocument(io, null).toJSON()
 
     expect(result).toEqual([
       {
@@ -65,7 +65,7 @@ describe('Variable References in Defaults', () => {
 ~ Mouse
     `.trim()
 
-    const result = parse(io, null).toJSON()
+    const result = parseDocument(io, null).toJSON()
 
     expect(result).toEqual([
       {
@@ -88,7 +88,7 @@ describe('Variable References in Defaults', () => {
 ~ Bob
     `.trim()
 
-    const result = parse(io, null).toJSON()
+    const result = parseDocument(io, null).toJSON()
 
     expect(result).toEqual([
       {

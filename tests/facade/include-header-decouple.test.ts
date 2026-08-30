@@ -1,5 +1,5 @@
 import { describe, test, expect } from 'vitest';
-import { parse, stringify } from '../../src';
+import { parseDocument, stringify } from '../../src';
 
 /**
  * R9 — `includeHeader` and `includeTypes` are INDEPENDENT.
@@ -9,8 +9,8 @@ import { parse, stringify } from '../../src';
  * header that is actually present; to get a typed header you must pass BOTH.
  */
 describe('R9 — includeHeader / includeTypes are independent', () => {
-  const untyped = () => parse('~ $schema: {name, age}\n---\nJohn, 30');
-  const typed = () => parse('~ $schema: {name: string, age: int}\n---\nJohn, 30');
+  const untyped = () => parseDocument('~ $schema: {name, age}\n---\nJohn, 30');
+  const typed = () => parseDocument('~ $schema: {name: string, age: int}\n---\nJohn, 30');
 
   test('includeTypes:true alone does NOT emit a header', () => {
     expect(stringify(untyped(), { includeTypes: true } as any)).toBe('John, 30');

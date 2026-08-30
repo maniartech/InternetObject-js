@@ -1,9 +1,9 @@
 import { describe, it, expect } from 'vitest';
-import { load, loadObject, parse, parseDefinitions, stringify } from '../../src/index';
+import { load, loadObject, parseDocument, parseDefinitions, stringify } from '../../src/index';
 
 /**
  * `load()` must resolve a `$name` schema reference inside a member definition, exactly as
- * `parse()` does for the same document.
+ * `parseDocument()` does for the same document.
  *
  * Found 2026-08-23 while checking that every README example actually runs: example 8 (named
  * schemas) threw `schema2.names is not iterable`. `ObjectDef.load` read `memberDef.schema` raw,
@@ -24,7 +24,7 @@ describe('load() with a member whose schema is a $reference', () => {
   });
 
   it('agrees with the text route', () => {
-    const viaText = parse(`${DEFS}\n---\nAlice, 30, {123 Main St, NYC}`).toObject();
+    const viaText = parseDocument(`${DEFS}\n---\nAlice, 30, {123 Main St, NYC}`).toObject();
     expect(load(DATA, parseDefinitions(DEFS)).toObject()).toEqual(viaText);
   });
 

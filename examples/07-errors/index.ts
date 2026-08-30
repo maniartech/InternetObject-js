@@ -3,13 +3,13 @@
  *
  * Run me:  npx tsx examples/07-errors/index.ts
  */
-import { parse, ErrorCodes } from '../../src/index';
+import { parseDocument, ErrorCodes } from '../../src/index';
 
 // ── Two ways to receive an error ──────────────────────────────────────────────
 
 // 1. Throw — best when you only want to proceed with valid data.
 try {
-  parse('name: string, age: int\n---\n~ Alice, notanumber');
+  parseDocument('name: string, age: int\n---\n~ Alice, notanumber');
 } catch (e) {
   const err = e as any;
   console.log('threw    :', err.errorCode);
@@ -18,7 +18,7 @@ try {
 
 // 2. Collect — pass an array and parsing keeps going, reporting everything it can.
 const errors: Error[] = [];
-parse(`name: string, age: int, email: email
+parseDocument(`name: string, age: int, email: email
 ---
 ~ Alice, notanumber, alice@example.com
 ~ Bob, 25, not-an-email
@@ -33,7 +33,7 @@ for (const e of errors) {
 // ── An error tells you three things ───────────────────────────────────────────
 
 const one: Error[] = [];
-parse('age: int\n---\n~ nope', null, one);
+parseDocument('age: int\n---\n~ nope', null, one);
 const e = one[0] as any;
 console.log('\ncode    ', e.errorCode, '  <- stable, safe to branch on');
 console.log('fact    ', e.fact, '  <- for a human');
@@ -55,7 +55,7 @@ const codeOf = (src: string): string => {
   const collected: Error[] = [];
   let value: any;
   try {
-    value = parse(src, null, collected).toObject();
+    value = parseDocument(src, null, collected).toObject();
   } catch (err) {
     return (err as any).errorCode;                                   // 1
   }

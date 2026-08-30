@@ -1,5 +1,5 @@
 import { describe, test, expect } from 'vitest'
-import { parse, stringify } from '../../src'
+import { parseDocument, stringify } from '../../src'
 
 /**
  * ROUND-TRIP CONTRACT
@@ -18,9 +18,9 @@ import { parse, stringify } from '../../src'
 /** Full round-trip helper (includeHeader: true). Returns both value models and both serializations. */
 function roundTrip(src: string, opts: Record<string, unknown> = {}) {
   const options = { includeHeader: true, ...opts } as any
-  const d1: any = parse(src, null)
+  const d1: any = parseDocument(src, null)
   const out1 = stringify(d1, options)
-  const d2: any = parse(out1, null)
+  const d2: any = parseDocument(out1, null)
   const out2 = stringify(d2, options)
   return { d1, d2, out1, out2 }
 }
@@ -131,9 +131,9 @@ describe('data-only (includeHeader: false) emits valid, re-parseable IO', () => 
     ['open {*} mixed',              '~ $schema: {*}\n---\n{Alice, "5": 100}'],
     ['no schema keyed',             '{name: John, age: 20}'],
   ])('%s', (_l, src) => {
-    const d1: any = parse(src, null)
+    const d1: any = parseDocument(src, null)
     const out = stringify(d1, { includeHeader: false } as any)
-    const d2: any = parse(out, null)
+    const d2: any = parseDocument(out, null)
     expect((d2.getErrors?.() ?? []).length).toBe(0)
   })
 })

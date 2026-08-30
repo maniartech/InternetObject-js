@@ -1,8 +1,8 @@
-import { parse, parseDefinitions, IODefinitions } from '../../src';
+import { parseDocument, parseDefinitions, IODefinitions } from '../../src';
 
 // Utility to run sample pairs (schema+doc or doc-only)
 function runSample(doc: string, defs?: IODefinitions | null) {
-  const result = parse(doc, defs || null);
+  const result = parseDocument(doc, defs || null);
   return result.toJSON();
 }
 

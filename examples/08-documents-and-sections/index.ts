@@ -3,13 +3,13 @@
  *
  * Run me:  npx tsx examples/08-documents-and-sections/index.ts
  */
-import { parse } from '../../src/index';
+import { parseDocument } from '../../src/index';
 
 // ── A document has two halves ─────────────────────────────────────────────────
 
 // Everything before `---` is the HEADER: schemas, metadata, definitions.
 // Everything after is the DATA.
-const doc = parse(`~ version: 2
+const doc = parseDocument(`~ version: 2
 ~ generated: dt"2026-08-24T09:00:00.000Z"
 ~ $schema: {name: string, age: int}
 ---
@@ -27,7 +27,7 @@ console.log('version  :', meta.version);
 // ── More than one kind of record, in one file ─────────────────────────────────
 
 // A named section starts with `--- name: $schema`. One file, several shapes.
-const multi = parse(`~ $user:  {name: string, email: email}
+const multi = parseDocument(`~ $user:  {name: string, email: email}
 ~ $order: {id: int, total: decimal}
 --- users: $user
 ~ Alice, alice@example.com

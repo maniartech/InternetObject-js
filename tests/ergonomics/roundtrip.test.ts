@@ -1,9 +1,9 @@
 import { describe, expect, test } from 'vitest';
 
-import { parse, stringify } from '../../src';
+import { parseDocument, stringify } from '../../src';
 
 describe('parse/stringify round-trip', () => {
-  test('stringify(parse(text)) is stable (idempotent) with explicit document options', () => {
+  test('stringify(parseDocument(text)) is stable (idempotent) with explicit document options', () => {
     const input = `
 ~ $User: { name: string, age: int }
 ~ $schema: $User
@@ -13,7 +13,7 @@ describe('parse/stringify round-trip', () => {
 ~ Bob, 25
 `.trim();
 
-    const doc1 = parse(input);
+    const doc1 = parseDocument(input);
 
     const opts = {
       includeHeader: true,
@@ -21,7 +21,7 @@ describe('parse/stringify round-trip', () => {
     } as const;
 
     const text1 = stringify(doc1, opts);
-    const doc2 = parse(text1);
+    const doc2 = parseDocument(text1);
     const text2 = stringify(doc2, opts);
 
     expect(text2).toBe(text1);
@@ -31,9 +31,9 @@ describe('parse/stringify round-trip', () => {
   test('round-trip works for data-only single-section documents', () => {
     const input = `Alice, 30`;
 
-    const doc1 = parse(input);
+    const doc1 = parseDocument(input);
     const text1 = stringify(doc1);
-    const doc2 = parse(text1);
+    const doc2 = parseDocument(text1);
 
     expect(doc2.toJSON()).toEqual(doc1.toJSON());
   });

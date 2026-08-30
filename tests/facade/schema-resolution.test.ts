@@ -1,5 +1,5 @@
 import { describe, test, expect } from 'vitest';
-import { parse, stringify, loadObject } from '../../src';
+import { parseDocument, stringify, loadObject } from '../../src';
 import ErrorCodes from '../../src/errors/io-error-codes';
 
 /**
@@ -11,7 +11,7 @@ import ErrorCodes from '../../src/errors/io-error-codes';
  * the InternetObject / Collection stringify path.)
  */
 describe('R8 — one schema resolver, one failure mode', () => {
-  const defs = () => (parse('~ $User: {name}\n~ $schema: $User\n---') as any).header.definitions;
+  const defs = () => (parseDocument('~ $User: {name}\n~ $schema: $User\n---') as any).header.definitions;
   const codeOf = (fn: () => any) => { try { fn(); return undefined; } catch (e: any) { return e.errorCode; } };
 
   test('loadObject: unknown schemaName throws schemaNotFound', () => {

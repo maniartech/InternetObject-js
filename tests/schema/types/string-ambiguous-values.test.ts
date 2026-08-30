@@ -1,4 +1,4 @@
-import { parse, stringify, loadObject } from '../../../src/index'
+import { parseDocument, stringify, loadObject } from '../../../src/index'
 import { compileSchema } from '../../../src/schema'
 import Definitions from '../../../src/core/definitions'
 
@@ -20,7 +20,7 @@ describe('String Ambiguous Values - Round Trip Safety', () => {
         ---
         ~ "1984", "2001"
       `
-      const doc = parse(input)
+      const doc = parseDocument(input)
       const output = stringify(doc)
 
       // Should be quoted in output
@@ -28,7 +28,7 @@ describe('String Ambiguous Values - Round Trip Safety', () => {
       expect(output).toContain('"2001"')
 
       // Round-trip should not throw and preserve data
-      const reparsed = parse(output)
+      const reparsed = parseDocument(output)
       expect(reparsed).toBeDefined()
     })
 
@@ -38,13 +38,13 @@ describe('String Ambiguous Values - Round Trip Safety', () => {
         ---
         ~ "3.14"
       `
-      const doc = parse(input)
+      const doc = parseDocument(input)
       const output = stringify(doc)
 
       expect(output).toContain('"3.14"')
 
       // Round-trip should work
-      const reparsed = parse(output)
+      const reparsed = parseDocument(output)
       expect(reparsed).toBeDefined()
     })
 
@@ -54,7 +54,7 @@ describe('String Ambiguous Values - Round Trip Safety', () => {
         ---
         ~ "-42"
       `
-      const doc = parse(input)
+      const doc = parseDocument(input)
       const output = stringify(doc)
 
       expect(output).toContain('"-42"')
@@ -66,7 +66,7 @@ describe('String Ambiguous Values - Round Trip Safety', () => {
         ---
         ~ "1e10"
       `
-      const doc = parse(input)
+      const doc = parseDocument(input)
       const output = stringify(doc)
 
       expect(output).toContain('"1e10"')
@@ -78,7 +78,7 @@ describe('String Ambiguous Values - Round Trip Safety', () => {
         ---
         ~ "0"
       `
-      const doc = parse(input)
+      const doc = parseDocument(input)
       const output = stringify(doc)
 
       expect(output).toContain('"0"')
@@ -92,13 +92,13 @@ describe('String Ambiguous Values - Round Trip Safety', () => {
         ---
         ~ "T"
       `
-      const doc = parse(input)
+      const doc = parseDocument(input)
       const output = stringify(doc)
 
       expect(output).toContain('"T"')
 
       // Round-trip should work
-      const reparsed = parse(output)
+      const reparsed = parseDocument(output)
       expect(reparsed).toBeDefined()
     })
 
@@ -108,7 +108,7 @@ describe('String Ambiguous Values - Round Trip Safety', () => {
         ---
         ~ "F"
       `
-      const doc = parse(input)
+      const doc = parseDocument(input)
       const output = stringify(doc)
 
       expect(output).toContain('"F"')
@@ -120,7 +120,7 @@ describe('String Ambiguous Values - Round Trip Safety', () => {
         ---
         ~ "true"
       `
-      const doc = parse(input)
+      const doc = parseDocument(input)
       const output = stringify(doc)
 
       expect(output).toContain('"true"')
@@ -132,7 +132,7 @@ describe('String Ambiguous Values - Round Trip Safety', () => {
         ---
         ~ "false"
       `
-      const doc = parse(input)
+      const doc = parseDocument(input)
       const output = stringify(doc)
 
       expect(output).toContain('"false"')
@@ -146,13 +146,13 @@ describe('String Ambiguous Values - Round Trip Safety', () => {
         ---
         ~ "N"
       `
-      const doc = parse(input)
+      const doc = parseDocument(input)
       const output = stringify(doc)
 
       expect(output).toContain('"N"')
 
       // Round-trip should work
-      const reparsed = parse(output)
+      const reparsed = parseDocument(output)
       expect(reparsed).toBeDefined()
     })
 
@@ -162,7 +162,7 @@ describe('String Ambiguous Values - Round Trip Safety', () => {
         ---
         ~ "null"
       `
-      const doc = parse(input)
+      const doc = parseDocument(input)
       const output = stringify(doc)
 
       expect(output).toContain('"null"')
@@ -176,7 +176,7 @@ describe('String Ambiguous Values - Round Trip Safety', () => {
         ---
         ~ "Inf"
       `
-      const doc = parse(input)
+      const doc = parseDocument(input)
       const output = stringify(doc)
 
       expect(output).toContain('"Inf"')
@@ -188,7 +188,7 @@ describe('String Ambiguous Values - Round Trip Safety', () => {
         ---
         ~ "NaN"
       `
-      const doc = parse(input)
+      const doc = parseDocument(input)
       const output = stringify(doc)
 
       expect(output).toContain('"NaN"')
@@ -200,7 +200,7 @@ describe('String Ambiguous Values - Round Trip Safety', () => {
         ---
         ~ "-Inf"
       `
-      const doc = parse(input)
+      const doc = parseDocument(input)
       const output = stringify(doc)
 
       expect(output).toContain('"-Inf"')
@@ -214,7 +214,7 @@ describe('String Ambiguous Values - Round Trip Safety', () => {
         ---
         ~ "2024-01-15"
       `
-      const doc = parse(input)
+      const doc = parseDocument(input)
       const output = stringify(doc)
 
       expect(output).toContain('"2024-01-15"')
@@ -226,7 +226,7 @@ describe('String Ambiguous Values - Round Trip Safety', () => {
         ---
         ~ "10:30:00"
       `
-      const doc = parse(input)
+      const doc = parseDocument(input)
       const output = stringify(doc)
 
       expect(output).toContain('"10:30:00"')
@@ -238,7 +238,7 @@ describe('String Ambiguous Values - Round Trip Safety', () => {
         ---
         ~ "2024-01-15T10:30:00Z"
       `
-      const doc = parse(input)
+      const doc = parseDocument(input)
       const output = stringify(doc)
 
       expect(output).toContain('"2024-01-15T10:30:00Z"')
@@ -252,7 +252,7 @@ describe('String Ambiguous Values - Round Trip Safety', () => {
         ---
         ~ ""
       `
-      const doc = parse(input)
+      const doc = parseDocument(input)
       const output = stringify(doc)
 
       expect(output).toContain('""')
@@ -266,7 +266,7 @@ describe('String Ambiguous Values - Round Trip Safety', () => {
         ---
         ~ "Hello World", "John Doe"
       `
-      const doc = parse(input)
+      const doc = parseDocument(input)
       const output = stringify(doc)
 
       // Normal strings should be open (unquoted) for cleaner output
@@ -283,7 +283,7 @@ describe('String Ambiguous Values - Round Trip Safety', () => {
         ---
         ~ "1984", "George Orwell", "Published"
       `
-      const doc = parse(input)
+      const doc = parseDocument(input)
       const output = stringify(doc)
 
       // Ambiguous value should be quoted
@@ -325,7 +325,7 @@ describe('String Ambiguous Values - Round Trip Safety', () => {
         ---
         ~ ["1984", "T", "N", "Hello"]
       `
-      const doc = parse(input)
+      const doc = parseDocument(input)
       const output = stringify(doc)
 
       expect(output).toContain('"1984"')
@@ -343,7 +343,7 @@ describe('String Ambiguous Values - Round Trip Safety', () => {
         ---
         ~ "Book", {"1984", "T"}
       `
-      const doc = parse(input)
+      const doc = parseDocument(input)
       const output = stringify(doc)
 
       expect(output).toContain('"1984"')
@@ -359,7 +359,7 @@ describe('String Ambiguous Values - Round Trip Safety', () => {
         ---
         ~ "undefined"
       `
-      const doc = parse(input)
+      const doc = parseDocument(input)
       const output = stringify(doc)
 
       expect(output).toContain('"undefined"')
@@ -371,7 +371,7 @@ describe('String Ambiguous Values - Round Trip Safety', () => {
         ---
         ~ "+Inf"
       `
-      const doc = parse(input)
+      const doc = parseDocument(input)
       const output = stringify(doc)
 
       expect(output).toContain('"+Inf"')
@@ -383,12 +383,12 @@ describe('String Ambiguous Values - Round Trip Safety', () => {
         ---
         ~ "007"
       `
-      const doc = parse(input)
+      const doc = parseDocument(input)
       const output = stringify(doc)
 
       // 007 doesn't match the strict number regex (leading zero not allowed for non-zero numbers)
       // But let's verify round-trip works regardless of quoting
-      const reparsed = parse(output)
+      const reparsed = parseDocument(output)
       expect(reparsed).toBeDefined()
     })
   })

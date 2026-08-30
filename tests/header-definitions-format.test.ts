@@ -3,7 +3,7 @@
  * Each definition is on its own line with ~ prefix (not comma-separated)
  */
 
-import { parse, stringify } from '../src/index';
+import { parseDocument, stringify } from '../src/index';
 import Document from '../src/core/document';
 
 describe('Header definitions format', () => {
@@ -14,7 +14,7 @@ describe('Header definitions format', () => {
 ---
 Alice, 28, alice@example.com
 `;
-    const doc = parse(io, null) as Document;
+    const doc = parseDocument(io, null) as Document;
     const serialized = stringify(doc, { includeTypes: true, includeHeader: true });
 
     // Each definition on its own line
@@ -37,7 +37,7 @@ Alice, 28, alice@example.com
 ~ $schema: {id, name, $address}
 ---
 `;
-    const doc = parse(io, null) as Document;
+    const doc = parseDocument(io, null) as Document;
     const serialized = stringify(doc, { includeTypes: true, includeHeader: true });
 
     // Verify each definition is on its own line

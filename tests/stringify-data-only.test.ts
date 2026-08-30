@@ -8,7 +8,7 @@ import IO, { stringify } from '../src'
 describe('Stringify Data Only', () => {
   describe('Default behavior (data only) - with $schema definition', () => {
     it('should output only data values when no options provided', () => {
-      const doc = IO.parse(`
+      const doc = IO.parseDocument(`
 ~ $schema: {name: string, age: int}
 ---
 John, 30
@@ -22,7 +22,7 @@ John, 30
     })
 
     it('should not include header definitions in output', () => {
-      const doc = IO.parse(`
+      const doc = IO.parseDocument(`
 ~ $address: {city: string, zip: string}
 ~ $schema: {name: string, address: $address}
 ---
@@ -37,7 +37,7 @@ John, {NYC, "10001"}
     })
 
     it('should output nested objects without header', () => {
-      const doc = IO.parse(`
+      const doc = IO.parseDocument(`
 ~ $schema: {name: string, nested: {x: int, y: int}}
 ---
 Alice, {10, 20}
@@ -47,7 +47,7 @@ Alice, {10, 20}
     })
 
     it('should handle documents with multiple definitions', () => {
-      const doc = IO.parse(`
+      const doc = IO.parseDocument(`
 ~ $point: {x: int, y: int}
 ~ $size: {w: int, h: int}
 ~ $schema: {name: string, location: $point, dimensions: $size}
@@ -61,7 +61,7 @@ Widget, {100, 200}, {50, 75}
     })
 
     it('should handle documents with metadata', () => {
-      const doc = IO.parse(`
+      const doc = IO.parseDocument(`
 ~ @version: 1.0
 ~ $schema: {name: string, value: int}
 ---
@@ -76,7 +76,7 @@ Test, 42
 
   describe('Explicit data-only (includeTypes: false)', () => {
     it('should output only data with includeTypes: false', () => {
-      const doc = IO.parse(`
+      const doc = IO.parseDocument(`
 ~ $schema: {name: string, age: int}
 ---
 John, 30
@@ -86,7 +86,7 @@ John, 30
     })
 
     it('should not include header with explicit false', () => {
-      const doc = IO.parse(`
+      const doc = IO.parseDocument(`
 ~ $def: {a: int}
 ~ $schema: {x: $def}
 ---
@@ -103,7 +103,7 @@ John, 30
 
   describe('With header (includeTypes: true)', () => {
     it('should include bare schema line when includeTypes: true (schema-only mode)', () => {
-      const doc = IO.parse(`
+      const doc = IO.parseDocument(`
 ~ $schema: {name: string, age: int}
 ---
 John, 30
@@ -117,7 +117,7 @@ John, 30
     })
 
     it('should include definitions when includeTypes: true and has other definitions', () => {
-      const doc = IO.parse(`
+      const doc = IO.parseDocument(`
 ~ @version: 1.0
 ~ $schema: {name: string}
 ---
@@ -131,7 +131,7 @@ Alice
 
   describe('Named section with named schema', () => {
     it('should include section name and schema reference in data-only mode', () => {
-      const doc = IO.parse(`
+      const doc = IO.parseDocument(`
 ~ $person: {name: string, age: int}
 --- p: $person
 John, 30
@@ -143,7 +143,7 @@ John, 30
     })
 
     it('should include definitions when includeTypes: true', () => {
-      const doc = IO.parse(`
+      const doc = IO.parseDocument(`
 ~ $person: {name: string, age: int}
 --- p: $person
 John, 30
@@ -157,7 +157,7 @@ John, 30
 
   describe('Collection data', () => {
     it('should output collection rows in data-only mode', () => {
-      const doc = IO.parse(`
+      const doc = IO.parseDocument(`
 ~ $schema: {name: string, age: int}
 ---
 ~ Alice, 28
@@ -173,7 +173,7 @@ John, 30
 
   describe('Document with only data (no schema)', () => {
     it('should output data directly', () => {
-      const doc = IO.parse('---\nHello, 42, T')
+      const doc = IO.parseDocument('---\nHello, 42, T')
       const result = stringify(doc)
       // Without schema, the output may vary based on how data is interpreted
       expect(result).toContain('Hello')
@@ -184,7 +184,7 @@ John, 30
 
   describe('Round-trip with data-only output', () => {
     it('should allow re-parsing data-only output with same schema', () => {
-      const original = IO.parse(`
+      const original = IO.parseDocument(`
 ~ $schema: {name: string, age: int}
 ---
 John, 30
@@ -193,12 +193,12 @@ John, 30
 
       // Data-only output has no ---, need to add separator for re-parsing
       const fullDoc = `~ $schema: {name: string, age: int}\n---\n${dataOnly}`
-      const reparsed = IO.parse(fullDoc)
+      const reparsed = IO.parseDocument(fullDoc)
       expect(reparsed.toJSON()).toEqual(original.toJSON())
     })
 
     it('should preserve data integrity through round-trip', () => {
-      const original = IO.parse(`
+      const original = IO.parseDocument(`
 ~ $schema: {x: int, y: int, label: string}
 ---
 100, 200, "Point A"
@@ -206,12 +206,12 @@ John, 30
       const dataOnly = stringify(original)
 
       const fullDoc = `~ $schema: {x: int, y: int, label: string}\n---\n${dataOnly}`
-      const reparsed = IO.parse(fullDoc)
+      const reparsed = IO.parseDocument(fullDoc)
       expect(reparsed.toJSON()).toEqual(original.toJSON())
     })
 
     it('should handle complex nested data through round-trip', () => {
-      const original = IO.parse(`
+      const original = IO.parseDocument(`
 ~ $schema: {name: string, scores: [int], metadata: {created: string, active: bool}}
 ---
 Alice, [95, 87, 92], {2024-01-15, T}
@@ -219,14 +219,14 @@ Alice, [95, 87, 92], {2024-01-15, T}
       const dataOnly = stringify(original)
 
       const fullDoc = `~ $schema: {name: string, scores: [int], metadata: {created: string, active: bool}}\n---\n${dataOnly}`
-      const reparsed = IO.parse(fullDoc)
+      const reparsed = IO.parseDocument(fullDoc)
       expect(reparsed.toJSON()).toEqual(original.toJSON())
     })
   })
 
   describe('Ambiguous string values', () => {
     it('should preserve string quoting for number-like values', () => {
-      const doc = IO.parse(`
+      const doc = IO.parseDocument(`
 ~ $schema: {title: string}
 ---
 "1984"
@@ -237,7 +237,7 @@ Alice, [95, 87, 92], {2024-01-15, T}
     })
 
     it('should preserve string quoting for boolean-like values', () => {
-      const doc = IO.parse(`
+      const doc = IO.parseDocument(`
 ~ $schema: {flag: string}
 ---
 "T"
@@ -247,7 +247,7 @@ Alice, [95, 87, 92], {2024-01-15, T}
     })
 
     it('should preserve string quoting for null-like values', () => {
-      const doc = IO.parse(`
+      const doc = IO.parseDocument(`
 ~ $schema: {value: string}
 ---
 "N"

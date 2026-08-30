@@ -12,7 +12,7 @@ import IOSyntaxError          from './errors/io-syntax-error';
 import IOValidationError      from './errors/io-validation-error';
 import Schema                 from './schema/schema';
 import { ioDefinitions, ioDocument, ioObject, ioSchema } from './template-funcs';
-import parse                  from './parser/index';
+import { parse, parseDocument } from './facade/parse';
 import parseDefinitions       from './parser/parse-defs';
 import parseSchema            from './schema/parse-schema';
 import { load, loadObject }   from './facade/load';
@@ -30,6 +30,7 @@ registerTypes();
 const io = {
   // Facade methods
   parse,
+  parseDocument,
   parseDefs: parseDefinitions,      // Short alias
   parseDefinitions,                 // Full name
   parseSchema,

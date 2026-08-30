@@ -7,7 +7,7 @@
  * Run me:  npx tsx examples/15-kitchen-sink/index.ts
  */
 import {
-  parse,
+  parseDocument,
   parseDefinitions,
   parseSchema,
   validate,
@@ -28,13 +28,13 @@ h1('1 · A document, and the shape it projects to');
 // play.internetobject.org, read the JSON panel, write code against that.
 
 h2('one section holding a collection → an array');
-console.log(parse('name: string, age: int\n---\n~ Alice, 30\n~ Bob, 25').toObject());
+console.log(parseDocument('name: string, age: int\n---\n~ Alice, 30\n~ Bob, 25').toObject());
 
 h2('one section holding a single object → an object');
-console.log(parse('name: Alice, age: 30').toObject());
+console.log(parseDocument('name: Alice, age: 30').toObject());
 
 h2('several sections → keyed by section name');
-const multi = parse(
+const multi = parseDocument(
   '~ $person: {name: string, age: int}\n' +
     '~ $post: {title: string}\n' +
     '--- users: $person\n~ Alice, 30\n~ Bob, 25\n' +
@@ -50,7 +50,7 @@ h1('2 · The type system');
 // ═════════════════════════════════════════════════════════════════════════════
 
 // The types JSON never had. Each is a real value in JavaScript, not a string.
-const typed = parse(
+const typed = parseDocument(
   'name: string, age: int, pay: decimal, big: bigint, ok: bool,\n' +
     "born: date, seen: datetime, mail: email, site: url, tags: [string]\n" +
     '---\n' +
@@ -66,8 +66,8 @@ for (const [k, v] of Object.entries(t)) {
 }
 
 h2('optional `?` and nullable `*` are different things');
-console.log('note?: omitted   →', parse('name: string, note?: string\n---\n~ Alice').toObject());
-console.log('note*: set to N  →', parse('name: string, note*: string\n---\n~ Alice, N').toObject());
+console.log('note?: omitted   →', parseDocument('name: string, note?: string\n---\n~ Alice').toObject());
+console.log('note*: set to N  →', parseDocument('name: string, note*: string\n---\n~ Alice, N').toObject());
 // `?` means "may be absent". `*` means "may be null". Ask for both with `?*`.
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -78,12 +78,12 @@ h1('3 · Schemas validate as the document is read');
 // run — bad data is caught at the moment it is read.
 
 h2('it passes');
-console.log(parse('name: string, age: int\n---\n~ Alice, 30').toObject());
+console.log(parseDocument('name: string, age: int\n---\n~ Alice, 30').toObject());
 
 h2('it fails, with a code and a position');
 // An object section throws. A collection puts the error in place instead — §4.
 try {
-  parse('name: string, age: int\n---\nname: Alice, age: abc');
+  parseDocument('name: string, age: int\n---\nname: Alice, age: abc');
 } catch (err: any) {
   console.log('  errorCode :', err.errorCode);
   console.log('  message   :', err.message);
@@ -96,11 +96,11 @@ h1('4 · Three places an error can reach you');
 // Which one you get is a choice, and it is worth knowing all three exist.
 
 h2('a) thrown — the default, like JSON.parse');
-try { parse('age: int\n---\nage: abc'); } catch (e: any) { console.log('  threw:', e.errorCode); }
+try { parseDocument('age: int\n---\nage: abc'); } catch (e: any) { console.log('  threw:', e.errorCode); }
 
 h2('b) collected — pass an array and parsing continues');
 const bag: Error[] = [];
-const collected = parse('age: int\n---\n~ 30\n~ abc\n~ 40', null, bag);
+const collected = parseDocument('age: int\n---\n~ 30\n~ abc\n~ 40', null, bag);
 console.log('  errors collected :', bag.map((e: any) => e.errorCode));
 console.log('  doc.errors       :', collected.errors.length);
 
@@ -114,7 +114,7 @@ console.log('  record 1 is an error node:', !!(rows0.getAt(1) as any)?.errorCode
 h1('5 · Definitions: schemas and variables');
 // ═════════════════════════════════════════════════════════════════════════════
 
-const doc = parse(
+const doc = parseDocument(
   '~ $person: {name: string, age: int, home?: {city: string, zip?: string}}\n' +
     '~ @company: Acme\n' +
     '--- staff: $person\n' +
@@ -154,7 +154,7 @@ for (const r of staff) { console.log('  for..of         :', r.get('name')); brea
 h1('7 · Mutating the data, then writing it back out');
 // ═════════════════════════════════════════════════════════════════════════════
 
-const editable = parse('name: string, age: int\n---\n~ Alice, 30\n~ Bob, 25');
+const editable = parseDocument('name: string, age: int\n---\n~ Alice, 30\n~ Bob, 25');
 const list: any = (editable as any).sections.get(0).data;
 
 h2('set, push, delete');
@@ -172,7 +172,7 @@ h2('⚠ today, set() does NOT validate');
 // The record knows its schema — but a raw `set` writes straight through, and the
 // invalid value serializes back out as invalid IO text. Validating writes is the
 // job of the reactive Draft surface (see .private/docs/REACTIVE-CORE-SPEC.md).
-const loose = parse('name: string, age: int\n---\n~ Alice, 30');
+const loose = parseDocument('name: string, age: int\n---\n~ Alice, 30');
 const rec: any = (loose as any).sections.get(0).data.getAt(0);
 console.log('  record has a schema :', !!rec.schema);
 rec.set('age', 'not-an-int');
@@ -184,7 +184,7 @@ h1('8 · Mutating the header');
 // ═════════════════════════════════════════════════════════════════════════════
 
 // The header is data too. Add a variable, and it is there when you serialize.
-const hdoc = parse('~ $p: {name: string}\n--- users: $p\n~ Alice');
+const hdoc = parseDocument('~ $p: {name: string}\n--- users: $p\n~ Alice');
 h2('before');
 console.log('  keys :', (hdoc as any).header.definitions.keys);
 console.log(stringifyDocument(hdoc));
@@ -201,7 +201,7 @@ h1('9 · toObject() vs toJSON()');
 
 // Both are conversions for a boundary. They differ in what they do to values
 // JSON cannot carry.
-const vals = parse(
+const vals = parseDocument(
   'when: datetime, price: decimal, big: bigint\n---\n' +
     "when: dt'2024-03-01', price: 10.50m, big: 900719925474099100n"
 );
@@ -256,7 +256,7 @@ async function main() {
   // ═══════════════════════════════════════════════════════════════════════════
 
   const original = '~ $p: {name: string, age: int}\n--- team: $p\n~ Alice, 30\n~ Bob, 25';
-  const round = parse(original);
+  const round = parseDocument(original);
   const team: any = (round as any).sections.get(0).data;
   team.getAt(1).set('age', 26);
   (round as any).header.definitions.set('@rev', '2');

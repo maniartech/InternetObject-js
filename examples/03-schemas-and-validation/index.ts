@@ -3,14 +3,14 @@
  *
  * Run me:  npx tsx examples/03-schemas-and-validation/index.ts
  */
-import { parse } from '../../src/index';
+import { parseDocument } from '../../src/index';
 
 // ── A schema is just the first line ───────────────────────────────────────────
 
 // You have already written schemas in the previous example without noticing.
 // `name: string, age: int` IS the schema. Naming the fields and typing them are
 // the same act.
-const good = parse(`name: string, age: int
+const good = parseDocument(`name: string, age: int
 ---
 ~ Alice, 30
 ~ Bob, 25`);
@@ -21,7 +21,7 @@ console.log('Valid data:', good.toObject());
 // No separate validation step to remember. Pass an array and errors collect into
 // it instead of throwing.
 const errors: Error[] = [];
-parse(`name: string, age: int
+parseDocument(`name: string, age: int
 ---
 ~ Alice, thirty
 ~ Bob, 25`, null, errors);
@@ -38,12 +38,12 @@ const rules = `
   role:  {string, choices: [admin, editor, viewer]}
 ---
 ~ Alice, 30, alice@example.com, admin`;
-console.log('\nWith rules:', parse(rules).toObject());
+console.log('\nWith rules:', parseDocument(rules).toObject());
 
 // Each rule is checked for you:
 const show = (label: string, src: string) => {
   const errs: Error[] = [];
-  parse(src, null, errs);
+  parseDocument(src, null, errs);
   console.log(`  ${label.padEnd(22)} ${errs.length ? (errs[0] as any).errorCode : 'accepted'}`);
 };
 console.log('\nWhat the rules reject:');
@@ -56,8 +56,8 @@ show('not an email', `email: email\n---\n~ not-an-email`);
 
 // `?` means the member may be absent. `*` means its value may be null.
 // They are different questions, so they are different marks.
-console.log('\nOptional absent :', parse('name: string, nickname?: string\n---\n~ Alice').toObject());
-console.log('Nullable null   :', parse('name: string, manager*: string\n---\n~ Alice, N').toObject());
+console.log('\nOptional absent :', parseDocument('name: string, nickname?: string\n---\n~ Alice').toObject());
+console.log('Nullable null   :', parseDocument('name: string, manager*: string\n---\n~ Alice, N').toObject());
 
 // A default fills an optional member that was not supplied.
-console.log('Default applied :', parse('name: string, active?: {bool, default: T}\n---\n~ Alice').toObject());
+console.log('Default applied :', parseDocument('name: string, active?: {bool, default: T}\n---\n~ Alice').toObject());

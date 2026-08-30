@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { formatRecord, formatCollection, createIndentString, FormatContext } from '../../src/facade/io-formatter';
 import InternetObject from '../../src/core/internet-object';
-import { loadInferred, stringify, parse } from '../../src/index';
+import { loadInferred, stringify, parseDocument } from '../../src/index';
 
 describe('IO Formatter', () => {
   describe('createIndentString', () => {

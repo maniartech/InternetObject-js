@@ -1,5 +1,5 @@
 
-import { parse } from '../../../src'
+import { parseDocument } from '../../../src'
 
 describe('ObjectDef - Variable References and Schema Resolution', () => {
 
@@ -15,7 +15,7 @@ describe('ObjectDef - Variable References and Schema Resolution', () => {
 
     // The parser should resolve @defaultConfig, sees it matches 'object' type.
     // Since 'config' has no inner schema defined, it treats it as open object.
-    const result = parse(input)
+    const result = parseDocument(input)
     expect(result.toJSON()).toEqual({
       config: { host: "localhost", port: 8080 }
     })
@@ -32,7 +32,7 @@ describe('ObjectDef - Variable References and Schema Resolution', () => {
       { user: @user }
     `
 
-    const result = parse(input)
+    const result = parseDocument(input)
     expect(result.toJSON()).toEqual({
       current: {
         user: { name: "Alice", admin: true }
@@ -51,6 +51,6 @@ describe('ObjectDef - Variable References and Schema Resolution', () => {
     `
 
     // Should throw because host is number (123), expected string
-    expect(() => parse(input)).toThrow()
+    expect(() => parseDocument(input)).toThrow()
   })
 })

@@ -1,5 +1,5 @@
 import { describe, test, expect } from 'vitest'
-import { parse, stringify } from '../../src'
+import { parseDocument, stringify } from '../../src'
 
 /**
  * FINDINGS #25: serializing (`stringify`, IO -> IO text) must not drop members. A positional
@@ -8,9 +8,9 @@ import { parse, stringify } from '../../src'
  * affected — this is only the IO-text serializer.)
  */
 function roundtrips(src: string): { out: string; jsonBefore: any; jsonAfter: any } {
-  const d1: any = parse(src, null)
+  const d1: any = parseDocument(src, null)
   const out = stringify(d1)
-  const d2: any = parse(out, null)
+  const d2: any = parseDocument(out, null)
   return { out, jsonBefore: d1.toJSON(), jsonAfter: d2.toJSON() }
 }
 

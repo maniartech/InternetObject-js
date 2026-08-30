@@ -1,7 +1,7 @@
 import { inferDefs, InferredDefs } from '../../../src/schema/utils/defs-inferrer';
 import { load, loadObject } from '../../../src/facade/load';
 import { loadInferred } from '../../../src/facade/load-inferred';
-import { stringify, parse } from '../../../src/index';
+import { stringify, parseDocument } from '../../../src/index';
 
 describe('Definition Inference (inferDefs)', () => {
 
@@ -433,7 +433,7 @@ describe('Definition Inference (inferDefs)', () => {
       const ioText = stringify(doc, { includeHeader: true });
 
       // Parse it back
-      const reparsed = parse(ioText);
+      const reparsed = parseDocument(ioText);
       const json = reparsed.toJSON();
 
       // Should match original
@@ -755,7 +755,7 @@ describe('Definition Inference (inferDefs)', () => {
         // TODO: Fix stringify to omit optional undefined fields instead of outputting ""
         // const doc = loadInferred(orders);
         // const ioText = stringify(doc, { includeHeader: true });
-        // const reparsed = parse(ioText);
+        // const reparsed = parseDocument(ioText);
         // expect(reparsed.toJSON()).toEqual(orders);
       });
     });
@@ -899,7 +899,7 @@ describe('Definition Inference (inferDefs)', () => {
         // This is a parse issue, not an inference issue. Inference is correct.
         // const doc = loadInferred(feedData);
         // const ioText = stringify(doc, { includeHeader: true });
-        // const reparsed = parse(ioText);
+        // const reparsed = parseDocument(ioText);
         // expect(reparsed.toJSON()).toEqual(feedData);
       });
     });
@@ -1088,7 +1088,7 @@ describe('Definition Inference (inferDefs)', () => {
         // Also outputs empty strings for optional fields. These are parse/stringify issues.
         // const doc = loadInferred(patients);
         // const ioText = stringify(doc, { includeHeader: true });
-        // const reparsed = parse(ioText);
+        // const reparsed = parseDocument(ioText);
         // expect(reparsed.toJSON()).toEqual(patients);
       });
     });
@@ -1179,7 +1179,7 @@ describe('Definition Inference (inferDefs)', () => {
         // This is a stringify issue with 'any' type containing complex objects
         // const doc = loadInferred(sensorData);
         // const ioText = stringify(doc, { includeHeader: true });
-        // const reparsed = parse(ioText);
+        // const reparsed = parseDocument(ioText);
         // expect(reparsed.toJSON()).toEqual(sensorData);
       });
     });
@@ -1300,7 +1300,7 @@ describe('Definition Inference (inferDefs)', () => {
         // This is expected behavior when schema has required fields
         // const doc = loadInferred(analyticsReport);
         // const ioText = stringify(doc, { includeHeader: true });
-        // const reparsed = parse(ioText);
+        // const reparsed = parseDocument(ioText);
         // expect(reparsed.toJSON()).toEqual(analyticsReport);
       });
     });
@@ -1425,7 +1425,7 @@ describe('Definition Inference (inferDefs)', () => {
         // This is a parse/stringify limitation with numeric object keys
         // const doc = loadInferred(products);
         // const ioText = stringify(doc, { includeHeader: true });
-        // const reparsed = parse(ioText);
+        // const reparsed = parseDocument(ioText);
         // expect(reparsed.toJSON()).toEqual(products);
       });
     });

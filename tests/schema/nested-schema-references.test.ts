@@ -3,7 +3,7 @@ import io from '../../src';
 describe('Nested Schema References', () => {
   describe('Direct nested schema references', () => {
     test('should resolve nested schema reference with keyed values', () => {
-      const doc = io.parse(`
+      const doc = io.parseDocument(`
 ~ $inner: {value: int}
 ~ $outer: {data: $inner}
 ~ $schema: $outer
@@ -15,7 +15,7 @@ describe('Nested Schema References', () => {
     });
 
     test('should resolve nested schema reference with positional values', () => {
-      const doc = io.parse(`
+      const doc = io.parseDocument(`
 ~ $inner: {value: int}
 ~ $outer: {data: $inner}
 ~ $schema: $outer
@@ -27,7 +27,7 @@ describe('Nested Schema References', () => {
     });
 
     test('should resolve simple schema with positional values', () => {
-      const doc = io.parse(`
+      const doc = io.parseDocument(`
 ~ $inner: {value: int}
 ~ $schema: $inner
 ---
@@ -40,7 +40,7 @@ describe('Nested Schema References', () => {
 
   describe('Additional properties (*:) with schema references', () => {
     test('should resolve additional properties with keyed values', () => {
-      const doc = io.parse(`
+      const doc = io.parseDocument(`
 ~ $inner: {value: int}
 ~ $outer: {*: $inner}
 ~ $schema: $outer
@@ -55,7 +55,7 @@ describe('Nested Schema References', () => {
     });
 
     test('should resolve additional properties with positional values', () => {
-      const doc = io.parse(`
+      const doc = io.parseDocument(`
 ~ $inner: {value: int}
 ~ $outer: {*: $inner}
 ~ $schema: $outer
@@ -70,7 +70,7 @@ describe('Nested Schema References', () => {
     });
 
     test('should resolve inline schema in additional properties with keyed values', () => {
-      const doc = io.parse(`
+      const doc = io.parseDocument(`
 ~ $outer: {*: {value: int}}
 ~ $schema: $outer
 ---
@@ -81,7 +81,7 @@ describe('Nested Schema References', () => {
     });
 
     test('should resolve inline schema in additional properties with positional values', () => {
-      const doc = io.parse(`
+      const doc = io.parseDocument(`
 ~ $outer: {*: {value: int}}
 ~ $schema: $outer
 ---
@@ -93,7 +93,7 @@ describe('Nested Schema References', () => {
 
     test('should error on undefined schema reference in additional properties', () => {
       expect(() => {
-        io.parse(`
+        io.parseDocument(`
 ~ $inner: {value: int}
 ~ $outer: {*: $undefined}
 ~ $schema: $outer
@@ -106,7 +106,7 @@ describe('Nested Schema References', () => {
 
   describe('Regular member with inline schema', () => {
     test('should resolve regular member with inline schema and positional values', () => {
-      const doc = io.parse(`
+      const doc = io.parseDocument(`
 ~ $outer: {key1: {value: int}}
 ~ $schema: $outer
 ---
@@ -120,7 +120,7 @@ describe('Nested Schema References', () => {
   describe('Complex nested schemas (questionnaire pattern)', () => {
     test('should error on undefined schema reference ($choiceNo instead of $choice)', () => {
       expect(() => {
-        io.parse(`
+        io.parseDocument(`
 ~ $choice: {*: {recode: int}}
 ~ $questions: { *: {questionName, choices: $choiceNo} }
 ~ $result: { questions: $questions}
@@ -136,7 +136,7 @@ describe('Nested Schema References', () => {
     });
 
     test('should resolve deeply nested schemas with keyed values', () => {
-      const doc = io.parse(`
+      const doc = io.parseDocument(`
 ~ $choice: {*: {recode: int}}
 ~ $questions: { *: {questionName, choices: $choice} }
 ~ $result: { questions: $questions}
@@ -163,7 +163,7 @@ describe('Nested Schema References', () => {
     });
 
     test('should resolve deeply nested schemas with positional values', () => {
-      const doc = io.parse(`
+      const doc = io.parseDocument(`
 ~ $choice: {*: {recode: int}}
 ~ $questions: { *: {questionName, choices: $choice} }
 ~ $result: { questions: $questions}
@@ -190,7 +190,7 @@ describe('Nested Schema References', () => {
     });
 
     test('should resolve multiple questions with nested schemas', () => {
-      const doc = io.parse(`
+      const doc = io.parseDocument(`
 ~ $choice: {*: {recode: string}}
 ~ $questions: { *: {questionName, choices: $choice} }
 ~ $result: { questions: $questions}
@@ -225,7 +225,7 @@ describe('Nested Schema References', () => {
     });
 
     test('should resolve multiple questions with positional values (compact format)', () => {
-      const doc = io.parse(`
+      const doc = io.parseDocument(`
 ~ $choice: {*: {recode: string}}
 ~ $questions: { *: {questionName, choices: $choice} }
 ~ $result: { questions: $questions}
@@ -262,7 +262,7 @@ describe('Nested Schema References', () => {
 
   describe('Schema header inspection', () => {
     test('should correctly compile schema with additional properties', () => {
-      const doc = io.parse(`
+      const doc = io.parseDocument(`
 ~ $outer: {*: {value: int}}
 ~ $schema: $outer
 ---

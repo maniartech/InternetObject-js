@@ -1,4 +1,4 @@
-import { parse } from '../../../src';
+import { parseDocument } from '../../../src';
 
 describe('Decimal Min/Max Validation', () => {
   it('should reject decimal value below min constraint', () => {
@@ -7,7 +7,7 @@ describe('Decimal Min/Max Validation', () => {
     const io = `${schema}\n---\n${data}`
 
     expect(() => {
-      parse(io, null)
+      parseDocument(io, null)
     }).toThrow(expect.objectContaining({ errorCode: expect.stringMatching(/^mismatched-(min|max)$|^out-of-range-/) }))
   })
 
@@ -16,7 +16,7 @@ describe('Decimal Min/Max Validation', () => {
     const data = `100m`
     const io = `${schema}\n---\n${data}`
 
-    const result = parse(io, null)
+    const result = parseDocument(io, null)
     expect(result).toBeDefined()
   })
 
@@ -25,7 +25,7 @@ describe('Decimal Min/Max Validation', () => {
     const data = `200m`
     const io = `${schema}\n---\n${data}`
 
-    const result = parse(io, null)
+    const result = parseDocument(io, null)
     expect(result).toBeDefined()
   })
 
@@ -35,7 +35,7 @@ describe('Decimal Min/Max Validation', () => {
     const io = `${schema}\n---\n${data}`
 
     expect(() => {
-      parse(io, null)
+      parseDocument(io, null)
     }).toThrow(expect.objectContaining({ errorCode: expect.stringMatching(/^mismatched-(min|max)$|^out-of-range-/) }))
   })
 
@@ -44,7 +44,7 @@ describe('Decimal Min/Max Validation', () => {
     const data = `100m`
     const io = `${schema}\n---\n${data}`
 
-    const result = parse(io, null)
+    const result = parseDocument(io, null)
     expect(result).toBeDefined()
   })
 
@@ -53,7 +53,7 @@ describe('Decimal Min/Max Validation', () => {
     const data = `50m`
     const io = `${schema}\n---\n${data}`
 
-    const result = parse(io, null)
+    const result = parseDocument(io, null)
     expect(result).toBeDefined()
   })
 
@@ -62,16 +62,16 @@ describe('Decimal Min/Max Validation', () => {
 
     // Below min - should fail
     expect(() => {
-      parse(`${schema}\n---\n5m`, null)
+      parseDocument(`${schema}\n---\n5m`, null)
     }).toThrow(expect.objectContaining({ errorCode: expect.stringMatching(/^mismatched-(min|max)$|^out-of-range-/) }))
 
     // Above max - should fail
     expect(() => {
-      parse(`${schema}\n---\n150m`, null)
+      parseDocument(`${schema}\n---\n150m`, null)
     }).toThrow(expect.objectContaining({ errorCode: expect.stringMatching(/^mismatched-(min|max)$|^out-of-range-/) }))
 
     // Within range - should pass
-    const result = parse(`${schema}\n---\n50m`, null)
+    const result = parseDocument(`${schema}\n---\n50m`, null)
     expect(result).toBeDefined()
   })
 
@@ -80,11 +80,11 @@ describe('Decimal Min/Max Validation', () => {
 
     // Below min - should fail
     expect(() => {
-      parse(`${schema}\n---\n999m`, null)
+      parseDocument(`${schema}\n---\n999m`, null)
     }).toThrow(expect.objectContaining({ errorCode: expect.stringMatching(/^mismatched-(min|max)$|^out-of-range-/) }))
 
     // Above min - should pass
-    const result = parse(`${schema}\n---\n10000m`, null)
+    const result = parseDocument(`${schema}\n---\n10000m`, null)
     expect(result).toBeDefined()
   })
 })

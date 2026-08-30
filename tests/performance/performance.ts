@@ -1,4 +1,4 @@
-import { parse } from '../../src/index';
+import { parseDocument } from '../../src/index';
 import Tokenizer from '../../src/parser/tokenizer';
 import ASTParser from '../../src/parser/ast-parser';
 
@@ -101,7 +101,7 @@ function runBenchmarks() {
     const simpleObject = `{ name: "John", age: 30, active: true }`;
     const iterations = 100000;
     const { avgTime, totalTime } = measureTime(() => {
-      return parse(simpleObject, null);
+      return parseDocument(simpleObject, null);
     }, iterations);
     let status = avgTime < 0.01 ? chalk.green('PASS') : chalk.red('FAIL');
     perfSummary.push({
@@ -118,7 +118,7 @@ function runBenchmarks() {
     const arrayDocument = `[1, 2, 3, "hello", true, null]`;
     const iterations = 100000;
     const { avgTime, totalTime } = measureTime(() => {
-      return parse(arrayDocument, null);
+      return parseDocument(arrayDocument, null);
     }, iterations);
     let status = avgTime < 0.01 ? chalk.green('PASS') : chalk.red('FAIL');
     perfSummary.push({

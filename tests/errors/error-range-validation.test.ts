@@ -7,7 +7,7 @@
  * Industry standard: Error ranges should span the entire problematic construct.
  */
 
-import { parse } from '../../src';
+import { parseDocument } from '../../src';
 
 /**
  * Helper to extract text from input using position range
@@ -43,7 +43,7 @@ describe('Error Range Validation - Tokenizer Level', () => {
 ---
 ~ Alice, 28, "unterminated string`;
 
-    const result = parse(doc, null);
+    const result = parseDocument(doc, null);
     const errors = result.getErrors();
 
     expect(errors.length).toBeGreaterThan(0);
@@ -73,7 +73,7 @@ describe('Error Range Validation - Tokenizer Level', () => {
 ---
 ~ Alice, b64"SGVsbG8gV29ybGQ`;
 
-    const result = parse(doc, null);
+    const result = parseDocument(doc, null);
     const errors = result.getErrors();
 
     const stringError = errors.find((e: any) =>
@@ -102,7 +102,7 @@ describe('Error Range Validation - Parser Level (Objects)', () => {
 ---
 ~ Alice, {street: Main St, city: NYC`;
 
-    const result = parse(doc, null);
+    const result = parseDocument(doc, null);
     const errors = result.getErrors();
 
     expect(errors.length).toBeGreaterThan(0);
@@ -133,7 +133,7 @@ describe('Error Range Validation - Parser Level (Objects)', () => {
 ~ Alice, {street: Main St, city: NYC
 ~ Bob, {street: Oak Ave, city: LA}`;
 
-    const result = parse(doc, null);
+    const result = parseDocument(doc, null);
     const errors = result.getErrors();
 
     const bracketError = errors.find((e: any) =>
@@ -160,7 +160,7 @@ describe('Error Range Validation - Parser Level (Objects)', () => {
 ---
 ~ Alice, {street: Main St city: NYC}`;
 
-    const result = parse(doc, null);
+    const result = parseDocument(doc, null);
     const errors = result.getErrors();
 
     const commaError = errors.find((e: any) =>
@@ -194,7 +194,7 @@ describe('Error Range Validation - Parser Level (Arrays)', () => {
 ---
 ~ Alice, [red, green, blue`;
 
-    const result = parse(doc, null);
+    const result = parseDocument(doc, null);
     const errors = result.getErrors();
 
     const bracketError = errors.find((e: any) =>
@@ -224,7 +224,7 @@ describe('Error Range Validation - Parser Level (Arrays)', () => {
 ~ Alice, [red, green, blue
 ~ Bob, [yellow, purple]`;
 
-    const result = parse(doc, null);
+    const result = parseDocument(doc, null);
     const errors = result.getErrors();
 
     const bracketError = errors.find((e: any) =>
@@ -249,7 +249,7 @@ describe('Error Range Validation - Parser Level (Arrays)', () => {
   test('unclosed array at EOF records a designated error (policy P1: no fatal parse)', () => {
     const doc = `colors: [red, green, blue`;
 
-    const errors: any[] = [...parse(doc, null).getErrors()];
+    const errors: any[] = [...parseDocument(doc, null).getErrors()];
     expect(errors.length).toBeGreaterThan(0);
     expect(errors.some((e: any) =>
       /expected-closing-bracket|Unexpected end of input/.test(`${e.errorCode} ${e.message}`)
@@ -266,7 +266,7 @@ describe('Error Range Validation - Complex Scenarios', () => {
 ~ Bob, "unterminated
 ~ Charlie, 30, {valid: true}, [yellow, blue`;
 
-    const result = parse(doc, null);
+    const result = parseDocument(doc, null);
     const errors = result.getErrors();
 
     expect(errors.length).toBeGreaterThan(0);
@@ -300,7 +300,7 @@ describe('Error Range Validation - Complex Scenarios', () => {
   test('nested unclosed constructs record a designated error (policy P1: no fatal parse)', () => {
     const doc = `data: {outer: {inner: [1, 2, 3}`;
 
-    const errors: any[] = [...parse(doc, null).getErrors()];
+    const errors: any[] = [...parseDocument(doc, null).getErrors()];
     expect(errors.length).toBeGreaterThan(0);
     expect(errors.some((e: any) =>
       /unexpected-token|expected-closing-bracket/.test(`${e.errorCode} ${e.message}`)
@@ -315,7 +315,7 @@ describe('Error Range Validation - Schema Validation Errors', () => {
 ---
 ~ Alice, "not a number"`;
 
-    const result = parse(doc, null);
+    const result = parseDocument(doc, null);
     const errors = result.getErrors();
 
     const typeError = errors.find((e: any) =>
@@ -344,7 +344,7 @@ describe('Error Range Validation - Real-world Scenario from Screenshot', () => {
 ---
 ~ Alice Smith, 28, f, d'2021-04-15', {Elm Street, Dallas, TX}, [yellow, green], T`;
 
-    const result = parse(doc, null);
+    const result = parseDocument(doc, null);
     const errors = result.getErrors();
 
     const commaError = errors.find((e: any) =>
@@ -378,7 +378,7 @@ describe('Error Range Validation - Real-world Scenario from Screenshot', () => {
 ~ Alice, [red, green
 ~ Bob, [blue, yellow]`;
 
-    const result = parse(doc, null);
+    const result = parseDocument(doc, null);
     const errors = result.getErrors();
 
     const bracketError = errors.find((e: any) =>

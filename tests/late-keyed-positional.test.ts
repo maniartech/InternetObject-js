@@ -1,4 +1,4 @@
-import { parse, stringify } from '../src/index';
+import { parseDocument, stringify } from '../src/index';
 
 describe('Late keyed optional members normalization', () => {
   it('normalizes multiple late keyed optional members into positional order', () => {
@@ -7,7 +7,7 @@ describe('Late keyed optional members normalization', () => {
       ---
       ~ John,,, T, age: 30, colors: [red, blue]`;
 
-    const doc = parse(input, null);
+    const doc = parseDocument(input, null);
     const out = stringify(doc, { includeTypes: true, includeHeader: true });
 
     // colors now properly shows element type: [string]
@@ -24,7 +24,7 @@ describe('Late keyed optional members normalization', () => {
       ~ Alice Smith, 28, f, d'2021-04-15', {Elm Street, Dallas, TX}, [yellow, green], T, detail: "Loves hiking", extra1: "extra value 1"
       ~ Bob Johnson,, m, d'2022-02-20', {Oak Street, Chicago, IL}, [blue, black], T, age: 28`;
 
-    const doc = parse(input, null);
+    const doc = parseDocument(input, null);
     // Request types (for schema line) but data rows should stay positional without keys
     const iotext = stringify(doc, { includeTypes: true, includeHeader: true });
 

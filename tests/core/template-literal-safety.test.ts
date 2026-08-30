@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import io from '../../src/index';
 import { toIOLiteral } from '../../src/template-literal';
-import { parse } from '../../src/index';
+import { parseDocument } from '../../src/index';
 import Decimal from '../../src/core/decimal/decimal';
 
 /**
@@ -61,7 +61,7 @@ describe('template tags: interpolation is always a value', () => {
 });
 
 describe('toIOLiteral round-trips every value kind', () => {
-  const roundTrip = (v: any) => (parse(`v: ${toIOLiteral(v)}`) as any).toObject().v;
+  const roundTrip = (v: any) => (parseDocument(`v: ${toIOLiteral(v)}`) as any).toObject().v;
 
   it('strings, including ones full of syntax characters', () => {
     for (const s of ['Smith, John', '12:30', 'https://x.com', '1,000', "it's", 'say "hi"', '', 'a\nb']) {

@@ -1,4 +1,4 @@
-import { parse, parseDefinitions } from '../../src';
+import { parseDocument, parseDefinitions } from '../../src';
 
 describe('Playground separate-schema sample', () => {
   test('doc + separate defs/schema', () => {
@@ -33,7 +33,7 @@ describe('Playground separate-schema sample', () => {
 `.trim();
 
     const defs = parseDefinitions(defsText, null);
-    const out = parse(doc, defs).toJSON();
+    const out = parseDocument(doc, defs).toJSON();
     // Output is { header, data } when header has content
     expect(out.header).toMatchObject({ recordCount: 23, page: 3, nextPage: true });
     expect(Array.isArray(out.data)).toBe(true);

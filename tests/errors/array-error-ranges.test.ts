@@ -5,7 +5,7 @@
  * especially at collection boundaries where they should NOT include the ~ character.
  */
 
-import { parse } from '../../src';
+import { parseDocument } from '../../src';
 
 /**
  * Helper to extract text from input using position range
@@ -42,7 +42,7 @@ describe('Array Error Ranges - Critical Boundary Tests', () => {
 ~ Alice, [red, green
 ~ Bob, [blue, yellow]`;
 
-    const result = parse(doc, null);
+    const result = parseDocument(doc, null);
     const errors = result.getErrors();
 
     console.log(`\nFound ${errors.length} error(s):`);
@@ -91,7 +91,7 @@ describe('Array Error Ranges - Critical Boundary Tests', () => {
 ---
 ~ Alice, [red, green, blue`;
 
-    const result = parse(doc, null);
+    const result = parseDocument(doc, null);
     const errors = result.getErrors();
 
     const bracketError = errors.find((e: any) =>
@@ -130,7 +130,7 @@ describe('Array Error Ranges - Critical Boundary Tests', () => {
     const doc = `data: {items: [1, 2, 3}`;
 
     // This syntax error (] expected but } found) is recorded (policy P1: no fatal parse)
-    const errors: any[] = [...parse(doc, null).getErrors()];
+    const errors: any[] = [...parseDocument(doc, null).getErrors()];
     expect(errors.some((e: any) =>
       /Unexpected token|Expected a valid value|unexpected-token|expected-closing-bracket/.test(`${e.errorCode} ${e.message}`)
     )).toBe(true);
@@ -142,7 +142,7 @@ describe('Array Error Ranges - Critical Boundary Tests', () => {
 ~ Alice, [red, green, [small, medium
 ~ Bob, [blue, yellow], [large]`;
 
-    const result = parse(doc, null);
+    const result = parseDocument(doc, null);
     const errors = result.getErrors();
 
     expect(errors.length).toBeGreaterThan(0);
@@ -177,7 +177,7 @@ describe('Array Error Ranges - Critical Boundary Tests', () => {
 next: value`;
 
     // Without synchronization boundaries, this is recorded as a designated error (policy P1)
-    const errors: any[] = [...parse(doc, null).getErrors()];
+    const errors: any[] = [...parseDocument(doc, null).getErrors()];
     expect(errors.some((e: any) =>
       /Unexpected end of input while parsing array|Missing closing bracket|expected-closing-bracket/.test(`${e.errorCode} ${e.message}`)
     )).toBe(true);
@@ -190,7 +190,7 @@ describe('Array Error Ranges - Position Accuracy', () => {
     const doc = `colors: [red, green`;
 
     // Without synchronization boundaries, this is recorded as a designated error (policy P1)
-    const errors: any[] = [...parse(doc, null).getErrors()];
+    const errors: any[] = [...parseDocument(doc, null).getErrors()];
     expect(errors.some((e: any) =>
       /Unexpected end of input while parsing array|Missing closing bracket|expected-closing-bracket/.test(`${e.errorCode} ${e.message}`)
     )).toBe(true);
@@ -200,7 +200,7 @@ describe('Array Error Ranges - Position Accuracy', () => {
     const doc = `colors: [red, green, blue`;
 
     // Without synchronization boundaries, this is recorded as a designated error (policy P1)
-    const errors: any[] = [...parse(doc, null).getErrors()];
+    const errors: any[] = [...parseDocument(doc, null).getErrors()];
     expect(errors.some((e: any) =>
       /Unexpected end of input while parsing array|Missing closing bracket|expected-closing-bracket/.test(`${e.errorCode} ${e.message}`)
     )).toBe(true);
@@ -213,7 +213,7 @@ describe('Array Error Ranges - Edge Cases', () => {
     const doc = `colors: [red, green, blue`;
 
     // Without synchronization boundaries, this is recorded as a designated error (policy P1)
-    const errors: any[] = [...parse(doc, null).getErrors()];
+    const errors: any[] = [...parseDocument(doc, null).getErrors()];
     expect(errors.some((e: any) =>
       /Unexpected end of input while parsing array|Missing closing bracket|expected-closing-bracket/.test(`${e.errorCode} ${e.message}`)
     )).toBe(true);
@@ -223,7 +223,7 @@ describe('Array Error Ranges - Edge Cases', () => {
     const doc = `data: [1, 2, 3, other: value`;
 
     // Without synchronization boundaries, this is recorded as a designated error (policy P1)
-    const errors: any[] = [...parse(doc, null).getErrors()];
+    const errors: any[] = [...parseDocument(doc, null).getErrors()];
     expect(errors.some((e: any) =>
       /Unexpected end of input while parsing array|Missing closing bracket|expected-closing-bracket/.test(`${e.errorCode} ${e.message}`)
     )).toBe(true);

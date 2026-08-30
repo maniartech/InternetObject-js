@@ -1,5 +1,5 @@
 import { describe, test, expect } from 'vitest';
-import { parse, stringify } from '../../src';
+import { parseDocument, stringify } from '../../src';
 
 /**
  * emitKeys — the single knob that governs how keys are emitted in serialized data rows.
@@ -15,7 +15,7 @@ import { parse, stringify } from '../../src';
  * the data row(s) only.
  */
 const s = (io: string, mode?: 'all' | 'extras' | 'none') =>
-  stringify(parse(io, null) as any, mode ? ({ emitKeys: mode } as any) : undefined);
+  stringify(parseDocument(io, null) as any, mode ? ({ emitKeys: mode } as any) : undefined);
 
 describe('emitKeys — key emission in data rows', () => {
   describe('field IS declared in the schema', () => {
@@ -32,7 +32,7 @@ describe('emitKeys — key emission in data rows', () => {
     test("all → keyed", () => expect(s(doc, 'all')).toBe('name: John, age: 25'));
     test("none → bare (lean, lossy by choice)", () => expect(s(doc, 'none')).toBe('John, 25'));
     test("default (no option) === extras", () =>
-      expect(stringify(parse('{name: John}', null) as any)).toBe('name: John'));
+      expect(stringify(parseDocument('{name: John}', null) as any)).toBe('name: John'));
   });
 
   describe('open schema — declared field bare, extra keyed', () => {

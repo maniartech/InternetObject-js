@@ -1,6 +1,6 @@
 
 
-import { parse } from '../../../src'
+import { parseDocument } from '../../../src'
 
 describe('Deep Nested Variable Resolution', () => {
 
@@ -16,7 +16,7 @@ describe('Deep Nested Variable Resolution', () => {
 ~ Gujarat
     `.trim()
 
-    const result = parse(doc, null).toJSON()
+    const result = parseDocument(doc, null).toJSON()
     expect(result[0].State).toBe('Gujarat')
   });
 
@@ -30,7 +30,7 @@ describe('Deep Nested Variable Resolution', () => {
 ~
     `.trim()
 
-    const result = parse(doc, null).toJSON()
+    const result = parseDocument(doc, null).toJSON()
     expect(result[0].country).toBe('India')
   });
 
@@ -44,7 +44,7 @@ describe('Deep Nested Variable Resolution', () => {
 ~ @r
     `.trim()
 
-    const result = parse(doc, null).toJSON()
+    const result = parseDocument(doc, null).toJSON()
     expect(result[0].color).toBe('red')
   });
 
@@ -58,7 +58,7 @@ describe('Deep Nested Variable Resolution', () => {
 ~ @gj
     `.trim()
 
-    const result = parse(doc, null).toJSON()
+    const result = parseDocument(doc, null).toJSON()
     expect(result[0].State).toBe('Gujarat')
   });
 
@@ -83,7 +83,7 @@ describe('Deep Nested Variable Resolution', () => {
 ~ {Gandhi Road, Ahmedabad, @gj, "380001"}, @r
     `.trim()
 
-    const result = parse(doc, null).toJSON()
+    const result = parseDocument(doc, null).toJSON()
 
     // Verify all variable resolutions work
     expect(result[0].address.street).toBe('Gandhi Road')
@@ -108,7 +108,7 @@ describe('Deep Nested Variable Resolution', () => {
 ~ Mouse, 5, F
     `.trim()
 
-    const result = parse(doc, null).toJSON()
+    const result = parseDocument(doc, null).toJSON()
 
     expect(result[0].name).toBe('Laptop')
     expect(result[0].quantity).toBe(10)
@@ -165,7 +165,7 @@ describe('Deep Nested Variable Resolution', () => {
 ~ @org, {456 Park Ave, Mumbai, "400001", @india}, {EMP003, {Charlie Brown, @mid, {, , , {, INR}}}}
     `.trim()
 
-    const result = parse(doc, null).toJSON()
+    const result = parseDocument(doc, null).toJSON()
     console.log('STRESS TEST Result:', JSON.stringify(result, null, 2))
 
     // Test first employee with all defaults
@@ -234,7 +234,7 @@ describe('Deep Nested Variable Resolution', () => {
 ~ {@green, @white, {}}, {15, 12, 8}
     `.trim()
 
-    const result = parse(doc, null).toJSON()
+    const result = parseDocument(doc, null).toJSON()
     console.log('STRESS TEST 4-Level:', JSON.stringify(result, null, 2))
 
     // First design - uses variables and defaults
@@ -296,7 +296,7 @@ describe('Deep Nested Variable Resolution', () => {
 ~ {{{{{{{CustomValue}}}}}}}
     `.trim()
 
-    const result = parse(doc, null).toJSON()
+    const result = parseDocument(doc, null).toJSON()
     console.log('STRESS TEST Extreme Nesting:', JSON.stringify(result, null, 2))
 
     // All levels with explicit variable
@@ -341,7 +341,7 @@ describe('Deep Nested Variable Resolution', () => {
 ~ @companyName, {Marketing, , {Alice Brown, , {@projectC, @projectA}}}
     `.trim()
 
-    const result = parse(doc, null).toJSON()
+    const result = parseDocument(doc, null).toJSON()
     console.log('STRESS TEST Mixed:', JSON.stringify(result, null, 2))
 
     // First - all defaults and variables

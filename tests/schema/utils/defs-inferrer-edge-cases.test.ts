@@ -1,7 +1,7 @@
 import { inferDefs } from '../../../src/schema/utils/defs-inferrer';
 import { load, loadObject } from '../../../src/facade/load';
 import { loadInferred } from '../../../src/facade/load-inferred';
-import { stringify, parse } from '../../../src/index';
+import { stringify, parseDocument } from '../../../src/index';
 import { compileSchema } from '../../../src/schema';
 import Definitions from '../../../src/core/definitions';
 
@@ -689,7 +689,7 @@ describe('Round-Trip Tests with inferDefs', () => {
 
     const doc = loadInferred(original);
     const ioText = stringify(doc, { includeHeader: true });
-    const reparsed = parse(ioText);
+    const reparsed = parseDocument(ioText);
 
     expect(reparsed.toJSON()).toEqual(original);
   });
@@ -708,7 +708,7 @@ describe('Round-Trip Tests with inferDefs', () => {
 
     const doc = loadInferred(original);
     const ioText = stringify(doc, { includeHeader: true });
-    const reparsed = parse(ioText);
+    const reparsed = parseDocument(ioText);
 
     expect(reparsed.toJSON()).toEqual(original);
   });
@@ -723,7 +723,7 @@ describe('Round-Trip Tests with inferDefs', () => {
 
     const doc = loadInferred(original);
     const ioText = stringify(doc, { includeHeader: true });
-    const reparsed = parse(ioText);
+    const reparsed = parseDocument(ioText);
 
     // Compare JSON representation (structure) rather than object types
     const reparsedJson = JSON.parse(JSON.stringify(reparsed.toJSON()));
@@ -739,7 +739,7 @@ describe('Round-Trip Tests with inferDefs', () => {
 
     const doc = loadInferred(original);
     const ioText = stringify(doc, { includeHeader: true });
-    const reparsed = parse(ioText);
+    const reparsed = parseDocument(ioText);
 
     expect(reparsed.toJSON()).toEqual(original);
   });
@@ -752,7 +752,7 @@ describe('Round-Trip Tests with inferDefs', () => {
 
     const doc = loadInferred(original);
     const ioText = stringify(doc, { includeHeader: true });
-    const reparsed = parse(ioText);
+    const reparsed = parseDocument(ioText);
 
     expect(reparsed.toJSON()).toEqual(original);
   });
@@ -766,7 +766,7 @@ describe('Round-Trip Tests with inferDefs', () => {
 
     const doc = loadInferred(original);
     const ioText = stringify(doc, { includeHeader: true });
-    const reparsed = parse(ioText);
+    const reparsed = parseDocument(ioText);
 
     expect(reparsed.toJSON()).toEqual(original);
   });
@@ -1005,7 +1005,7 @@ describe('Schema Name Conflict Resolution', () => {
 
       const doc = loadInferred(original);
       const ioText = stringify(doc, { includeHeader: true });
-      const reparsed = parse(ioText);
+      const reparsed = parseDocument(ioText);
 
       expect(reparsed.toJSON()).toEqual(original);
     });
@@ -1036,7 +1036,7 @@ describe('Schema Name Conflict Resolution', () => {
 
       const doc = loadInferred(original);
       const ioText = stringify(doc, { includeHeader: true });
-      const reparsed = parse(ioText);
+      const reparsed = parseDocument(ioText);
 
       // Use JSON.parse/stringify for deep comparison of plain objects
       expect(JSON.parse(JSON.stringify(reparsed.toJSON()))).toEqual(original);
@@ -1056,7 +1056,7 @@ describe('Schema Name Conflict Resolution', () => {
 
       const doc = loadInferred(original);
       const ioText = stringify(doc, { includeHeader: true });
-      const reparsed = parse(ioText);
+      const reparsed = parseDocument(ioText);
 
       // Use JSON.parse/stringify for deep comparison of plain objects
       expect(JSON.parse(JSON.stringify(reparsed.toJSON()))).toEqual(original);
