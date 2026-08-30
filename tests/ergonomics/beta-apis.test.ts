@@ -63,22 +63,31 @@ describe('beta ergonomic APIs', () => {
     expect(schema2.get('addresses')?.type).toBe('array');
   });
 
-  test('template tags ignore undefined interpolations', () => {
-    const schema = io.schema`{ name: string${undefined} }`;
-    expect(schema.get('name')?.type).toBe('string');
+  test('undefined interpolates as null (N), like every other value', () => {
+    // BEHAVIOUR CHANGE (A1). These tags used to splice interpolations in RAW, so `undefined`
+    // contributed an empty string and vanished. That is the same mechanism that let
+    // `${'Smith, John'}` split one member into two -- see template-literal.ts. Every `${...}` is
+    // now serialized as a VALUE, with no exceptions, so `undefined` serializes as `N`.
+    const obj = io.object`name: Alice, nickname: ${undefined}` as any;
+    expect(obj.toObject()).toEqual({ name: 'Alice', nickname: null });
 
+    const nulled = io.object`name: Alice, nickname: ${null}` as any;
+    expect(nulled.toObject()).toEqual({ name: 'Alice', nickname: null });
+  });
+
+  test('.with(defs) still threads external definitions', () => {
     const defs = io.defs`
       ~ $schema: { name: string, age: int }
     `;
     if (!defs) throw new Error('defs is null');
 
-    const obj = io.object.with(defs)`Alice, 30${undefined}`;
+    const obj = io.object.with(defs)`Alice, 30`;
     expect(obj).toEqual({ name: 'Alice', age: 30 });
 
     const baseDefs = parseDefinitions('~ @foo: 1');
     if (!baseDefs) throw new Error('baseDefs is null');
 
-    const extended = io.defs.with(baseDefs)`~ @bar: 2${undefined}`;
+    const extended = io.defs.with(baseDefs)`~ @bar: 2`;
     expect((extended?.getV('@foo') as any)?.value ?? extended?.getV('@foo')).toBe(1);
   });
 

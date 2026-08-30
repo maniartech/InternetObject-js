@@ -7,6 +7,7 @@ import parseDefinitions from './parser/parse-defs';
 import Tokenizer from './parser/tokenizer';
 import Schema from './schema/schema';
 import parseSchema from './schema/parse-schema';
+import { buildTemplateSource } from './template-literal';
 
 /**
  * Parses a string (template literal) as an Internet Object document and returns a Document instance.
@@ -24,9 +25,7 @@ import parseSchema from './schema/parse-schema';
  * @returns {Document} Parsed Document instance.
  */
 export function ioDocument(strings: TemplateStringsArray, ...args: any[]): Document {
-  const input = strings.reduce((acc, str, i) => {
-    return acc + str + (args[i] === undefined ? '' : args[i]);
-  }, '');
+  const input = buildTemplateSource(strings, args);
 
   return parse(input, null);
 }
@@ -47,9 +46,7 @@ export function ioDocument(strings: TemplateStringsArray, ...args: any[]): Docum
  */
 ioDocument.with = (defs: Definitions | Schema | string | null, errorCollector?: Error[]): (strings: TemplateStringsArray, ...args: any[]) => Document => {
   return (strings: TemplateStringsArray, ...args: any[]) => {
-    const input = strings.reduce((acc, str, i) => {
-      return acc + str + (args[i] === undefined ? '' : args[i]);
-    }, '');
+    const input = buildTemplateSource(strings, args);
 
     return parse(input, defs, errorCollector);
   }
@@ -67,9 +64,7 @@ ioDocument.with = (defs: Definitions | Schema | string | null, errorCollector?: 
  * @returns {any} Parsed JavaScript object or array.
  */
 export function ioObject(strings: TemplateStringsArray, ...args: any[]): InternetObject | null {
-  const input = strings.reduce((acc, str, i) => {
-    return acc + str + (args[i] === undefined ? '' : args[i]);
-  }, '');
+  const input = buildTemplateSource(strings, args);
 
   // Tokenize the source
   const tokenizer = new Tokenizer(input);
@@ -96,9 +91,7 @@ export function ioObject(strings: TemplateStringsArray, ...args: any[]): Interne
  */
 ioObject.with = (defs: Definitions | Schema | string | null, errorCollector?: Error[]): (strings: TemplateStringsArray, ...args: any[]) => InternetObject | null => {
   return (strings: TemplateStringsArray, ...args: any[]) => {
-    const input = strings.reduce((acc, str, i) => {
-      return acc + str + (args[i] === undefined ? '' : args[i]);
-    }, '');
+    const input = buildTemplateSource(strings, args);
 
     return parse(input, defs, errorCollector).toJSON();
   }
@@ -118,9 +111,7 @@ ioObject.with = (defs: Definitions | Schema | string | null, errorCollector?: Er
  * @returns {Definitions|null} Parsed Definitions instance, or null if invalid.
  */
 export function ioDefinitions(strings: TemplateStringsArray, ...args: any[]): Definitions | null {
-  const input = strings.reduce((acc, str, i) => {
-    return acc + str + (args[i] === undefined ? '' : args[i]);
-  }, '');
+  const input = buildTemplateSource(strings, args);
 
   return parseDefinitions(input, null);
 }
@@ -136,9 +127,7 @@ export function ioDefinitions(strings: TemplateStringsArray, ...args: any[]): De
  * @returns {Schema} Parsed Schema instance.
  */
 export function ioSchema(strings: TemplateStringsArray, ...args: any[]): Schema {
-  const input = strings.reduce((acc, str, i) => {
-    return acc + str + (args[i] === undefined ? '' : args[i]);
-  }, '');
+  const input = buildTemplateSource(strings, args);
 
   return parseSchema(input, null);
 }
@@ -152,9 +141,7 @@ export function ioSchema(strings: TemplateStringsArray, ...args: any[]): Schema 
  */
 ioSchema.with = (parentDefs: Definitions | null): (strings: TemplateStringsArray, ...args: any[]) => Schema => {
   return (strings: TemplateStringsArray, ...args: any[]) => {
-    const input = strings.reduce((acc, str, i) => {
-      return acc + str + (args[i] === undefined ? '' : args[i]);
-    }, '');
+    const input = buildTemplateSource(strings, args);
 
     return parseSchema(input, parentDefs);
   }
@@ -174,9 +161,7 @@ ioSchema.with = (parentDefs: Definitions | null): (strings: TemplateStringsArray
  */
 ioDefinitions.with = (parentDefs: Definitions | null): (strings: TemplateStringsArray, ...args: any[]) => Definitions | null => {
   return (strings: TemplateStringsArray, ...args: any[]) => {
-    const input = strings.reduce((acc, str, i) => {
-      return acc + str + (args[i] === undefined ? '' : args[i]);
-    }, '');
+    const input = buildTemplateSource(strings, args);
 
     return parseDefinitions(input, parentDefs);
   }

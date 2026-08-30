@@ -37,6 +37,23 @@ console.log('ioDefs     :', defs ? 'parsed' : 'none');
 const city = 'NYC';
 console.log('\ninterpolated:', io.doc`name: Alice, city: ${city}`.toObject());
 
+// ── Interpolated values are always VALUES ─────────────────────────────────────
+
+// This is the part that matters. Real data is full of commas, colons and slashes,
+// and every one of them is syntax in Internet Object. A `${...}` is serialized as
+// a value before it reaches the parser, so none of it can change the structure.
+const messy = 'Smith, John';
+console.log('a comma      :', io.doc`name: ${messy}`.toObject());     // ONE member
+
+const qty = '1,000';
+console.log('a quantity   :', io.doc`qty: ${qty}`.toObject());        // the string, not 1
+
+const site = 'https://example.com';
+console.log('a URL        :', io.doc`site: ${site}`.toObject());      // colons are fine
+
+// You never have to quote or escape an interpolated value yourself, and you cannot
+// forget to. The same holds for every tag, because they share one builder.
+
 console.log(`
   io.doc\`...\`         a whole document
   ioObject\`...\`       a single object
