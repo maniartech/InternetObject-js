@@ -247,11 +247,13 @@ for (const file of files) {
     let loadCodes: string[];
     let loadValue: any = null;
     try {
-      // `errorCollector` is an ARRAY the loader pushes into, not a callback.
+      // §2.5: the sink is slot three, the same slot `parse` uses. It is an ARRAY the loader pushes
+      // into (a function works too); it is no longer an option, and it no longer has to be
+      // remembered per function.
       const errors: any[] = [];
       const loaded: any = Array.isArray(native)
-        ? loadCollection(native, defs, { errorCollector: errors })
-        : loadObject(native, defs, { errorCollector: errors });
+        ? loadCollection(native, defs, errors)
+        : loadObject(native, defs, errors);
       loadCodes = errors.map((e: any) => e.errorCode ?? `<${e?.name ?? 'uncoded'}>`);
       loadValue = loadCodes.length > 0 ? null : loaded?.toObject?.() ?? loaded;
     } catch (e: any) {

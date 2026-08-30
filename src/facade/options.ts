@@ -27,7 +27,14 @@ export interface IOCommonOptions {
 
   /**
    * Array to collect validation errors instead of throwing.
-   * Useful for processing collections where some items may be invalid.
+   *
+   * @deprecated Since §2.5 (ADR 0005) the sink is the **third positional argument** on every entry
+   * point — `load(data, defs, sink)`, `validate(data, defs, sink)` — the same slot `parse` has
+   * always used. It is still read here, and the positional sink wins where both are given.
+   *
+   * It survives because `loadInferred` has no sink slot: inference is outside the format's
+   * contract (ADR 0004) and its signature was left alone rather than churned for symmetry with a
+   * family it is not really part of.
    */
   errorCollector?: Error[];
 }

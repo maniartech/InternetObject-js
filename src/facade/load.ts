@@ -12,6 +12,7 @@ import ErrorCodes from '../errors/io-error-codes';
 import ValidationError from '../errors/io-validation-error';
 import { IOCommonOptions } from './options';
 import { resolveSchema } from './resolve-schema';
+import { ErrorSink, isErrorSink, report, withSink } from './error-sink';
 
 /**
  * Creates an InternetObject from plain data without schema validation.
@@ -37,6 +38,45 @@ function createSchemalessCollection(dataArray: any[]): Collection<InternetObject
     collection.push(createSchemalessObject(item));
   }
   return collection;
+}
+
+
+/**
+ * Reads the trailing arguments of the load family: `(data, defs?, sink?, options?)`.
+ *
+ * §2.5 (ADR 0005) moved the sink into slot three, where `parse` has always had it. Before this,
+ * slot three was an options object — so `load(data, defs, errors)` put the array where the options
+ * were expected, found no `schemaName` on it, and reported nothing. Silently. That is the same
+ * positional trap that made `parse(text, errorArray)` collect nothing, and it is worth closing on
+ * both.
+ *
+ * **The old shape still works.** A sink is an array or a function and an options object is neither,
+ * so an options object in slot three is unambiguous and is still read as options. It is deprecated,
+ * not broken.
+ */
+function readArgs(
+  a?: Definitions | ErrorSink | IOCommonOptions | null,
+  b?: ErrorSink | IOCommonOptions,
+  c?: IOCommonOptions
+): { defs?: Definitions; sink?: ErrorSink; options?: IOCommonOptions } {
+  let defs: Definitions | undefined;
+  let sink: ErrorSink | undefined;
+  let options: IOCommonOptions | undefined;
+
+  if (a instanceof Definitions) defs = a;
+  else if (isErrorSink(a)) sink = a as ErrorSink;
+  else if (a && typeof a === 'object') options = a as IOCommonOptions;
+
+  if (isErrorSink(b)) sink = b as ErrorSink;
+  else if (b && typeof b === 'object') options = b as IOCommonOptions;   // deprecated slot
+
+  if (c) options = c;
+
+  // `errorCollector` was the option that did this job before there was a slot for it. The sink
+  // wins where both are given; neither is silently ignored.
+  if (!sink && options?.errorCollector) sink = options.errorCollector;
+
+  return { defs, sink, options };
 }
 
 /** Options for `loadObject` — see {@link IOCommonOptions} (shared, declared once — R8). */
@@ -69,31 +109,24 @@ export type LoadObjectOptions = IOCommonOptions;
  * const obj = loadObject(data, defs, { schemaName: '$User' });
  * ```
  */
-// Overloads for loadObject
+// Overloads for loadObject — (data, defs?, sink?, options?), like every sibling
 export function loadObject(data: object): InternetObject;
 export function loadObject(data: object, defs: Definitions | null): InternetObject;
 export function loadObject(data: object, options: LoadObjectOptions): InternetObject;
+export function loadObject(data: object, defs: Definitions | null, sink: ErrorSink): InternetObject;
+export function loadObject(data: object, defs: Definitions | null, sink: ErrorSink, options: LoadObjectOptions): InternetObject;
+/** @deprecated Options in slot three. Pass the sink there and options in slot four (§2.5). */
 export function loadObject(data: object, defs: Definitions | null, options: LoadObjectOptions): InternetObject;
 export function loadObject(
   data: object,
-  defsOrOptions?: Definitions | LoadObjectOptions | null,
-  options?: LoadObjectOptions
+  defsOrSinkOrOptions?: Definitions | ErrorSink | LoadObjectOptions | null,
+  sinkOrOptions?: ErrorSink | LoadObjectOptions,
+  maybeOptions?: LoadObjectOptions
 ): InternetObject {
-  let resolvedSchema: Schema | undefined;
-  let definitions: Definitions | undefined;
-  let resolvedOptions: LoadObjectOptions | undefined;
-
-  // Parse arguments: handle (data), (data, defs), (data, options), (data, defs, options)
-  if (defsOrOptions instanceof Definitions) {
-    definitions = defsOrOptions;
-    resolvedOptions = options;
-  } else if (defsOrOptions && typeof defsOrOptions === 'object') {
-    // Second param is options
-    resolvedOptions = defsOrOptions as LoadObjectOptions;
-  }
+  const { defs: definitions, sink, options } = readArgs(defsOrSinkOrOptions, sinkOrOptions, maybeOptions);
 
   // Resolve schema uniformly — one primitive, one failure mode (R8).
-  resolvedSchema = resolveSchema(definitions, resolvedOptions?.schemaName);
+  const resolvedSchema = resolveSchema(definitions, options?.schemaName);
 
   // Validate that data is an object, not an array
   if (Array.isArray(data)) {
@@ -105,7 +138,21 @@ export function loadObject(
     return createSchemalessObject(data);
   }
 
-  return processObject(data, resolvedSchema, definitions);
+  if (!sink) return processObject(data, resolvedSchema, definitions);
+
+  // With a sink, nothing throws. The object comes back EMPTY and carrying the error, rather than
+  // carrying the data that failed: a schema-bearing object may not hold what its schema forbids
+  // (B1), and handing back the raw input under an attached schema would be exactly that.
+  return withSink(sink, () => {
+    try {
+      return processObject(data, resolvedSchema, definitions);
+    } catch (error) {
+      report(sink, error as Error);
+      const failed = new InternetObject();
+      failed.errors.push(error as Error);
+      return failed;
+    }
+  });
 }
 
 /**
@@ -133,28 +180,21 @@ export type LoadCollectionOptions = LoadOptions;
  * const col = loadCollection(users, defs, { schemaName: '$User' });
  * ```
  */
-// Overloads for loadCollection
+// Overloads for loadCollection — (data, defs?, sink?, options?)
 export function loadCollection(data: any[]): Collection<InternetObject>;
 export function loadCollection(data: any[], defs: Definitions | null): Collection<InternetObject>;
 export function loadCollection(data: any[], options: LoadCollectionOptions): Collection<InternetObject>;
+export function loadCollection(data: any[], defs: Definitions | null, sink: ErrorSink): Collection<InternetObject>;
+export function loadCollection(data: any[], defs: Definitions | null, sink: ErrorSink, options: LoadCollectionOptions): Collection<InternetObject>;
+/** @deprecated Options in slot three. Pass the sink there and options in slot four (§2.5). */
 export function loadCollection(data: any[], defs: Definitions | null, options: LoadCollectionOptions): Collection<InternetObject>;
 export function loadCollection(
   data: any[],
-  defsOrOptions?: Definitions | LoadCollectionOptions | null,
-  options?: LoadCollectionOptions
+  defsOrSinkOrOptions?: Definitions | ErrorSink | LoadCollectionOptions | null,
+  sinkOrOptions?: ErrorSink | LoadCollectionOptions,
+  maybeOptions?: LoadCollectionOptions
 ): Collection<InternetObject> {
-  let resolvedSchema: Schema | undefined;
-  let definitions: Definitions | undefined;
-  let resolvedOptions: LoadCollectionOptions | undefined;
-
-  // Parse arguments: handle (data), (data, defs), (data, options), (data, defs, options)
-  if (defsOrOptions instanceof Definitions) {
-    definitions = defsOrOptions;
-    resolvedOptions = options;
-  } else if (defsOrOptions && typeof defsOrOptions === 'object') {
-    // Second param is options
-    resolvedOptions = defsOrOptions as LoadCollectionOptions;
-  }
+  const { defs: definitions, sink, options } = readArgs(defsOrSinkOrOptions, sinkOrOptions, maybeOptions);
 
   // Validate that data is an array
   if (!Array.isArray(data)) {
@@ -162,14 +202,14 @@ export function loadCollection(
   }
 
   // Resolve schema uniformly — one primitive, one failure mode (R8).
-  resolvedSchema = resolveSchema(definitions, resolvedOptions?.schemaName);
+  const resolvedSchema = resolveSchema(definitions, options?.schemaName);
 
   // Schema-less mode: if no schema, load without validation
   if (!resolvedSchema) {
     return createSchemalessCollection(data);
   }
 
-  return processCollection(data, resolvedSchema, definitions, resolvedOptions?.errorCollector);
+  return withSink(sink, (bag) => processCollection(data, resolvedSchema, definitions, bag));
 }
 
 /** Options for `load` — see {@link IOCommonOptions} (shared, declared once — R8). */
@@ -201,31 +241,24 @@ export type LoadOptions = IOCommonOptions;
  * const doc = load(data, defs, { schemaName: '$User' });
  * ```
  */
-// Overloads for load
+// Overloads for load — (data, defs?, sink?, options?)
 export function load(data: any): Document;
 export function load(data: any, defs: Definitions | null): Document;
 export function load(data: any, options: LoadOptions): Document;
+export function load(data: any, defs: Definitions | null, sink: ErrorSink): Document;
+export function load(data: any, defs: Definitions | null, sink: ErrorSink, options: LoadOptions): Document;
+/** @deprecated Options in slot three. Pass the sink there and options in slot four (§2.5). */
 export function load(data: any, defs: Definitions | null, options: LoadOptions): Document;
 export function load(
   data: any,
-  defsOrOptions?: Definitions | LoadOptions | null,
-  options?: LoadOptions
+  defsOrSinkOrOptions?: Definitions | ErrorSink | LoadOptions | null,
+  sinkOrOptions?: ErrorSink | LoadOptions,
+  maybeOptions?: LoadOptions
 ): Document {
-  let resolvedSchema: Schema | undefined;
-  let definitions: Definitions | undefined;
-  let resolvedOptions: LoadOptions | undefined;
-
-  // Parse arguments: handle (data), (data, defs), (data, options), (data, defs, options)
-  if (defsOrOptions instanceof Definitions) {
-    definitions = defsOrOptions;
-    resolvedOptions = options;
-  } else if (defsOrOptions && typeof defsOrOptions === 'object') {
-    // Second param is options
-    resolvedOptions = defsOrOptions as LoadOptions;
-  }
+  const { defs: definitions, sink, options: resolvedOptions } = readArgs(defsOrSinkOrOptions, sinkOrOptions, maybeOptions);
 
   // Resolve schema uniformly — one primitive, one failure mode (R8).
-  resolvedSchema = resolveSchema(definitions, resolvedOptions?.schemaName);
+  const resolvedSchema = resolveSchema(definitions, resolvedOptions?.schemaName);
 
   // Create header with definitions (if available)
   const header = new Header();
@@ -246,9 +279,23 @@ export function load(
       loadedData = createSchemalessObject(data);
     }
   } else if (Array.isArray(data)) {
-    loadedData = processCollection(data, resolvedSchema, definitions, resolvedOptions?.errorCollector);
-  } else {
+    loadedData = withSink(sink, (bag) => processCollection(data, resolvedSchema, definitions, bag));
+  } else if (!sink) {
     loadedData = processObject(data, resolvedSchema, definitions);
+  } else {
+    // Same rule as `loadObject`: with a sink nothing throws, and the failure is reported rather
+    // than stored. The document then carries the error on itself, so `doc.errors` and the sink
+    // agree — which is the C1a rule, reaching the load route.
+    loadedData = withSink(sink, () => {
+      try {
+        return processObject(data, resolvedSchema, definitions);
+      } catch (error) {
+        report(sink, error as Error);
+        const failed = new InternetObject();
+        failed.errors.push(error as Error);
+        return failed;
+      }
+    });
   }
 
   // Create section

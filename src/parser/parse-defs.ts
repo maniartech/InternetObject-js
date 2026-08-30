@@ -28,7 +28,13 @@ export default function parseDefinitions(
 ): Definitions | null;
 export default function parseDefinitions(
   source: string,
-  externalDefs?: Definitions | null
+  externalDefs: Definitions | null,
+  errorCollector: Error[]
+): Definitions | null;
+export default function parseDefinitions(
+  source: string,
+  externalDefs?: Definitions | null,
+  errorCollector?: Error[]
 ): Definitions | null {
   // A3 (ADR 0005): the ParserOptions overload is gone -- it configured nothing.
 
@@ -46,6 +52,9 @@ export default function parseDefinitions(
   //   source = "~ $schema: " + source
   // }
 
-  const doc = parse(source, externalDefs, undefined)
+  // §2.5 (ADR 0005): slot three is the sink here as everywhere else. Definitions are parsed by
+  // `parse`, so this is a pass-through -- but without it `io.defs.with(defs, sink)` had no sink to
+  // hand anything to, and the tag family could not take the same arguments as the functions.
+  const doc = parse(source, externalDefs, errorCollector)
   return doc.header.definitions
 }

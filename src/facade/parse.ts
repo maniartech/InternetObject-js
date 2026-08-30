@@ -29,15 +29,9 @@ import Definitions from '../core/definitions';
 import Schema from '../schema/schema';
 import parseCore from '../parser/index';
 import { proxyDocument } from '../proxy';
+import { ErrorSink, withSink } from './error-sink';
 
-/**
- * Where errors are reported.
- *
- * An array is filled; a function is called once per error. Pass neither and the first error throws —
- * that one question, *"did you pass a sink?"*, is the whole of the fail-fast / collect-all choice
- * (§5.1), which is why there is no `strict` option any more.
- */
-export type ErrorSink = Error[] | ((error: Error) => void);
+export type { ErrorSink } from './error-sink';
 
 /** Definitions, a bare schema, or a schema's name — whatever the caller already holds. */
 export type ParseDefs = Definitions | Schema | string | null;
@@ -53,23 +47,6 @@ export type ParseDefs = Definitions | Schema | string | null;
 export interface ParseOptions {
   /** Omit failed records from the result instead of embedding them in place (§5.1). */
   skipErrors?: boolean;
-}
-
-/**
- * Runs `body` with an error array, then reports whatever landed in it.
- *
- * A function sink is called after the parse rather than during it — a parse is synchronous and
- * nobody can observe the difference — and it is called even when the parse throws, so a caller that
- * both catches and collects sees everything that was found on the way to the throw.
- */
-function withSink<T>(sink: ErrorSink | undefined, body: (bag: Error[] | undefined) => T): T {
-  if (sink === undefined || Array.isArray(sink)) return body(sink);
-  const bag: Error[] = [];
-  try {
-    return body(bag);
-  } finally {
-    for (const error of bag) sink(error);
-  }
 }
 
 /**

@@ -191,8 +191,47 @@ parse(text);                            // no sink: the first error throws
   tags.
 - `src/parser`'s own `parse` — internal, still returns a plain `Document`.
 
+## 6. Every entry point takes the same four slots
+
+```
+(input, defs?, sink?, options?)
+```
+
+`parse` always had the sink in slot three. `load` had an **options object** there, and `validate`
+had a shape unlike any sibling's — `(data, schemaOrDefs, defs?)`.
+
+```ts
+// before
+load(data, defs, { errorCollector: errors });
+validate(data, schema, defs);
+
+// after
+load(data, defs, errors);
+load(data, defs, errors, { schemaName: '$User' });
+validate(data, defs, errors);
+```
+
+**Both old shapes still work**, unambiguously: a sink is an array or a function, and neither an
+options object nor a `Definitions` is either. `IOCommonOptions.errorCollector` is deprecated but
+still read, and the positional sink wins where both are given.
+
+Worth doing even so, because the old shape had a trap: `load(data, defs, errors)` put the array
+where the options were expected, found no `schemaName` on it, and reported **nothing**. Silently.
+That is the same positional trap that made `parse(text, errorArray)` collect nothing.
+
+Two more consequences:
+
+- **`load` and `loadObject` with a sink no longer throw** on a single bad object. The error is
+  reported to the sink and recorded on the document, and the failed data is *not* stored — a
+  schema-bearing document may not hold what its schema forbids.
+- **`io.object.with(defs)` now returns an `IOObject`**, like `` io.object`…` `` itself. It used to
+  return a plain object: the same tag with two return types, decided by whether definitions happened
+  to be involved.
+
+`io.doc.with(defs, sink)`, `io.object.with(defs, sink)` and `io.defs.with(defs, sink)` all take a
+sink. **`io.schema.with(defs)` does not**, deliberately: schema compilation fails fast, so there is
+no partial schema to hand back and nothing a sink could change.
+
 ## Still to come
 
-`load(data, defs?, sink?, options?)` and `validate(data, defs?, sink?, options?)` will take the same
-four slots as `parse`, and `.with(defs, sink)` will exist on all four template tags. Until then
-`load` keeps its current signature, `errorCollector` included.
+`io.subscribe` / `io.version`, and `String(doc)`.

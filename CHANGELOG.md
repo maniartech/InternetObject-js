@@ -41,6 +41,15 @@ taken before the first commit and re-verified after every one since. What change
 
 #### Added
 
+- **Signature symmetry (§2.5).** Every entry point now takes `(input, defs?, sink?, options?)`:
+  `load`, `loadObject`, `loadCollection`, `validate`, `validateObject`, `validateCollection`. The
+  old shapes still work — a sink is an array or a function, so an options object in slot three
+  (`load`) and a `Definitions` in slot three (`validate`) are unambiguous — and
+  `IOCommonOptions.errorCollector` is deprecated rather than removed, because `loadInferred` has no
+  sink slot and inference is outside the contract (ADR 0004).
+- `parseDefinitions(text, defs?, sink?)` takes a sink, so `io.defs.with(defs, sink)` has one to
+  hand over. `io.doc.with` and `io.object.with` already did; **`io.schema.with` deliberately does
+  not** — schema compilation fails fast, so a sink could not change the outcome.
 - `parseDocument(text, defs?, sink?)` — the proxied document. Sections, collections and records are
   reachable by name and by index: `doc.sections.employees[0].name`, `doc.data[0].age = 31`.
 - `doc.data` — the section a document gets when it names none.
@@ -66,6 +75,11 @@ taken before the first commit and re-verified after every one since. What change
   an error node.
 - **`skipErrors` was ignored on the serialization path.** It looked for `{ __error: true }` while
   the parse route embeds an `ErrorNode`, so it matched nothing on the path people take.
+- **`load(data, defs, errors)` reported nothing.** The array landed in the options slot, no
+  `schemaName` was found on it, and the load carried on reporting into the void — the same
+  positional trap that made `parse(text, errorArray)` collect nothing.
+- **`io.object.with(defs)` returned a different type from `` io.object`…` ``** — a plain object
+  against an `IOObject`. Same tag, two contracts, decided by whether definitions were involved.
 - **Internals leaked through key walks.** `{ ...collection }` and `structuredClone(doc)` handed back
   `_items` / `_header` instead of the data.
 

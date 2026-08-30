@@ -143,7 +143,7 @@ describe('loadObject() API', () => {
     it('error collector has no effect in schema-less mode', () => {
       const data = { name: 'Alice', age: 'not-a-number' };
       const errors: Error[] = [];
-      const result = loadObject(data, { errorCollector: errors });
+      const result = loadObject(data, null, errors);
 
       expect(result).toBeInstanceOf(InternetObject);
       expect(errors).toHaveLength(0); // No errors because no validation
@@ -175,7 +175,7 @@ describe('loadObject() API', () => {
         .toThrow(/not found/);
     });
 
-    it('collects errors with errorCollector (use loadCollection for arrays)', () => {
+    it('collects errors through the sink in slot three (use loadCollection for arrays)', () => {
       const defs = createDefs('~ $schema: { name: string, age: int }');
       const data = [
         { name: 'Alice', age: 28 },
@@ -184,7 +184,7 @@ describe('loadObject() API', () => {
       ];
       const errors: Error[] = [];
       // Use loadCollection for arrays, not loadObject
-      const result = loadCollection(data, defs, { errorCollector: errors });
+      const result = loadCollection(data, defs, errors);
 
       expect(result).toBeInstanceOf(Collection);
       expect(result.length).toBe(3);
@@ -280,7 +280,7 @@ describe('loadCollection() API', () => {
 
       // loadCollection does not throw by default - it collects errors
       const errors: Error[] = [];
-      const result = loadCollection(data, defs, { errorCollector: errors });
+      const result = loadCollection(data, defs, errors);
       expect(errors.length).toBeGreaterThan(0);
     });
   });
@@ -327,7 +327,7 @@ describe('loadCollection() API', () => {
         { name: 'Charlie', age: 42 }
       ];
       const errors: Error[] = [];
-      const result = loadCollection(data, defs, { errorCollector: errors });
+      const result = loadCollection(data, defs, errors);
 
       expect(result.length).toBe(3);
       expect(errors.length).toBeGreaterThanOrEqual(1);
@@ -425,14 +425,14 @@ describe('load() API', () => {
         .toThrow(/not found/);
     });
 
-    it('collects errors with errorCollector', () => {
+    it('collects errors through the sink in slot three', () => {
       const defs = createDefs('~ $schema: { name: string, age: int }');
       const data = [
         { name: 'Alice', age: 28 },
         { name: 'Bob', age: 'invalid' }
       ];
       const errors: Error[] = [];
-      const doc = load(data, defs, { errorCollector: errors });
+      const doc = load(data, defs, errors);
 
       expect(doc).toBeInstanceOf(Document);
       expect(errors.length).toBeGreaterThanOrEqual(1);

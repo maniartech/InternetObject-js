@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'vitest';
 
 import Definitions from '../../src/core/definitions';
+import IOObject from '../../src/core/internet-object';
 
 import io, {
   ioSchema,
@@ -81,8 +82,12 @@ describe('beta ergonomic APIs', () => {
     `;
     if (!defs) throw new Error('defs is null');
 
+    // §2.5: `.with` returns what the tag returns. It used to hand back a plain object here while
+    // `` io.object`...` `` handed back an IOObject -- the same tag with two types, decided by
+    // whether definitions happened to be involved.
     const obj = io.object.with(defs)`Alice, 30`;
-    expect(obj).toEqual({ name: 'Alice', age: 30 });
+    expect(obj).toBeInstanceOf(IOObject);
+    expect(obj!.toObject()).toEqual({ name: 'Alice', age: 30 });
 
     const baseDefs = parseDefinitions('~ @foo: 1');
     if (!baseDefs) throw new Error('baseDefs is null');

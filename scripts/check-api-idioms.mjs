@@ -80,8 +80,11 @@ const RULES = [
   },
   {
     id: 'error-collector-option',
-    test: /\berrorCollector\s*:/g,
-    says: 'the sink is the third positional argument, never an option (A3)',
+    // `errorCollector: errors` is the retired OPTION. `errorCollector: Error[]` is a parameter or
+    // field DECLARATION — including the positional sink's own name — and declaring a thing is not
+    // the same as passing it where it no longer belongs.
+    test: /\berrorCollector\s*\??\s*:(?!\s*Error\[\])/g,
+    says: 'the sink is the third positional argument, never an option (§2.5)',
   },
 ];
 
@@ -109,13 +112,13 @@ const ALLOW = [
   { path: 'src/core/internet-object.ts', rules: ['spread-to-array'], why: 'ordinary array work on an ordinary array, with no collection in sight' },
   { path: 'tests/facade/document.test.ts', rules: ['error-collector-option', 'facade-strict'], why: 'LoadDocumentOptions genuinely carries both and they work -- a different option from the facade one A3 deleted' },
   { path: 'tests/facade/load.test.ts', rules: ['facade-strict'], why: 'a comment recording the option that was removed and why the assertion never needed it' },
-  // `errorCollector` is retired on the PARSE family only. `load()`, `loadInferred()` and
-  // `stringify()` still declare it, because §2.5 -- the (data, defs?, sink?, options?) sweep across
-  // the load/validate family -- has not landed. These come off the list when it does.
-  { path: 'src/facade/load-document.ts', rules: ['error-collector-option'], why: 'load still takes it; §2.5 pending' },
-  { path: 'src/facade/load-inferred.ts', rules: ['error-collector-option'], why: 'load still takes it; §2.5 pending' },
-  { path: 'tests/facade/load.test.ts', rules: ['error-collector-option'], why: 'tests load, which still takes it; §2.5 pending' },
-  { path: 'tools/corpus/verify-both.ts', rules: ['error-collector-option'], why: 'drives load, which still takes it; §2.5 pending' },
+  // §2.5 has landed: `load` and `validate` take the sink in slot three, and the sweep is done.
+  // Two declarations remain, and both are deliberate.
+  { path: 'src/facade/load-document.ts', rules: ['error-collector-option'], why: 'LoadDocumentOptions.errorCollector is a DIFFERENT option on a different type, and it works' },
+  { path: 'src/facade/load-inferred.ts', rules: ['error-collector-option'], why: 'loadInferred has no sink slot -- inference is outside the contract (ADR 0004) and its signature was left alone rather than churned for symmetry with a family it is not part of' },
+  { path: 'src/facade/options.ts', rules: ['error-collector-option'], why: 'declares the field, now @deprecated, that loadInferred still reads' },
+  { path: 'tests/facade/load.test.ts', rules: ['error-collector-option'], why: 'one loadInferred case, which is where the option still lives' },
+  { path: 'tests/facade/signature-symmetry.test.ts', rules: ['error-collector-option'], why: 'pins that the deprecated option is still honoured and that the positional sink wins' },
 ];
 
 function allowed(rel, ruleId) {

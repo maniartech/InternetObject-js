@@ -93,7 +93,12 @@ ioObject.with = (defs: Definitions | Schema | string | null, errorCollector?: Er
   return (strings: TemplateStringsArray, ...args: any[]) => {
     const input = buildTemplateSource(strings, args);
 
-    return parse(input, defs, errorCollector).toJSON();
+    // §2.5: `.with` must return what the tag returns. Measured 2026-08-30, it did not --
+    // `` ioObject`name: Alice` `` gave an `IOObject` and `` ioObject.with(defs)`name: Alice` ``
+    // gave a plain object, because this branch called `.toJSON()`. Same tag, two types, decided by
+    // whether definitions happened to be involved.
+    const section = parse(input, defs, errorCollector).sections?.getAt(0)?.data ?? null;
+    return section instanceof InternetObject ? section : null;
   }
 }
 
@@ -139,6 +144,13 @@ export function ioSchema(strings: TemplateStringsArray, ...args: any[]): Schema 
  *   const defs = ioDefinitions`~ $Address: { street: string }`;
  *   const schema = ioSchema.with(defs)`{ addresses: [$Address] }`;
  */
+/**
+ * ⚠ **No sink here, deliberately.** The other three tags take `(defs, sink)` since §2.5, and this
+ * one takes definitions alone. Schema compilation fails fast — the first error is fatal, there is
+ * no partial schema to hand back — so a sink would have to either report and throw anyway, or
+ * report and return nothing. Both are worse than the throw, and an argument that cannot change the
+ * outcome is the "public option that lies" this exercise deleted `ParserOptions` for.
+ */
 ioSchema.with = (parentDefs: Definitions | null): (strings: TemplateStringsArray, ...args: any[]) => Schema => {
   return (strings: TemplateStringsArray, ...args: any[]) => {
     const input = buildTemplateSource(strings, args);
@@ -157,13 +169,14 @@ ioSchema.with = (parentDefs: Definitions | null): (strings: TemplateStringsArray
  *   `;
  *
  * @param {Definitions | null} parentDefs - Parent definitions to extend.
+ * @param {Error[]} [errorCollector] - Optional sink, in the same slot as every other `.with` (§2.5).
  * @returns {function(TemplateStringsArray, ...any[]): Definitions | null} A tag function for parsing with parent definitions.
  */
-ioDefinitions.with = (parentDefs: Definitions | null): (strings: TemplateStringsArray, ...args: any[]) => Definitions | null => {
+ioDefinitions.with = (parentDefs: Definitions | null, errorCollector?: Error[]): (strings: TemplateStringsArray, ...args: any[]) => Definitions | null => {
   return (strings: TemplateStringsArray, ...args: any[]) => {
     const input = buildTemplateSource(strings, args);
 
-    return parseDefinitions(input, parentDefs);
+    return parseDefinitions(input, parentDefs, errorCollector as Error[]);
   }
 }
 
