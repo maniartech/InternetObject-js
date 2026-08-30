@@ -40,6 +40,20 @@ class IOSectionCollection<T = any> {
     return this._sections.length;
   }
 
+  /**
+   * Returns the section at a position.
+   *
+   * A7 (ADR 0005): every other container spells positional access `getAt`, and this class was the
+   * only one without it -- `sections.getAt(0)` threw "not a function", which is what a user reaches
+   * for first. `get(nameOrIndex)` still accepts both and is unchanged.
+   *
+   * @param index Zero-based position.
+   * @returns The section, or undefined if the index is out of range.
+   */
+  public getAt(index: number): IOSection<T> | undefined {
+    return this._sections[index];
+  }
+
   public get(nameOrIndex: string | number): IOSection<T> | undefined {
     if (typeof nameOrIndex === 'string') {
       const index = this._sectionNames[nameOrIndex];

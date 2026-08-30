@@ -88,6 +88,21 @@ class IODefinitions {
   }
 
   /**
+   * Returns the definition VALUE at a position.
+   *
+   * A7 (ADR 0005): positional access is spelled `getAt` on every other container. `at(index)` is
+   * kept, and is a different thing -- it returns the `{ key, value }` PAIR, so it is not simply a
+   * misnamed `getAt`.
+   *
+   * @param index Zero-based position, in definition order.
+   * @returns The value, or undefined if the index is out of range.
+   */
+  public getAt(index: number): any {
+    const key = this.keys[index];
+    return key === undefined ? undefined : this._definitions[key]?.value;
+  }
+
+  /**
    * Returns the default schema, if defined.
    * Resolves schema variable references (e.g., $schema: $otherSchema).
    * @returns The default Schema instance or null.
@@ -156,6 +171,19 @@ class IODefinitions {
    * @param key {any} The variable key starting with $
    * @returns The value associated with the variable
    */
+  /**
+   * Strict lookup returning the STORED value -- a `TokenNode` for a variable, a `Schema` for a
+   * schema reference. Throws `undefined-variable` / `undefined-schema` when the key is absent.
+   *
+   * A7 (ADR 0005): the readable name for what `getV` has always done. `getV` remains as an alias
+   * so the 46 internal call sites and any external caller keep working.
+   *
+   * @internal Prefer `get` (lenient) or `getValue` (decoded) from outside the library.
+   */
+  public getTokenNode(k: any): any {
+    return this.getV(k);
+  }
+
   public getV(k: any): any {
     const key = this.keyOf(k);
     if (key === "") return;
