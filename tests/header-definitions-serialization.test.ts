@@ -80,11 +80,12 @@ describe('Header Definitions Serialization', () => {
       expect(doc2.header.definitions.keys).toContain('@no');
       expect(doc2.header.definitions.keys).toContain('$schema');
 
-      // Verify variable values (they're stored as TokenNodes, so get actual value)
+      // A7 (ADR 0005): `get` returns the VALUE now, on this container as on every other.
+      // `getTokenNode` is what still hands back the stored node.
       const yesValue = doc2.header.definitions.get('@yes');
       const noValue = doc2.header.definitions.get('@no');
-      expect(yesValue.value).toBe(true);
-      expect(noValue.value).toBe(false);
+      expect(yesValue).toBe(true);
+      expect(noValue).toBe(false);
     });
 
     test('should serialize string variable definitions', () => {
@@ -106,8 +107,8 @@ describe('Header Definitions Serialization', () => {
       // Verify variable values
       const defaultValue = doc2.header.definitions.get('@default');
       const activeValue = doc2.header.definitions.get('@active');
-      expect(defaultValue.value).toBe('unknown');
-      expect(activeValue.value).toBe('yes');
+      expect(defaultValue).toBe('unknown');
+      expect(activeValue).toBe('yes');
     });
   });
 
@@ -204,8 +205,8 @@ describe('Header Definitions Serialization', () => {
 
       const yesValue = doc2.header.definitions.get('@yes');
       const noValue = doc2.header.definitions.get('@no');
-      expect(yesValue.value).toBe(true);
-      expect(noValue.value).toBe(false);
+      expect(yesValue).toBe(true);
+      expect(noValue).toBe(false);
 
       // Verify data section is preserved
       const json2 = doc2.toJSON();
@@ -239,7 +240,7 @@ describe('Header Definitions Serialization', () => {
       expect(doc2.header.definitions.get('version')).toBe(2.0);
 
       const defaultValue = doc2.header.definitions.get('@default');
-      expect(defaultValue.value).toBe('N/A');
+      expect(defaultValue).toBe('N/A');
 
       expect(doc2.header.definitions.get('$address')).toBeDefined();
       expect(doc2.header.schema).toBeDefined();
@@ -278,7 +279,7 @@ describe('Header Definitions Serialization', () => {
       expect(doc2.header.definitions.get('version')).toBe(1.0);
 
       const activeValue = doc2.header.definitions.get('@active');
-      expect(activeValue.value).toBe(true);
+      expect(activeValue).toBe(true);
     });
   });
 
@@ -509,7 +510,7 @@ describe('Header Definitions Serialization', () => {
       expect(doc2.header.definitions.get('pageSize')).toBe(10);
 
       const defaultVal = doc2.header.definitions.get('@default');
-      expect(defaultVal.value).toBe('unknown');
+      expect(defaultVal).toBe('unknown');
 
       expect(doc2.header.definitions.get('$address')).toBeDefined();
       expect(doc2.header.schema).toBeDefined();

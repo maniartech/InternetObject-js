@@ -43,8 +43,9 @@ describe('accessor symmetry (A7)', () => {
     const defs: any = parseDefinitions('~ $p: {a: string}\n~ @env: prod');
 
     it('answers getAt(index) with the VALUE, in definition order', () => {
-      expect(defs.getAt(0)).toBe(defs.get(defs.keys[0]));
-      expect(defs.getAt(1)).toBe(defs.get(defs.keys[1]));
+      expect(defs.getAt(0)).toEqual(defs.get(defs.keys[0]));
+      expect(defs.getAt(1)).toEqual(defs.get(defs.keys[1]));
+      expect(defs.getAt(1)).toBe('prod');            // the value, not a TokenNode
     });
 
     it('at(index) stays the PAIR accessor — not a misnamed getAt', () => {
@@ -66,9 +67,13 @@ describe('accessor symmetry (A7)', () => {
      * Pins how the three key-based getters differ, because it is not guessable and because a later
      * change to `get`'s semantics must be a deliberate one. Measured 2026-08-24:
      *
-     *   get       lenient, raw    -> TokenNode | undefined
-     *   getV      strict,  raw    -> TokenNode | throws
-     *   getValue  strict,  decoded-> value     | throws
+     *   get           lenient, decoded -> value              | undefined
+     *   getValue      strict,  decoded -> value              | throws
+     *   getTokenNode  strict,  stored  -> TokenNode / Schema | throws   (getV)
+     *
+     * A7 finished the last of these: `get` used to return the STORED form, so `defs.get('@env')`
+     * handed back a TokenNode while `rec.get('name')` handed back a string — the same verb with
+     * two contracts, told apart only by which container you were holding.
      */
     it('get is lenient; getV and getValue throw on a missing key', () => {
       expect(defs.get('@nope')).toBeUndefined();
@@ -77,9 +82,16 @@ describe('accessor symmetry (A7)', () => {
       expect(() => defs.getV('$nope')).toThrow();
     });
 
-    it('getValue decodes what get and getV leave wrapped', () => {
+    it('get and getValue agree on the value; only leniency separates them', () => {
+      expect(defs.get('@env')).toBe('prod');
       expect(defs.getValue('@env')).toBe('prod');
-      expect(typeof defs.get('@env')).toBe('object');   // a TokenNode
+      expect(defs.get('@nope')).toBeUndefined();
+      expect(() => defs.getValue('@nope')).toThrow();
+    });
+
+    it('getTokenNode is the one that still hands back the node', () => {
+      expect(typeof defs.getTokenNode('@env')).toBe('object');
+      expect(defs.getTokenNode('@env').value).toBe('prod');
     });
   });
 

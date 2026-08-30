@@ -99,7 +99,7 @@ class IODefinitions {
    */
   public getAt(index: number): any {
     const key = this.keys[index];
-    return key === undefined ? undefined : this._definitions[key]?.value;
+    return key === undefined ? undefined : this.get(key);
   }
 
   /**
@@ -155,12 +155,33 @@ class IODefinitions {
   }
 
   /**
-   * Gets a definition value by key, regardless of whether it's a variable, schema, or regular definition.
-   * @param key The definition key
-   * @returns The value associated with the key, or undefined if not found
+   * Gets a definition's **value** by key — a variable decoded, a schema as the `Schema` it is.
+   *
+   * A7 (ADR 0005) completed: `get` now means on this container what it means on every other one.
+   * It used to return the STORED form, so `defs.get('@env')` handed back a `TokenNode` while
+   * `rec.get('name')` handed back a string — the same verb with two contracts, distinguishable
+   * only by which container you happened to be holding.
+   *
+   * The three key getters now differ along one axis each, which is the point:
+   *
+   * ```
+   *   get            lenient, decoded   -> the value, or undefined
+   *   getValue       strict,  decoded   -> the value, or throws
+   *   getTokenNode   strict,  stored    -> the TokenNode / Schema, or throws   (getV)
+   * ```
+   *
+   * Lenient is what separates this from `getValue`: a missing `$name` or `@name` is `undefined`
+   * here and a thrown `undefined-schema` / `undefined-variable` there. Library code that needs the
+   * node — the schema type-checkers read `.type` off it to decide what a variable holds — takes
+   * `getTokenNode`.
+   *
+   * @param key The definition key.
+   * @returns The value, or `undefined` when the key names no definition.
    */
   public get(key: string): any {
-    return this._definitions[key]?.value;
+    const name = this.keyOf(key);
+    if (name === "" || !this._definitions[name]) return undefined;
+    return this.getValue(name);
   }
 
   /**
