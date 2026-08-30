@@ -112,7 +112,16 @@ String(doc);            // back to IO text
 | Returns | plain objects and arrays | the document |
 | Crosses `structuredClone` / `postMessage` / RSC | ✅ | use `toObject()` |
 | Header, sections, round trip to IO text | — | ✅ |
-| Validated writes | — | ✅ |
+| Validated writes, change notification | — | ✅ |
+
+A document is also a **store**, with no framework package involved:
+
+```ts
+const stop = io.subscribe(doc, (value) => render(value));   // the Svelte store contract
+io.version(doc);                                            // the React snapshot
+
+const useIO = (doc) => useSyncExternalStore(cb => io.subscribe(doc, cb), () => io.version(doc));
+```
 
 ### 2. Multiple records (a collection)
 

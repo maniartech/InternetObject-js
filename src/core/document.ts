@@ -2,6 +2,8 @@ import { toJSONValue } from '../utils/json-projection';
 import IOHeader from "./header";
 import IOSection from "./section";
 import IOSectionCollection from "./section-collection";
+import Revision, { touch } from './revision';
+import { stringifyDocument } from '../facade/stringify-document';
 
 /**
  * IODocument represents a complete Internet Object document.
@@ -37,6 +39,15 @@ class IODocument {
   private _header!: IOHeader;
   private _sections!: IOSectionCollection | null;
   private _ownErrors!: Error[]; // Accumulated errors during parsing
+  /**
+   * The shared change counter for this document, once somebody has subscribed (§8).
+   *
+   * Created by `io.subscribe` and stamped onto every container underneath, so a write anywhere
+   * reaches the same listeners without anything carrying a parent pointer. `undefined` until then.
+   *
+   * @internal
+   */
+  _revision?: Revision;
 
   constructor(header: IOHeader, sections: IOSectionCollection | null, errors: Error[] = []) {
     // Non-enumerable, matching IOObject: plain assignment would make these own enumerable keys, and
@@ -46,6 +57,7 @@ class IODocument {
     Object.defineProperty(this, '_header', { value: header, ...hidden });
     Object.defineProperty(this, '_sections', { value: sections, ...hidden });
     Object.defineProperty(this, '_ownErrors', { value: errors, ...hidden });
+    Object.defineProperty(this, '_revision', { value: undefined, writable: true, enumerable: false, configurable: true });
   }
 
   public get header(): IOHeader {
@@ -92,7 +104,34 @@ class IODocument {
   public addErrors(errors: Error[]): void {
     if (errors.length > 0) {
       this._ownErrors.push(...errors);
+      touch(this);
     }
+  }
+
+  /**
+   * The document as Internet Object text — so `String(doc)` and `` `${doc}` `` round-trip.
+   *
+   * Without this they gave `"[object Object]"`, which is the default `Object.prototype.toString`
+   * and tells a reader nothing. A document knows how to write itself; asking it to, in the one
+   * spelling JavaScript reserves for exactly that question, should not need a named function.
+   *
+   * ```ts
+   * const doc = io.parseDocument('name: string, age: int
+---
+~ Alice, 30');
+   * String(doc);                       // 'name: string, age: int
+---
+~ Alice, 30'
+   * io.parseDocument(String(doc));     // the same document again
+   * ```
+   *
+   * **It throws when the document holds a failed record** (B3, `forbidden-error-node`) — a
+   * projection may describe errors, a file may not contain them. `stringifyDocument(doc,
+   * { skipErrors: true })` writes the records that validated. `console.log` is unaffected: it uses
+   * the inspector below, not this.
+   */
+  public toString(): string {
+    return stringifyDocument(this);
   }
 
   /**

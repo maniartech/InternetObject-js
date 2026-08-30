@@ -1,5 +1,6 @@
 import { toJSONValue } from '../utils/json-projection';
 import IOSection from "./section";
+import Revision, { stamp, touch } from './revision';
 
 /**
  * IOSectionCollection manages multiple IOSection instances within a document.
@@ -29,8 +30,24 @@ import IOSection from "./section";
  * ```
  */
 class IOSectionCollection<T = any> {
-  private _sections: Array<IOSection<T>> = [];
-  private _sectionNames: { [key: string]: number } = {};
+  private _sections!: Array<IOSection<T>>;
+  private _sectionNames!: { [key: string]: number };
+  /** The document's shared change counter, when somebody has subscribed (§8). @internal */
+  _revision?: Revision;
+
+  /**
+   * Internals are defined non-enumerable, the same way `IOObject`, `IOCollection` and `IODocument`
+   * define theirs. A class field is an own ENUMERABLE property under `useDefineForClassFields`, so
+   * every native protocol that walks own keys leaks them: `{ ...defs }` and `Object.keys(defs)`
+   * handed back `_definitions`, `_defaultSchema` and `_resolvingValues` where a caller expected the
+   * definitions themselves. `5af4829` fixed the other three classes and these two were missed.
+   */
+  constructor() {
+    const hidden = { writable: true, enumerable: false, configurable: true };
+    Object.defineProperty(this, '_sections', { value: [], ...hidden });
+    Object.defineProperty(this, '_sectionNames', { value: {}, ...hidden });
+    Object.defineProperty(this, '_revision', { value: undefined, ...hidden });
+  }
 
   public get sections(): Array<IOSection<T>> {
     return this._sections;
@@ -77,6 +94,8 @@ class IOSectionCollection<T = any> {
       this._sectionNames[section.name] = this._sections.length;
     }
     this._sections.push(section);
+    if (this._revision) stamp(section, this._revision);
+    touch(this);
   }
 
   /**

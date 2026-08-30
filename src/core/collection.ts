@@ -3,6 +3,7 @@ import IOObject from "./internet-object";
 import type Schema from '../schema/schema';
 import type Definitions from './definitions';
 import { adoptRecord } from './schema-hooks';
+import Revision, { stamp, touch } from './revision';
 
 /**
  * IOCollection is an ordered collection of items, accessed by method (get via `getAt(i)`).
@@ -43,6 +44,14 @@ class IOCollection<T = IOObject> {
   private _schema!: Schema | null;
   /** The definitions the schema was declared in — a member definition may name a variable. */
   private _schemaDefs!: Definitions | undefined;
+  /**
+   * The document's shared change counter, when somebody has subscribed (§8).
+   *
+   * Non-enumerable like every other internal, and `undefined` until `io.subscribe` stamps the
+   * tree — so a caller who never subscribes pays a null check per write and nothing else.
+   */
+  _revision?: Revision;
+
 
   /**
    * Constructs a new IOCollection instance.
@@ -58,6 +67,7 @@ class IOCollection<T = IOObject> {
     Object.defineProperty(this, 'errors', { value: [], writable: true, enumerable: false, configurable: false });
     Object.defineProperty(this, '_schema', { value: null, writable: true, enumerable: false, configurable: false });
     Object.defineProperty(this, '_schemaDefs', { value: undefined, writable: true, enumerable: false, configurable: false });
+    Object.defineProperty(this, '_revision', { value: undefined, writable: true, enumerable: false, configurable: true });
   }
 
   /**
@@ -128,7 +138,11 @@ class IOCollection<T = IOObject> {
    * pushed. A record that already carries this schema is left exactly as it is.
    */
   private adopt(item: T): T {
-    return adoptRecord(this._schema, item, this._schemaDefs) as T;
+    const adopted = adoptRecord(this._schema, item, this._schemaDefs) as T;
+    // A record inserted into a SUBSCRIBED collection has to start reporting its own writes, or the
+    // first thing a user adds is the one thing that silently does not notify.
+    if (this._revision) stamp(adopted, this._revision);
+    return adopted;
   }
 
   /**
@@ -141,6 +155,7 @@ class IOCollection<T = IOObject> {
     // the first two behind. `map` throws on the offending item with nothing yet written.
     const adopted = items.map((item) => this.adopt(item));
     this._items.push(...adopted);
+    touch(this);
     return this;
   }
 
@@ -174,6 +189,7 @@ class IOCollection<T = IOObject> {
     } else {
       this._items[index] = adopted;
     }
+    touch(this);
     return this;
   }
 
@@ -188,6 +204,7 @@ class IOCollection<T = IOObject> {
       throw new Error('Index out of range');
     }
     this._items.splice(index, 1);
+    touch(this);
     return this;
   }
 
@@ -290,6 +307,7 @@ class IOCollection<T = IOObject> {
   public insert(index: number, ...items: T[]): number {
     const adopted = items.map((item) => this.adopt(item));
     this._items.splice(index, 0, ...adopted);
+    touch(this);
     return this._items.length;
   }
 
@@ -298,7 +316,9 @@ class IOCollection<T = IOObject> {
    * @returns The removed item, or undefined if the IOCollection is empty.
    */
   public pop(): T | undefined {
-    return this._items.pop();
+    const popped = this._items.pop();
+    if (popped !== undefined) touch(this);
+    return popped;
   }
 
   /**
@@ -484,12 +504,14 @@ class IOCollection<T = IOObject> {
    */
   public sort(compare?: (a: T, b: T) => number): IOCollection<T> {
     this._items.sort(compare);
+    touch(this);
     return this;
   }
 
   /** Reverses IN PLACE and returns this collection, like `Array.prototype.reverse`. */
   public reverse(): IOCollection<T> {
     this._items.reverse();
+    touch(this);
     return this;
   }
 

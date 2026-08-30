@@ -41,6 +41,15 @@ taken before the first commit and re-verified after every one since. What change
 
 #### Added
 
+- **`io.subscribe(doc, fn)` and `io.version(doc)`** — notification, coalesced to a microtask, so
+  ten writes in one handler produce one call while the version moves on every write. `subscribe`
+  calls its listener with the current value and returns an unsubscribe, which *is* the Svelte store
+  contract; `version` is the snapshot `useSyncExternalStore` needs. One pair covers React, Svelte,
+  Vue and Solid, which is why there is no framework package. A document nobody has subscribed to
+  carries no counter, so the cost to everyone else is a null check per write.
+- **`String(doc)`** — the document as Internet Object text, where it used to be `"[object Object]"`.
+  It refuses a document holding a failed record, exactly as `stringifyDocument` does; `console.log`
+  is unaffected.
 - **Signature symmetry (§2.5).** Every entry point now takes `(input, defs?, sink?, options?)`:
   `load`, `loadObject`, `loadCollection`, `validate`, `validateObject`, `validateCollection`. The
   old shapes still work — a sink is an array or a function, so an options object in slot three
@@ -81,7 +90,9 @@ taken before the first commit and re-verified after every one since. What change
 - **`io.object.with(defs)` returned a different type from `` io.object`…` ``** — a plain object
   against an `IOObject`. Same tag, two contracts, decided by whether definitions were involved.
 - **Internals leaked through key walks.** `{ ...collection }` and `structuredClone(doc)` handed back
-  `_items` / `_header` instead of the data.
+  `_items` / `_header` instead of the data. `IOSectionCollection` and `IODefinitions` were missed the
+  first time and leaked `_sections`, `_sectionNames`, `_definitions`, `_defaultSchema` and
+  `_resolvingValues` until the notification work put a sixth field there and made it obvious.
 
 ### Repository cleanup
 

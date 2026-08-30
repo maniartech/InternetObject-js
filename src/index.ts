@@ -48,6 +48,7 @@ export type { ValidationResult } from './facade/validate';
 // The proxied document (A4) and the functional forms that cannot be shadowed
 export { proxyDocument, wrap as proxyValue, unwrap as ioNode, IO_NODE } from './proxy';
 export { section, sections, header, isError, node } from './facade/accessors';
+export { subscribe, version } from './facade/notify';
 
 // Streaming
 export { createStreamReader, createStreamWriter, createPushSource, BufferTransport } from './streaming';

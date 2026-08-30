@@ -232,6 +232,35 @@ Two more consequences:
 sink. **`io.schema.with(defs)` does not**, deliberately: schema compilation fails fast, so there is
 no partial schema to hand back and nothing a sink could change.
 
-## Still to come
+## 7. New: `String(doc)`, and telling a UI that something changed
 
-`io.subscribe` / `io.version`, and `String(doc)`.
+Neither breaks anything — they replace a default that told you nothing.
+
+```ts
+String(doc);   // the document as Internet Object text; it used to be "[object Object]"
+`${doc}`;      // the same
+```
+
+It throws when the document holds a failed record, exactly as `stringifyDocument` does (§3);
+`console.log` is unaffected, because that uses the inspector rather than `toString`.
+
+```ts
+const stop = io.subscribe(doc, (value) => render(value));   // returns an unsubscribe
+io.version(doc);                                            // a monotonic number
+```
+
+`subscribe(fn)` calling `fn(value)` and returning an unsubscribe **is** the Svelte store contract,
+so a document is already a Svelte store. React wants a snapshot instead, which is what `version` is
+for — and needs no package:
+
+```ts
+const useIO = (doc) => useSyncExternalStore(cb => io.subscribe(doc, cb), () => io.version(doc));
+```
+
+Ten writes in one handler produce **one** notification, coalesced to a microtask, while the version
+moves on every write — a render must not be able to miss an intermediate state. A document nobody
+has subscribed to has no counter at all, so the cost to code that never uses this is a null check
+per write.
+
+They are functions rather than `doc.version` and `doc.subscribe` deliberately: `version` is a very
+plausible section name, and property access on a document resolves data before methods.

@@ -1,6 +1,7 @@
 import type Schema from '../schema/schema';
 import type Definitions from './definitions';
 import { adoptRecord, validateMemberWrite } from './schema-hooks';
+import Revision, { touch } from './revision';
 import { toJSONValue } from '../utils/json-projection';
 
 /**
@@ -65,6 +66,14 @@ class IOObject<T = any> implements Iterable<[string | undefined, T]> {
    * different rule depending on when it was written.
    */
   private schemaDefs!: Definitions | undefined;
+  /**
+   * The document's shared change counter, when somebody has subscribed (§8).
+   *
+   * Non-enumerable like every other internal, and `undefined` until `io.subscribe` stamps the
+   * tree — so a caller who never subscribes pays a null check per write and nothing else.
+   */
+  _revision?: Revision;
+
   public errors: Error[] = [];
 
   constructor(o?: Record<string, T>) {
@@ -105,6 +114,12 @@ class IOObject<T = any> implements Iterable<[string | undefined, T]> {
       writable: true,
       enumerable: false,
       configurable: false
+    });
+    Object.defineProperty(this, '_revision', {
+      value: undefined,
+      writable: true,
+      enumerable: false,
+      configurable: true
     });
 
     if (o) {
@@ -343,6 +358,7 @@ class IOObject<T = any> implements Iterable<[string | undefined, T]> {
     // R7: data is stored ONLY in items/keyMap and accessed via get()/getAt() — no instance-property
     // sync. This makes access consistent (method-only) and frees `.errors`/`.length` and every method
     // name from ever colliding with a data key (so no reserved-name guard is needed).
+    touch(this);
     return this;
   }
 
@@ -371,6 +387,7 @@ class IOObject<T = any> implements Iterable<[string | undefined, T]> {
   this.items.push([undefined, item]);
       }
     }
+    touch(this);
   }
 
   /**
@@ -383,6 +400,7 @@ class IOObject<T = any> implements Iterable<[string | undefined, T]> {
    */
   pushValue(value: T): this {
     this.items.push([undefined, value]);
+    touch(this);
     return this;
   }
 
@@ -445,6 +463,7 @@ class IOObject<T = any> implements Iterable<[string | undefined, T]> {
     if (index !== undefined && this.items[index]) {
       this.items[index] = undefined;
       this.keyMap.delete(key);
+      touch(this);
       return true;
     }
     return false;

@@ -4,6 +4,7 @@ import ValidationError  from '../errors/io-validation-error';
 import TokenNode        from '../parser/nodes/tokens';
 import TokenType        from '../parser/tokenizer/token-types';
 import Schema           from '../schema/schema';
+import Revision, { touch } from './revision';
 
 /**
  * Represents a stored definition value with metadata.
@@ -54,12 +55,28 @@ class IODefinitions {
   /**
    * The default schema, if defined. Reset when $schema is deleted or updated.
    */
-  private _defaultSchema: Schema | null = null;
+  private _defaultSchema!: Schema | null;
 
   /**
    * Internal storage for definitions. Order is preserved as per insertion sequence.
    */
-  private _definitions: { [key: string]: IODefinitionValue } = {};
+  private _definitions!: { [key: string]: IODefinitionValue };
+
+  /**
+   * Internals are defined non-enumerable, the same way `IOObject`, `IOCollection` and `IODocument`
+   * define theirs. A class field is an own ENUMERABLE property under `useDefineForClassFields`, so
+   * every native protocol that walks own keys leaks them: `{ ...defs }` and `Object.keys(defs)`
+   * handed back `_definitions`, `_defaultSchema` and `_resolvingValues` where a caller expected the
+   * definitions themselves. `5af4829` fixed the other three classes and these two were missed.
+   */
+  constructor() {
+    const hidden = { writable: true, enumerable: false, configurable: true };
+    Object.defineProperty(this, '_defaultSchema', { value: null, ...hidden });
+    Object.defineProperty(this, '_definitions', { value: {}, ...hidden });
+    Object.defineProperty(this, '_resolvingValues', { value: new Set<string>(), ...hidden });
+    Object.defineProperty(this, '_revision', { value: undefined, ...hidden });
+  }
+
 
   /**
    * Returns the number of definitions in the collection.
@@ -251,7 +268,7 @@ class IODefinitions {
   }
 
   /** Variables being resolved right now, so a self-referential definition is reported, not recursed. */
-  private readonly _resolvingValues = new Set<string>();
+  private readonly _resolvingValues!: Set<string>;
 
   /**
    * Resolve a reference to its VALUE — the sibling of {@link getV}, which returns the stored
@@ -307,6 +324,9 @@ class IODefinitions {
     }
   }
 
+  /** The document's shared change counter, when somebody has subscribed (§8). @internal */
+  _revision?: Revision;
+
   public set(k: string, v: any) {
     const dv = {
       isSchema: k.startsWith("$"),
@@ -315,6 +335,7 @@ class IODefinitions {
     };
     this._definitions[k] = dv;
     this._defaultSchema = null;
+    touch(this);
   }
 
   /**

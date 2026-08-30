@@ -35,6 +35,25 @@ describe('native protocols', () => {
       expect(Object.keys(rec)).toEqual([]);
     });
 
+    it('a section collection exposes no private fields', () => {
+      // Missed by 5af4829, which fixed the other three classes: this one handed back `_sections`
+      // and `_sectionNames` from any key walk.
+      const sections: any = (parse('~ $s: {x: string}\n--- a: $s\n~ 1\n--- b: $s\n~ 2') as any).sections;
+      expect(Object.keys(sections)).toEqual([]);
+      expect(Object.keys({ ...sections })).toEqual([]);
+      expect(sections.length).toBe(2);                 // and the accessors still work
+      expect(sections.getAt(0).name).toBe('a');
+    });
+
+    it('definitions expose no private fields', () => {
+      // Likewise: `_definitions`, `_defaultSchema` and `_resolvingValues` were all enumerable.
+      const defs: any = (parse('~ $p: {a: string}\n~ @env: prod\n--- $p\n~ x') as any).header.definitions;
+      expect(Object.keys(defs)).toEqual([]);
+      expect(Object.keys({ ...defs })).toEqual([]);
+      expect(defs.keys).toEqual(['$p', '@env']);       // and the accessors still work
+      expect(defs.get('@env')).toBe('prod');
+    });
+
     it('errors stay publicly readable — non-enumerable is not private', () => {
       const doc: any = parse(DOC);
       expect(Array.isArray(doc.errors)).toBe(true);

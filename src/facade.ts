@@ -22,6 +22,7 @@ import { toObject, toJSON } from './facade/to-object';
 import { validate, validateCollection, validateObject } from './facade/validate';
 import registerTypes from './schema/types';
 import { header, isError, node, section, sections } from './facade/accessors';
+import { subscribe, version } from './facade/notify';
 
 registerTypes();
 
@@ -50,6 +51,11 @@ const io = {
   header,
   isError,
   node,
+
+  // Notification (§8). One pair satisfies React, Svelte, Vue and Solid, which is why there is no
+  // framework package.
+  subscribe,
+  version,
 
   // Streaming
   createStreamReader,
