@@ -21,6 +21,7 @@ import { createStreamWriter, createStreamReader } from './streaming';
 import { toObject, toJSON } from './facade/to-object';
 import { validate, validateCollection, validateObject } from './facade/validate';
 import registerTypes from './schema/types';
+import { header, isError, node, section, sections } from './facade/accessors';
 
 registerTypes();
 
@@ -40,6 +41,14 @@ const io = {
   validate,
   validateObject,
   validateCollection,
+
+  // The functional forms (A4). Property access is ergonomic and therefore shadowable; these are
+  // the reads that a section called `length` or a member called `get` cannot displace.
+  section,
+  sections,
+  header,
+  isError,
+  node,
 
   // Streaming
   createStreamReader,
