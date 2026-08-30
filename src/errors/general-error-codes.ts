@@ -10,7 +10,12 @@ enum GeneralErrorCodes {
   missingDefinitions = 'missing-definitions',
 
   // Present, but explicitly disallowed.
-  forbiddenNull = 'forbidden-null'
+  forbiddenNull = 'forbidden-null',
+
+  // A document holding a failed record was asked to serialize. A projection may DESCRIBE errors;
+  // a file must not CONTAIN them -- what it emitted instead was a JSON blob with a `__proto__`
+  // key that no parser reads back. `{ skipErrors: true }` writes the records that validated.
+  forbiddenErrorNode = 'forbidden-error-node'
 
   // NOTE: `expected-object` and `expected-array` used to live here, away from the seven other
   // `expected-*` codes. They now sit with the rest of the family in ValidationErrorCodes: a family

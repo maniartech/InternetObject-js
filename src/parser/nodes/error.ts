@@ -117,3 +117,14 @@ class ErrorNode implements Node {
 }
 
 export default ErrorNode;
+
+/**
+ * True for a failed record, in either shape it arrives in.
+ *
+ * The parse route embeds an `ErrorNode`; the load route embeds a plain `{ __error: true, … }`. Two
+ * shapes, one question — and code that checked for only one of them silently ignored the other,
+ * which is exactly how `skipErrors` came to have no effect on the serialization path.
+ */
+export function isErrorValue(value: any): boolean {
+  return value instanceof ErrorNode || !!(value && typeof value === 'object' && value.__error === true);
+}

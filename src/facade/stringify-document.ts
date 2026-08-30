@@ -13,6 +13,9 @@ import { IO_MARKERS, RESERVED_SECTION_NAMES, WILDCARD_KEY } from './serializatio
 import { formatObjectKey } from '../utils/string-formatter';
 import { formatRecord, formatCollection, createIndentString, FormatContext } from './io-formatter';
 import { toObject } from './to-object';
+import { isErrorValue } from '../parser/nodes/error';
+import ValidationError from '../errors/io-validation-error';
+import ErrorCodes from '../errors/io-error-codes';
 
 /**
  * Options for stringifying documents
@@ -346,8 +349,15 @@ function stringifySection(
   if (data instanceof Collection) {
     const lines: string[] = [];
     for (const item of data) {
-      if (options.skipErrors && item && typeof item === 'object' && (item as any).__error === true) {
-        continue;
+      if (isErrorValue(item)) {
+        // B3: a projection may describe errors; a file must not contain them. Without the throw
+        // this emitted a JSON blob -- `__proto__` key and all -- that no parser reads back, so a
+        // collected error became a corrupt file with nothing to signal it.
+        if (options.skipErrors) continue;
+        throw new ValidationError(
+          ErrorCodes.forbiddenErrorNode,
+          'Cannot serialize a document that holds a failed record. Fix it, or pass { skipErrors: true } to write only the records that validated.'
+        );
       }
       if (item instanceof InternetObject) {
         // Use formatter for smart formatting

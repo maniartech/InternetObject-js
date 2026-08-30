@@ -13,6 +13,9 @@ import { resolveSchema } from './resolve-schema';
 import { IO_MARKERS } from './serialization-constants';
 import { stringifyDocument } from './stringify-document';
 import { formatRecord, createIndentString, FormatContext } from './io-formatter';
+import { isErrorValue } from '../parser/nodes/error';
+import ValidationError from '../errors/io-validation-error';
+import ErrorCodes from '../errors/io-error-codes';
 
 /**
  * Stringify options for controlling output format.
@@ -404,20 +407,20 @@ export function stringifyCollection(
   const skipErrors = options?.skipErrors ?? false;
 
   for (const item of collection) {
-    // Skip error objects if requested
-    if (skipErrors && item && typeof item === 'object' && (item as any).__error === true) {
-      continue;
+    if (isErrorValue(item)) {
+      // B3, same rule as the document path: skip on request, refuse otherwise. What it used to do
+      // -- write `<error: …>` into the output -- is not Internet Object text and never parses back.
+      if (skipErrors) continue;
+      throw new ValidationError(
+        ErrorCodes.forbiddenErrorNode,
+        'Cannot serialize a collection that holds a failed record. Fix it, or pass { skipErrors: true } to write only the records that validated.'
+      );
     }
 
     if (item instanceof InternetObject) {
       parts.push(stringifyObject(item, schema, defs, options));
     } else {
-      // Handle error objects or other items
-      if (item && typeof item === 'object' && (item as any).__error === true) {
-        parts.push(`<error: ${(item as any).message}>`);
-      } else {
-        parts.push(JSON.stringify(item));
-      }
+      parts.push(JSON.stringify(item));
     }
   }
 

@@ -128,7 +128,7 @@ describe('High-level stringify() API', () => {
       expect(result).toBe('[]');
     });
 
-    it('includes error objects by default', () => {
+    it('refuses to serialize a failed record', () => {
       const obj = new InternetObject();
       obj.set('name', 'Alice');
 
@@ -141,10 +141,12 @@ describe('High-level stringify() API', () => {
       const collection = new Collection([obj, errorObj as any]);
       const defs = createDefsWithSchema('User', '{ name: string }');
 
-      const result = stringify(collection, defs);
-
-      expect(result).toContain('Alice');
-      expect(result).toContain('error');
+      // B3: a projection may DESCRIBE errors; a file must not CONTAIN them. This used to write
+      // `<error: Validation failed>` into the output -- not Internet Object text, and it never
+      // parsed back. `{ skipErrors: true }` is the escape, and it is the next test.
+      expect(() => stringify(collection, defs)).toThrow(
+        expect.objectContaining({ errorCode: 'forbidden-error-node' })
+      );
     });
 
     it('skips error objects when skipErrors is true', () => {
