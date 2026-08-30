@@ -84,14 +84,35 @@ name: string, age: int
 Alice, 30
 `;
 
-const doc = parse(text);
-console.log(doc.toObject());
+console.log(parse(text));
 // { name: 'Alice', age: 30 }
 ```
 
 **What happened?**
-- `parse()` reads the text and validates it against the embedded schema
-- `doc.toObject()` gives you a plain JavaScript object
+- `parse()` reads the text and validates it against the schema on the first line
+- what you get back is **plain JavaScript** — no wrapper, nothing to unwrap
+
+Values keep their real types: a `date` is a `Date`, a `decimal` a `Decimal`, a `bigint` a `BigInt`.
+Call `toJSON()` when you need the spelling JSON can carry.
+
+When you want the document *as* a document — sections, the header, validated writes, a round trip
+back to IO text — ask for it by name:
+
+```ts
+import { parseDocument } from 'internet-object';
+
+const doc = parseDocument(text);
+doc.data.name;          // 'Alice'
+doc.data.age = 31;      // validated against the schema; a bad value throws
+String(doc);            // back to IO text
+```
+
+| | `parse` | `parseDocument` |
+| --- | --- | --- |
+| Returns | plain objects and arrays | the document |
+| Crosses `structuredClone` / `postMessage` / RSC | ✅ | use `toObject()` |
+| Header, sections, round trip to IO text | — | ✅ |
+| Validated writes | — | ✅ |
 
 ### 2. Multiple records (a collection)
 
@@ -106,8 +127,7 @@ name: string, age: int
 ~ Carol, 28
 `;
 
-const doc = parse(text);
-console.log(doc.toObject());
+console.log(parse(text));
 // [{ name: 'Alice', age: 30 }, { name: 'Bob', age: 25 }, { name: 'Carol', age: 28 }]
 ```
 
@@ -131,7 +151,9 @@ const doc = io.doc`
 console.log(doc.toObject());
 ```
 
-This is handy for tests, fixtures, and quick prototyping.
+This is handy for tests, fixtures, and quick prototyping. An interpolated `${value}` is always
+written as a **value**, never spliced in as source, so `${'Smith, John'}` stays one string and
+`${'1,000'}` stays one thousand.
 
 ### 4. Create IO objects from JavaScript
 
@@ -233,7 +255,7 @@ console.log(stringify(doc));
 // Alice, 30
 ```
 
-This is the reverse of `parse()`. Round-trip: `parse()` → `toObject()` → `load()` → `stringify()`.
+This is the reverse of `parse()`. Round-trip: `parse()` → `load()` → `stringify()`.
 
 ### 8. Named schemas (reusable types)
 
@@ -302,19 +324,21 @@ in. Only `$schema` is applied to the data; other `$names` are there to be refere
 import { parse, parseDefinitions } from 'internet-object';
 
 const defs = parseDefinitions('~ $schema: { name: string, age: int }');
-const doc = parse('Alice, 30', defs);
-console.log(doc.toObject());
+console.log(parse('Alice, 30', defs));
 // { name: 'Alice', age: 30 }
 ```
 
 ### Collect errors instead of throwing
 
-Pass an array and `parse()` keeps going, reporting every problem it can rather than stopping at
-the first. Each error carries a stable `errorCode`, a message, and the row and column of the token.
+Pass an array — or a function — as the third argument and `parse()` keeps going, reporting every
+problem it can rather than stopping at the first. Each error carries a stable `errorCode`, a
+message, and the row and column of the token. **Whether you pass one is the whole choice**: with no
+sink the first error throws, and there is no `strict` option because there is nothing left for it
+to decide.
 
 ```ts
 const errors: Error[] = [];
-const doc = parse(text, defs, errors);
+const data = parse(text, defs, errors);
 
 for (const e of errors) console.error(e.errorCode, e.message);
 // invalid-email     Invalid email address: not-an-email     at 3:13

@@ -5,7 +5,71 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## Unreleased — repository cleanup
+## Unreleased
+
+Everything below lands together and has not been published. Four `## Unreleased` sections had
+stacked up above a `[0.3.0]` npm never received; they are one section now, newest first.
+
+### The public API (ADR 0005) — BREAKING
+
+The format did not change. The same text parses to the same values with the same errors at the same
+positions, checked against the conformance corpus and against a snapshot of all 1,396 corpus parses
+taken before the first commit and re-verified after every one since. What changed is the interface.
+
+**See [MIGRATION.md](./MIGRATION.md) for the upgrade path.**
+
+#### Breaking
+
+- **`parse()` returns plain JavaScript.** `parseDocument()` returns the document. `parse` is exactly
+  `parseDocument(...).toObject()`, and a test pins that equality.
+- **`IOObject.set()` validates**, on every path — the proxy, the streaming writer, and code holding
+  a node directly. A value a parse would reject is rejected here, with the code a parse would have
+  used. `setRaw()` is the internal write for code that has already validated.
+- **Inserting into a collection adopts the section's schema.** A plain object becomes a record; a
+  record missing a required member is refused. Adoption can replace the value, so read the record
+  back out of the collection rather than keeping the reference you pushed.
+- **Attaching a schema validates what is already there.** Atomic without a sink — it throws and
+  nothing is attached. With a sink it reports every mismatch and still changes nothing.
+- **Serializing a document that holds a failed record throws** `forbidden-error-node`.
+  `{ skipErrors: true }` writes the records that validated. `toObject()` and `toJSON()` still embed
+  error nodes, unchanged.
+- **`ParserOptions` is deleted** — all ten fields, all with zero read sites. **`strict` is deleted**
+  from the facade options; passing a sink is the same question. `LoadDocumentOptions.strict` and the
+  streaming reader's strict framing are different options and are untouched.
+- **An interpolated `${…}` in a template tag is written as a value**, never spliced in as source.
+  `${undefined}` used to contribute an empty string and vanish; it is now `N`.
+
+#### Added
+
+- `parseDocument(text, defs?, sink?)` — the proxied document. Sections, collections and records are
+  reachable by name and by index: `doc.sections.employees[0].name`, `doc.data[0].age = 31`.
+- `doc.data` — the section a document gets when it names none.
+- `io.section()`, `io.sections()`, `io.header()`, `io.isError()`, `io.node()` — the reads that
+  cannot be shadowed by data named like the API.
+- The rest of the array surface on `IOCollection`: `join`, `at`, `includes`, `indexOf`,
+  `lastIndexOf`, `slice`, `concat`, `flatMap`, `sort`, `reverse`, `toSorted`, `toReversed`.
+- `getAt(index)` on `IOSectionCollection` and `IODefinitions`, so every container spells positional
+  access the same way. `getTokenNode()` is `getV()` under a readable name.
+- The error sink accepts a **function** as well as an array, in the same third positional slot.
+- `npm run check:idioms` — the completeness gate for this change.
+- `npm run behaviour:capture` / `behaviour:verify` — replays every corpus input and fingerprints the
+  value model, every error code and position, and their order.
+
+#### Fixed
+
+- **Template interpolation corrupted ordinary data.** `` io.object`qty: ${'1,000'}` `` gave
+  `{qty: 1}`; `'Smith, John'` split into two members; `'12:30'` and a URL returned `null`. Six of
+  seven ordinary values were corrupted, and only `'Alice'` survived — which is why every example
+  anyone wrote passed.
+- **The error sink and `doc.getErrors()` reported different sets**, in both directions. A syntax
+  error reached `getErrors()` but not the sink, so `sink.length` could read `0` while the data held
+  an error node.
+- **`skipErrors` was ignored on the serialization path.** It looked for `{ __error: true }` while
+  the parse route embeds an `ErrorNode`, so it matched nothing on the path people take.
+- **Internals leaked through key walks.** `{ ...collection }` and `structuredClone(doc)` handed back
+  `_items` / `_header` instead of the data.
+
+### Repository cleanup
 
 Housekeeping ahead of the merge to `master`. **No library behavior changes.**
 
@@ -43,7 +107,7 @@ Housekeeping ahead of the merge to `master`. **No library behavior changes.**
 
 ---
 
-## Unreleased — BREAKING: error-code rename (ADR 0002)
+### BREAKING: error-code rename (ADR 0002)
 
 Every public `errorCode` string now follows `<predicate>-<subject>` — predicate first, drawn from a
 closed 13-word vocabulary. **This is a breaking change to the `errorCode` strings**, taken pre-1.0
@@ -95,7 +159,7 @@ Behaviour changes that came with it:
 
 See `docs/decisions/0002-error-code-grammar-and-taxonomy.md` for the full registry and rationale.
 
-## Unreleased — review findings (ADR 0003)
+### Review findings (ADR 0003)
 
 Four codes added and one renamed, from a five-reviewer read of the specification. Each addition
 lands **with an emitting site**, per ADR 0002 §5.
@@ -278,10 +342,10 @@ MINOR bump under 0.x semantics rather than a patch.
 - Zero runtime dependencies
 - Node.js 18+ support
 
-## [Unreleased]
+## Planned
 
-### Planned
-
+- `load(data, defs?, sink?, options?)` and `validate(data, defs?, sink?, options?)` — the same four
+  slots as `parse`, and `.with(defs, sink)` on all four template tags (ADR 0005 §2.5).
 - Additional type constraints
 - Custom type definitions
 - Performance optimizations
