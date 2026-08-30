@@ -26,6 +26,7 @@ import InternetObject from '../../src/core/internet-object';
  */
 
 const SCHEMA = '~ $schema: {name?: string, age?: int, email?: email, city?: string}';
+const OPEN_SCHEMA = '~ $schema: {name?: string, age?: int, email?: email, city?: string, *}';
 const OPEN = '~ $schema: {name?: string, age?: int, *}';
 
 /** The member names, in the order the object actually holds them. */
@@ -215,12 +216,24 @@ describe('members sit where the schema puts them', () => {
     });
 
     it('applySchemaOrder() puts extras after the declared members', () => {
+      // The extra has to be one the schema PERMITS. B4 made attaching a check, so a closed schema
+      // now refuses an object carrying a member it does not declare -- which is the same
+      // `unknown-member` a parse of that text would raise.
       const o = new InternetObject();
       o.set('zzz', 1);
       o.set('city', 'NYC');
       o.set('name', 'Alice');
-      o.attachSchema(schemaOf(SCHEMA)).applySchemaOrder();
+      o.attachSchema(schemaOf(OPEN_SCHEMA)).applySchemaOrder();
       expect(order(o)).toEqual(['name', 'city', 'zzz']);
+    });
+
+    it('and a closed schema refuses an object that carries an undeclared member', () => {
+      const o = new InternetObject();
+      o.set('zzz', 1);
+      expect(() => o.attachSchema(schemaOf(SCHEMA))).toThrow(
+        expect.objectContaining({ errorCode: 'unknown-member' })
+      );
+      expect(o.getSchema()).toBeNull();     // atomic: nothing attached
     });
 
     it('detaching stops the rule without undoing what it already did', () => {

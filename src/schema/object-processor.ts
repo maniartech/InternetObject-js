@@ -46,7 +46,7 @@ function _processObject(
   // the parsed object kept document order while the identical data loaded from JavaScript kept
   // schema order -- so `getAt(1)` meant two different things depending on where the value came
   // from.
-  o.attachSchema(schema);
+  o.declareSchema(schema, defs);
   let positional = true;
   const processedNames = new Set<string>();
 

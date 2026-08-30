@@ -1,6 +1,6 @@
 import type Schema from '../schema/schema';
 import type Definitions from './definitions';
-import { validateMemberWrite } from './schema-hooks';
+import { adoptRecord, validateMemberWrite } from './schema-hooks';
 import { toJSONValue } from '../utils/json-projection';
 
 /**
@@ -118,11 +118,20 @@ class IOObject<T = any> implements Iterable<[string | undefined, T]> {
   }
 
   /**
-   * Declares this object's shape.
+   * Declares this object's shape — **checking the members already present** (B4).
    *
-   * Attaching is all this does. It does NOT touch the members already present -- reordering an
-   * existing object is {@link applySchemaOrder}, which a caller makes deliberately. What attaching
-   * changes is every write from here on:
+   * ```ts
+   * rec.attachSchema(person);              // throws if rec does not satisfy it; nothing changed
+   * rec.attachSchema(person, defs, sink);  // reports every mismatch instead; nothing changed
+   * ```
+   *
+   * Atomic without a sink: either the shape is on and the data satisfies it, or the object is
+   * untouched. With a sink it is a **check** — *"does this object satisfy that schema?"* — which is
+   * a capability worth having rather than a side effect. Either way a schema-bearing object never
+   * comes to hold data its own schema forbids, which is the whole point of the invariant.
+   *
+   * On success the members are re-stored with the values the schema **coerces** them to, and put in
+   * the order it declares:
    *
    * > **A member the schema declares is placed at the position the schema declares it, whatever
    * > order it arrives in. A member the schema does not declare -- the extras an open (`*`) schema
@@ -131,10 +140,70 @@ class IOObject<T = any> implements Iterable<[string | undefined, T]> {
    * That is what makes `getAt(i)` mean the same thing however the object was built: parsed from
    * text, loaded from JavaScript, or assembled one `set()` at a time.
    *
+   * An EMPTY object is attached without a check — there is nothing to check, and this is the shape
+   * the parser and loader declare before they fill it.
+   *
    * Passing `null` detaches the shape. It does not restore a previous order -- there is nothing to
    * restore to -- it only stops the rule applying to later writes.
+   *
+   * @throws {ValidationError} Without a sink, when a member does not satisfy the schema.
    */
-  attachSchema(schema: Schema | null, defs?: Definitions): this {
+  attachSchema(schema: Schema | null, defs?: Definitions, sink?: Error[]): this {
+    if (schema && !this.isEmpty()) {
+      // B4: attaching is the fifth way data could enter a schema-bearing document unchecked, and
+      // it is the only one that can find a whole object already wrong. Rare and deliberate, so the
+      // full check is affordable.
+      try {
+        const adopted = adoptRecord(schema, this, defs);
+        if (adopted instanceof IOObject && adopted !== this) {
+          // Take the values the LOAD produced, not merely its verdict -- a default the schema
+          // supplies is part of the record it describes, and an object that passed the check
+          // without it would not match the schema it now carries.
+          //
+          // But keep the ORDER the object already had. Attaching declares a shape; it does not
+          // rearrange what is already there -- `applySchemaOrder()` is the deliberate step for
+          // that, and a setter that silently reorders an object somebody just handed you is a
+          // surprise. Only members the schema *supplied* (a default) are new, and they append.
+          const checked = new Map<string, any>();
+          adopted.forEach((value: any, key: string | undefined, index: number) => {
+            checked.set(key ?? String(index), value);
+          });
+          const held: string[] = [];
+          this.forEach((_value: any, key: string | undefined, index: number) => {
+            held.push(key ?? String(index));
+          });
+          this.clear();
+          for (const key of held) {
+            if (checked.has(key)) {
+              this.setRaw(key, checked.get(key));
+              checked.delete(key);
+            }
+          }
+          for (const [key, value] of checked) this.setRaw(key, value);
+          return this.declareSchema(schema, defs);
+        }
+      } catch (error) {
+        // Atomic without a sink: either the shape is on and the data satisfies it, or nothing
+        // changed. With a sink it is a CHECK -- every error is reported and the object is left
+        // exactly as it was, so a schema-bearing object never comes to hold data it forbids.
+        if (!sink) throw error;
+        sink.push(error as Error);
+        return this;
+      }
+    }
+    return this.declareSchema(schema, defs);
+  }
+
+  /**
+   * Declares the shape without checking the members already present. **Internal.**
+   *
+   * The parser and the loader attach to an object they are *about* to fill, member by member,
+   * validating as they go — checking it here would fail on an empty object with required members,
+   * and would validate every parsed record twice besides.
+   *
+   * @internal
+   */
+  declareSchema(schema: Schema | null, defs?: Definitions): this {
     this.schema = schema ?? null;
     this.schemaDefs = schema ? defs : undefined;
     this.schemaOrder = schema

@@ -61,15 +61,54 @@ class IOCollection<T = IOObject> {
   }
 
   /**
-   * Declares the shape every record in this collection has (B2).
+   * Declares the shape every record in this collection has — **checking the records already held**
+   * (B4).
    *
-   * Set by the parser and the loader from the section's schema. It does **not** re-check the
-   * records already held — those came through the parse or load path and were checked there — it
-   * governs everything inserted from here on.
+   * ```ts
+   * rows.attachSchema(person);              // throws on the first record that does not fit
+   * rows.attachSchema(person, defs, sink);  // reports every one instead; nothing is attached
+   * ```
+   *
+   * Atomic without a sink: either the shape is on and every record satisfies it, or the collection
+   * is untouched. With a sink it is a **check** — *"do these records satisfy that schema?"* — and
+   * still changes nothing, so a schema-bearing collection never comes to hold records it forbids.
+   *
+   * On success the records are replaced by the validated ones, exactly as an insertion
+   * would produce them.
+   *
+   * @throws {ValidationError} Without a sink, when a record does not satisfy the schema.
+   */
+  public attachSchema(schema: Schema | null, defs?: Definitions, sink?: Error[]): this {
+    if (schema && this._items.length > 0) {
+      const checked: T[] = [];
+      const failures: Error[] = [];
+      for (const item of this._items) {
+        try {
+          checked.push(adoptRecord(schema, item, defs) as T);
+        } catch (error) {
+          failures.push(error as Error);
+          if (!sink) break;              // without a sink the first failure is the whole answer
+        }
+      }
+      if (failures.length > 0) {
+        if (!sink) throw failures[0];
+        sink.push(...failures);
+        return this;
+      }
+      this._items = checked;
+    }
+    return this.declareSchema(schema, defs);
+  }
+
+  /**
+   * Declares the shape without checking the records already held. **Internal.**
+   *
+   * The parser and the loader validate each record as they build it and attach afterwards;
+   * checking here would validate every parsed row a second time.
    *
    * @internal
    */
-  public attachSchema(schema: Schema | null, defs?: Definitions): this {
+  public declareSchema(schema: Schema | null, defs?: Definitions): this {
     this._schema = schema ?? null;
     this._schemaDefs = schema ? defs : undefined;
     return this;

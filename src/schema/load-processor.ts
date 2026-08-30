@@ -72,7 +72,7 @@ function _loadObject(data: any, schema: Schema, defs?: Definitions): InternetObj
   // the order the data happened to arrive in. The loop below already walks `schema.names`, so
   // nothing moves here today -- it is later writes, and the parse route, that need the rule to
   // exist at all.
-  result.attachSchema(schema);
+  result.declareSchema(schema, defs);
   const processedNames = new Set<string>();
 
   // Process schema-defined members
@@ -244,7 +244,7 @@ export function loadCollection(
 
   // B2: attached AFTER the loop, for the same reason as the parse route -- these records were
   // validated by `loadObject` on the way in, and only later insertions need checking.
-  collection.attachSchema(schema as Schema, defs);
+  collection.declareSchema(schema as Schema, defs);
 
   return collection;
 }

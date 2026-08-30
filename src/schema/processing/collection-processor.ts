@@ -97,7 +97,7 @@ export default function processCollection(
 
   // B2: attached AFTER the loop, so the records just built -- already validated by
   // `processObject` -- are not re-checked on their way in. From here on every insertion is.
-  collection.attachSchema(resolvedSchema, defs);
+  collection.declareSchema(resolvedSchema, defs);
 
   return collection;
 }
