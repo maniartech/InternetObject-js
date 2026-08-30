@@ -117,6 +117,8 @@
     "corpus:bootstrap": "tsx tools/corpus/bootstrap-csv.ts",
     "corpus:both": "tsx tools/corpus/verify-both.ts",
     "corpus:tokens": "tsx tools/corpus/verify-bootstrap.ts",
+    "behaviour:capture": "tsx tools/behaviour/snapshot.ts --capture",
+    "behaviour:verify": "tsx tools/behaviour/snapshot.ts --verify",
     "fuzz:triage": "tsx tools/fuzz/triage.ts",
     "verify:package": "node scripts/verify-package.mjs",
     "security:audit": "bash scripts/security-audit.sh",
