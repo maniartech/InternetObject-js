@@ -12,52 +12,7 @@ import MemberDef          from './types/memberdef';
 import { processMember }  from './processing/member-processor';
 import { ProcessingContext } from './processing/processing-context';
 import { undeclaredMemberDef } from './utils/member-utils';
-
-/**
- * Resolves variable references in memberDef fields like default, min, max, choices.
- * Variables are strings starting with @ that reference definitions.
- */
-function _resolveMemberDefVariables(memberDef: MemberDef, defs?: Definitions): MemberDef {
-  if (!memberDef || !defs) return memberDef;
-
-  const resolved = { ...memberDef };
-
-  // Resolve default value if it's a variable reference
-  if (typeof resolved.default === 'string' && resolved.default.startsWith('@')) {
-    resolved.default = defs.getV(resolved.default);
-    // Unwrap TokenNode if needed
-    if (resolved.default instanceof TokenNode) {
-      resolved.default = resolved.default.value;
-    }
-  }
-
-  // Resolve choices if they contain variable references
-  if (Array.isArray(resolved.choices)) {
-    resolved.choices = resolved.choices.map(choice => {
-      if (typeof choice === 'string' && choice.startsWith('@')) {
-        let resolved = defs.getV(choice);
-        return resolved instanceof TokenNode ? resolved.value : resolved;
-      }
-      return choice;
-    });
-  }
-
-  // Resolve min/max if they're variable references
-  if (typeof resolved.min === 'string' && resolved.min.startsWith('@')) {
-    resolved.min = defs.getV(resolved.min);
-    if (resolved.min instanceof TokenNode) {
-      resolved.min = resolved.min.value;
-    }
-  }
-  if (typeof resolved.max === 'string' && resolved.max.startsWith('@')) {
-    resolved.max = defs.getV(resolved.max);
-    if (resolved.max instanceof TokenNode) {
-      resolved.max = resolved.max.value;
-    }
-  }
-
-  return resolved;
-}
+import resolveMemberDefVariables from './resolve-member-vars';
 
 export default function processObject(
   data: ObjectNode,
@@ -125,7 +80,7 @@ function _processObject(
       if (name === '*') continue;
       if (processedNames.has(name)) continue;
 
-      const memberDef = _resolveMemberDefVariables(schema.defs[name], defs);
+      const memberDef = resolveMemberDefVariables(schema.defs[name], defs);
       const member = lookupInData
         ? data.children.find((m) => (m as any).key?.value === name)
         : undefined;
@@ -158,7 +113,7 @@ function _processObject(
     // `key.value !== names[0]` comparison, so a numeric key never matches a string member name.
     if (firstMember?.key && !schema.names.includes(firstMember.key.value as unknown as string)) {
       const name = schema.names[0];
-      const memberDef = _resolveMemberDefVariables(schema.defs[name], defs);
+      const memberDef = resolveMemberDefVariables(schema.defs[name], defs);
       // Create a synthetic member with the entire data ObjectNode as its value
       const syntheticMember = { key: null, value: data } as any;
       try {
@@ -190,7 +145,7 @@ function _processObject(
   for (; i<schema.names.length; i++) {
     let member = data.children[i] as MemberNode;
     let name = schema.names[i];
-    let memberDef = _resolveMemberDefVariables(schema.defs[name], defs);
+    let memberDef = resolveMemberDefVariables(schema.defs[name], defs);
 
     if (member) {
       if (member.key) {
@@ -284,7 +239,7 @@ function _processObject(
     }
 
     let name = member.key.value as string;
-    let memberDef = _resolveMemberDefVariables(schema.defs[name], defs);
+    let memberDef = resolveMemberDefVariables(schema.defs[name], defs);
 
     if (processedNames.has(name)) {
       // Syntax error - throw immediately
