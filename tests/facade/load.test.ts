@@ -132,7 +132,7 @@ describe('loadObject() API', () => {
   describe('Overload 3: loadObject(data, options) - Schema-less with Options', () => {
     it('loads object with options but no validation', () => {
       const data = { name: 'Alice', age: 28 };
-      const options: LoadObjectOptions = { strict: true };
+      const options: LoadObjectOptions = {};
       const result = loadObject(data, options);
 
       expect(result).toBeInstanceOf(InternetObject);
@@ -191,12 +191,14 @@ describe('loadObject() API', () => {
       expect(errors).toHaveLength(1);
     });
 
-    it('strict mode throws on first error', () => {
+    it('throws on the first error', () => {
+      // This used to pass `{ strict: true }` and was named for it, but loadObject throws by
+      // default -- the option was a documented no-op (ADR 0001) and the assertion never depended
+      // on it. A3 removed the option; the behaviour it appeared to test is unchanged.
       const defs = createDefs('~ $schema: { name: string, age: int }');
       const data = { name: 'Alice', age: 'not-a-number' };
 
-      expect(() => loadObject(data, defs, { strict: true }))
-        .toThrow(ValidationError);
+      expect(() => loadObject(data, defs)).toThrow(ValidationError);
     });
 
     it('uses schemaName over defaultSchema', () => {
@@ -291,7 +293,7 @@ describe('loadCollection() API', () => {
       const data = [
         { name: 'Alice', anything: 'goes' }
       ];
-      const result = loadCollection(data, { strict: true });
+      const result = loadCollection(data, {});
 
       expect(result).toBeInstanceOf(Collection);
       expect(result.length).toBe(1);
@@ -393,7 +395,7 @@ describe('load() API', () => {
   describe('Overload 3: load(data, options) - Schema-less with Options', () => {
     it('creates Document with options', () => {
       const data = { name: 'Alice' };
-      const doc = load(data, { strict: true });
+      const doc = load(data, {});
 
       expect(doc).toBeInstanceOf(Document);
     });
@@ -499,9 +501,9 @@ describe('loadInferred() API', () => {
   // Overload 2: loadInferred(data, options)
   // -------------------------------------------------------------------------
   describe('Overload 2: loadInferred(data, options) - With Options', () => {
-    it('accepts strict option', () => {
+    it('accepts an options object', () => {
       const data = { name: 'Alice', age: 28 };
-      const doc = loadInferred(data, { strict: true });
+      const doc = loadInferred(data, {});
 
       expect(doc).toBeInstanceOf(Document);
     });

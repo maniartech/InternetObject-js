@@ -18,7 +18,6 @@ import DocumentNode from './nodes/document';
 import MemberNode from './nodes/members';
 import ObjectNode from './nodes/objects';
 import TokenNode from './nodes/tokens';
-import ParserOptions from './parser-options';
 import Node from './nodes/nodes';
 import ErrorNode from './nodes/error';
 
@@ -42,43 +41,24 @@ import ErrorNode from './nodes/error';
  * const doc = parse('Alice, 20', defs);
  * ```
  */
-export default function parse(source: string, options?: ParserOptions): Document;
-export default function parse(source: string, defs?: Definitions | null, options?: ParserOptions): Document;
-export default function parse(source: string, defs?: Definitions | Schema | string | null, errorCollector?: Error[], options?: ParserOptions): Document;
+export default function parse(source: string, defs?: Definitions | null): Document;
+export default function parse(source: string, defs?: Definitions | Schema | string | null, errorCollector?: Error[]): Document;
 export default function parse(
   source: string,
-  defs?: Definitions | Schema | string | null | ParserOptions,
-  errorCollector?: Error[] | ParserOptions,
-  options?: ParserOptions
+  defs?: Definitions | Schema | string | null,
+  errorCollector?: Error[]
 ): Document {
   let externalDefs: Definitions | null = null;
   let schema: Schema | string | null = null;
-  let o: ParserOptions = options || new ParserOptions();
 
-  // Argument shifting for backward compatibility
-  // If 2nd arg is ParserOptions (legacy call: parse(source, options))
-  if (defs && !(defs instanceof Definitions) && typeof defs === 'object' && 'continueOnError' in defs) {
-    o = defs as ParserOptions;
-    externalDefs = null;
-  }
-  // If 2nd arg is Definitions (legacy call: parse(source, defs, options))
-  else if (defs instanceof Definitions) {
+  // A3 (ADR 0005): `ParserOptions` is gone. All ten of its fields had zero read sites -- the
+  // instance built here was never consulted -- and `continueOnError` existed only as a type
+  // discriminator for an overload that configured nothing. A public type that silently does
+  // nothing is worse than a missing feature.
+  if (defs instanceof Definitions) {
     externalDefs = defs;
-    // If 3rd arg is ParserOptions
-    if (errorCollector && !Array.isArray(errorCollector) && typeof errorCollector === 'object') {
-      o = errorCollector as ParserOptions;
-      errorCollector = undefined;
-    }
-  }
-  // If 2nd arg is Schema or string (new call: parse(source, schema, ...))
-  else if (defs instanceof Schema || typeof defs === 'string') {
+  } else if (defs instanceof Schema || typeof defs === 'string') {
     schema = defs;
-  }
-
-  // If 3rd arg is ParserOptions (legacy call: parse(source, defs, options))
-  if (errorCollector && !Array.isArray(errorCollector) && typeof errorCollector === 'object') {
-    o = errorCollector as ParserOptions;
-    errorCollector = undefined;
   }
 
   // Tokenize the source

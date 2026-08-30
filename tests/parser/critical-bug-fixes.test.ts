@@ -1,6 +1,5 @@
 import parse          from '../../src/parser/index';
 import io             from '../../src/parser/io';
-import ParserOptions  from '../../src/parser/parser-options';
 
 describe('Critical Bug Fixes - Task 1', () => {
 
@@ -106,74 +105,11 @@ name: Test
     });
   });
 
-  describe('Fix 3: ParserOptions constructor', () => {
-    it('should create ParserOptions with default values', () => {
-      const options = new ParserOptions();
-
-      expect(options.continueOnError).toBe(false);
-      expect(options.allowEmptyRecords).toBe(false);
-      expect(options.numberOfSections).toBe(0);
-      expect(options.headerOnly).toBe(false);
-      expect(options.dataOnly).toBe(false);
-      expect(options.skipEmptyLines).toBe(false);
-      expect(options.allowVariables).toBe(false);
-      expect(options.trueTokens).toEqual(['true', 'T']);
-      expect(options.falseTokens).toEqual(['false', 'F']);
-    });
-
-    it('should create ParserOptions with partial options', () => {
-      const options = new ParserOptions({
-        continueOnError: true,
-        allowEmptyRecords: true,
-        numberOfSections: 5
-      });
-
-      expect(options.continueOnError).toBe(true);
-      expect(options.allowEmptyRecords).toBe(true);
-      expect(options.numberOfSections).toBe(5);
-      // Other options should have default values
-      expect(options.headerOnly).toBe(false);
-      expect(options.dataOnly).toBe(false);
-    });
-
-    it('should create ParserOptions with all options specified', () => {
-      const options = new ParserOptions({
-        continueOnError: true,
-        allowEmptyRecords: true,
-        numberOfSections: 10,
-        headerOnly: true,
-        dataOnly: false,
-        skipEmptyLines: true,
-        allowVariables: true,
-        trueTokens: ['yes', 'Y'],
-        falseTokens: ['no', 'N']
-      });
-
-      expect(options.continueOnError).toBe(true);
-      expect(options.allowEmptyRecords).toBe(true);
-      expect(options.numberOfSections).toBe(10);
-      expect(options.headerOnly).toBe(true);
-      expect(options.dataOnly).toBe(false);
-      expect(options.skipEmptyLines).toBe(true);
-      expect(options.allowVariables).toBe(true);
-      expect(options.trueTokens).toEqual(['yes', 'Y']);
-      expect(options.falseTokens).toEqual(['no', 'N']);
-    });
-
-    it('should work with parse function', () => {
-      const options = new ParserOptions({
-        continueOnError: true,
-        allowEmptyRecords: true
-      });
-
-      const source = 'name: John, age: 25';
-
-      expect(() => {
-        const result = parse(source, null, options);
-        expect(result).toBeDefined();
-      }).not.toThrow();
-    });
-  });
+  // REMOVED by A3 (ADR 0005): 'Fix 3: ParserOptions constructor' verified that a type with ten
+  // fields and ZERO read sites could be constructed and hold its defaults. It passed for years while
+  // configuring nothing -- `parse` built a ParserOptions and never consulted it. The type is gone;
+  // there is nothing left to test. The parse calls that used it are kept below without it, since
+  // what they actually exercised was ordinary parsing.
 
   describe('Fix 4: Added null checks', () => {
     it('should handle null/undefined members in ObjectNode.toObject', () => {
@@ -233,13 +169,8 @@ age: 25,
 city: @defaultCity
 `;
 
-      const options = new ParserOptions({
-        continueOnError: true,
-        allowVariables: true
-      });
-
       expect(() => {
-        const result = parse(source, null, options);
+        const result = parse(source, null);
         expect(result).toBeDefined();
         expect(result.header.definitions).toBeDefined();
         expect(result.sections?.length).toBeGreaterThan(0);

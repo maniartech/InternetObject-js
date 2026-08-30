@@ -7,6 +7,11 @@
  * and adds serialization-only fields. See io-test-cases/RECOMMENDATIONS.md (R8).
  */
 export interface IOCommonOptions {
+  // `strict` was removed here by A3 (ADR 0005). It meant fail-fast vs collect-all, which is already
+  // answered by whether a sink was passed, and it had been a documented no-op on every one of these
+  // APIs since ADR 0001. `LoadDocumentOptions.strict` is a DIFFERENT option that genuinely works and
+  // is untouched, as is the streaming reader's strict framing (ADR 0001 §7).
+
   /**
    * The name of the schema to use from definitions.
    * If provided, the schema is looked up by this name in the definitions.
@@ -19,19 +24,6 @@ export interface IOCommonOptions {
    * ```
    */
   schemaName?: string;
-
-  /**
-   * When true, throws on first validation error.
-   * When false (default), continues processing and collects errors.
-   * @default false
-   * @remarks PARKED / not fully wired. Honored by `loadDocument` only; on `load`/`loadObject`/
-   * `loadCollection`/`loadInferred` it is currently a no-op — an object load throws by default
-   * regardless. To be wired to spec semantics (collect-all default / fail-fast; see spec
-   * `the-collections/collection.md:131`) when un-parked. Deferred to a future version by
-   * ADR 0001, deferring strict validation mode, has the full plan — decision record kept with the maintainers (not shipped). See also
-   * io-test-cases/RECOMMENDATIONS.md (R3/R4/R5).
-   */
-  strict?: boolean;
 
   /**
    * Array to collect validation errors instead of throwing.
