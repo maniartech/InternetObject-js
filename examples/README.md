@@ -39,6 +39,8 @@ Take them in order the first time. Each one assumes only what came before it.
 | 13 | Template literals | Write Internet Object inline in your code, with editor support. |
 | 14 | Streaming | Read records as they arrive, without holding the whole document. |
 | 15 | **The kitchen sink** | Everything above in one file — including header edits and the projection rule. |
+| 16 | `parse` or `parseDocument`? | Two entry points, one parser. Which to take, and the reads that cannot be shadowed. |
+| 17 | Validated writes | A document that cannot hold invalid data — at write, at insert, at attach. |
 
 In a hurry? **Example 15 is the kitchen sink** — every concept in one runnable file.
 
@@ -56,12 +58,20 @@ and write code against exactly that:
 
 ## One thing worth knowing up front
 
-Most examples call `toObject()` to print a result, which can make it look required. It is not.
+There are two entry points, and the difference is the first thing to get straight — **example 16**
+is about exactly this.
 
-`parse()` and `load()` return a **document** you can read directly — `get`, `getAt`, `map`,
-`filter`, `for..of`. `toObject()` is a *conversion* for handing data to other code, and
-`toJSON()` is a conversion for sending it somewhere else. Use them at the boundary, not as a
-first move.
+`parse()` gives you **plain JavaScript**: no wrapper, nothing to unwrap, and it survives
+`structuredClone`, a worker boundary, or a React Server Component. Take it unless you need something
+it does not carry.
+
+`parseDocument()` gives you the **document** — sections, the header, writes that are validated
+against the schema, and a round trip back to Internet Object text. It reads by name and by index
+(`doc.data[0].name`, `doc.sections.employees[1].age`).
+
+`toObject()` and `toJSON()` are conversions for a boundary — `toJSON()` for the wire, where a `Date`
+has to become a string. They are not a toll you pay to use the language: a document works with
+`for..of`, spread, `console.log` and `JSON.stringify` as it is.
 
 ## How to read an example
 

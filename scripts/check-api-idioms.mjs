@@ -103,6 +103,7 @@ const ALLOW = [
   { path: 'scripts/check-api-idioms.mjs', rules: '*', why: 'the rules themselves' },
   { path: 'tools/behaviour', rules: ['projection-ceremony'], why: 'the snapshot replays the corpus below the public API on purpose' },
   { path: 'src/proxy/index.ts', rules: ['five-hop-read'], why: 'its header shows the read it replaces, before and after' },
+  { path: 'examples/16-parse-or-document', rules: ['projection-ceremony'], why: 'its subject IS the two entry points, and it shows that parse equals the long form' },
   { path: 'examples/10-core-classes', rules: ['five-hop-read'], why: 'this example teaches the core CLASSES; the method layer is its subject' },
   { path: 'src/core/collection.ts', rules: ['spread-to-array'], why: 'quotes the idiom it retired, to say why the methods exist' },
   { path: 'src/core/internet-object.ts', rules: ['spread-to-array'], why: 'ordinary array work on an ordinary array, with no collection in sight' },
