@@ -1,4 +1,5 @@
 import { loadInferred } from '../../src/facade/load-inferred';
+import { isErrorValue } from '../../src/parser/nodes/error';
 import { stringifyDocument } from '../../src/facade/stringify-document';
 import parse from '../../src/parser/index';
 import Decimal from '../../src/core/decimal/decimal';
@@ -123,11 +124,27 @@ function isRecordish(v: any): boolean {
 
 const brief = (s: string, n = 220) => (s.length > n ? s.slice(0, n) + ' …' : s);
 
+/** The error codes of any failed records a document holds, in order. Empty for a clean document. */
+function failedRecords(doc: any): string[] {
+  const codes: string[] = [];
+  const sections = doc?.sections;
+  for (let i = 0; i < (sections?.length ?? 0); i++) {
+    const data = sections.getAt(i)?.data;
+    if (!data || typeof data[Symbol.iterator] !== 'function') continue;
+    for (const item of data as Iterable<any>) {
+      if (isErrorValue(item)) codes.push(item?.errorCode ?? item?.error?.errorCode ?? 'uncoded');
+    }
+  }
+  return codes;
+}
+
 /**
  * Run every property against one generated value. Returns [] when the value is clean.
  *
  * Properties, in the order a failure would cascade:
  *  1. inference does not throw
+ *  1a. inference produces no error node -- a document holding a failed record is a defect where
+ *      it was BUILT, and saying so there beats reporting it at the step that catches it
  *  2. serialization does not throw
  *  3. the emitted document re-parses with zero errors  -- output must be readable at all
  *  4. SHAPE survives   -- an array stays an array, an object stays an object
@@ -143,6 +160,17 @@ export function checkValue(value: any): Failure[] {
       doc = loadInferred(value);
     } catch (e: any) {
       failures.push({ property: 'infer-does-not-throw', mode: label, detail: brief(String(e?.message ?? e)) });
+      continue;
+    }
+
+    // Inference must not produce a document that holds a FAILED record. Since B3 (ADR 0005)
+    // serialization refuses such a document, so without this check the failure would be reported
+    // against `stringify` -- naming the step that caught the fault rather than the one that
+    // committed it. Before B3 the same input surfaced one step later still, as `output-reparses`:
+    // the error blob went into the text and came back as something else.
+    const embedded = failedRecords(doc);
+    if (embedded.length > 0) {
+      failures.push({ property: 'infer-produces-no-error-node', mode: label, detail: brief(embedded.join(', ')) });
       continue;
     }
 
