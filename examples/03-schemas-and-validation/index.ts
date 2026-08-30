@@ -3,7 +3,7 @@
  *
  * Run me:  npx tsx examples/03-schemas-and-validation/index.ts
  */
-import { parseDocument } from '../../src/index';
+import { parse, parseDocument } from '../../src/index';
 
 // ── A schema is just the first line ───────────────────────────────────────────
 
@@ -38,7 +38,7 @@ const rules = `
   role:  {string, choices: [admin, editor, viewer]}
 ---
 ~ Alice, 30, alice@example.com, admin`;
-console.log('\nWith rules:', parseDocument(rules).toObject());
+console.log('\nWith rules:', parse(rules));
 
 // Each rule is checked for you:
 const show = (label: string, src: string) => {
@@ -56,8 +56,8 @@ show('not an email', `email: email\n---\n~ not-an-email`);
 
 // `?` means the member may be absent. `*` means its value may be null.
 // They are different questions, so they are different marks.
-console.log('\nOptional absent :', parseDocument('name: string, nickname?: string\n---\n~ Alice').toObject());
-console.log('Nullable null   :', parseDocument('name: string, manager*: string\n---\n~ Alice, N').toObject());
+console.log('\nOptional absent :', parse('name: string, nickname?: string\n---\n~ Alice'));
+console.log('Nullable null   :', parse('name: string, manager*: string\n---\n~ Alice, N'));
 
 // A default fills an optional member that was not supplied.
-console.log('Default applied :', parseDocument('name: string, active?: {bool, default: T}\n---\n~ Alice').toObject());
+console.log('Default applied :', parse('name: string, active?: {bool, default: T}\n---\n~ Alice'));

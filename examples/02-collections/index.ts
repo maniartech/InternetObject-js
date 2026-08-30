@@ -3,7 +3,7 @@
  *
  * Run me:  npx tsx examples/02-collections/index.ts
  */
-import { parseDocument } from '../../src/index';
+import { parse, parseDocument } from '../../src/index';
 
 // ── The problem ───────────────────────────────────────────────────────────────
 
@@ -23,7 +23,7 @@ const io = `id: int, name: string, email: email
 ~ 3, Carol, carol@example.com`;
 
 console.log('JSON gives you:', JSON.parse(json));
-console.log('IO gives you  :', parseDocument(io).toObject());
+console.log('IO gives you  :', parse(io));
 
 // Identical data. Compare the sizes:
 const saving = Math.round((1 - io.length / json.length) * 100);
@@ -43,10 +43,10 @@ console.log(`100 records: JSON ${bigJson.length} · IO ${bigIo.length} · ` +
 // ── One record or many? ───────────────────────────────────────────────────────
 
 // The `~` is what makes a collection — not the number of rows.
-console.log('\nWith    ~ :', parseDocument('name: string\n---\n~ Alice').toObject()); // array of one
-console.log('Without ~ :', parseDocument('name: string\n---\nAlice').toObject());    // a single object
+console.log('\nWith    ~ :', parse('name: string\n---\n~ Alice')); // array of one
+console.log('Without ~ :', parse('name: string\n---\nAlice'));    // a single object
 
 // ── Reading them ──────────────────────────────────────────────────────────────
 
-const people = parseDocument(io).toObject() as Array<{ name: string; email: string }>;
+const people = parse(io) as Array<{ name: string; email: string }>;
 for (const p of people) console.log(`  ${p.name} <${p.email}>`);

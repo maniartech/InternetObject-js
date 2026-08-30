@@ -3,7 +3,7 @@
  *
  * Run me:  npx tsx examples/07-errors/index.ts
  */
-import { parseDocument, ErrorCodes } from '../../src/index';
+import { parse, parseDocument, ErrorCodes } from '../../src/index';
 
 // ── Two ways to receive an error ──────────────────────────────────────────────
 
@@ -55,7 +55,7 @@ const codeOf = (src: string): string => {
   const collected: Error[] = [];
   let value: any;
   try {
-    value = parseDocument(src, null, collected).toObject();
+    value = parse(src, null, collected);
   } catch (err) {
     return (err as any).errorCode;                                   // 1
   }

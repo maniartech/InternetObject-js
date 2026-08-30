@@ -17,7 +17,7 @@ Parse it and you get an ordinary JavaScript object. Nothing to unwrap, nothing e
 ```ts
 import { parse } from 'internet-object';
 
-parse('name: Alice, age: 30, active: T').toObject();
+parse('name: Alice, age: 30, active: T');
 // { name: 'Alice', age: 30, active: true }
 ```
 
@@ -33,14 +33,14 @@ parse('name: Alice, age: 30, active: T').toObject();
 
 Most examples here call `toObject()`, which makes it look compulsory. It is not.
 
-`parse()` gives you a **document**, and a document is usable as it is:
+`parse()` gives you plain JavaScript. When you want the document itself — sections, the
+header, writes that are validated, a round trip back to IO text — ask for it by name:
 
 ```ts
-const doc = parse('name: Alice, age: 30');
-const record = doc.sections.get(0).data;
+const doc = parseDocument('name: Alice, age: 30');
 
-record.get('name');   // 'Alice'
-record.getAt(0);      // 'Alice' - by position
+doc.data.name;        // 'Alice'
+doc.data.getAt(0);    // 'Alice' - by position
 ```
 
 `toObject()` is a **conversion** — reach for it when you want ordinary JavaScript objects to hand

@@ -3,7 +3,7 @@
  *
  * Run me:  npx tsx examples/09-reusable-schemas/index.ts
  */
-import { parseDocument, parseDefinitions, load } from '../../src/index';
+import { parse, parseDocument, parseDefinitions, load } from '../../src/index';
 
 // ── Naming a shape ────────────────────────────────────────────────────────────
 
@@ -44,7 +44,7 @@ for (const r of rows) console.log(`   ${r.item.padEnd(5)} ${String(r.price).padS
 // only data. This is the normal shape of an API: schema at both endpoints,
 // values on the wire.
 const defs = parseDefinitions('~ $schema: {name: string, age: int}');
-console.log('\ndata-only text  :', parseDocument('~ Alice, 30\n~ Bob, 25', defs).toObject());
+console.log('\ndata-only text  :', parse('~ Alice, 30\n~ Bob, 25', defs));
 console.log('same schema, JS :', load({ name: 'Carol', age: 28 }, defs).toObject());
 
 console.log(`

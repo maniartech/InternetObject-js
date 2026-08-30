@@ -7,7 +7,7 @@
  * Run me:  npx tsx examples/15-kitchen-sink/index.ts
  */
 import {
-  parseDocument,
+  parse, parseDocument,
   parseDefinitions,
   parseSchema,
   validate,
@@ -28,10 +28,10 @@ h1('1 · A document, and the shape it projects to');
 // play.internetobject.org, read the JSON panel, write code against that.
 
 h2('one section holding a collection → an array');
-console.log(parseDocument('name: string, age: int\n---\n~ Alice, 30\n~ Bob, 25').toObject());
+console.log(parse('name: string, age: int\n---\n~ Alice, 30\n~ Bob, 25'));
 
 h2('one section holding a single object → an object');
-console.log(parseDocument('name: Alice, age: 30').toObject());
+console.log(parse('name: Alice, age: 30'));
 
 h2('several sections → keyed by section name');
 const multi = parseDocument(
@@ -66,8 +66,8 @@ for (const [k, v] of Object.entries(t)) {
 }
 
 h2('optional `?` and nullable `*` are different things');
-console.log('note?: omitted   →', parseDocument('name: string, note?: string\n---\n~ Alice').toObject());
-console.log('note*: set to N  →', parseDocument('name: string, note*: string\n---\n~ Alice, N').toObject());
+console.log('note?: omitted   →', parse('name: string, note?: string\n---\n~ Alice'));
+console.log('note*: set to N  →', parse('name: string, note*: string\n---\n~ Alice, N'));
 // `?` means "may be absent". `*` means "may be null". Ask for both with `?*`.
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -78,7 +78,7 @@ h1('3 · Schemas validate as the document is read');
 // run — bad data is caught at the moment it is read.
 
 h2('it passes');
-console.log(parseDocument('name: string, age: int\n---\n~ Alice, 30').toObject());
+console.log(parse('name: string, age: int\n---\n~ Alice, 30'));
 
 h2('it fails, with a code and a position');
 // An object section throws. A collection puts the error in place instead — §4.
@@ -106,7 +106,7 @@ console.log('  doc.errors       :', collected.errors.length);
 
 h2('c) in place — the bad RECORD is replaced by an error node');
 // Note it replaces the whole record, not just the offending member.
-const rows0: any = (collected as any).sections.get(0).data;
+const rows0: any = collected.data;
 console.log('  records          :', rows0.length, '(the good ones survive)');
 console.log('  record 1 is an error node:', !!(rows0.getAt(1) as any)?.errorCode || 'see toObject');
 
@@ -135,7 +135,7 @@ h1('6 · Reading a document without converting it');
 
 // `toObject()` is a conversion, not a required step. A document is usable as it is,
 // and reading it directly keeps schema order, access by position, and native types.
-const staff: any = (doc as any).sections.get(0).data;
+const staff: any = doc.sections.staff;
 
 h2('by key, by position, and the collection API');
 console.log('  get("name")     :', staff.getAt(0).get('name'));
@@ -155,7 +155,7 @@ h1('7 · Mutating the data, then writing it back out');
 // ═════════════════════════════════════════════════════════════════════════════
 
 const editable = parseDocument('name: string, age: int\n---\n~ Alice, 30\n~ Bob, 25');
-const list: any = (editable as any).sections.get(0).data;
+const list: any = editable.data;
 
 h2('set, push, delete');
 list.getAt(0).set('age', 31);                       // update a member
@@ -269,7 +269,7 @@ async function main() {
 
   const original = '~ $p: {name: string, age: int}\n--- team: $p\n~ Alice, 30\n~ Bob, 25';
   const round = parseDocument(original);
-  const team: any = (round as any).sections.get(0).data;
+  const team: any = round.sections.team;
   team.getAt(1).set('age', 26);
   (round as any).header.definitions.set('@rev', '2');
 

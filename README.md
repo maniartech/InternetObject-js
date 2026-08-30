@@ -282,7 +282,8 @@ Works with Node.js streams, WHATWG streams, `AsyncIterable`, or simple strings.
 
 | I want to… | Use this |
 |------------|----------|
-| Parse IO text to JS | `parse(text).toObject()` |
+| Parse IO text to JS | `parse(text)` |
+| Parse IO text to a document | `parseDocument(text)` |
 | Validate JS data | `load(data, defs)` or `validateObject(data, defs)` |
 | Convert JS to IO text | `stringify(load(data, defs))` |
 | Embed IO in code | ``io.doc`...` `` |
