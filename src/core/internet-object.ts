@@ -1,4 +1,6 @@
 import type Schema from '../schema/schema';
+import type Definitions from './definitions';
+import { validateMemberWrite } from './schema-hooks';
 import { toJSONValue } from '../utils/json-projection';
 
 /**
@@ -54,6 +56,15 @@ class IOObject<T = any> implements Iterable<[string | undefined, T]> {
   private schema!: Schema | null;
   /** `schema.names` as name -> declared index, so placement is a lookup rather than a scan. */
   private schemaOrder!: Map<string, number> | null;
+  /**
+   * The definitions the schema was declared in, when there are any.
+   *
+   * A member definition may name a variable -- `choices: @colors`, `min: @floor` -- and resolving
+   * one needs the definitions it came from. Parsing resolves them with the definitions in hand;
+   * a later `set()` has to resolve them the same way or the same value would be judged by a
+   * different rule depending on when it was written.
+   */
+  private schemaDefs!: Definitions | undefined;
   public errors: Error[] = [];
 
   constructor(o?: Record<string, T>) {
@@ -89,10 +100,19 @@ class IOObject<T = any> implements Iterable<[string | undefined, T]> {
       enumerable: false,
       configurable: false
     });
+    Object.defineProperty(this, 'schemaDefs', {
+      value: undefined,
+      writable: true,
+      enumerable: false,
+      configurable: false
+    });
 
     if (o) {
+      // `setRaw`, not `set`: there is no schema yet -- it is attached afterwards, if at all -- so
+      // there is nothing to validate against, and going through the checked path would only cost
+      // a lookup that can never match.
       for (const [key, value] of Object.entries(o)) {
-        this.set(key, value);
+        this.setRaw(key, value);
       }
     }
   }
@@ -114,8 +134,9 @@ class IOObject<T = any> implements Iterable<[string | undefined, T]> {
    * Passing `null` detaches the shape. It does not restore a previous order -- there is nothing to
    * restore to -- it only stops the rule applying to later writes.
    */
-  attachSchema(schema: Schema | null): this {
+  attachSchema(schema: Schema | null, defs?: Definitions): this {
     this.schema = schema ?? null;
+    this.schemaDefs = schema ? defs : undefined;
     this.schemaOrder = schema
       ? new Map(schema.names.map((name, index) => [name, index]))
       : null;
@@ -197,13 +218,43 @@ class IOObject<T = any> implements Iterable<[string | undefined, T]> {
   }
 
   /**
-   * Adds or updates a key-value pair in the IOObject.
-   * If the key exists, updates the value at its index.
-   * @param key The key to add or update.
-   * @param value The value associated with the key.
-   * @returns The IOObject instance.
+   * Adds or updates a member — **validated against the declared shape** (B1).
+   *
+   * ```ts
+   * rec.set('age', 31);            // fine
+   * rec.set('age', 'not-an-int');  // throws, with the code a parse would have raised
+   * ```
+   *
+   * This is the guarantee that makes a document worth holding as a document rather than as plain
+   * data: *a document that cannot hold invalid data.* No new rules and no new error codes are
+   * involved — the same `TypeDef.load()` the loader uses runs here, with the same member
+   * definition and the same variable resolution, so a value a parse would reject is rejected here
+   * with the code a parse would have used.
+   *
+   * A member the schema does not declare is rejected on a closed schema, and checked against the
+   * wildcard on an open (`*`) one. An object with **no** schema validates nothing — vacuously,
+   * there being no shape to check against.
+   *
+   * @param key The member to add or update.
+   * @param value The value. Coerced by the member's type, exactly as a parsed value is.
+   * @throws {ValidationError} When a schema is attached and the value does not satisfy it.
+   * @returns This object.
    */
   set(key: string, value: T): this {
+    return this.setRaw(key, validateMemberWrite(this.schema, key, value, this.schemaDefs));
+  }
+
+  /**
+   * Writes without validating. **Internal** — for code that has already validated.
+   *
+   * The loader and the parser both build a record by validating a value and then storing it; if
+   * the public `set()` were their route in, every parse would validate twice. They take this one.
+   * Nothing outside the library should: writing past the schema is how a document comes to hold
+   * data it says is impossible.
+   *
+   * @internal
+   */
+  setRaw(key: string, value: T): this {
     if (this.keyMap.has(key)) {
       const index = this.keyMap.get(key)!;
       this.items[index] = [key, value];
@@ -411,7 +462,7 @@ class IOObject<T = any> implements Iterable<[string | undefined, T]> {
     const io = new IOObject<T>();
     for (const item of array) {
       if (Array.isArray(item)) {
-        io.set(item[0], item[1]);
+        io.setRaw(item[0], item[1]);
       } else {
         io.push(item);
       }

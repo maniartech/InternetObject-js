@@ -90,7 +90,7 @@ function _loadObject(data: any, schema: Schema, defs?: Definitions): InternetObj
       try {
         const loadedValue = typeDef.load(value, memberDef, defs);
         if (loadedValue !== undefined) {
-          result.set(name, loadedValue);
+          result.setRaw(name, loadedValue);
         }
       } catch (error) {
         // Add context to validation errors
@@ -105,9 +105,9 @@ function _loadObject(data: any, schema: Schema, defs?: Definitions): InternetObj
     } else {
       // Fallback for types without loadObject() - use value as-is if present
       if (value !== undefined) {
-        result.set(name, value);
+        result.setRaw(name, value);
       } else if (memberDef.default !== undefined) {
-        result.set(name, memberDef.default);
+        result.setRaw(name, memberDef.default);
       } else if (!memberDef.optional) {
         throw new ValidationError(
           ErrorCodes.missingValue,
@@ -131,10 +131,10 @@ function _loadObject(data: any, schema: Schema, defs?: Definitions): InternetObj
         if (typeDef && 'load' in typeDef && typeDef.load) {
           const loadedValue = typeDef.load(data[key], memberDef, defs);
           if (loadedValue !== undefined) {
-            result.set(key, loadedValue);
+            result.setRaw(key, loadedValue);
           }
         } else {
-          result.set(key, data[key]);
+          result.setRaw(key, data[key]);
         }
       }
     }
@@ -241,6 +241,10 @@ export function loadCollection(
       }
     }
   }
+
+  // B2: attached AFTER the loop, for the same reason as the parse route -- these records were
+  // validated by `loadObject` on the way in, and only later insertions need checking.
+  collection.attachSchema(schema as Schema, defs);
 
   return collection;
 }

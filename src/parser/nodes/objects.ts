@@ -101,7 +101,7 @@ class ObjectNode extends ContainerNode {
         if (member.key) {
           const key = member.key.value as string;
           assertNotDuplicate(seen, key, member);
-          o.set(key, member.value.toValue(defs));
+          o.setRaw(key, member.value.toValue(defs));
         } else {
           // Positional member: store WITHOUT a key via pushValue (NOT push — push would misread an
           // array value like ["a","b"] as a [key,value] tuple and drop elements). The author wrote no

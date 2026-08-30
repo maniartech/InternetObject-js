@@ -168,16 +168,28 @@ console.log('  after deleteAt  :', JSON.stringify(editable.toObject()));
 h2('and it round-trips back to Internet Object text');
 console.log(stringifyDocument(editable));
 
-h2('⚠ today, set() does NOT validate');
-// The record knows its schema — but a raw `set` writes straight through, and the
-// invalid value serializes back out as invalid IO text. Validating writes is the
-// job of the reactive Draft surface (see .private/docs/REACTIVE-CORE-SPEC.md).
+h2('set() validates — a document cannot hold data its schema forbids');
+// This is the reason to hold a document rather than plain data. The record knows
+// its shape, so a bad write is refused at the point of the write — with the same
+// error code the same value would have got while parsing.
 const loose = parseDocument('name: string, age: int\n---\n~ Alice, 30');
-const rec: any = (loose as any).sections.get(0).data.getAt(0);
-console.log('  record has a schema :', !!rec.schema);
-rec.set('age', 'not-an-int');
-console.log('  stored anyway       :', JSON.stringify(loose.toObject()));
-console.log('  serializes to       :', JSON.stringify(stringifyDocument(loose)));
+const rec: any = loose.data[0];
+try {
+  rec.age = 'not-an-int';
+} catch (e: any) {
+  console.log('  refused    :', e.errorCode);
+}
+console.log('  unchanged  :', JSON.stringify(loose.toObject()));
+
+h2('and so does pushing a record — it is adopted by the section schema');
+try {
+  loose.data.push({ name: 'Dev', age: 'nope' });
+} catch (e: any) {
+  console.log('  refused    :', e.errorCode);
+}
+loose.data.push({ name: 'Dev', age: 41 });
+console.log('  accepted   :', JSON.stringify(loose.toObject()));
+console.log('  round-trips:', JSON.stringify(stringifyDocument(loose)));
 
 // ═════════════════════════════════════════════════════════════════════════════
 h1('8 · Mutating the header');

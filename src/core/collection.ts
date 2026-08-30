@@ -1,5 +1,8 @@
 import { toJSONValue } from '../utils/json-projection';
 import IOObject from "./internet-object";
+import type Schema from '../schema/schema';
+import type Definitions from './definitions';
+import { adoptRecord } from './schema-hooks';
 
 /**
  * IOCollection is an ordered collection of items, accessed by method (get via `getAt(i)`).
@@ -31,6 +34,15 @@ import IOObject from "./internet-object";
 class IOCollection<T = IOObject> {
   private _items!: T[];
   public errors!: Error[];
+  /**
+   * The shape every record in this collection must have, when the section declared one.
+   *
+   * A collection is where a *new* record enters a document, and it is the only place that knows
+   * what shape the record is supposed to be: the record itself arrives carrying nothing.
+   */
+  private _schema!: Schema | null;
+  /** The definitions the schema was declared in — a member definition may name a variable. */
+  private _schemaDefs!: Definitions | undefined;
 
   /**
    * Constructs a new IOCollection instance.
@@ -44,6 +56,40 @@ class IOCollection<T = IOObject> {
     // publicly readable (R6) — non-enumerable is not private, it is merely not part of the key walk.
     Object.defineProperty(this, '_items', { value: items, writable: true, enumerable: false, configurable: false });
     Object.defineProperty(this, 'errors', { value: [], writable: true, enumerable: false, configurable: false });
+    Object.defineProperty(this, '_schema', { value: null, writable: true, enumerable: false, configurable: false });
+    Object.defineProperty(this, '_schemaDefs', { value: undefined, writable: true, enumerable: false, configurable: false });
+  }
+
+  /**
+   * Declares the shape every record in this collection has (B2).
+   *
+   * Set by the parser and the loader from the section's schema. It does **not** re-check the
+   * records already held — those came through the parse or load path and were checked there — it
+   * governs everything inserted from here on.
+   *
+   * @internal
+   */
+  public attachSchema(schema: Schema | null, defs?: Definitions): this {
+    this._schema = schema ?? null;
+    this._schemaDefs = schema ? defs : undefined;
+    return this;
+  }
+
+  /** The shape declared for this collection's records, or `null`. */
+  public getSchema(): Schema | null {
+    return this._schema;
+  }
+
+  /**
+   * Validates a record on its way in and returns the one to store.
+   *
+   * **Adoption can replace the value.** A plain object becomes a record, and a record built by
+   * hand is re-loaded so that a *missing* required member is caught and not only a bad one — so
+   * read the stored record back out of the collection rather than keeping the reference you
+   * pushed. A record that already carries this schema is left exactly as it is.
+   */
+  private adopt(item: T): T {
+    return adoptRecord(this._schema, item, this._schemaDefs) as T;
   }
 
   /**
@@ -52,7 +98,10 @@ class IOCollection<T = IOObject> {
    * @returns The updated IOCollection.
    */
   public push(...items: T[]): IOCollection<T> {
-    this._items.push(...items);
+    // Adopt every item BEFORE storing any: a push that rejects the third of three must not leave
+    // the first two behind. `map` throws on the offending item with nothing yet written.
+    const adopted = items.map((item) => this.adopt(item));
+    this._items.push(...adopted);
     return this;
   }
 
@@ -80,10 +129,11 @@ class IOCollection<T = IOObject> {
     if (index < 0) {
       throw new Error('Index cannot be negative.');
     }
+    const adopted = this.adopt(item);
     if (index >= this._items.length) {
-      this._items.push(item);
+      this._items.push(adopted);
     } else {
-      this._items[index] = item;
+      this._items[index] = adopted;
     }
     return this;
   }
@@ -199,7 +249,8 @@ class IOCollection<T = IOObject> {
    * @returns The new length of the IOCollection.
    */
   public insert(index: number, ...items: T[]): number {
-    this._items.splice(index, 0, ...items);
+    const adopted = items.map((item) => this.adopt(item));
+    this._items.splice(index, 0, ...adopted);
     return this._items.length;
   }
 

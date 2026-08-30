@@ -8,6 +8,12 @@ import NumberDef        from './number'
 import ObjectDef        from './object'
 import StringDef        from './string'
 
+// B1/B2: installs the validating write and adopt-on-insert into the core containers. Imported
+// here because a `Schema` cannot exist without this module having been loaded -- compiling one
+// calls `registerTypes()` -- so there is no window in which a schema is attached and the check is
+// missing. See `src/core/schema-hooks.ts` for why it is injected rather than imported.
+import '../write-hooks'
+
 let registered = false
 
 export default function registerTypes() {

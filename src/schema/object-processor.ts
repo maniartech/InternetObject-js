@@ -88,7 +88,7 @@ function _processObject(
       try {
         const val = processMember(member as any, memberDef, defs);
         collectNestedErrors(val);
-        if (val !== undefined) o.set(name, val);
+        if (val !== undefined) o.setRaw(name, val);
       } catch (err) {
         if (err instanceof ValidationError) {
           // in case of missing member, set the position to the parent object.
@@ -120,7 +120,7 @@ function _processObject(
         const val = processMember(syntheticMember, memberDef, defs);
         // Collect errors from nested InternetObjects
         collectNestedErrors(val);
-        if (val !== undefined) o.set(name, val);
+        if (val !== undefined) o.setRaw(name, val);
       } catch (err) {
         if (err instanceof ValidationError) {
           handleError(err);
@@ -160,7 +160,7 @@ function _processObject(
         // Only mark as processed if we actually obtained a value (or a default was applied)
         if (val !== undefined) {
           processedNames.add(name);
-          o.set(name, val);
+          o.setRaw(name, val);
         } else {
           // If optional and no default, allow later keyed assignment without triggering duplicate-member
           if (!memberDef.optional && memberDef.default === undefined) {
@@ -190,7 +190,7 @@ function _processObject(
           collectNestedErrors(val);
           if (val !== undefined) {
             processedNames.add(name);
-            o.set(name, val);
+            o.setRaw(name, val);
           }
         } catch (err) {
           if (err instanceof ValidationError) {
@@ -267,7 +267,7 @@ function _processObject(
       const val = processMember(member, memberDef, defs);
       // Collect errors from nested InternetObjects
       collectNestedErrors(val);
-      o.set(name, val);
+      o.setRaw(name, val);
     } catch (err) {
       if (err instanceof ValidationError) {
         handleError(err);
@@ -294,7 +294,7 @@ function _processObject(
         const val = processMember(memberNode, memberDef, defs);
         // Collect errors from nested InternetObjects
         collectNestedErrors(val);
-        o.set(name, val);
+        o.setRaw(name, val);
       } catch (err) {
         if (err instanceof ValidationError) {
           handleError(err);
