@@ -142,7 +142,47 @@ export default function parse(
     }
     parseDataWithSchema(docNode, doc, errorCollector);
   }
+
+  reconcileErrors(doc, errorCollector);
   return doc;
+}
+
+/**
+ * C1a — the sink and `doc.getErrors()` report the same set.
+ *
+ * They disagreed in BOTH directions, measured 2026-08-24:
+ *
+ * ```
+ *                          sink   getErrors
+ *   collection row (~)       1        1      agree
+ *   object section           1        0      the sink has it, the document does not
+ *   unterminated string      0        1      the document has it, the sink does not
+ *   brace never closed       0        1      the document has it, the sink does not
+ * ```
+ *
+ * So `sink.length` could read 0 while the data held a syntax error node — a caller doing the
+ * obvious thing, *"collect the errors and check whether there were any"*, was told there were none.
+ *
+ * An earlier draft said "feed the sink from what `getErrors()` reads", which would have made row 2
+ * WORSE: it would have removed the one error the sink does report there. Each channel is missing
+ * things the other has, so this is a **union**, and it is deliberately identity-based — the same
+ * error object, not the same code, since a document can legitimately hold two errors alike.
+ *
+ * The sink keeps the order it already had and gains the rest behind it, so a caller reading them in
+ * order sees no reshuffle. Nothing about parsing, the value model or the projection changes; an
+ * API-layer channel stops under-reporting.
+ */
+function reconcileErrors(doc: Document, errorCollector?: Error[]): void {
+  if (!errorCollector) return;
+
+  const held = new Set<Error>(doc.errors);
+  const reported = new Set<Error>(errorCollector);
+
+  for (const error of held) {
+    if (!reported.has(error)) errorCollector.push(error);
+  }
+  const unrecorded = errorCollector.filter((error) => !held.has(error));
+  if (unrecorded.length > 0) doc.addErrors(unrecorded);
 }
 
 function parseData(docNode: DocumentNode, doc: Document) {
