@@ -327,6 +327,91 @@ class IOCollection<T = IOObject> {
   *values(): IterableIterator<T> {
     yield* this._items;
   }
+
+  // ── A5: the rest of the array surface (ADR 0005) ─────────────────────────────────────────────
+  //
+  // The class already had map/filter/find/reduce/forEach/some/every but not join/sort/slice/at.
+  // That split is not a principle -- it is whatever was needed when the class was written -- and it
+  // is what forced `[...rows.map(r => r.get('name'))].join(', ')` in the examples: `map` returns an
+  // IOCollection, and IOCollection had no `join`.
+  //
+  // `map`/`filter` keep returning IOCollection. `Array.prototype.map` returns the SAME TYPE as its
+  // input; applying that rule here yields IOCollection, which is what they already do. Making them
+  // return Array would be smaller but breaking -- `rows.filter(...).getAt(0)` would stop working.
+
+  /** Joins the items into a string, like `Array.prototype.join`. */
+  public join(separator?: string): string {
+    return this._items.join(separator);
+  }
+
+  /** Returns the item at `index`; negative counts from the end, like `Array.prototype.at`. */
+  public at(index: number): T | undefined {
+    return this._items.at(index);
+  }
+
+  /** True if the collection contains `item`, like `Array.prototype.includes`. */
+  public includes(item: T, fromIndex?: number): boolean {
+    return this._items.includes(item, fromIndex);
+  }
+
+  /** First index of `item`, or -1, like `Array.prototype.indexOf`. */
+  public indexOf(item: T, fromIndex?: number): number {
+    return this._items.indexOf(item, fromIndex);
+  }
+
+  /** Last index of `item`, or -1, like `Array.prototype.lastIndexOf`. */
+  public lastIndexOf(item: T, fromIndex?: number): number {
+    return fromIndex === undefined
+      ? this._items.lastIndexOf(item)
+      : this._items.lastIndexOf(item, fromIndex);
+  }
+
+  /** A shallow slice as a new IOCollection, like `Array.prototype.slice`. */
+  public slice(start?: number, end?: number): IOCollection<T> {
+    return new IOCollection<T>(this._items.slice(start, end));
+  }
+
+  /** This collection followed by the given items, as a new IOCollection. */
+  public concat(...items: Array<IOCollection<T> | T[] | T>): IOCollection<T> {
+    const out = [...this._items];
+    for (const part of items) {
+      if (part instanceof IOCollection) out.push(...part._items);
+      else if (Array.isArray(part)) out.push(...part);
+      else out.push(part as T);
+    }
+    return new IOCollection<T>(out);
+  }
+
+  /** Maps then flattens one level, like `Array.prototype.flatMap`. */
+  public flatMap<U>(callback: (item: T, index: number, array: T[]) => U | U[]): IOCollection<U> {
+    return new IOCollection<U>(this._items.flatMap(callback as any) as U[]);
+  }
+
+  /**
+   * Sorts IN PLACE and returns this collection, like `Array.prototype.sort`.
+   *
+   * This mutates the document. Prefer `toSorted` when the collection is being read elsewhere.
+   */
+  public sort(compare?: (a: T, b: T) => number): IOCollection<T> {
+    this._items.sort(compare);
+    return this;
+  }
+
+  /** Reverses IN PLACE and returns this collection, like `Array.prototype.reverse`. */
+  public reverse(): IOCollection<T> {
+    this._items.reverse();
+    return this;
+  }
+
+  /** A sorted copy, leaving this collection untouched (ES2023 `toSorted`). */
+  public toSorted(compare?: (a: T, b: T) => number): IOCollection<T> {
+    return new IOCollection<T>([...this._items].sort(compare));
+  }
+
+  /** A reversed copy, leaving this collection untouched (ES2023 `toReversed`). */
+  public toReversed(): IOCollection<T> {
+    return new IOCollection<T>([...this._items].reverse());
+  }
 }
 
 export default IOCollection;

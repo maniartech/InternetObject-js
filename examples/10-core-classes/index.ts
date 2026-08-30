@@ -42,19 +42,20 @@ console.log('first record:', rows.getAt(0).get('name'));
 // An IOCollection is not a thin wrapper you have to escape from. The array methods
 // you already use are on it, and it is iterable.
 //
-// One thing to know: map and filter return an IOCollection, not an Array -- they stay
-// in the collection so you can keep chaining. Spread it when you want a real array.
-console.log('map         :', [...rows.map((r: any) => r.get('name'))].join(', '));
+// map and filter return an IOCollection, not an Array -- they stay in the collection
+// so you can keep chaining, and the collection now has the full array surface, so
+// `join`, `sort`, `slice`, `at` and the rest work directly on the result.
+console.log('map         :', rows.map((r: any) => r.get('name')).join(', '));
 console.log('filter      :', rows.filter((r: any) => r.get('age') > 26).length, 'over 26');
 console.log('find        :', rows.find((r: any) => r.get('name') === 'Bob')?.get('age'));
-console.log('spread      :', [...rows].map((r: any) => r.get('name')).join(', '));
+console.log('sort        :', rows.toSorted((a: any, b: any) => a.get('age') - b.get('age')).getAt(0).get('name'));
 
 for (const r of rows) { console.log('for..of     :', r.get('name'), r.get('age')); break; }
 
 // So `toObject()` is a CONVERSION, for handing data to other code -- not a step you
 // must take before you can read anything.
 console.log('\nnever converted, still read it all:',
-  [...rows].map((r: any) => `${r.get('name')}(${r.get('age')})`).join(' '));
+  rows.map((r: any) => `${r.get('name')}(${r.get('age')})`).join(' '));
 
 // ── Two projections ───────────────────────────────────────────────────────────
 

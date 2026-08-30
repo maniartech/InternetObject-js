@@ -141,13 +141,14 @@ h2('by key, by position, and the collection API');
 console.log('  get("name")     :', staff.getAt(0).get('name'));
 console.log('  getAt(0)        :', staff.getAt(0).getAt(0), '(schema position, not arrival order)');
 console.log('  length          :', staff.length);
-console.log('  map             :', [...staff.map((r: any) => r.get('name'))].join(', '));
+console.log('  map             :', staff.map((r: any) => r.get('name')).join(', '));
 console.log('  filter          :', staff.filter((r: any) => r.get('age') > 26).length, 'over 26');
 console.log('  find            :', staff.find((r: any) => r.get('name') === 'Bob')?.get('age'));
 for (const r of staff) { console.log('  for..of         :', r.get('name')); break; }
 
 // `map` and `filter` return an IOCollection, not an Array — they stay in the
-// collection so you can keep chaining. Spread it (`[...]`) for a real array.
+// collection so you can keep chaining, and the collection carries the full array
+// surface: join, sort, slice, at, includes, concat, flatMap, toSorted, toReversed.
 
 // ═════════════════════════════════════════════════════════════════════════════
 h1('7 · Mutating the data, then writing it back out');
