@@ -71,12 +71,71 @@ npm install internet-object@next      # preview (next)
 
 Each section builds on the previous one. Start at the top and work your way down.
 
-### 1. Parse IO text → get JavaScript data
+### 1. Write IO in your code (tagged templates)
 
-The simplest use case: you have IO text, you want a JS object.
+The shortest way to use Internet Object: write it inline. The bare `io` tag gives you **plain
+JavaScript**.
 
 ```ts
-import { parse } from 'internet-object';
+import io from 'internet-object';
+
+const obj = io`
+  name: string, age: int
+  ---
+  Alice, 30
+`;
+
+console.log(obj);   // { name: 'Alice', age: 30 }   ← plain JavaScript
+```
+
+The line above `---` is the schema; the line below it is the data. Prefix each row with `~` and you
+get a collection instead:
+
+```ts
+const people = io`
+  name: string, age: int
+  ---
+  ~ Alice, 30
+  ~ Bob, 25
+`;
+// [{ name: 'Alice', age: 30 }, { name: 'Bob', age: 25 }]
+```
+
+`io.doc` reads the same text and gives you the **document** instead — for the header, sections,
+validated writes, or a round trip back to IO text.
+
+```ts
+const doc = io.doc`
+  name: string, age: int
+  ---
+  Alice, 30
+`;
+
+doc.data.name;       // 'Alice'
+doc.data.age = 31;   // validated against the schema; a bad value throws
+String(doc);         // back to IO text
+doc.toObject();      // the plain projection — the same thing io`` gives you
+```
+
+An interpolated `${value}` is always written as a **value**, never spliced in as source, so
+`${'Smith, John'}` stays one string and `${'1,000'}` stays one thousand.
+
+Tags are ideal for tests, fixtures and prototyping — anywhere the IO is written by you rather than
+received. `io.schema` and `io.defs` do the same for a schema and a definitions block, and every tag
+takes a `.with(defs, sink)` form:
+
+```ts
+const person = io.schema`{name: string, age: int}`;
+io.with(person)`Alice, 30`;     // { name: 'Alice', age: 30 }
+```
+
+### 2. Parse IO text you receive (functions)
+
+When the text arrives from a file, an HTTP response or an editor, use the parse functions. Same
+split, same rule — plain by default, the document when you ask for it by name.
+
+```ts
+import { parse, parseDocument } from 'internet-object';
 
 const text = `
 name: string, age: int
@@ -84,30 +143,20 @@ name: string, age: int
 Alice, 30
 `;
 
-console.log(parse(text));
-// { name: 'Alice', age: 30 }
+parse(text);          // { name: 'Alice', age: 30 }   ← plain JavaScript
+parseDocument(text);  // the document
 ```
 
 **What happened?**
-- `parse()` reads the text and validates it against the schema on the first line
-- what you get back is **plain JavaScript** — no wrapper, nothing to unwrap
+- both read the text and validate it against the schema on the first line
+- `parse` gives back **plain JavaScript** — no wrapper, nothing to unwrap
+- the tags are these functions in template form: `` io`…` `` is `parse`, `` io.doc`…` `` is
+  `parseDocument`
 
 Values keep their real types: a `date` is a `Date`, a `decimal` a `Decimal`, a `bigint` a `BigInt`.
 Call `toJSON()` when you need the spelling JSON can carry.
 
-When you want the document *as* a document — sections, the header, validated writes, a round trip
-back to IO text — ask for it by name:
-
-```ts
-import { parseDocument } from 'internet-object';
-
-const doc = parseDocument(text);
-doc.data.name;          // 'Alice'
-doc.data.age = 31;      // validated against the schema; a bad value throws
-String(doc);            // back to IO text
-```
-
-| | `parse` | `parseDocument` |
+| | `parse` / `` io`…` `` | `parseDocument` / `` io.doc`…` `` |
 | --- | --- | --- |
 | Returns | plain objects and arrays | the document |
 | Crosses `structuredClone` / `postMessage` / RSC | ✅ | use `toObject()` |
@@ -117,13 +166,17 @@ String(doc);            // back to IO text
 A document is also a **store**, with no framework package involved:
 
 ```ts
+import io, { parseDocument } from 'internet-object';
+
+const doc = parseDocument(text);
+
 const stop = io.subscribe(doc, (value) => render(value));   // the Svelte store contract
 io.version(doc);                                            // the React snapshot
 
 const useIO = (doc) => useSyncExternalStore(cb => io.subscribe(doc, cb), () => io.version(doc));
 ```
 
-### 2. Multiple records (a collection)
+### 3. Multiple records (a collection)
 
 Add more rows after `---` to create a collection:
 
@@ -142,27 +195,6 @@ console.log(parse(text));
 
 The `~` is what makes a collection, not the row count: a lone `~ Alice, 30` is an array of one,
 and a bare `Alice, 30` with no `~` is a single object. Each `~` row is one record.
-
-### 3. Embed IO in your code (template literals)
-
-Instead of a string variable, embed IO directly in your TypeScript/JavaScript:
-
-```ts
-import io from 'internet-object';
-
-const doc = io.doc`
-  name: string, age: int
-  ---
-  ~ Alice, 30
-  ~ Bob, 25
-`;
-
-console.log(doc.toObject());
-```
-
-This is handy for tests, fixtures, and quick prototyping. An interpolated `${value}` is always
-written as a **value**, never spliced in as source, so `${'Smith, John'}` stays one string and
-`${'1,000'}` stays one thousand.
 
 ### 4. Create IO objects from JavaScript
 
