@@ -62,6 +62,7 @@ try {
   console.log('🔎 Consuming it:');
 
   writeFileSync(join(scratch, 'esm.mjs'), `
+import io from 'internet-object';
 import { parse, parseDocument, load, parseDefinitions, stringify, subscribe, version, createStreamReader, IOObject } from 'internet-object';
 
 // parse returns plain JavaScript; parseDocument returns the document (§2).
@@ -101,6 +102,15 @@ stop();
 
 if (typeof createStreamReader !== 'function') throw new Error('streaming export missing');
 if (typeof IOObject !== 'function') throw new Error('IOObject export missing');
+
+// The default export is a CALLABLE tag, not a plain object. Bundlers and interop layers treat a
+// function default differently from an object default, so assert the shape on the artifact.
+if (typeof io !== 'function') throw new Error('default export is not callable — io\`\` is broken');
+const tagged = JSON.stringify(io\`name: string, age: int
+---
+Alice, 30\`);
+if (tagged !== '{"name":"Alice","age":30}') throw new Error('io\`\` tag: ' + tagged);
+if (typeof io.doc !== 'function' || typeof io.parse !== 'function') throw new Error('io members lost');
 `);
   try { runNode(['esm.mjs'], scratch); ok('ESM  — parse/parseDocument/stringify/load/stream, validated writes, sink, notification'); }
   catch (e) { bad('ESM import', e.stderr || e); }
@@ -116,6 +126,14 @@ if (stringify(d) !== '~ Alice, 30') throw new Error('stringify');
 let refused = false;
 try { d.data[0].age = 'not-an-int'; } catch { refused = true; }
 if (!refused) throw new Error('set() did not validate — the write hooks were tree-shaken out');
+
+// Interop: a function default reaches CJS consumers through .default, and must stay callable.
+const io = require('internet-object').default;
+if (typeof io !== 'function') throw new Error('CJS default export is not callable');
+const tagged = JSON.stringify(io\`name: string, age: int
+---
+Alice, 30\`);
+if (tagged !== '{"name":"Alice","age":30}') throw new Error('CJS io\`\` tag: ' + tagged);
 `);
   try { runNode(['cjs.cjs'], scratch); ok('CJS  — require works'); }
   catch (e) { bad('CJS require', e.stderr || e); }
