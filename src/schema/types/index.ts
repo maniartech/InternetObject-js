@@ -12,7 +12,11 @@ import StringDef        from './string'
 // here because a `Schema` cannot exist without this module having been loaded -- compiling one
 // calls `registerTypes()` -- so there is no window in which a schema is attached and the check is
 // missing. See `src/core/schema-hooks.ts` for why it is injected rather than imported.
-import '../write-hooks'
+//
+// It is a VALUE import, called below, not a bare `import '../write-hooks'`. The bare form was a
+// side-effect import and the CJS bundle dropped it -- leaving a library that compiled fine and
+// silently validated nothing. See installWriteHooks().
+import { installWriteHooks } from '../write-hooks'
 
 let registered = false
 
@@ -22,6 +26,7 @@ export default function registerTypes() {
   TypedefRegistry.register(
     AnyDef, ArrayDef, BooleanDef, NumberDef, ObjectDef, StringDef, DateTimeDef
   )
+  installWriteHooks()
 
   registered = true
 }

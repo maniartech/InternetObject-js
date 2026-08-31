@@ -91,4 +91,18 @@ function adopt(schema: Schema, value: any, defs?: Definitions): any {
   return loadObject(plain, schema, defs);
 }
 
-installSchemaHooks({ memberWrite, adopt });
+/**
+ * Installs the hooks. Called from `registerTypes()`, and idempotent.
+ *
+ * **This is a called function on purpose.** It used to be a bare `import '../write-hooks'` — a
+ * side-effect import, which every bundler is free to drop unless the package's `sideEffects` array
+ * happens to list the file by its built path. The CJS bundle dropped it, and nothing failed to
+ * compile: the library simply stopped validating writes. `set()` accepted anything, `push()`
+ * adopted nothing, and `attachSchema()` checked nothing, silently, for every `require()` consumer.
+ *
+ * A value that is imported and *called* cannot be tree-shaken, so this no longer depends on a
+ * config file staying in step with a filename.
+ */
+export function installWriteHooks(): void {
+  installSchemaHooks({ memberWrite, adopt });
+}

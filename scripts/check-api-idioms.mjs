@@ -38,8 +38,13 @@ const SURFACES = ['README.md', 'MIGRATION.md', 'examples', 'src', 'tests', 'tool
  * about what we teach and what we ship, not about how a test reaches below the public API to check
  * the layer underneath. Tests are held honest by the suite; holding them to a recommendation as
  * well would only produce allowlist entries with nothing to say.
+ *
+ * `scripts` and `tools` were left out of this list at first, on the same reasoning — and that is
+ * exactly how `scripts/verify-package.mjs` kept its old smoke tests. That script consumes the
+ * published package the way a USER does, so it is a shipping surface, not a test. The ones that
+ * genuinely reach below the public API say so with `skipWhen` or an allowlist entry.
  */
-const TEACHING = ['README.md', 'MIGRATION.md', 'examples', 'src'];
+const TEACHING = ['README.md', 'MIGRATION.md', 'examples', 'src', 'scripts', 'tools'];
 
 const RULES = [
   {
@@ -104,6 +109,7 @@ const ALLOW = [
   { path: 'tests/core/accessor-symmetry.test.ts', rules: ['five-hop-read'], why: 'the accessors under test are the method layer itself' },
   { path: 'tests/streaming', rules: ['facade-strict'], why: "the streaming reader's strict framing is a different option and stays deferred (ADR 0001 §7)" },
   { path: 'scripts/check-api-idioms.mjs', rules: '*', why: 'the rules themselves' },
+  { path: 'scripts/verify-package.mjs', rules: ['projection-ceremony'], why: 'asserts against the PACKED artifact that parse equals parseDocument().toObject(), which requires writing both' },
   { path: 'tools/behaviour', rules: ['projection-ceremony'], why: 'the snapshot replays the corpus below the public API on purpose' },
   { path: 'src/proxy/index.ts', rules: ['five-hop-read'], why: 'its header shows the read it replaces, before and after' },
   { path: 'examples/16-parse-or-document', rules: ['projection-ceremony'], why: 'its subject IS the two entry points, and it shows that parse equals the long form' },

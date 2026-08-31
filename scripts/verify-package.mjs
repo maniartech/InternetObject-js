@@ -13,7 +13,7 @@
  * installed tarball, not the source tree.
  */
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, rmSync, writeFileSync, readdirSync } from 'node:fs';
+import { mkdtempSync, rmSync, writeFileSync, readdirSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -38,6 +38,18 @@ const ok = (m) => console.log(`  ✓ ${m}`);
 const bad = (m, e) => { failed = true; console.error(`  ✗ ${m}\n${String(e).split('\n').slice(0, 6).join('\n')}`); };
 
 try {
+  // `tsup --watch` writes raw tsup output into dist and cleans the folder first: no extension
+  // fixing, no dist/cjs/package.json, no declarations. The result is not a package, and consuming
+  // it produces Node resolution errors that name none of that. `finalize-dist.mjs` writes this
+  // marker, so its absence identifies the situation exactly.
+  if (!existsSync(join(root, 'dist', 'cjs', 'package.json'))) {
+    console.error('✗ dist/cjs/package.json is missing.');
+    console.error('  dist looks like `tsup --watch` output, which is NOT a publishable package.');
+    console.error('  Run `npm run build` first — it adds the extension fixing, the CommonJS marker');
+    console.error('  and the declarations that watch mode skips.');
+    process.exit(1);
+  }
+
   console.log('📦 Packing…');
   runNpm(['pack', '--pack-destination', scratch], root);
   const tgz = readdirSync(scratch).find((f) => f.endsWith('.tgz'));
@@ -50,25 +62,60 @@ try {
   console.log('🔎 Consuming it:');
 
   writeFileSync(join(scratch, 'esm.mjs'), `
-import { parse, load, parseDefinitions, stringify, createStreamReader, IOObject } from 'internet-object';
-const d = parse('name: string, age: int\\n---\\n~ Alice, 30\\n~ Bob, 25');
-const got = JSON.stringify(d.toObject());
+import { parse, parseDocument, load, parseDefinitions, stringify, subscribe, version, createStreamReader, IOObject } from 'internet-object';
+
+// parse returns plain JavaScript; parseDocument returns the document (§2).
+const got = JSON.stringify(parse('name: string, age: int\\n---\\n~ Alice, 30\\n~ Bob, 25'));
 if (got !== '[{"name":"Alice","age":30},{"name":"Bob","age":25}]') throw new Error('parse: ' + got);
+
+const d = parseDocument('name: string, age: int\\n---\\n~ Alice, 30\\n~ Bob, 25');
+if (JSON.stringify(d.toObject()) !== got) throw new Error('parse is not parseDocument().toObject()');
 if (stringify(d) !== '~ Alice, 30\\n~ Bob, 25') throw new Error('stringify: ' + stringify(d));
+if (String(d) !== 'name: string, age: int\\n---\\n~ Alice, 30\\n~ Bob, 25') throw new Error('String(doc): ' + String(d));
+
 const l = load({ name: 'C', age: 1 }, parseDefinitions('~ $schema: {name: string, age: int}'));
 if (JSON.stringify(l.toObject()) !== '{"name":"C","age":1}') throw new Error('load');
+
+// The one that nearly shipped broken. set() validates only because src/schema/write-hooks.ts
+// installs the hooks, and it is reached by a BARE side-effect import — the kind a bundler is free
+// to drop unless sideEffects lists it. Nothing here fails to compile when it is dropped; the
+// library simply stops validating, silently. So the packed artifact has to be asked directly.
+let refused = false;
+try { d.data[0].age = 'not-an-int'; } catch { refused = true; }
+if (!refused) throw new Error('set() did not validate — the write hooks were tree-shaken out');
+let adopted = false;
+try { d.data.push({ name: 'X' }); } catch { adopted = true; }
+if (!adopted) throw new Error('push() did not adopt — the write hooks were tree-shaken out');
+
+// Errors reach the sink in slot three, on every entry point (§2.5).
+const sink = [];
+parse('age: int\\n---\\n~ 30\\n~ abc', null, sink);
+if (sink.length !== 1) throw new Error('sink got ' + sink.length + ' errors, expected 1');
+
+// Notification (§8).
+const stop = subscribe(d, () => {});
+const before = version(d);
+d.data[1].age = 26;
+if (version(d) !== before + 1) throw new Error('version did not move');
+stop();
+
 if (typeof createStreamReader !== 'function') throw new Error('streaming export missing');
 if (typeof IOObject !== 'function') throw new Error('IOObject export missing');
 `);
-  try { runNode(['esm.mjs'], scratch); ok('ESM  — import works, parse/stringify/load/stream all correct'); }
+  try { runNode(['esm.mjs'], scratch); ok('ESM  — parse/parseDocument/stringify/load/stream, validated writes, sink, notification'); }
   catch (e) { bad('ESM import', e.stderr || e); }
 
   writeFileSync(join(scratch, 'cjs.cjs'), `
-const { parse, stringify } = require('internet-object');
-const d = parse('name: string, age: int\\n---\\n~ Alice, 30');
-const got = JSON.stringify(d.toObject());
+const { parse, parseDocument, stringify } = require('internet-object');
+const got = JSON.stringify(parse('name: string, age: int\\n---\\n~ Alice, 30'));
 if (got !== '[{"name":"Alice","age":30}]') throw new Error('parse: ' + got);
+const d = parseDocument('name: string, age: int\\n---\\n~ Alice, 30');
 if (stringify(d) !== '~ Alice, 30') throw new Error('stringify');
+// Same tree-shaking check as the ESM half — the CJS bundle is built separately and can lose it
+// on its own.
+let refused = false;
+try { d.data[0].age = 'not-an-int'; } catch { refused = true; }
+if (!refused) throw new Error('set() did not validate — the write hooks were tree-shaken out');
 `);
   try { runNode(['cjs.cjs'], scratch); ok('CJS  — require works'); }
   catch (e) { bad('CJS require', e.stderr || e); }
@@ -90,11 +137,12 @@ if (/^\s*(import|export)\s/m.test(body)) throw new Error('CJS entry contains ESM
   catch (e) { bad('CJS is real CommonJS', e.stderr || e); }
 
   writeFileSync(join(scratch, 'ts.ts'), `
-import { parse, stringify, load, parseDefinitions, IODocument } from 'internet-object';
-const d = parse('name: string, age: int\\n---\\n~ Alice, 30');
+import { parse, parseDocument, stringify, load, parseDefinitions, IODocument } from 'internet-object';
+const plain = parse('name: string, age: int\\n---\\n~ Alice, 30');
+const d = parseDocument('name: string, age: int\\n---\\n~ Alice, 30');
 const s: string = stringify(d);
 const doc: IODocument = load({ name: 'A', age: 1 }, parseDefinitions('~ $schema: {name: string, age: int}'));
-export { s, doc };
+export { plain, s, doc };
 `);
   // Install tsc into the scratch project and drive it through node directly — npx would need a
   // shell, and a shell would mangle paths containing spaces.
