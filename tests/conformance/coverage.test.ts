@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { corpusDir, corpusPath, specsDir } from '../../tools/corpus/sibling-repos'
+import { corpusDir, corpusPath, specsDir , requireSibling } from '../../tools/corpus/sibling-repos'
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -27,6 +27,10 @@ const SPECS = specsDir() ?? '';
 
 // Both sibling checkouts are needed; a consumer building from a tarball has neither.
 const present = fs.existsSync(SPECS) && fs.existsSync(path.resolve(REPO, '../io-test-cases'));
+
+// In CI this must FAIL rather than skip: a skipped conformance suite is
+// indistinguishable from a passing one, and that is how all 1,769 of these went unrun.
+requireSibling('specs', present);
 
 describe.skipIf(!present)('spec coverage map', () => {
   const result = present ? buildCoverage() : null;

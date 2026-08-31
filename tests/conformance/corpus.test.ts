@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { corpusDir, corpusPath, specsDir } from '../../tools/corpus/sibling-repos'
+import { corpusDir, corpusPath, specsDir , requireSibling } from '../../tools/corpus/sibling-repos'
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -47,6 +47,10 @@ const rel = (f: string) => path.relative(CORPUS, f).replace(/\\/g, '/');
 
 // A missing corpus is not a silent pass. The sibling checkout is how this repo is developed, but a
 // consumer building from a tarball will not have it, so skip loudly rather than report zero tests.
+// In CI this must FAIL rather than skip: a skipped conformance suite is
+// indistinguishable from a passing one, and that is how all 1,769 of these went unrun.
+requireSibling('corpus', files.length > 0);
+
 describe.skipIf(files.length === 0)('conformance corpus (io-test-cases)', () => {
   // Run every file up front: `it()` bodies cannot be async-registered, and running each file once
   // is cheaper than re-parsing it per case.

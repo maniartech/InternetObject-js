@@ -162,3 +162,8 @@ Thumbs.db
 # Private development notes — session artifacts, one-off review guides, scratch probes.
 # Kept out of the repo deliberately; see io-test-cases/IO-JS2-CLEANUP-PLAN.md.
 .private/
+
+# Sibling repositories checked out INSIDE this one, which is what CI does: the conformance corpus
+# and the specification live beside this repo on a developer's machine, but a CI runner checks out
+# one repository at a time. `IO_CORPUS_DIR` / `IO_SPECS_DIR` point at these.
+.sibling/

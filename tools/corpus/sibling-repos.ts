@@ -95,3 +95,29 @@ export function requireCorpusPath(...segments: string[]): string {
   if (resolved === null) throw new Error(missingSiblingMessage('corpus'));
   return resolved;
 }
+
+/**
+ * Turns a missing sibling from a SKIP into a FAILURE, when `IO_REQUIRE_SIBLINGS=1` is set.
+ *
+ * Skipping is right on a developer's machine and right for anyone building from a tarball — they
+ * legitimately have no corpus. It is wrong in CI, where a silently skipped suite is indistinguishable
+ * from a passing one.
+ *
+ * That distinction is not hypothetical here. `tests/conformance/corpus.test.ts` says it plainly:
+ * *"a reference implementation that does not run the contract on every commit is not a reference."*
+ * The suite was written to stop 85 cases going unrun for months — and then ran nowhere in CI,
+ * because the corpus is a sibling repository and CI checked out only this one. All 1,769 conformance
+ * tests reported as skipped, and the pipeline was green.
+ *
+ * @throws when the sibling is required and absent.
+ */
+export function requireSibling(kind: keyof typeof CANDIDATES, present: boolean): void {
+  if (present) return;
+  if (process.env.IO_REQUIRE_SIBLINGS !== '1') return;
+  throw new Error(
+    `IO_REQUIRE_SIBLINGS=1 and the ${kind} repository is missing, so this suite would have been ` +
+    `SKIPPED rather than run.
+
+${missingSiblingMessage(kind)}`
+  );
+}

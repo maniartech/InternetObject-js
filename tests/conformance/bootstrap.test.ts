@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { corpusDir, corpusPath, specsDir } from '../../tools/corpus/sibling-repos'
+import { corpusDir, corpusPath, specsDir , requireSibling } from '../../tools/corpus/sibling-repos'
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -22,6 +22,10 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 const CSV = corpusPath('bootstrap', 'tokenizer.csv') ?? '';
 
 const present = fs.existsSync(CSV);
+
+// In CI this must FAIL rather than skip: a skipped conformance suite is
+// indistinguishable from a passing one, and that is how all 1,769 of these went unrun.
+requireSibling('corpus', present);
 
 describe.skipIf(!present)('conformance corpus (bootstrap tokenizer CSV)', () => {
   const cases = present ? loadCases(CSV) : [];

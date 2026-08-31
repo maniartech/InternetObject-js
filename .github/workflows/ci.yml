@@ -23,6 +23,25 @@ jobs:
         node-version: ${{ matrix.node-version }}
         cache: 'yarn'
 
+    # The conformance corpus is a SIBLING repository, and the suites that read it skip when it is
+    # absent. Skipping is right on a laptop and right from a tarball; in CI it meant all 1,769
+    # conformance tests reported as skipped while the pipeline stayed green -- the reference
+    # implementation not running the contract it is the reference for.
+    - name: Check out the conformance corpus
+      uses: actions/checkout@v4
+      with:
+        repository: maniartech/InternetObject-test-cases
+        path: .sibling/io-test-cases
+
+    # Optional: the coverage map reads it. Not required, because access to it may be restricted
+    # and a permissions failure here should not be indistinguishable from a real one.
+    - name: Check out the specification
+      uses: actions/checkout@v4
+      continue-on-error: true
+      with:
+        repository: maniartech/InternetObject-specs
+        path: .sibling/io-specs
+
     - name: Install dependencies
       run: yarn install --frozen-lockfile
 
@@ -35,9 +54,50 @@ jobs:
 
     - name: Run tests
       run: yarn test
+      env:
+        IO_CORPUS_DIR: .sibling/io-test-cases
+        IO_SPECS_DIR: .sibling/io-specs
+        # Turns a missing corpus from a skip into a failure. A gate that can silently not-run is
+        # not a gate.
+        IO_REQUIRE_SIBLINGS: '1'
+
+    - name: Behaviour snapshot — every corpus input, value model and errors unchanged
+      run: yarn behaviour:verify
+      env:
+        IO_CORPUS_DIR: .sibling/io-test-cases
+
+    - name: Retired API idioms
+      run: yarn check:idioms
 
     - name: Build project
       run: yarn build
+
+  # Everything above tests the SOURCE. This tests what a user actually installs.
+  #
+  # It is not a formality. `src/schema/write-hooks.ts` was reached by a bare side-effect import,
+  # and the CJS bundle dropped it -- so `set()` validated nothing for every `require()` consumer
+  # while the suite, the type-check and the behaviour snapshot all stayed green. Only packing the
+  # tarball, installing it, and asking it to refuse a bad write found that.
+  artifact:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Use Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20.x'
+        cache: 'yarn'
+
+    - name: Install dependencies
+      run: yarn install --frozen-lockfile
+
+    - name: Build project
+      run: yarn build
+
+    - name: Verify the packed package — ESM, CJS, TypeScript, and validated writes
+      run: yarn verify:package
 
   bundle-size:
     runs-on: ubuntu-latest
