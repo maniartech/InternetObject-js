@@ -102,6 +102,12 @@ function memo<T extends object>(node: T, make: () => any): any {
  * on the read.
  */
 function member(node: any, key: PropertyKey): any {
+  // `constructor` is a class, not a method to forward. Bound through the branch below it came back
+  // as a FRESH arrow on every access, so `x.constructor === x.constructor` was false and any
+  // same-type comparison failed. Handed back whole, a document and a section collection report the
+  // class they already claim through `getPrototypeOf`. A record never reaches here for this key --
+  // `plainMember` answers it from the plain target, which is the point of the plain target.
+  if (key === 'constructor') return node.constructor;
   const value = node[key];
   if (typeof value !== 'function') return wrapResult(value);
   return (...args: any[]) => wrapResult(value.apply(node, args.map(lift)));
