@@ -8,6 +8,56 @@ import Tokenizer from './parser/tokenizer';
 import Schema from './schema/schema';
 import parseSchema from './schema/parse-schema';
 import { buildTemplateSource } from './template-literal';
+import { parse as parsePlain, parseDocument as parseDoc } from './facade/parse';
+import type { ParseDefs } from './facade/parse';
+import type { ErrorSink } from './facade/error-sink';
+
+/**
+ * The bare tag: Internet Object text written in place, handed back as **plain JavaScript**.
+ *
+ * ```ts
+ * const people = io`
+ *   name: string, age: int
+ *   ---
+ *   ~ Alice, 30
+ *   ~ Bob, 25
+ * `;
+ * // [{ name: 'Alice', age: 30 }, { name: 'Bob', age: 25 }]
+ * ```
+ *
+ * This is `parse` in tag form, and the pairing is deliberate: `io` is to `io.doc` exactly what
+ * `parse` is to `parseDocument`. Plain by default, the document when you ask for it by name.
+ *
+ * An interpolated `${value}` is written as a **value**, never spliced in as source, so
+ * `${'Smith, John'}` stays one string rather than becoming two members.
+ *
+ * @param {TemplateStringsArray} strings - Template string segments.
+ * @param {...any} args - Interpolated values.
+ * @returns {any} Plain objects and arrays.
+ */
+export function ioParse(strings: TemplateStringsArray, ...args: any[]): any {
+  return parsePlain(buildTemplateSource(strings, args));
+}
+
+/**
+ * The bare tag with external definitions, and a sink in the same slot as every other `.with`.
+ *
+ * ```ts
+ * const person = io.schema`{name: string, age: int}`;
+ * const alice  = io.with(person)`Alice, 30`;   // { name: 'Alice', age: 30 }
+ * ```
+ *
+ * A `Definitions` block works the same way, provided it designates a default schema (`$schema`);
+ * a named one that nothing selects leaves the record positional, exactly as `io.doc.with` does.
+ *
+ * @param {ParseDefs} defs - Definitions, a schema, or a schema name.
+ * @param {ErrorSink} [sink] - An array to fill or a function to call; omit it and the first error throws.
+ * @returns {function(TemplateStringsArray, ...any[]): any} A tag function returning plain JavaScript.
+ */
+ioParse.with = (defs: ParseDefs, sink?: ErrorSink): (strings: TemplateStringsArray, ...args: any[]) => any => {
+  return (strings: TemplateStringsArray, ...args: any[]) =>
+    parsePlain(buildTemplateSource(strings, args), defs, sink);
+}
 
 /**
  * Parses a string (template literal) as an Internet Object document and returns a Document instance.
@@ -27,7 +77,11 @@ import { buildTemplateSource } from './template-literal';
 export function ioDocument(strings: TemplateStringsArray, ...args: any[]): Document {
   const input = buildTemplateSource(strings, args);
 
-  return parse(input, null);
+  // Through the facade, not the core parser: `io.doc` must return what `parseDocument` returns,
+  // which is the PROXIED document. Measured 2026-08-31, it did not -- the tag called the core
+  // parser directly, so `` io.doc`...`.data `` was `undefined` where `parseDocument(...).data`
+  // gave the section. Same asymmetry the bare `io` tag was missing entirely.
+  return parseDoc(input);
 }
 
 /**
@@ -44,11 +98,11 @@ export function ioDocument(strings: TemplateStringsArray, ...args: any[]): Docum
  * @param {Error[]} [errorCollector] - Optional array to collect validation errors.
  * @returns {function(TemplateStringsArray, ...any[]): Document} A tag function for parsing with definitions.
  */
-ioDocument.with = (defs: Definitions | Schema | string | null, errorCollector?: Error[]): (strings: TemplateStringsArray, ...args: any[]) => Document => {
+ioDocument.with = (defs: ParseDefs, sink?: ErrorSink): (strings: TemplateStringsArray, ...args: any[]) => Document => {
   return (strings: TemplateStringsArray, ...args: any[]) => {
     const input = buildTemplateSource(strings, args);
 
-    return parse(input, defs, errorCollector);
+    return parseDoc(input, defs, sink);
   }
 }
 

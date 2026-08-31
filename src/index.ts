@@ -57,7 +57,7 @@ export { IOStreamError, StreamErrorCode } from './streaming';
 export type { IOStreamTransport, IOStreamSource, StreamItem, StreamReaderOptions, StreamWriterOptions } from './streaming';
 
 // Main tag functions (also tree-shakable)
-export { ioDefinitions, ioDocument, ioObject, ioSchema } from './facade';
+export { ioDefinitions, ioDocument, ioObject, ioParse, ioSchema } from './facade';
 
 // Default facade (only imported if user does default import!)
 import io from './facade';

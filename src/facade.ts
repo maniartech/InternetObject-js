@@ -11,7 +11,7 @@ import ErrorCodes             from './errors/io-error-codes';
 import IOSyntaxError          from './errors/io-syntax-error';
 import IOValidationError      from './errors/io-validation-error';
 import Schema                 from './schema/schema';
-import { ioDefinitions, ioDocument, ioObject, ioSchema } from './template-funcs';
+import { ioDefinitions, ioDocument, ioObject, ioParse, ioSchema } from './template-funcs';
 import { parse, parseDocument } from './facade/parse';
 import parseDefinitions       from './parser/parse-defs';
 import parseSchema            from './schema/parse-schema';
@@ -27,8 +27,38 @@ import { subscribe, version } from './facade/notify';
 registerTypes();
 
 
+/**
+ * `io` is itself a tag, and calling it parses to **plain JavaScript** — the same thing `io.parse`
+ * does with a string. `io.doc` is the document form, exactly as `parseDocument` is to `parse`.
+ *
+ * ```ts
+ * io`name: string, age: int
+ * ---
+ * Alice, 30`                    // { name: 'Alice', age: 30 }
+ * ```
+ *
+ * The wrapper exists so the members below are attached here rather than mutated onto the exported
+ * `ioParse`, which would otherwise carry all forty of them for anyone importing it by name.
+ */
+export interface IOTag {
+  /** `` io`name: Alice, age: 30` `` — parses to plain JavaScript. */
+  (strings: TemplateStringsArray, ...args: any[]): any;
+  /** `io.with(defs, sink)` — the same two slots every other tag's `.with` takes (§2.5). */
+  with: typeof ioParse.with;
+}
+
+/**
+ * Named and exported because a declaration build has to be able to *write down* the type of what
+ * this module exports. Left as a bare local function, `io` inferred as `typeof ioTag & {...}` and
+ * `tsup` failed with TS4023 — "has or is using name 'ioTag' ... but cannot be named".
+ */
+const ioTag: IOTag = Object.assign(
+  (strings: TemplateStringsArray, ...args: any[]) => ioParse(strings, ...args),
+  { with: ioParse.with }
+);
+
 // Short aliases
-const io = {
+const io = Object.assign(ioTag, {
   // Facade methods
   parse,
   parseDocument,
@@ -85,12 +115,13 @@ const io = {
   ErrorCodes,
   IOSyntaxError,
   IOValidationError,
-};
+});
 
 
 export {
   ioDefinitions, ioDocument,
   ioObject,
+  ioParse,
   ioSchema
 };
 
