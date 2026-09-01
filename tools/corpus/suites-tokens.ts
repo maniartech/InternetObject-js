@@ -174,6 +174,25 @@ const stringForms: TokCase[] = [
   { name: 'raw_unterminated', input: "r'unclosed" },
   { name: 'raw_empty', input: "r''" },
 
+  // The ONE escape a raw string has. Without it a raw string cannot hold its own enclosing quote,
+  // and "use the other quote kind" fails on a value needing both -- a regex matching either quote,
+  // which is what raw strings are for. Absent from this corpus until 2026-09-01, which is how the
+  // reference implementation shipped without it while the specification documented it three times.
+  { group: 'a doubled enclosing quote is a raw string’s only escape',
+    name: 'raw_doubled_single_quote', input: "r'Jonas D''costa'",
+    note: 'two single quotes stand for one, and do NOT close the string' },
+  { name: 'raw_doubled_double_quote', input: 'r"He said, ""Hello!"""' },
+  { name: 'raw_doubled_repeated', input: "r'a''b''c'" },
+  { name: 'raw_doubled_at_edges', input: "r'''a'''" },
+  { name: 'raw_doubled_both_quote_kinds', input: "r'[''\"]'",
+    note: 'inexpressible without doubling: neither quote kind alone can enclose it' },
+  { name: 'raw_other_quote_is_literal', input: 'r\'say ""hi"" ok\'',
+    note: 'only the ENCLOSING quote doubles; the other kind is ordinary content' },
+  { name: 'raw_doubled_then_eof', input: "r'a''",
+    note: 'the trailing pair is an escape, so no closing quote was ever seen' },
+  { name: 'raw_single_quote_still_ends_it', input: "r'Jonas D'costa'",
+    note: 'the control: one quote still terminates, so the invalid form stays invalid' },
+
   { group: 'binary literals', name: 'binary_simple', input: 'b"SGVsbG8="' },
   { name: 'binary_empty', input: 'b""' },
   { name: 'binary_invalid_base64', input: 'b"!!!"' },

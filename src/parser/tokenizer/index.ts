@@ -381,7 +381,12 @@ class Tokenizer {
     return match.groups as Annotation;
   }
 
-  private parseAnotatedString(annotation: Annotation): Token {
+  /**
+   * @param allowDoubledQuote when true, two consecutive enclosing quotes are ONE literal quote
+   *   rather than the end of the string. Raw strings only â€” it is the only escape they have, and
+   *   the other annotations (`b`, `d`, `t`, `dt`) carry content that cannot contain a quote.
+   */
+  private parseAnotatedString(annotation: Annotation, allowDoubledQuote = false): Token {
     const start = this.pos;
     const startRow = this.row;
     const startCol = this.col;
@@ -409,7 +414,17 @@ class Tokenizer {
     }
 
     this.advance(); // Move past the opening quotation mark
-    while (!this.reachedEnd && this.input[this.pos] !== annotation.quote) {
+    while (!this.reachedEnd) {
+      if (this.input[this.pos] === annotation.quote) {
+        // A doubled enclosing quote is the raw string's only escape: it stands for one literal
+        // quote and does NOT close the string. Anything else at this position does close it.
+        if (allowDoubledQuote && this.input[this.pos + 1] === annotation.quote) {
+          this.advance()
+          this.advance()
+          continue
+        }
+        break
+      }
       this.advance();
     }
 
@@ -438,7 +453,12 @@ class Tokenizer {
 
     this.advance(); // Move past the closing quotation mark
     const fullTokenText = this.input.substring(start, this.pos);
-    const value = fullTokenText.substring(annotation.name.length + 1, fullTokenText.length - 1);
+    let value = fullTokenText.substring(annotation.name.length + 1, fullTokenText.length - 1);
+    if (allowDoubledQuote) {
+      // `''` was scanned as one literal quote above; collapse it in the VALUE too, or the string
+      // would read back with the escape still in it.
+      value = value.split(annotation.quote + annotation.quote).join(annotation.quote);
+    }
 
     // Prepare the token
     const token = new Token();
@@ -452,7 +472,7 @@ class Tokenizer {
   }
 
   private parseRawString(annotation: Annotation): Token {
-    const token = this.parseAnotatedString(annotation);
+    const token = this.parseAnotatedString(annotation, true);
 
     // If the annotated string parsing already returned an error token, return it as-is
     if (token.type === TokenType.ERROR) {
