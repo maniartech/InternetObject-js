@@ -622,6 +622,12 @@ class ASTParser {
         const value = this.parseValue();
         return new MemberNode(value, leftToken as TokenNode);
       } else {
+        // An ERROR token already carries a diagnosis from the tokenizer — an illegal section name,
+        // for instance. Re-describing it as a bad key throws that away and points the reader at the
+        // wrong thing: the code becomes `invalid-key` for a fault that was never about a key.
+        const carried = (leftToken as any)?.value?.originalError;
+        if (carried instanceof Error) throw carried;
+
         throw new SyntaxError(ErrorCodes.invalidKey,
           `Invalid key '${leftToken.token}'. Object keys must be strings ` +
           `(numbers and literal keywords like 0/null/true must be quoted to be used as keys).`,

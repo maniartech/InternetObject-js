@@ -26,6 +26,15 @@ enum ParsingErrorCodes {
   // told consumers to look for a bad character that was never there.
   duplicateSectionName = 'duplicate-section-name',
 
+  // A section name outside the bare-name set (letter | mark | digit | '-' | '_').
+  //
+  // The production is ANCHORED, which is the whole point: without this the header regex matched a
+  // PREFIX and silently discarded the rest, so `--- user$x: $s` did not fail -- it produced a
+  // section named `data`, losing the name entirely. Two such sections in one document collide, and
+  // nothing reports it. io-specs the-structure/introduction/data.md: "A reader MUST reject a name
+  // outside that set ... It must not accept a prefix and discard the rest."
+  invalidSectionName = 'invalid-section-name',
+
   // Schema parsing
   invalidSchema = 'invalid-schema',
 

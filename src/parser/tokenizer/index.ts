@@ -383,7 +383,7 @@ class Tokenizer {
 
   /**
    * @param allowDoubledQuote when true, two consecutive enclosing quotes are ONE literal quote
-   *   rather than the end of the string. Raw strings only â€” it is the only escape they have, and
+   *   rather than the end of the string. Raw strings only — it is the only escape they have, and
    *   the other annotations (`b`, `d`, `t`, `dt`) carry content that cannot contain a quote.
    */
   private parseAnotatedString(annotation: Annotation, allowDoubledQuote = false): Token {
@@ -1287,6 +1287,23 @@ class Tokenizer {
         this.advance(schema2.length);
         this.skipWhitespaces(true);
       } else if (name) {
+        // The section-name production is ANCHORED (io-specs .../data.md). The regex above can only
+        // match a legal RUN, so a trailing illegal character shows up as the run stopping early --
+        // `user$x` matches `user` and leaves `$x`. Accepting that silently is how a section lost
+        // its name and fell back to `data`. A name must be followed by whitespace, `:`, or the end
+        // of the line; anything else means the name itself held an illegal character.
+        const after = this.input[this.pos + name.length];
+        if (after !== undefined && !/[\s:]/.test(after)) {
+          const bad = /^[^\s:]+/.exec(this.input.substring(this.pos, lineEnd))?.[0] ?? name;
+          const error = new SyntaxError(
+            ErrorCodes.invalidSectionName,
+            `Invalid section name '${bad}'. A section name may contain only letters, marks, digits, '-' and '_', and cannot be quoted.`,
+            this.currentPosition);
+          tokens[tokenIndex++] = this.createErrorToken(error, this.pos, this.row, this.col, bad);
+          this.advance(bad.length);
+          return tokenIndex;
+        }
+
         tokens[tokenIndex++] = Token.init(
           this.pos,
           this.row,

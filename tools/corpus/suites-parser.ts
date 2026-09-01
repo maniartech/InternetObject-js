@@ -170,6 +170,22 @@ const errors: Case[] = [
 
   { group: 'header and section problems', name: 'definition_with_no_key', input: '~ : 1\n---\na: 1' },
   { name: 'duplicate_section_name', input: '--- s\n~ 1\n--- s\n~ 2' },
+
+  // A section name is `( letter | mark | digit | "-" | "_" )+`, and the production is ANCHORED.
+  // Both halves were missing until 2026-09-01: the header pattern matched a legal PREFIX and
+  // dropped the rest, so `--- user$x: $s` did not fail -- it produced a section named `data`,
+  // losing the written name silently. Two such sections in a document then collide on `data`.
+  { name: 'section_name_with_dollar', input: '~ $s: {a: string}\n--- user$x: $s\n~ A',
+    note: 'the anchoring case: `user` is a legal prefix, and accepting it loses the name' },
+  { name: 'section_name_with_star', input: '~ $s: {a: string}\n--- user*x: $s\n~ A' },
+  { name: 'section_name_with_quote', input: "~ $s: {a: string}\n--- user'x: $s\n~ A" },
+  { name: 'section_name_with_bang', input: '~ $s: {a: string}\n--- user!x: $s\n~ A' },
+  // The controls. The set is UNICODE, not ASCII -- a port that reaches for [A-Za-z0-9_-] fails
+  // these and nothing else, which is exactly the kind of difference this corpus exists to catch.
+  { name: 'section_name_unicode_letter', input: '~ $s: {a: string}\n--- usér: $s\n~ A' },
+  { name: 'section_name_cjk', input: '~ $s: {a: string}\n--- ユーザー: $s\n~ A' },
+  { name: 'section_name_digits_only', input: '~ $s: {a: string}\n--- 123: $s\n~ A' },
+  { name: 'section_name_hyphen_underscore', input: '~ $s: {a: string}\n--- user-list_2: $s\n~ A' },
   { name: 'section_selector_unknown_schema', input: '--- $Nope\n~ 1' },
   { name: 'undefined_variable_reference', input: '---\na: @nope' },
   { name: 'undefined_schema_reference', input: '~ $schema: {a: $Nope}\n---\n~ 1' },
