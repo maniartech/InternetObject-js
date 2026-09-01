@@ -824,6 +824,54 @@
   ]
  },
  {
+  "id": "parser/errors-extended.io#section_name_with_dollar",
+  "value": "null",
+  "errors": [
+   "invalid-section-name@?:?"
+  ]
+ },
+ {
+  "id": "parser/errors-extended.io#section_name_with_star",
+  "value": "null",
+  "errors": [
+   "invalid-section-name@?:?"
+  ]
+ },
+ {
+  "id": "parser/errors-extended.io#section_name_with_quote",
+  "value": "null",
+  "errors": [
+   "invalid-section-name@?:?"
+  ]
+ },
+ {
+  "id": "parser/errors-extended.io#section_name_with_bang",
+  "value": "null",
+  "errors": [
+   "invalid-section-name@?:?"
+  ]
+ },
+ {
+  "id": "parser/errors-extended.io#section_name_unicode_letter",
+  "value": "[{\"a\":\"A\"}]",
+  "errors": []
+ },
+ {
+  "id": "parser/errors-extended.io#section_name_cjk",
+  "value": "[{\"a\":\"A\"}]",
+  "errors": []
+ },
+ {
+  "id": "parser/errors-extended.io#section_name_digits_only",
+  "value": "[{\"a\":\"A\"}]",
+  "errors": []
+ },
+ {
+  "id": "parser/errors-extended.io#section_name_hyphen_underscore",
+  "value": "[{\"a\":\"A\"}]",
+  "errors": []
+ },
+ {
   "id": "parser/errors-extended.io#section_selector_unknown_schema",
   "value": "",
   "errors": [],
@@ -4326,6 +4374,50 @@
   "id": "tokenizer/strings-forms.io#raw_empty",
   "value": "{\"0\":\"\"}",
   "errors": []
+ },
+ {
+  "id": "tokenizer/strings-forms.io#raw_doubled_single_quote",
+  "value": "{\"0\":\"Jonas D'costa\"}",
+  "errors": []
+ },
+ {
+  "id": "tokenizer/strings-forms.io#raw_doubled_double_quote",
+  "value": "{\"0\":\"He said, \\\"Hello!\\\"\"}",
+  "errors": []
+ },
+ {
+  "id": "tokenizer/strings-forms.io#raw_doubled_repeated",
+  "value": "{\"0\":\"a'b'c\"}",
+  "errors": []
+ },
+ {
+  "id": "tokenizer/strings-forms.io#raw_doubled_at_edges",
+  "value": "{\"0\":\"'a'\"}",
+  "errors": []
+ },
+ {
+  "id": "tokenizer/strings-forms.io#raw_doubled_both_quote_kinds",
+  "value": "{\"0\":\"['\\\"]\"}",
+  "errors": []
+ },
+ {
+  "id": "tokenizer/strings-forms.io#raw_other_quote_is_literal",
+  "value": "{\"0\":\"say \\\"\\\"hi\\\"\\\" ok\"}",
+  "errors": []
+ },
+ {
+  "id": "tokenizer/strings-forms.io#raw_doubled_then_eof",
+  "value": "{\"0\":{\"__error\":true,\"category\":\"syntax\",\"message\":\"\\\"unterminated-string\\\" \\\"Unterminated annotated string literal. Expected closing quote ''' before end of input.\\\" at EOF\",\"name\":\"InternetObject(SyntaxError)\",\"position\":{\"pos\":0,\"row\":1,\"col\":1,\"token\":\"r'a''\",\"value\":{\"__error\":true,\"message\":\"\\\"unterminated-string\\\" \\\"Unterminated annotated string literal. Expected closing quote ''' before end of input.\\\" at EOF\",\"originalError\":{\"errorCode\":\"unterminated-string\",\"fact\":\"Unterminated annotated string literal. Expected closing quote ''' before end of input.\",\"isEof\":true,\"name\":\"InternetObject(SyntaxError)\",\"message\":\"\\\"unterminated-string\\\" \\\"Unterminated annotated string literal. Expected closing quote ''' before end of input.\\\" at EOF\"},\"errorCode\":\"unterminated-string\"},\"type\":\"ERROR\",\"subType\":\"\"},\"errorCode\":\"unterminated-string\"}}",
+  "errors": [
+   "unterminated-string@?:?"
+  ]
+ },
+ {
+  "id": "tokenizer/strings-forms.io#raw_single_quote_still_ends_it",
+  "value": "null",
+  "errors": [
+   "unexpected-token@1:11"
+  ]
  },
  {
   "id": "tokenizer/strings-forms.io#binary_simple",

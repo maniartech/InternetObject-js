@@ -128,18 +128,27 @@ keep their exact spelling; 41 were already predicate-first.
 | `not-a-string` | `expected-string` |
 | `not-a-bool` | `expected-boolean` |
 | `not-an-array`, `expected-array` | `expected-array` (merged) |
-| `invalid-min-length` / `invalid-max-length` | `undersized-string` / `oversized-string` |
-| `invalid-length` | `invalid-string-length` / `invalid-array-length` |
+| `invalid-min-length` / `invalid-max-length` | `mismatched-min-len` / `mismatched-max-len` |
+| `invalid-length` | `mismatched-len` |
 | `invalid-pattern` | `mismatched-pattern` |
 | `invalid-choice` | `mismatched-choice` |
 | `unsupported-number-type` | `reserved-type` |
 | `additional-values-not-allowed` | `unknown-member` (merged) |
 | `invalid-type` | split: `expected-<type>` (wrong value) / `unknown-type` (no such type) |
-| `invalid-value` | split: `mismatched-value` (anyOf) / `mismatched-multiple-of` |
-| `invalid-range` | `out-of-range-<type>` |
-| `out-of-range` | `out-of-range-datetime` / `undersized-array` / `oversized-array` |
+| `invalid-value` | split: `mismatched-any-of` / `mismatched-multiple-of` |
+| `invalid-range` | `out-of-range-integer`, and the other per-type range codes |
+| `out-of-range` | `mismatched-min` / `mismatched-max` for a declared bound; `mismatched-min-len` / `mismatched-max-len` for a length |
 | `invalid-base64` | `invalid-binary` |
 | `not-a-number`, `not-an-integer` | removed — declared but never thrown |
+
+> **Two renames, not one.** The table above records where each *old* code ended up. Several of
+> ADR 0002's results were themselves superseded when the `mismatched-` family arrived: a violated
+> **declared constraint** now names the constraint (`mismatched-max`, `mismatched-min-len`), while
+> `out-of-range-` is reserved for a value that does not fit the **type's own** range. So
+> `undersized-string`, `oversized-string`, `invalid-string-length`, `invalid-array-length`,
+> `mismatched-value`, `out-of-range-datetime`, `undersized-array` and `oversized-array` were all
+> intermediate spellings and **do not exist** — an earlier version of this table listed them as
+> current. The right-hand column is now what the library actually emits.
 
 The rename exposed places where the code being reported was decided by an implementation detail
 rather than by the format. Every numeric and temporal type now reports its own code —
@@ -167,6 +176,32 @@ Underneath, eleven raise sites disagreed with the catalogue about their error cl
 sites — the streaming site was correct, so the conformance case passed while the ordinary path
 diverged — and `unknown-type` was raised as four different classes across seven sites. A code now
 has exactly one class, and the catalogue is the authority. **56 codes.**
+
+### Two rules the specification stated and the parser did not enforce
+
+Found by reconciling the specification against the implementation page by page, ahead of the first
+port. Both are places where a reader following the specification would have written something the
+reference implementation rejected — or worse, silently accepted.
+
+**A raw string escapes its enclosing quote by doubling it.** The specification said so in prose, in
+the EBNF, and in two worked examples, and neither example worked: `r'Jonas D''costa'` and
+`r"He said, ""Hello!"""` both failed. Without doubling a raw string cannot hold its own enclosing
+quote at all, and the obvious workaround — use the other quote kind — dies on a value needing
+both, such as a regex matching either quote, which is exactly what raw strings exist for. Doubling
+now works, for `r` only: `b`, `d`, `t` and `dt` carry content that cannot contain a quote. A single
+unescaped quote still ends the string, and an unterminated raw string is still an error.
+
+**A section name outside the bare-name set is now rejected** — the set is `letter | mark | digit |
+'-' | '_'`, Unicode throughout, so `usér` and `ユーザー` were always fine. The production is
+**anchored**, and that was the part missing: the header pattern matched a legal *prefix* and
+discarded the remainder, so `--- user$x: $s` did not fail. It produced a section named `data`,
+losing the written name entirely and reporting nothing — and two such sections in one document
+collide on `data`. It now reports `invalid-section-name`, naming the whole offending run rather
+than the prefix that happened to parse.
+
+That fix exposed a third: the parser relabelled **any** error token appearing where a key was
+expected as `invalid-key`, discarding whatever the tokenizer had diagnosed. It now rethrows the
+original, so a fault is reported as what it is.
 
 ### Numbers: two rules
 
