@@ -106,46 +106,49 @@ describe("Escape Sequence Handling", () => {
       expect(tokens[2].value).toBe("next string");
     });
 
-    it("should handle invalid unicode escape sequences", () => {
+    // A marker escape is a CLAIM: `\u` and `\x` announce a code point, so a malformed one is an
+    // error rather than text. An UNRECOGNISED escape stays lenient — see the last test in this
+    // block. Both call sites used to swallow the throw and hand back text, which lost the code
+    // point silently and made an open string and a regular string disagree about the same input.
+    it("rejects a malformed unicode escape rather than silently dropping the marker", () => {
       const input = `"test\\uZZZZ", "valid"`;
       const tokenizer = new Tokenizer(input);
-      const tokens = tokenizer.tokenize();
 
-      expect(tokens).toHaveLength(3);
-      expect(tokens[0].type).toBe(TokenType.STRING);
-      expect(tokens[0].value).toBe("testuZZZZ"); // Invalid unicode treated as literal
-      expect(tokens[2].value).toBe("valid");
+      const tokens = tokenizer.tokenize();
+      expect(tokens[0].type).toBe(TokenType.ERROR);
+      expect((tokens[0].value as any).errorCode).toBe("invalid-escape-sequence");
     });
 
-    it("should handle invalid hex escape sequences", () => {
+    it("rejects a malformed hex escape rather than silently dropping the marker", () => {
       const input = `"test\\xZZ", "valid"`;
       const tokenizer = new Tokenizer(input);
-      const tokens = tokenizer.tokenize();
 
-      expect(tokens).toHaveLength(3);
-      expect(tokens[0].type).toBe(TokenType.STRING);
-      expect(tokens[0].value).toBe("testxZZ"); // Invalid hex treated as literal
-      expect(tokens[2].value).toBe("valid");
+      const tokens = tokenizer.tokenize();
+      expect(tokens[0].type).toBe(TokenType.ERROR);
+      expect((tokens[0].value as any).errorCode).toBe("invalid-escape-sequence");
     });
 
-    it("should handle incomplete unicode escape sequences", () => {
-      const input = `"test\\u12", "test\\u", "test\\u123"`;
-      const tokenizer = new Tokenizer(input);
-      const tokens = tokenizer.tokenize();
+    it.each([`"a\\u12"`, `"a\\u"`, `"a\\u123"`])(
+      "rejects an incomplete unicode escape: %s",
+      (input) => {
+        const tokens = new Tokenizer(input).tokenize();
+      expect(tokens[0].type).toBe(TokenType.ERROR);
+      expect((tokens[0].value as any).errorCode).toBe("invalid-escape-sequence");
+      });
 
-      // Actual tokenizer behavior may vary - just ensure we get some tokens
-      expect(tokens.length).toBeGreaterThanOrEqual(1);
-      // Should handle invalid sequences gracefully
-    });
+    it.each([`"a\\x1"`, `"a\\x"`, `"a\\xG"`])(
+      "rejects an incomplete hex escape: %s",
+      (input) => {
+        const tokens = new Tokenizer(input).tokenize();
+      expect(tokens[0].type).toBe(TokenType.ERROR);
+      expect((tokens[0].value as any).errorCode).toBe("invalid-escape-sequence");
+      });
 
-    it("should handle incomplete hex escape sequences", () => {
-      const input = `"test\\x1", "test\\x", "test\\xG"`;
-      const tokenizer = new Tokenizer(input);
-      const tokens = tokenizer.tokenize();
-
-      // Actual tokenizer behavior may vary - just ensure we get some tokens
-      expect(tokens.length).toBeGreaterThanOrEqual(1);
-      // Should handle invalid sequences gracefully
+    // The other half of the rule, and the reason this is not simply "strict escapes": an escape
+    // that claims nothing stays lenient. `\q` is `q`, in every string form.
+    it("leaves an unrecognised escape lenient", () => {
+      expect(new Tokenizer(`"a\\qb"`).tokenize()[0].value).toBe("aqb");
+      expect(new Tokenizer(`"C:\\Users"`).tokenize()[0].value).toBe("C:Users");
     });
   });
 
@@ -253,14 +256,13 @@ describe("Escape Sequence Handling", () => {
       expect(tokens[6].value).toBe("final");
     });
 
-    it("should handle truncated escape sequences at end of input", () => {
+    it("reports a truncated escape as invalid-escape-sequence, not unterminated-string", () => {
+      // This used to report `unterminated-string`, which sends the reader to look at their quoting
+      // when the fault is in the escape.
       const input = `"test\\u123`;
-      const tokenizer = new Tokenizer(input);
-      const tokens = tokenizer.tokenize();
-
-      expect(tokens).toHaveLength(1);
-      // Should either be an error token or a string with literal content
-      expect(tokens[0].type).toMatch(/STRING|ERROR/);
+      const tokens = new Tokenizer(input).tokenize();
+      expect(tokens[0].type).toBe(TokenType.ERROR);
+      expect((tokens[0].value as any).errorCode).toBe("invalid-escape-sequence");
     });
   });
 });

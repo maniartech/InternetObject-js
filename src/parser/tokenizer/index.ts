@@ -206,42 +206,26 @@ class Tokenizer {
 
       // Check if current character is a backslash (escape character)
       if (this.input[this.pos] === Symbols.BACKSLASH) {
+        // `escapeString` is lenient about an UNRECOGNISED escape -- `\q` is `q`, by design and by
+        // specification -- and throws only when a MARKER escape fails to make good on its claim:
+        // `\u` and `\x` announce a code point, so `\uZZZZ` is a malformed escape, not text.
+        //
+        // That throw used to be swallowed here and turned back into text, which made the two cases
+        // indistinguishable and lost the code point silently. It is now reported -- as an ERROR
+        // TOKEN rather than a thrown fatal, so one bad escape costs one value and the rest of the
+        // document is still parsed and still reports its own errors. That matches every other
+        // tokenizer-level diagnosis (`invalid-bigint`, `invalid-date`).
         try {
-          ({ value, needToNormalize } = this.escapeString(
-            value,
-            needToNormalize
-          ));
-          // escapeString has already advanced the position, so continue to next iteration
+          ({ value, needToNormalize } = this.escapeString(value, needToNormalize));
         } catch (error) {
-          // For invalid escape sequences, treat them as literal characters without the backslash
-          // Note: escapeString has already advanced past the backslash, so pos is at the escape char
-          if (!this.reachedEnd) {
-            const escapeChar = this.input[this.pos];
-            value += escapeChar; // Add the escape character (u, x, etc.) without backslash
-
-            // For \u and \x sequences, we need to add the invalid hex digits too
-            if (escapeChar === 'u') {
-              // Add the next 4 characters (or until end of input)
-              this.advance();
-              for (let i = 0; i < 4 && !this.reachedEnd; i++) {
-                value += this.input[this.pos];
-                this.advance();
-              }
-              continue;
-            } else if (escapeChar === 'x') {
-              // Add the next 2 characters (or until end of input)
-              this.advance();
-              for (let i = 0; i < 2 && !this.reachedEnd; i++) {
-                value += this.input[this.pos];
-                this.advance();
-              }
-              continue;
-            } else {
-              this.advance();
-            }
-          }
-          continue;
+          // Consume the rest of the literal so the error token carries the whole thing, and so the
+          // scan resumes cleanly after the closing quote rather than inside the string.
+          while (!this.reachedEnd && this.input[this.pos] !== encloser) this.advance();
+          if (!this.reachedEnd) this.advance(); // past the closing quote
+          const tokenText = this.input.substring(start, this.pos);
+          return this.createErrorToken(error as Error, start, startRow, startCol, tokenText);
         }
+        // escapeString has already advanced the position, so continue to next iteration
       } else {
         value += this.input[this.pos];
         this.advance();
@@ -900,44 +884,22 @@ class Tokenizer {
       }
 
       if (char === Symbols.BACKSLASH) {
+        // Same rule as a regular string: an unrecognised escape stays lenient, a malformed marker
+        // escape (`\u`, `\x`) is an error rather than text. This site additionally used to re-emit
+        // the backslash, so an open string and a regular string disagreed about the same input.
         try {
           ({ value, needToNormalize: normalizeString } = this.escapeString(
             value,
             normalizeString
           ));
-          // escapeString has already advanced the position, so continue to next iteration
-          continue;
         } catch (error) {
-          // For open strings, preserve the backslash and the escape character
-          // Note: escapeString has already advanced past the backslash, so pos is at the escape char
-          value += "\\";
-          if (!this.reachedEnd) {
-            const escapeChar = this.input[this.pos];
-            value += escapeChar; // Add the escape character (u, x, etc.)
-
-            // For \u and \x sequences, we need to add the invalid hex digits too
-            if (escapeChar === 'u') {
-              // Add the next 4 characters (or until end of input)
-              this.advance();
-              for (let i = 0; i < 4 && !this.reachedEnd; i++) {
-                value += this.input[this.pos];
-                this.advance();
-              }
-              continue;
-            } else if (escapeChar === 'x') {
-              // Add the next 2 characters (or until end of input)
-              this.advance();
-              for (let i = 0; i < 2 && !this.reachedEnd; i++) {
-                value += this.input[this.pos];
-                this.advance();
-              }
-              continue;
-            } else {
-              this.advance();
-            }
-          }
-          continue;
+          // Consume the rest of the run so the error token carries it, then report and move on.
+          while (!this.reachedEnd && is.isValidOpenStringChar(this.input[this.pos])) this.advance();
+          const tokenText = this.input.substring(start, this.pos);
+          return this.createErrorToken(error as Error, start, startRow, startCol, tokenText);
         }
+        // escapeString has already advanced the position, so continue to next iteration
+        continue;
       } else {
         value += char;
         this.advance();

@@ -49,26 +49,24 @@ describe("Error Handling and Recovery", () => {
       expect(tokens[2].value).toBe("next string");
     });
 
-    it("should handle invalid unicode escape sequences", () => {
+    // `\u` and `\x` claim a code point, so a malformed one is an error, not text. Recovery does
+    // not apply: there is nothing to recover to that would not silently lose what was asked for.
+    it("rejects a malformed unicode escape", () => {
       const input = `"test\\uZZZZ", "valid"`;
       const tokenizer = new Tokenizer(input);
-      const tokens = tokenizer.tokenize();
 
-      expect(tokens).toHaveLength(3);
-      expect(tokens[0].type).toBe(TokenType.STRING);
-      expect(tokens[0].value).toBe("testuZZZZ"); // Invalid unicode treated as literal
-      expect(tokens[2].value).toBe("valid");
+      const tokens = tokenizer.tokenize();
+      expect(tokens[0].type).toBe(TokenType.ERROR);
+      expect((tokens[0].value as any).errorCode).toBe("invalid-escape-sequence");
     });
 
-    it("should handle invalid hex escape sequences", () => {
+    it("rejects a malformed hex escape", () => {
       const input = `"test\\xZZ", "valid"`;
       const tokenizer = new Tokenizer(input);
-      const tokens = tokenizer.tokenize();
 
-      expect(tokens).toHaveLength(3);
-      expect(tokens[0].type).toBe(TokenType.STRING);
-      expect(tokens[0].value).toBe("testxZZ"); // Invalid hex treated as literal
-      expect(tokens[2].value).toBe("valid");
+      const tokens = tokenizer.tokenize();
+      expect(tokens[0].type).toBe(TokenType.ERROR);
+      expect((tokens[0].value as any).errorCode).toBe("invalid-escape-sequence");
     });
 
     it("should handle invalid escape sequences gracefully in regular strings", () => {
@@ -84,28 +82,22 @@ describe("Error Handling and Recovery", () => {
       expect(tokens[2].value).toBe("another valid");
     });
 
-    it("should handle invalid hex escape sequences gracefully", () => {
+    it("rejects a malformed hex escape mid-string", () => {
       const input = `"valid\\xZZ invalid", "valid"`;
       const tokenizer = new Tokenizer(input);
-      const tokens = tokenizer.tokenize();
 
-      expect(tokens).toHaveLength(3);
-      expect(tokens[0].type).toBe(TokenType.STRING);
-      expect(tokens[0].value).toBe("validxZZ invalid"); // Invalid hex escape treated as literal
-      expect(tokens[2].type).toBe(TokenType.STRING);
-      expect(tokens[2].value).toBe("valid");
+      const tokens = tokenizer.tokenize();
+      expect(tokens[0].type).toBe(TokenType.ERROR);
+      expect((tokens[0].value as any).errorCode).toBe("invalid-escape-sequence");
     });
 
-    it("should handle invalid unicode escape sequences gracefully", () => {
+    it("rejects a malformed unicode escape mid-string", () => {
       const input = `"valid\\uZZZZ invalid", "valid"`;
       const tokenizer = new Tokenizer(input);
-      const tokens = tokenizer.tokenize();
 
-      expect(tokens).toHaveLength(3);
-      expect(tokens[0].type).toBe(TokenType.STRING);
-      expect(tokens[0].value).toBe("validuZZZZ invalid"); // Invalid unicode treated as literal
-      expect(tokens[2].type).toBe(TokenType.STRING);
-      expect(tokens[2].value).toBe("valid");
+      const tokens = tokenizer.tokenize();
+      expect(tokens[0].type).toBe(TokenType.ERROR);
+      expect((tokens[0].value as any).errorCode).toBe("invalid-escape-sequence");
     });
   });
 

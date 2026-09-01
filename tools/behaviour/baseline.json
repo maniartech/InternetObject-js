@@ -772,8 +772,10 @@
  },
  {
   "id": "parser/errors-extended.io#bad_unicode_escape",
-  "value": "{\"a\":\"uZZZZ\"}",
-  "errors": []
+  "value": "{\"a\":{\"__error\":true,\"category\":\"syntax\",\"message\":\"\\\"invalid-escape-sequence\\\" \\\"Invalid Unicode escape sequence '\\\\uZZZZ'. Expected 4 hexadecimal digits (0-9, A-F).\\\" at 1:6\",\"name\":\"InternetObject(SyntaxError)\",\"position\":{\"pos\":3,\"row\":1,\"col\":4,\"token\":\"\\\"\\\\uZZZZ\\\"\",\"value\":{\"__error\":true,\"message\":\"\\\"invalid-escape-sequence\\\" \\\"Invalid Unicode escape sequence '\\\\uZZZZ'. Expected 4 hexadecimal digits (0-9, A-F).\\\" at 1:6\",\"originalError\":{\"errorCode\":\"invalid-escape-sequence\",\"fact\":\"Invalid Unicode escape sequence '\\\\uZZZZ'. Expected 4 hexadecimal digits (0-9, A-F).\",\"isEof\":false,\"name\":\"InternetObject(SyntaxError)\",\"message\":\"\\\"invalid-escape-sequence\\\" \\\"Invalid Unicode escape sequence '\\\\uZZZZ'. Expected 4 hexadecimal digits (0-9, A-F).\\\" at 1:6\"},\"errorCode\":\"invalid-escape-sequence\"},\"type\":\"ERROR\",\"subType\":\"\"},\"errorCode\":\"invalid-escape-sequence\"}}",
+  "errors": [
+   "invalid-escape-sequence@?:?"
+  ]
  },
  {
   "id": "parser/errors-extended.io#hex_with_bad_digit",
@@ -4222,13 +4224,17 @@
  },
  {
   "id": "tokenizer/strings-escapes.io#invalid_unicode",
-  "value": "{\"0\":\"uZZZZ\"}",
-  "errors": []
+  "value": "{\"0\":{\"__error\":true,\"category\":\"syntax\",\"message\":\"\\\"invalid-escape-sequence\\\" \\\"Invalid Unicode escape sequence '\\\\uZZZZ'. Expected 4 hexadecimal digits (0-9, A-F).\\\" at 1:3\",\"name\":\"InternetObject(SyntaxError)\",\"position\":{\"pos\":0,\"row\":1,\"col\":1,\"token\":\"\\\"\\\\uZZZZ\\\"\",\"value\":{\"__error\":true,\"message\":\"\\\"invalid-escape-sequence\\\" \\\"Invalid Unicode escape sequence '\\\\uZZZZ'. Expected 4 hexadecimal digits (0-9, A-F).\\\" at 1:3\",\"originalError\":{\"errorCode\":\"invalid-escape-sequence\",\"fact\":\"Invalid Unicode escape sequence '\\\\uZZZZ'. Expected 4 hexadecimal digits (0-9, A-F).\",\"isEof\":false,\"name\":\"InternetObject(SyntaxError)\",\"message\":\"\\\"invalid-escape-sequence\\\" \\\"Invalid Unicode escape sequence '\\\\uZZZZ'. Expected 4 hexadecimal digits (0-9, A-F).\\\" at 1:3\"},\"errorCode\":\"invalid-escape-sequence\"},\"type\":\"ERROR\",\"subType\":\"\"},\"errorCode\":\"invalid-escape-sequence\"}}",
+  "errors": [
+   "invalid-escape-sequence@?:?"
+  ]
  },
  {
   "id": "tokenizer/strings-escapes.io#invalid_hex",
-  "value": "{\"0\":\"xZZ\"}",
-  "errors": []
+  "value": "{\"0\":{\"__error\":true,\"category\":\"syntax\",\"message\":\"\\\"invalid-escape-sequence\\\" \\\"Invalid hexadecimal escape sequence '\\\\xZZ'. Expected 2 hexadecimal digits (0-9, A-F).\\\" at 1:3\",\"name\":\"InternetObject(SyntaxError)\",\"position\":{\"pos\":0,\"row\":1,\"col\":1,\"token\":\"\\\"\\\\xZZ\\\"\",\"value\":{\"__error\":true,\"message\":\"\\\"invalid-escape-sequence\\\" \\\"Invalid hexadecimal escape sequence '\\\\xZZ'. Expected 2 hexadecimal digits (0-9, A-F).\\\" at 1:3\",\"originalError\":{\"errorCode\":\"invalid-escape-sequence\",\"fact\":\"Invalid hexadecimal escape sequence '\\\\xZZ'. Expected 2 hexadecimal digits (0-9, A-F).\",\"isEof\":false,\"name\":\"InternetObject(SyntaxError)\",\"message\":\"\\\"invalid-escape-sequence\\\" \\\"Invalid hexadecimal escape sequence '\\\\xZZ'. Expected 2 hexadecimal digits (0-9, A-F).\\\" at 1:3\"},\"errorCode\":\"invalid-escape-sequence\"},\"type\":\"ERROR\",\"subType\":\"\"},\"errorCode\":\"invalid-escape-sequence\"}}",
+  "errors": [
+   "invalid-escape-sequence@?:?"
+  ]
  },
  {
   "id": "tokenizer/strings-forms.io#open_simple",
