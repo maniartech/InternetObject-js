@@ -1,0 +1,27 @@
+#!/bin/sh
+#
+# Refuse a commit that does not lint or type-check.
+#
+# Both are fast, and both catch things the test suite structurally cannot: vitest transpiles
+# without type-checking, so `tsc` errors sail straight through a green suite. That is not
+# hypothetical — 2026-09-01 shipped a commit whose own new test file had a type error in it, and
+# the suite passed. The declaration build has caught a second class (TS4023) that `tsc --noEmit`
+# alone does not.
+#
+# The TEST SUITE is deliberately not here. It takes minutes, and a hook people are tempted to skip
+# is worse than no hook. CI runs it, and so should you before pushing.
+#
+# Wired by the `prepare` script (`git config core.hooksPath .githooks`), so it arrives with a
+# clone + install rather than living only on one machine.
+#
+# Bypass with `git commit --no-verify` when you genuinely mean to — a WIP commit on a branch, say.
+
+set -e
+
+echo "pre-commit: lint"
+npm run --silent lint
+
+echo "pre-commit: type-check"
+npm run --silent type-check
+
+echo "pre-commit: ok"

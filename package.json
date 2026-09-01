@@ -101,7 +101,7 @@
     "clean": "node scripts/clean-dist.mjs",
     "type-check": "tsc --noEmit",
     "lint": "echo 'Linting placeholder - add Biome later'",
-    "precommit": "yarn lint && yarn type-check && yarn test",
+    "precommit": "npm run lint && npm run type-check",
     "prepublishOnly": "npm run check-release",
     "perf": "tsx tests/performance/performance.ts",
     "perf:decimal": "tsx tests/performance/performance.decimal.ts",
@@ -123,7 +123,8 @@
     "fuzz:triage": "tsx tools/fuzz/triage.ts",
     "verify:package": "node scripts/verify-package.mjs",
     "security:audit": "bash scripts/security-audit.sh",
-    "examples": "node examples/_explorer/server.mjs"
+    "examples": "node examples/_explorer/server.mjs",
+    "prepare": "git config core.hooksPath .githooks || exit 0"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",
