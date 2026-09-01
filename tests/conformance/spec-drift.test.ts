@@ -29,7 +29,7 @@ import TypedefRegistry from '../../src/schema/typedef-registry';
  */
 const SPECS = specsDir() ?? '';
 const present = fs.existsSync(SPECS);
-requireSibling('io-specs', present);
+requireSibling('specs', present);
 
 /** Names that are legitimately absent from the specification, each with why. */
 const KNOWN: Record<string, string> = {
