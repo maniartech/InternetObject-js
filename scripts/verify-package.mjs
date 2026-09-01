@@ -111,6 +111,18 @@ const tagged = JSON.stringify(io\`name: string, age: int
 Alice, 30\`);
 if (tagged !== '{"name":"Alice","age":30}') throw new Error('io\`\` tag: ' + tagged);
 if (typeof io.doc !== 'function' || typeof io.parse !== 'function') throw new Error('io members lost');
+
+// The safe pair, and the class identity behind isError. A dual package can carry two copies of a
+// class, and instanceof across copies fails — so the check runs against the PACKED bundle.
+const bad = io.safeParse('age: int\\n---\\n~ 30\\n~ abc');
+if (bad.ok !== false) throw new Error('safeParse: ok should be false');
+if (bad.data.length !== 2) throw new Error('safeParse: rows lost');
+if (bad.errors.length !== 1) throw new Error('safeParse: errors lost');
+if (!io.isError(bad.data[1])) throw new Error('isError does not recognise the packed IOErrorItem — class identity split across the bundle');
+if (io.isError(bad.data[0])) throw new Error('isError false positive');
+let ffThrew = false;
+try { io.parse('age: int\\n---\\n~ 30\\n~ abc'); } catch (e) { ffThrew = true; if (!e.errors || e.errors.length !== 1) throw new Error('thrown error lost .errors'); }
+if (!ffThrew) throw new Error('no sink did not fail fast');
 `);
   try { runNode(['esm.mjs'], scratch); ok('ESM  — parse/parseDocument/stringify/load/stream, validated writes, sink, notification'); }
   catch (e) { bad('ESM import', e.stderr || e); }
@@ -134,6 +146,12 @@ const tagged = JSON.stringify(io\`name: string, age: int
 ---
 Alice, 30\`);
 if (tagged !== '{"name":"Alice","age":30}') throw new Error('CJS io\`\` tag: ' + tagged);
+
+// Same safe-pair and class-identity checks on the CJS half.
+const { safeParse, isError } = require('internet-object');
+const bad = safeParse('age: int\\n---\\n~ 30\\n~ abc');
+if (bad.ok !== false || bad.errors.length !== 1) throw new Error('CJS safeParse broken');
+if (!isError(bad.data[1])) throw new Error('CJS isError does not recognise the packed IOErrorItem');
 `);
   try { runNode(['cjs.cjs'], scratch); ok('CJS  — require works'); }
   catch (e) { bad('CJS require', e.stderr || e); }
