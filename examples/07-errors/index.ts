@@ -3,20 +3,33 @@
  *
  * Run me:  npx tsx examples/07-errors/index.ts
  */
-import io, { parse, ErrorCodes } from '../../src/index';
+import io, { parse, safeParse, ErrorCodes } from '../../src/index';
 
-// ── Two ways to receive an error ──────────────────────────────────────────────
+// ── Three ways to receive an error ────────────────────────────────────────────
 
-// 1. Throw — best when you only want to proceed with valid data.
+// 1. Throw — the default. With no sink the FIRST error is raised, and the complete list rides
+//    along as `.errors`, so one run shows every problem.
 try {
   io.doc`name: string, age: int\n---\n~ Alice, notanumber`;
 } catch (e) {
   const err = e as any;
   console.log('threw    :', err.errorCode);
   console.log('message  :', err.message);
+  console.log('all of it:', err.errors?.length, 'error(s) on .errors');
 }
 
-// 2. Collect — pass an array and parsing keeps going, reporting everything it can.
+// 2. safeParse — never throws. The data and the errors come back in ONE result, so neither can
+//    be lost: the good records intact, the failed one embedded in place.
+const r = safeParse<any[]>('name: string, age: int\n---\n~ Alice, notanumber\n~ Bob, 25');
+console.log('\nok      :', r.ok);
+console.log('errors  :', r.errors.map((e: any) => e.errorCode));
+for (const row of r.data ?? []) {
+  console.log(io.isError(row)
+    ? `   x ${(row as any).errorCode} at ${(row as any).position?.row}:${(row as any).position?.col}`
+    : `   + ${JSON.stringify(row)}`);
+}
+
+// 3. Collect into a sink — the same recovery, when you want to route errors somewhere yourself.
 // A sink goes in the same slot on a tag as on a function: `.with(defs, sink)`.
 const errors: Error[] = [];
 io.doc.with(null, errors)`name: string, age: int, email: email

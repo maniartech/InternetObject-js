@@ -369,13 +369,28 @@ console.log(parse('Alice, 30', defs));
 // { name: 'Alice', age: 30 }
 ```
 
-### Collect errors instead of throwing
+### Recover from errors instead of throwing
 
-Pass an array — or a function — as the third argument and `parse()` keeps going, reporting every
-problem it can rather than stopping at the first. Each error carries a stable `errorCode`, a
-message, and the row and column of the token. **Whether you pass one is the whole choice**: with no
-sink the first error throws, and there is no `strict` option because there is nothing left for it
-to decide.
+With nothing extra, the first problem **throws** — and the complete list rides along as
+`err.errors`, so one run shows everything. When you would rather have the data *and* the errors,
+take `safeParse`:
+
+```ts
+const { ok, data, errors } = safeParse(text);
+for (const row of data ?? []) {
+  if (io.isError(row)) continue;     // a failed record, embedded in place with its position
+  use(row);
+}
+```
+
+It never throws. Each error carries a stable `errorCode`, a message, and the row and column of the
+token; a failed record sits in `data` exactly where it occurred (or is omitted with
+`{ skipErrors: true }` — it stays in `errors` either way, so nothing is lost).
+`safeParseDocument` is the same idea with the document under `doc`.
+
+A **sink** — an array or a function in the third argument — is the lower-level form of the same
+opt-in, useful when you want to route errors somewhere yourself. There is no `strict` option
+because there is nothing left for it to decide.
 
 ```ts
 const errors: Error[] = [];

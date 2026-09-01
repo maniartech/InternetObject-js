@@ -1,6 +1,6 @@
 # Migrating to 0.3
 
-Five changes need code edits. Two of them are one-line renames; the other three refuse things that
+Six changes need code edits. Two of them are one-line renames; the other three refuse things that
 used to pass silently, which is the point of them.
 
 Nothing about the **format** changed. The same text parses to the same values with the same errors
@@ -14,7 +14,7 @@ one of those parses, before and after. What changed is the interface around it.
 | 3 | Serializing a document with a failed record throws | pass `{ skipErrors: true }`, or fix the data |
 | 4 | `ParserOptions` and the facade `strict` option are gone | delete them; they did nothing |
 | 5 | The error sink reports every error | usually nothing — you get more, not fewer |
-| 6 | No sink now fails fast on a bad **record**, not just a bad document | pass a sink where you relied on recovery |
+| 6 | No sink now fails fast on a bad **record**, not just a bad document | take `safeParse` where you relied on recovery |
 
 ---
 
@@ -208,11 +208,32 @@ parse(text, null, []);       // same recovery, if you only care that it did not 
 ```
 
 **What to do about it.** If a parse starts throwing where it used to return, it was returning an
-error node you were not checking. Pass a sink — you get the same array back, plus the list of what
-went wrong. If you were already passing one, nothing changes.
+error node you were not checking. Take `safeParse` — the same array back, plus the list of what
+went wrong, in one result that cannot lose either:
+
+```ts
+const { ok, data, errors } = safeParse(text);   // never throws; fatals come back as ok: false
+```
+
+A sink in slot three still works identically if you prefer it. The thrown error also now carries
+the complete list as `err.errors`, so even the fail-fast path shows every problem in one run.
 
 This applies to `parse`, `parseDocument`, and the `` io`` `` / `` io.doc`` `` tags alike, because
 they all run through the same slot.
+
+---
+
+## 6a. `isError` answers by class, not by property
+
+The failed record embedded in projected data is now an `IOErrorItem` instance rather than a plain
+`{ __error: true, … }` object. Same enumerable fields, same JSON — nothing on the wire changes.
+What changes is the check: `io.isError` (and the `skipErrors` filter) test the class, because the
+plain shape was forgeable — a schema legitimately declaring an `__error` member produced records
+that looked like failures, and `skipErrors` silently dropped them.
+
+If your code tests `row.__error === true` directly it keeps working on genuine failures, but
+prefer `io.isError(row)`: it cannot be fooled, and it narrows the type. One caveat, shared with
+`Decimal`: `structuredClone` strips prototypes, so run `isError` before cloning, not after.
 
 ---
 

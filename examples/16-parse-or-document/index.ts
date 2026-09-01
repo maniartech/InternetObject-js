@@ -6,7 +6,7 @@
  *
  * Run me:  npx tsx examples/16-parse-or-document/index.ts
  */
-import io, { parse, parseDocument, section, sections, header, isError, node } from '../../src/index';
+import io, { parse, parseDocument, safeParse, safeParseDocument, section, sections, header, isError, node } from '../../src/index';
 
 const h1 = (s: string) => console.log(`\n${'═'.repeat(74)}\n  ${s}\n${'═'.repeat(74)}`);
 const h2 = (s: string) => console.log(`\n── ${s} ${'─'.repeat(Math.max(0, 68 - s.length))}`);
@@ -139,6 +139,15 @@ parse('age: int\n---\n~ abc', null, (e: any) => console.log('  reported   :', e.
 h2('skipErrors asks a different question: what should the RESULT hold?');
 console.log('  default     :', JSON.stringify(parse('age: int\n---\n~ 30\n~ abc', null, [])));
 console.log('  skipErrors  :', JSON.stringify(parse('age: int\n---\n~ 30\n~ abc', null, [], { skipErrors: true })));
+
+h2('or take the safe pair — the data and the errors in ONE result');
+// safeParse never throws. Because the errors come back in the same value as the data, they cannot
+// be discarded separately — a sink array can be thrown away, this cannot.
+const safe = safeParse<any[]>('age: int\n---\n~ 30\n~ abc');
+console.log('  ok          :', safe.ok);
+console.log('  data        :', JSON.stringify(safe.data));
+console.log('  errors      :', safe.errors.map((e: any) => `${e.errorCode}@${e.collectionIndex}`).join(', '));
+console.log('  safeParseDocument :', safeParseDocument('age: int\n---\n~ 30\n~ abc').ok, '(same idea, the document under `doc`)');
 
 // ═════════════════════════════════════════════════════════════════════════════
 h1('6 · One pipeline, two shapes');

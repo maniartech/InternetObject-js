@@ -72,9 +72,30 @@ reported nothing.
 
 That is the worst case for whoever wrote the document, since it looks like data until something
 downstream trips over it. A parse with no sink now raises the first error it finds, wherever it
-found it. Recovery is unchanged and still one argument away — pass an array or a function and every
-error is reported while the good records survive. An empty array counts; passing one is the whole
-opt-in. `parse`, `parseDocument` and the tags all share the slot, so they all behave the same way.
+found it — and the complete list rides along as `err.errors`, so one run shows every problem
+rather than one per run. Recovery is unchanged and still one argument away — pass an array or a
+function and every error is reported while the good records survive. An empty array counts;
+passing one is the whole opt-in. `parse`, `parseDocument` and the tags all share the slot, so they
+all behave the same way.
+
+**`safeParse` and `safeParseDocument`** are the ergonomic form of that opt-in: the throw traded
+for a result object, `{ ok, data, errors }` and `{ ok, doc, errors }`, never throwing — a fatal
+comes back as `ok: false` with everything found up to it. The shape is the point: the data and the
+errors travel in one return value, so they cannot be discarded separately, where a sink array can
+be thrown away while the data is kept. Failed records embed in `data` in place (test them with
+`io.isError`), or leave it under `{ skipErrors: true }` — and are then still in `errors` with
+their `collectionIndex`, so a skip is traceable rather than silent. Both are thin wrappers over
+`parse`/`parseDocument` with an internal sink: one pipeline, and a test pins the equality.
+
+**The embedded error is now a class.** `{ __error: true }` is a perfectly legal member name, so a
+document whose schema declared one could forge the old plain shape — `io.isError` reported a false
+positive, and `{ skipErrors: true }` silently **dropped a legitimate record**. The embedded item
+is now an `IOErrorItem` instance with the same enumerable fields (the wire shape and the
+playground's JSON panel are unchanged), and `io.isError` checks the class, which data cannot
+write. Two smaller bugs fixed by the same move: a load-route failure used to project as a JSON
+*string* rather than an object, and seven streaming-error corpus fingerprints carried the same
+double-encoding. One trade-off, shared with `Decimal` in the same projection: `structuredClone`
+strips prototypes, so test for errors on the side of the boundary that parsed.
 
 ### Notification, without a framework package
 
