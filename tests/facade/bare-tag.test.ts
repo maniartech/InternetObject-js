@@ -121,7 +121,9 @@ Alice, notanint`;
       expect(seen).toEqual(['expected-integer']);
     });
 
-    it('throws on the first error when no sink is given', () => {
+    // Named narrowly on purpose: a SINGLE record has always raised here. That a collection
+    // also raises is newer, and lives in fail-fast.test.ts with the rest of that contract.
+    it('throws on the first error when no sink is given (single record)', () => {
       expect(() => io.with(null)`name: string, age: int
 ---
 Alice, notanint`).toThrow();

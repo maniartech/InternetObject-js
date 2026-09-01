@@ -61,6 +61,21 @@ Serializing a document that holds a failed record now throws `forbidden-error-no
 `{ skipErrors: true }` writes the records that validated instead. `toObject()` and `toJSON()` still
 embed error nodes, unchanged, because those are projections rather than documents.
 
+### No sink means fail fast — now for a bad record, not just a bad document
+
+This file's own description of the error sink — *whether you pass one is the whole of the fail-fast
+question* — was only half true in the code. A fatal problem raised on its own, so a bad value in a
+single record, a duplicate member or an unterminated string all threw. But a bad record inside a
+**collection** is recovered from, and the error reached the collector only when there was one. With
+no sink it was dropped: `parse` returned an array holding an error node, raised nothing, and
+reported nothing.
+
+That is the worst case for whoever wrote the document, since it looks like data until something
+downstream trips over it. A parse with no sink now raises the first error it finds, wherever it
+found it. Recovery is unchanged and still one argument away — pass an array or a function and every
+error is reported while the good records survive. An empty array counts; passing one is the whole
+opt-in. `parse`, `parseDocument` and the tags all share the slot, so they all behave the same way.
+
 ### Notification, without a framework package
 
 `io.subscribe(doc, fn)` and `io.version(doc)` report writes. Notification is coalesced to a

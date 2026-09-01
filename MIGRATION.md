@@ -14,6 +14,7 @@ one of those parses, before and after. What changed is the interface around it.
 | 3 | Serializing a document with a failed record throws | pass `{ skipErrors: true }`, or fix the data |
 | 4 | `ParserOptions` and the facade `strict` option are gone | delete them; they did nothing |
 | 5 | The error sink reports every error | usually nothing — you get more, not fewer |
+| 6 | No sink now fails fast on a bad **record**, not just a bad document | pass a sink where you relied on recovery |
 
 ---
 
@@ -181,17 +182,41 @@ parse(text);                            // no sink: the first error throws
 
 ---
 
-## Not changed
+## 6. No sink now fails fast on a bad record too
 
-- The format, the tokenizer, the parser, the schema rules, every error code and position.
-- `toObject()` / `toJSON()` — still the documented conversions at a boundary.
-- The JSON projection: one section unwraps, several key by name. What the playground shows is what
-  your code sees, and that is a contract.
-- `load`, `loadObject`, `loadCollection`, `validate`, `stringify`, the streaming API, the template
-  tags.
-- `src/parser`'s own `parse` — internal, still returns a plain `Document`.
+`parse(text)` with no sink has always been documented as fail-fast, and it was only half true. A
+fatal problem — a bad value in a single record, a duplicate member, an unterminated string — did
+raise. But a bad record inside a **collection** is recovered from: the record is replaced by an
+error node, and the error was reported to the sink *only if there was one*. With no sink it was
+dropped on the floor.
 
-## 6. Every entry point takes the same four slots
+So this said nothing, raised nothing, and handed back an array that looks like data:
+
+```ts
+parse('age: int\n---\n~ 30\n~ abc\n~ 40');
+// was: [ {age: 30}, {__error: true, errorCode: 'expected-integer', …}, {age: 40} ]
+// now: throws expected-integer
+```
+
+That is the worst outcome for the person who wrote the document, who is usually the one who can fix
+it. **Recovery is still exactly one argument away**, and that argument can be an empty array:
+
+```ts
+const errors: Error[] = [];
+parse(text, null, errors);   // every error reported, every good record kept
+parse(text, null, []);       // same recovery, if you only care that it did not throw
+```
+
+**What to do about it.** If a parse starts throwing where it used to return, it was returning an
+error node you were not checking. Pass a sink — you get the same array back, plus the list of what
+went wrong. If you were already passing one, nothing changes.
+
+This applies to `parse`, `parseDocument`, and the `` io`` `` / `` io.doc`` `` tags alike, because
+they all run through the same slot.
+
+---
+
+## 7. Every entry point takes the same four slots
 
 ```
 (input, defs?, sink?, options?)
@@ -232,7 +257,7 @@ Two more consequences:
 sink. **`io.schema.with(defs)` does not**, deliberately: schema compilation fails fast, so there is
 no partial schema to hand back and nothing a sink could change.
 
-## 7. New: `String(doc)`, and telling a UI that something changed
+## 8. New: `String(doc)`, and telling a UI that something changed
 
 Neither breaks anything — they replace a default that told you nothing.
 
@@ -264,3 +289,17 @@ per write.
 
 They are functions rather than `doc.version` and `doc.subscribe` deliberately: `version` is a very
 plausible section name, and property access on a document resolves data before methods.
+
+---
+
+## Not changed
+
+- The format, the tokenizer, the parser, the schema rules, every error code and position.
+- `toObject()` / `toJSON()` — still the documented conversions at a boundary.
+- The JSON projection: one section unwraps, several key by name. What the playground shows is what
+  your code sees, and that is a contract.
+- `load`, `loadObject`, `loadCollection`, `validate`, `stringify`, the streaming API.
+- The four template tags you already had. `io` itself became a tag as well — `` io`…` `` is `parse`
+  in tag form — and `` io.doc`…` `` now returns the proxied document, matching `parseDocument`. Both
+  are additions; nothing you were calling changed its spelling.
+- `src/parser`'s own `parse` — internal, still returns a plain `Document`.

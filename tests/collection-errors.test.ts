@@ -13,7 +13,7 @@ describe('IOCollection Errors', () => {
       { name: 'Bob', age: 'invalid' }
     ];
 
-    const collection = loadCollection(data, defs);
+    const collection = loadCollection(data, defs, []);
 
     expect(collection.length).toBe(2);
     expect(collection.errors.length).toBe(1);
@@ -32,7 +32,7 @@ describe('IOCollection Errors', () => {
     ];
 
     // loadCollection doesn't throw by default, errors are embedded in collection
-    const collection = loadCollection(data, defs);
+    const collection = loadCollection(data, defs, []);
 
     expect(collection.length).toBe(2);
     expect(collection.errors.length).toBe(1);

@@ -41,12 +41,26 @@ const when = io`
 console.log('\ndate    ', when[0].day instanceof Date ? when[0].day.toISOString().slice(0, 10) : when[0].day);
 console.log('datetime', when[0].at instanceof Date ? when[0].at.toISOString() : when[0].at);
 
-// An impossible date is rejected rather than silently rolled forward to 2 March:
-// A bad literal replaces the record it appeared in, and the record carries the code.
-const febThirty = io`day: date
+// An impossible date is rejected rather than silently rolled forward to 2 March.
+// With no error sink the first problem is raised, so you hear about it while you are
+// still the one writing the document:
+try {
+  io`day: date
 ---
+~ d"2026-02-30"`;
+  console.log('30 February -> accepted');
+} catch (e: any) {
+  console.log('30 February ->', e.errorCode);
+}
+
+// Pass a sink instead and the errors are reported while the good records survive --
+// the bad one is replaced in place by an error node. Example 07 covers both routes.
+const dates: Error[] = [];
+const mixed = io.with(null, dates)`day: date
+---
+~ d"2026-08-24"
 ~ d"2026-02-30"` as any[];
-console.log('30 February ->', febThirty[0]?.errorCode ?? 'accepted');
+console.log('with a sink ->', dates.map((e: any) => e.errorCode), '· good rows kept:', mixed.length);
 
 // ── Strings with a shape ──────────────────────────────────────────────────────
 
