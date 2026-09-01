@@ -2,6 +2,7 @@ import Definitions from "../../core/definitions";
 import { Position } from '../../core/positions';
 import IOError from "../../errors/io-error";
 import Node from "./nodes";
+import IOErrorItem from "../../core/error-item";
 
 /**
  * Error categories for styling and filtering
@@ -83,21 +84,19 @@ class ErrorNode implements Node {
    * Includes error category for UI styling and errorCode when available.
    */
   toValue(defs?: Definitions): any {
-    const base: any = {
-      __error: true,
+    // An IOErrorItem, not a plain object: the same enumerable fields on the wire, but with a
+    // prototype data cannot forge, so `io.isError` and `skipErrors` cannot be fooled by a record
+    // whose schema happens to declare an `__error` member.
+    const anyErr: any = this.error as any;
+    return new IOErrorItem({
       category: this.getErrorCategory(),
       message: this.error.message,
       name: this.error.name,
       position: this.position,
       ...(this.endPosition && { endPosition: this.endPosition }),
-      ...(this.errorCode && { errorCode: this.errorCode })
-    };
-    // Include collectionIndex if the original error carries it (boundary context)
-    const anyErr: any = this.error as any;
-    if (anyErr && anyErr.collectionIndex !== undefined) {
-      base.collectionIndex = anyErr.collectionIndex;
-    }
-    return base;
+      ...(this.errorCode && { errorCode: this.errorCode }),
+      ...(anyErr && anyErr.collectionIndex !== undefined && { collectionIndex: anyErr.collectionIndex }),
+    });
   }
 
   /**
@@ -126,5 +125,5 @@ export default ErrorNode;
  * which is exactly how `skipErrors` came to have no effect on the serialization path.
  */
 export function isErrorValue(value: any): boolean {
-  return value instanceof ErrorNode || !!(value && typeof value === 'object' && value.__error === true);
+  return value instanceof ErrorNode || value instanceof IOErrorItem;
 }

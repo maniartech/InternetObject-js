@@ -7,6 +7,7 @@ import IOSection              from './core/section';
 import IOSectionCollection    from './core/section-collection';
 import IOHeader               from './core/header';
 import IOError                from './errors/io-error';
+import IOErrorItem            from './core/error-item';
 import ErrorCodes             from './errors/io-error-codes';
 import IOSyntaxError          from './errors/io-syntax-error';
 import IOValidationError      from './errors/io-validation-error';
@@ -112,6 +113,7 @@ const io = Object.assign(ioTag, {
   IOSchema: Schema,
   Decimal,
   IOError,
+  IOErrorItem,
   ErrorCodes,
   IOSyntaxError,
   IOValidationError,

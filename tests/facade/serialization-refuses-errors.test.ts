@@ -3,6 +3,7 @@ import parseCore from '../../src/parser/index';
 import { parseDocument } from '../../src/facade/parse';
 import { stringifyDocument } from '../../src/facade/stringify-document';
 import { stringify } from '../../src/facade/stringify';
+import IOErrorItem from '../../src/core/error-item';
 import IOCollection from '../../src/core/collection';
 import IOObject from '../../src/core/internet-object';
 
@@ -74,7 +75,7 @@ describe('serialization refuses error nodes (B3)', () => {
     // only one of them is how `skipErrors` came to be a no-op on this path.
     const rec = new IOObject<any>();
     rec.set('name', 'Alice');
-    const loaded = new IOCollection<any>([rec, { __error: true, message: 'x' }]);
+    const loaded = new IOCollection<any>([rec, new IOErrorItem({ category: 'validation', message: 'x' })]);
     expect(() => stringify(loaded)).toThrow(
       expect.objectContaining({ errorCode: 'forbidden-error-node' })
     );

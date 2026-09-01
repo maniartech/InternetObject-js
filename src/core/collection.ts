@@ -1,4 +1,6 @@
 import { toJSONValue } from '../utils/json-projection';
+import IOErrorItem from './error-item';
+import ErrorNode from '../parser/nodes/error';
 import IOObject from "./internet-object";
 import type Schema from '../schema/schema';
 import type Definitions from './definitions';
@@ -334,20 +336,21 @@ class IOCollection<T = IOObject> {
 
     return this._items
       .filter((item) => {
-        // If skipErrors is true, filter out items with toValue that return __error
-        if (skipErrors && typeof item === 'object' && item !== null) {
-          if (typeof (item as any).toValue === 'function') {
-            const value = (item as any).toValue();
-            if (value && value.__error === true) {
-              return false; // Skip this error item
-            }
-          }
+        // Skip only genuine failures — an ErrorNode from the parse route, an IOErrorItem
+        // from the load route. Sniffing `__error` on the projected value here silently dropped a
+        // legitimate record whose schema declared an `__error` member: data loss on valid input.
+        if (skipErrors && (item instanceof ErrorNode || item instanceof IOErrorItem)) {
+          return false;
         }
         return true; // Keep this item
       })
       .map((item) => {
         if (item instanceof IOObject) {
           return item.toObject();
+        } else if (item instanceof IOErrorItem) {
+          // Already the projected value. Without this branch it fell through to the
+          // JSON.stringify fallback below, and a load-route failure projected as a STRING.
+          return item;
         } else if (typeof item === 'object' && item !== null) {
           // Check if item has toValue method (e.g., ErrorNode)
           if (typeof (item as any).toValue === 'function') {

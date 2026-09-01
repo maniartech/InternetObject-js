@@ -512,7 +512,7 @@
  },
  {
   "id": "document/structure.io#newline_inside_a_record_merges",
-  "value": "[\"{\\\"__error\\\":true,\\\"category\\\":\\\"syntax\\\",\\\"message\\\":\\\"\\\\\\\"unexpected-token\\\\\\\" \\\\\\\"Missing comma before ':'. Object members must be separated by commas.\\\\\\\" at 2:2\\\",\\\"name\\\":\\\"InternetObject(SyntaxError)\\\",\\\"position\\\":{\\\"row\\\":2,\\\"col\\\":2,\\\"pos\\\":8},\\\"endPosition\\\":{\\\"row\\\":2,\\\"col\\\":3,\\\"pos\\\":9},\\\"errorCode\\\":\\\"unexpected-token\\\"}\"]",
+  "value": "[{\"__error\":true,\"category\":\"syntax\",\"message\":\"\\\"unexpected-token\\\" \\\"Missing comma before ':'. Object members must be separated by commas.\\\" at 2:2\",\"name\":\"InternetObject(SyntaxError)\",\"position\":{\"row\":2,\"col\":2,\"pos\":8},\"endPosition\":{\"row\":2,\"col\":3,\"pos\":9},\"errorCode\":\"unexpected-token\"}]",
   "errors": [
    "unexpected-token@2:2"
   ]
@@ -2697,21 +2697,21 @@
  },
  {
   "id": "streaming/errors-depth.io#unterminated_string_at_eof",
-  "value": "[\"{\\\"__error\\\":true,\\\"category\\\":\\\"syntax\\\",\\\"message\\\":\\\"\\\\\\\"unterminated-string\\\\\\\" \\\\\\\"Unterminated string literal. Expected closing quote '\\\\\\\"' before end of input.\\\\\\\" at EOF\\\",\\\"name\\\":\\\"InternetObject(SyntaxError)\\\",\\\"position\\\":{\\\"pos\\\":6,\\\"row\\\":2,\\\"col\\\":3,\\\"token\\\":\\\"\\\\\\\"unclosed\\\",\\\"value\\\":{\\\"__error\\\":true,\\\"message\\\":\\\"\\\\\\\"unterminated-string\\\\\\\" \\\\\\\"Unterminated string literal. Expected closing quote '\\\\\\\"' before end of input.\\\\\\\" at EOF\\\",\\\"originalError\\\":{\\\"__proto__\\\":{},\\\"errorCode\\\":\\\"unterminated-string\\\",\\\"fact\\\":\\\"Unterminated string literal. Expected closing quote '\\\\\\\"' before end of input.\\\",\\\"isEof\\\":true,\\\"name\\\":\\\"InternetObject(SyntaxError)\\\",\\\"message\\\":\\\"\\\\\\\"unterminated-string\\\\\\\" \\\\\\\"Unterminated string literal. Expected closing quote '\\\\\\\"' before end of input.\\\\\\\" at EOF\\\"},\\\"errorCode\\\":\\\"unterminated-string\\\"},\\\"type\\\":\\\"ERROR\\\",\\\"subType\\\":\\\"\\\"},\\\"errorCode\\\":\\\"unterminated-string\\\"}\"]",
+  "value": "[{\"__error\":true,\"category\":\"syntax\",\"message\":\"\\\"unterminated-string\\\" \\\"Unterminated string literal. Expected closing quote '\\\"' before end of input.\\\" at EOF\",\"name\":\"InternetObject(SyntaxError)\",\"position\":{\"pos\":6,\"row\":2,\"col\":3,\"token\":\"\\\"unclosed\",\"value\":{\"__error\":true,\"message\":\"\\\"unterminated-string\\\" \\\"Unterminated string literal. Expected closing quote '\\\"' before end of input.\\\" at EOF\",\"originalError\":{\"errorCode\":\"unterminated-string\",\"fact\":\"Unterminated string literal. Expected closing quote '\\\"' before end of input.\",\"isEof\":true,\"name\":\"InternetObject(SyntaxError)\",\"message\":\"\\\"unterminated-string\\\" \\\"Unterminated string literal. Expected closing quote '\\\"' before end of input.\\\" at EOF\"},\"errorCode\":\"unterminated-string\"},\"type\":\"ERROR\",\"subType\":\"\"},\"errorCode\":\"unterminated-string\"}]",
   "errors": [
    "unterminated-string@?:?"
   ]
  },
  {
   "id": "streaming/errors-depth.io#unterminated_object_at_eof",
-  "value": "[\"{\\\"__error\\\":true,\\\"category\\\":\\\"syntax\\\",\\\"message\\\":\\\"\\\\\\\"expected-closing-bracket\\\\\\\" \\\\\\\"Missing closing brace '}'. Object must be properly closed.\\\\\\\" at 2:3\\\",\\\"name\\\":\\\"InternetObject(SyntaxError)\\\",\\\"position\\\":{\\\"row\\\":2,\\\"col\\\":3,\\\"pos\\\":6},\\\"endPosition\\\":{\\\"row\\\":2,\\\"col\\\":8,\\\"pos\\\":11},\\\"errorCode\\\":\\\"expected-closing-bracket\\\"}\"]",
+  "value": "[{\"__error\":true,\"category\":\"syntax\",\"message\":\"\\\"expected-closing-bracket\\\" \\\"Missing closing brace '}'. Object must be properly closed.\\\" at 2:3\",\"name\":\"InternetObject(SyntaxError)\",\"position\":{\"row\":2,\"col\":3,\"pos\":6},\"endPosition\":{\"row\":2,\"col\":8,\"pos\":11},\"errorCode\":\"expected-closing-bracket\"}]",
   "errors": [
    "expected-closing-bracket@?:?"
   ]
  },
  {
   "id": "streaming/errors-depth.io#unterminated_array_at_eof",
-  "value": "[\"{\\\"__error\\\":true,\\\"category\\\":\\\"syntax\\\",\\\"message\\\":\\\"\\\\\\\"expected-closing-bracket\\\\\\\" \\\\\\\"Unexpected end of input while parsing array. Expected closing bracket ']'.\\\\\\\" at 2:3\\\",\\\"name\\\":\\\"InternetObject(SyntaxError)\\\",\\\"position\\\":{\\\"row\\\":2,\\\"col\\\":3,\\\"pos\\\":6},\\\"endPosition\\\":{\\\"row\\\":2,\\\"col\\\":8,\\\"pos\\\":11},\\\"errorCode\\\":\\\"expected-closing-bracket\\\"}\"]",
+  "value": "[{\"__error\":true,\"category\":\"syntax\",\"message\":\"\\\"expected-closing-bracket\\\" \\\"Unexpected end of input while parsing array. Expected closing bracket ']'.\\\" at 2:3\",\"name\":\"InternetObject(SyntaxError)\",\"position\":{\"row\":2,\"col\":3,\"pos\":6},\"endPosition\":{\"row\":2,\"col\":8,\"pos\":11},\"errorCode\":\"expected-closing-bracket\"}]",
   "errors": [
    "expected-closing-bracket@?:?"
   ]
@@ -2742,7 +2742,7 @@
  },
  {
   "id": "streaming/errors-depth.io#syntax_category",
-  "value": "[\"{\\\"__error\\\":true,\\\"category\\\":\\\"syntax\\\",\\\"message\\\":\\\"\\\\\\\"expected-closing-bracket\\\\\\\" \\\\\\\"Missing closing brace '}'. Object must be properly closed.\\\\\\\" at 2:3\\\",\\\"name\\\":\\\"InternetObject(SyntaxError)\\\",\\\"position\\\":{\\\"row\\\":2,\\\"col\\\":3,\\\"pos\\\":6},\\\"endPosition\\\":{\\\"row\\\":2,\\\"col\\\":8,\\\"pos\\\":11},\\\"errorCode\\\":\\\"expected-closing-bracket\\\"}\",{\"0\":2}]",
+  "value": "[{\"__error\":true,\"category\":\"syntax\",\"message\":\"\\\"expected-closing-bracket\\\" \\\"Missing closing brace '}'. Object must be properly closed.\\\" at 2:3\",\"name\":\"InternetObject(SyntaxError)\",\"position\":{\"row\":2,\"col\":3,\"pos\":6},\"endPosition\":{\"row\":2,\"col\":8,\"pos\":11},\"errorCode\":\"expected-closing-bracket\"},{\"0\":2}]",
   "errors": [
    "expected-closing-bracket@?:?"
   ]
@@ -2791,14 +2791,14 @@
  },
  {
   "id": "streaming/errors.io#unclosed_string_at_eof",
-  "value": "[\"{\\\"__error\\\":true,\\\"category\\\":\\\"syntax\\\",\\\"message\\\":\\\"\\\\\\\"unterminated-string\\\\\\\" \\\\\\\"Unterminated string literal. Expected closing quote '\\\\\\\"' before end of input.\\\\\\\" at EOF\\\",\\\"name\\\":\\\"InternetObject(SyntaxError)\\\",\\\"position\\\":{\\\"pos\\\":6,\\\"row\\\":2,\\\"col\\\":3,\\\"token\\\":\\\"\\\\\\\"unterminated\\\\n\\\",\\\"value\\\":{\\\"__error\\\":true,\\\"message\\\":\\\"\\\\\\\"unterminated-string\\\\\\\" \\\\\\\"Unterminated string literal. Expected closing quote '\\\\\\\"' before end of input.\\\\\\\" at EOF\\\",\\\"originalError\\\":{\\\"__proto__\\\":{},\\\"errorCode\\\":\\\"unterminated-string\\\",\\\"fact\\\":\\\"Unterminated string literal. Expected closing quote '\\\\\\\"' before end of input.\\\",\\\"isEof\\\":true,\\\"name\\\":\\\"InternetObject(SyntaxError)\\\",\\\"message\\\":\\\"\\\\\\\"unterminated-string\\\\\\\" \\\\\\\"Unterminated string literal. Expected closing quote '\\\\\\\"' before end of input.\\\\\\\" at EOF\\\"},\\\"errorCode\\\":\\\"unterminated-string\\\"},\\\"type\\\":\\\"ERROR\\\",\\\"subType\\\":\\\"\\\"},\\\"errorCode\\\":\\\"unterminated-string\\\"}\"]",
+  "value": "[{\"__error\":true,\"category\":\"syntax\",\"message\":\"\\\"unterminated-string\\\" \\\"Unterminated string literal. Expected closing quote '\\\"' before end of input.\\\" at EOF\",\"name\":\"InternetObject(SyntaxError)\",\"position\":{\"pos\":6,\"row\":2,\"col\":3,\"token\":\"\\\"unterminated\\n\",\"value\":{\"__error\":true,\"message\":\"\\\"unterminated-string\\\" \\\"Unterminated string literal. Expected closing quote '\\\"' before end of input.\\\" at EOF\",\"originalError\":{\"errorCode\":\"unterminated-string\",\"fact\":\"Unterminated string literal. Expected closing quote '\\\"' before end of input.\",\"isEof\":true,\"name\":\"InternetObject(SyntaxError)\",\"message\":\"\\\"unterminated-string\\\" \\\"Unterminated string literal. Expected closing quote '\\\"' before end of input.\\\" at EOF\"},\"errorCode\":\"unterminated-string\"},\"type\":\"ERROR\",\"subType\":\"\"},\"errorCode\":\"unterminated-string\"}]",
   "errors": [
    "unterminated-string@?:?"
   ]
  },
  {
   "id": "streaming/errors.io#unclosed_brace_at_eof",
-  "value": "[\"{\\\"__error\\\":true,\\\"category\\\":\\\"syntax\\\",\\\"message\\\":\\\"\\\\\\\"expected-closing-bracket\\\\\\\" \\\\\\\"Missing closing brace '}'. Object must be properly closed.\\\\\\\" at 2:3\\\",\\\"name\\\":\\\"InternetObject(SyntaxError)\\\",\\\"position\\\":{\\\"row\\\":2,\\\"col\\\":3,\\\"pos\\\":6},\\\"endPosition\\\":{\\\"row\\\":2,\\\"col\\\":8,\\\"pos\\\":11},\\\"errorCode\\\":\\\"expected-closing-bracket\\\"}\"]",
+  "value": "[{\"__error\":true,\"category\":\"syntax\",\"message\":\"\\\"expected-closing-bracket\\\" \\\"Missing closing brace '}'. Object must be properly closed.\\\" at 2:3\",\"name\":\"InternetObject(SyntaxError)\",\"position\":{\"row\":2,\"col\":3,\"pos\":6},\"endPosition\":{\"row\":2,\"col\":8,\"pos\":11},\"errorCode\":\"expected-closing-bracket\"}]",
   "errors": [
    "expected-closing-bracket@?:?"
   ]

@@ -1,4 +1,5 @@
 import Collection from '../core/collection';
+import IOErrorItem from '../core/error-item';
 import Definitions from '../core/definitions';
 import InternetObject from '../core/internet-object';
 import ErrorCodes from '../errors/io-error-codes';
@@ -227,12 +228,11 @@ export function loadCollection(
 
         // Create error object to maintain collection structure
         // This allows downstream code to know which items failed
-        const errorObj = {
-          __error: true,
+        const errorObj = new IOErrorItem({
           category: error instanceof ValidationError ? 'validation' : 'general',
           message: error.message,
           collectionIndex: i
-        };
+        });
 
         collection.push(errorObj as any);
       } else {

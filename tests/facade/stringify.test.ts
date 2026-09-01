@@ -1,4 +1,5 @@
 import { stringify } from '../../src/facade/stringify';
+import IOErrorItem from '../../src/core/error-item';
 import { compileSchema } from '../../src/schema';
 import { loadObject, loadCollection } from '../../src/facade/load';
 import InternetObject from '../../src/core/internet-object';
@@ -132,11 +133,11 @@ describe('High-level stringify() API', () => {
       const obj = new InternetObject();
       obj.set('name', 'Alice');
 
-      const errorObj = {
-        __error: true,
+      const errorObj = new IOErrorItem({
+        category: 'validation',
         message: 'Validation failed',
         collectionIndex: 1
-      };
+      });
 
       const collection = new Collection([obj, errorObj as any]);
       const defs = createDefsWithSchema('User', '{ name: string }');
@@ -153,10 +154,10 @@ describe('High-level stringify() API', () => {
       const obj1 = new InternetObject();
       obj1.set('name', 'Alice');
 
-      const errorObj = {
-        __error: true,
+      const errorObj = new IOErrorItem({
+        category: 'validation',
         message: 'Validation failed'
-      };
+      });
 
       const obj2 = new InternetObject();
       obj2.set('name', 'Bob');

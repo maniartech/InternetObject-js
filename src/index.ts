@@ -17,6 +17,7 @@ export { default as IOCollection                    } from './core/collection';
 export { default as Decimal                         } from './core/decimal/decimal';
 export { default as IOObject                        } from './core/internet-object';
 export { default as IOSection                       } from './core/section';
+export { default as IOErrorItem                     } from './core/error-item';
 export { default as IOSectionCollection             } from './core/section-collection';
 
 // Error handling

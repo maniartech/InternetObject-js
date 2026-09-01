@@ -11,6 +11,7 @@
  * {@link proxyDocument}.
  */
 import IODocument from '../core/document';
+import IOErrorItem from '../core/error-item';
 import IOHeader from '../core/header';
 import IOSection from '../core/section';
 import ErrorNode from '../parser/nodes/error';
@@ -68,8 +69,10 @@ export function header(doc: any): IOHeader | undefined {
  * rows.filter(r => !io.isError(r))
  * ```
  */
-export function isError(value: any): boolean {
+export function isError(value: any): value is IOErrorItem {
   const v = unwrap(value);
-  if (v instanceof ErrorNode) return true;
-  return !!(v && typeof v === 'object' && (v as any).__error === true);
+  // instanceof on purpose, with no property fallback: `{ __error: true }` is writable as DATA (a
+  // schema may declare an `__error` member), and a fallback would let that data impersonate a
+  // failure — or worse, get dropped by `skipErrors`. A prototype cannot be written in a document.
+  return v instanceof ErrorNode || v instanceof IOErrorItem;
 }

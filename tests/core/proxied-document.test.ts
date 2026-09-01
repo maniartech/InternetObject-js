@@ -259,8 +259,12 @@ describe('the proxied document (A4)', () => {
       expect(rows.filter((r: any) => !isError(r)).length).toBe(2);
     });
 
-    it('true for the projected shape too', () => {
-      expect(isError({ __error: true, message: 'x' })).toBe(true);
+    it('true for the projected shape too — and ONLY for the real class (ADR 0006 D4)', () => {
+      // A plain `{ __error: true }` is writable as DATA (a schema may declare an `__error`
+      // member), so the literal no longer counts. Only the class the library itself embeds does.
+      const rows: any = parse('age: int\n---\n~ abc', null, []).toObject();
+      expect(isError(rows[0])).toBe(true);
+      expect(isError({ __error: true, message: 'x' })).toBe(false);
       expect(isError({ name: 'Alice' })).toBe(false);
       expect(isError(null)).toBe(false);
       expect(isError('nope')).toBe(false);
