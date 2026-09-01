@@ -13,7 +13,7 @@ import IOSyntaxError          from './errors/io-syntax-error';
 import IOValidationError      from './errors/io-validation-error';
 import Schema                 from './schema/schema';
 import { ioDefinitions, ioDocument, ioObject, ioParse, ioSchema } from './template-funcs';
-import { parse, parseDocument } from './facade/parse';
+import { parse, parseDocument, safeParse, safeParseDocument } from './facade/parse';
 import parseDefinitions       from './parser/parse-defs';
 import parseSchema            from './schema/parse-schema';
 import { load, loadObject }   from './facade/load';
@@ -63,6 +63,8 @@ const io = Object.assign(ioTag, {
   // Facade methods
   parse,
   parseDocument,
+  safeParse,
+  safeParseDocument,
   parseDefs: parseDefinitions,      // Short alias
   parseDefinitions,                 // Full name
   parseSchema,

@@ -91,6 +91,67 @@ export function parseDocument(source: string, defs?: ParseDefs, sink?: ErrorSink
  * @param sink An array to fill or a function to call. Omit it and the first error throws.
  * @param options `skipErrors` omits failed records rather than embedding them.
  */
+/**
+ * The result of a safe parse: the data and the errors travel in ONE value, so they cannot be
+ * discarded separately — the structural guarantee a sink cannot give (a sink array can be thrown
+ * away while the data is kept).
+ */
+export interface SafeParseResult<T = any> {
+  /** True when the input parsed without a single error. */
+  ok: boolean;
+  /** The projected data. Failed records are embedded as `IOErrorItem`s (test with `io.isError`),
+   *  or omitted under `{ skipErrors: true }`. `undefined` after a fatal error. */
+  data: T | undefined;
+  /** Every error found, in order, each with its code, position and `collectionIndex`. */
+  errors: Error[];
+}
+
+/** The document twin of {@link SafeParseResult}. The payload key is `doc`, not `data`, because a
+ *  document is not plain data — the asymmetry is informative. */
+export interface SafeParseDocumentResult {
+  ok: boolean;
+  doc: any | undefined;
+  errors: Error[];
+}
+
+/**
+ * `parse`, with the throw traded for a result object. **Never throws** — a fatal error comes back
+ * as `{ ok: false, data: undefined, errors: [...] }` with everything found up to the fatal.
+ *
+ * ```ts
+ * const { ok, data, errors } = io.safeParse(text);
+ * for (const row of data ?? []) {
+ *   if (io.isError(row)) continue;      // a failed record, embedded in place
+ *   use(row);
+ * }
+ * ```
+ *
+ * This is `parse` with an internal sink — one pipeline, not two; a test pins the equality with
+ * `parse(text, null, [])`.
+ */
+export function safeParse<T = any>(source: string, defs?: ParseDefs, options?: ParseOptions): SafeParseResult<T> {
+  const errors: Error[] = [];
+  try {
+    const data = parse(source, defs, errors, options);
+    return { ok: errors.length === 0, data, errors };
+  } catch (fatal) {
+    if (fatal instanceof Error) errors.push(fatal);
+    return { ok: false, data: undefined, errors };
+  }
+}
+
+/** `parseDocument`, with the throw traded for a result object. Never throws. */
+export function safeParseDocument(source: string, defs?: ParseDefs): SafeParseDocumentResult {
+  const errors: Error[] = [];
+  try {
+    const doc = parseDocument(source, defs, errors);
+    return { ok: errors.length === 0, doc, errors };
+  } catch (fatal) {
+    if (fatal instanceof Error) errors.push(fatal);
+    return { ok: false, doc: undefined, errors };
+  }
+}
+
 export function parse(source: string, defs?: ParseDefs, sink?: ErrorSink, options?: ParseOptions): any {
   return withSink(sink, (bag) => parseCore(source, defs, bag).toObject(options));
 }

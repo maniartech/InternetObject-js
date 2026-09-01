@@ -28,8 +28,8 @@ export { default as IOValidationError               } from './errors/io-validati
 
 // Schema and validation
 export { default as IOSchema                        } from './schema/schema';
-export { parse, parseDocument                       } from './facade/parse';
-export type { ErrorSink, ParseDefs, ParseOptions    } from './facade/parse';
+export { parse, parseDocument, safeParse, safeParseDocument } from './facade/parse';
+export type { ErrorSink, ParseDefs, ParseOptions, SafeParseResult, SafeParseDocumentResult } from './facade/parse';
 export { default as parseDefinitions                } from './parser/parse-defs';
 export { default as parseDefs                       } from './parser/parse-defs';
 export { default as parseSchema                     } from './schema/parse-schema';
