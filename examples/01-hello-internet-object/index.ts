@@ -3,7 +3,7 @@
  *
  * Run me:  npx tsx examples/01-hello-internet-object/index.ts
  */
-import { parse, parseDocument } from '../../src/index';
+import io, { parse, parseDocument } from '../../src/index';
 
 // ── The same data, two ways ───────────────────────────────────────────────────
 
@@ -39,6 +39,15 @@ console.log('converted      :', doc.toObject());
 
 // Use toObject() when you want ordinary JS objects to hand to other code. Skip it
 // when you are just reading. Example 10 covers what you get by skipping it.
+
+// ── Writing it inline ─────────────────────────────────────────────────────────
+
+// Everything above passes text to a FUNCTION, because that is what you do with text
+// that arrives -- from a file, a response, an editor. When you are writing the IO
+// yourself, `io` is also a TAG, and it hands back the same plain JavaScript:
+console.log('\nfrom a tag     :', io`name: Alice, age: 30, active: T`);
+
+// Same parser, same result, no quotes to escape. Example 13 covers the tag family.
 
 // ── That is the whole idea ────────────────────────────────────────────────────
 

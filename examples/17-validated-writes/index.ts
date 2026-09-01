@@ -10,7 +10,7 @@
  *
  * Run me:  npx tsx examples/17-validated-writes/index.ts
  */
-import {
+import io, {
   parseDocument, parseDefinitions, stringifyDocument, IOObject, IOCollection,
 } from '../../src/index';
 
@@ -43,7 +43,7 @@ console.log('\n  the record is untouched by a refused write:', JSON.stringify(do
 // check, at a call site it never used to reach.
 h2('the same value, refused the same way, coming through text');
 try {
-  parseDocument('name: string, age: int\n---\nname: Alice, age: thirty-one');
+  io.doc`name: string, age: int\n---\nname: Alice, age: thirty-one`;
 } catch (e: any) {
   console.log('  parsing it   :', e.errorCode);
 }
@@ -83,7 +83,7 @@ console.log('  length unchanged :', doc.data.length === before);
 h1('3 · Attaching a schema to data you already have');
 // ═════════════════════════════════════════════════════════════════════════════
 
-const defs: any = parseDefinitions('~ $person: {name: string, age: int}');
+const defs: any = io.defs`~ $person: {name: string, age: int}`;
 const person = defs.getV('$person');
 const rowsOf = (items: any[]) => new IOCollection<any>(items.map((i) => new IOObject(i)));
 
@@ -110,7 +110,7 @@ h1('4 · No schema, no checking — vacuously');
 
 // This is not an exception to the rule. There is no shape to check against, so the
 // invariant is about schema-bearing documents and needs no caveat.
-const loose: any = parseDocument('name: Alice, age: 30');
+const loose: any = io.doc`name: Alice, age: 30`;
 show('anything goes', () => { loose.data.age = { deeply: ['odd'] }; return loose.data.age; });
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -120,7 +120,7 @@ h1('5 · And so a broken document cannot become a broken file');
 // Collecting errors instead of throwing is only safe because of this. A projection may
 // DESCRIBE errors; a file must not CONTAIN them.
 const bag: Error[] = [];
-const withError: any = parseDocument('age: int\n---\n~ 30\n~ abc\n~ 40', null, bag);
+const withError: any = io.doc.with(null, bag)`age: int\n---\n~ 30\n~ abc\n~ 40`;
 
 console.log('  collected        :', bag.map((e: any) => e.errorCode));
 console.log('  toObject() keeps them:', JSON.stringify(withError.toObject()).includes('__error'));

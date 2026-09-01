@@ -3,17 +3,17 @@
  *
  * Run me:  npx tsx examples/03-schemas-and-validation/index.ts
  */
-import { parse, parseDocument } from '../../src/index';
+import io, { parseDocument } from '../../src/index';
 
 // ── A schema is just the first line ───────────────────────────────────────────
 
 // You have already written schemas in the previous example without noticing.
 // `name: string, age: int` IS the schema. Naming the fields and typing them are
 // the same act.
-const good = parseDocument(`name: string, age: int
+const good = io.doc`name: string, age: int
 ---
 ~ Alice, 30
-~ Bob, 25`);
+~ Bob, 25`;
 console.log('Valid data:', good.toObject());
 
 // ── Wrong data is caught as it is read ────────────────────────────────────────
@@ -21,26 +21,27 @@ console.log('Valid data:', good.toObject());
 // No separate validation step to remember. Pass an array and errors collect into
 // it instead of throwing.
 const errors: Error[] = [];
-parseDocument(`name: string, age: int
+io.doc.with(null, errors)`name: string, age: int
 ---
 ~ Alice, thirty
-~ Bob, 25`, null, errors);
+~ Bob, 25`;
 
 for (const e of errors) console.log('\nCaught:', (e as any).errorCode, '—', e.message);
 
 // ── Saying more than the type ─────────────────────────────────────────────────
 
 // A member can carry rules. Wrap it in braces and add them by name.
-const rules = `
+const withRules = io`
   name:  {string, minLen: 2, maxLen: 40},
   age:   {int, min: 0, max: 130},
   email: email,
   role:  {string, choices: [admin, editor, viewer]}
 ---
 ~ Alice, 30, alice@example.com, admin`;
-console.log('\nWith rules:', parse(rules));
+console.log('\nWith rules:', withRules);
 
-// Each rule is checked for you:
+// Each rule is checked for you. This helper receives its text as an argument, so it uses
+// the FUNCTION form -- a tag can only be written inline, against a literal.
 const show = (label: string, src: string) => {
   const errs: Error[] = [];
   parseDocument(src, null, errs);
@@ -56,8 +57,8 @@ show('not an email', `email: email\n---\n~ not-an-email`);
 
 // `?` means the member may be absent. `*` means its value may be null.
 // They are different questions, so they are different marks.
-console.log('\nOptional absent :', parse('name: string, nickname?: string\n---\n~ Alice'));
-console.log('Nullable null   :', parse('name: string, manager*: string\n---\n~ Alice, N'));
+console.log('\nOptional absent :', io`name: string, nickname?: string\n---\n~ Alice`);
+console.log('Nullable null   :', io`name: string, manager*: string\n---\n~ Alice, N`);
 
 // A default fills an optional member that was not supplied.
-console.log('Default applied :', parse('name: string, active?: {bool, default: T}\n---\n~ Alice'));
+console.log('Default applied :', io`name: string, active?: {bool, default: T}\n---\n~ Alice`);

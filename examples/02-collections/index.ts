@@ -16,18 +16,18 @@ const json = `[
 
 // In Internet Object you name the fields once, on the first line, then list values.
 // `---` ends the header. Each `~` line is one record.
-const io = `id: int, name: string, email: email
+const ioText = `id: int, name: string, email: email
 ---
 ~ 1, Alice, alice@example.com
 ~ 2, Bob,   bob@example.com
 ~ 3, Carol, carol@example.com`;
 
 console.log('JSON gives you:', JSON.parse(json));
-console.log('IO gives you  :', parse(io));
+console.log('IO gives you  :', parse(ioText));
 
 // Identical data. Compare the sizes:
-const saving = Math.round((1 - io.length / json.length) * 100);
-console.log(`\nJSON ${json.length} bytes · IO ${io.length} bytes · ${saving}% smaller`);
+const saving = Math.round((1 - ioText.length / json.length) * 100);
+console.log(`\nJSON ${json.length} bytes · IO ${ioText.length} bytes · ${saving}% smaller`);
 
 // The saving grows with the row count, because JSON repeats the keys every time
 // and Internet Object never does.
@@ -48,5 +48,5 @@ console.log('Without ~ :', parse('name: string\n---\nAlice'));    // a single ob
 
 // ── Reading them ──────────────────────────────────────────────────────────────
 
-const people = parse(io) as Array<{ name: string; email: string }>;
+const people = parse(ioText) as Array<{ name: string; email: string }>;
 for (const p of people) console.log(`  ${p.name} <${p.email}>`);

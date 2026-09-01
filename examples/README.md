@@ -36,7 +36,7 @@ Take them in order the first time. Each one assumes only what came before it.
 | 10 | Core classes | `IOObject` and `IOCollection`: read by key, by position, or as plain JS. |
 | 11 | Precise numbers | `decimal` and `bigint` — money and large ids that survive the round trip. |
 | 12 | JSON interop | Move between the two formats in both directions, losing nothing. |
-| 13 | Template literals | Write Internet Object inline in your code, with editor support. |
+| 13 | Template literals | Write Internet Object inline with the `io` tags, instead of handing text to a function. |
 | 14 | Streaming | Read records as they arrive, without holding the whole document. |
 | 15 | **The kitchen sink** | Everything above in one file — including header edits and the projection rule. |
 | 16 | `parse` or `parseDocument`? | Two entry points, one parser. Which to take, and the reads that cannot be shadowed. |

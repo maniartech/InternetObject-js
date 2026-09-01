@@ -6,7 +6,7 @@
  *
  * Run me:  npx tsx examples/16-parse-or-document/index.ts
  */
-import { parse, parseDocument, section, sections, header, isError, node } from '../../src/index';
+import io, { parse, parseDocument, section, sections, header, isError, node } from '../../src/index';
 
 const h1 = (s: string) => console.log(`\n${'═'.repeat(74)}\n  ${s}\n${'═'.repeat(74)}`);
 const h2 = (s: string) => console.log(`\n── ${s} ${'─'.repeat(Math.max(0, 68 - s.length))}`);
@@ -146,6 +146,17 @@ h1('6 · One pipeline, two shapes');
 
 console.log('  parse(text) deep-equals parseDocument(text).toObject() :',
   JSON.stringify(parse(TEAM)) === JSON.stringify(parseDocument(TEAM).toObject()));
+
+// The same two entry points exist as TAGS, for text you write rather than receive.
+// `TEAM` above is a variable, which is exactly why this example uses the functions:
+// a tag can only be written against a literal.
+h2('the same pair, written inline');
+console.log('  io``     :', JSON.stringify(io`name: string, age: int
+---
+~ Alice, 30`));
+console.log('  io.doc`` :', io.doc`name: string, age: int
+---
+~ Alice, 30`.constructor.name);
 
 console.log(`
   Take parse when the data is going into your code, across a worker boundary, or

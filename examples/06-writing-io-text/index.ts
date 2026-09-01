@@ -3,11 +3,11 @@
  *
  * Run me:  npx tsx examples/06-writing-io-text/index.ts
  */
-import { parseDocument, load, parseDefinitions, stringify, stringifyDocument } from '../../src/index';
+import io, { parseDocument, load, parseDefinitions, stringify, stringifyDocument } from '../../src/index';
 
 // Parsing turns text into values. This is the other direction.
 
-const defs = parseDefinitions('~ $schema: {name: string, age: int, city?: string}');
+const defs = io.defs`~ $schema: {name: string, age: int, city?: string}`;
 const doc = load({ name: 'Alice', age: 30, city: 'NYC' }, defs);
 
 // ── The short version ─────────────────────────────────────────────────────────

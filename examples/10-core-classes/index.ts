@@ -3,13 +3,13 @@
  *
  * Run me:  npx tsx examples/10-core-classes/index.ts
  */
-import { parseDocument, loadObject, parseDefinitions } from '../../src/index';
+import io, { parseDocument, loadObject, parseDefinitions } from '../../src/index';
 
 // `toObject()` gives you plain JavaScript and is all most code needs. Underneath
 // are two small classes worth knowing, because they preserve something plain
 // objects cannot: ORDER, and access by position.
 
-const defs = parseDefinitions('~ $schema: {name: string, age: int, city?: string}');
+const defs = io.defs`~ $schema: {name: string, age: int, city?: string}`;
 const person = loadObject({ city: 'NYC', age: 30, name: 'Alice' }, defs);
 
 // ── Read by key, or by position ───────────────────────────────────────────────
@@ -34,7 +34,7 @@ console.log('actual order :', order.join(', '), ' <- the schema decides');
 
 // ── Collections ───────────────────────────────────────────────────────────────
 
-const people = parseDocument('name: string, age: int\n---\n~ Alice, 30\n~ Bob, 25\n~ Carol, 28');
+const people = io.doc`name: string, age: int\n---\n~ Alice, 30\n~ Bob, 25\n~ Carol, 28`;
 const rows: any = (people as any).sections.get(0).data;
 console.log('\nrecords     :', rows.length);
 console.log('first record:', rows.getAt(0).get('name'));
@@ -61,7 +61,7 @@ console.log('\nnever converted, still read it all:',
 
 // toObject() -> native values (Date, Decimal, byte arrays stay themselves)
 // toJSON()   -> JSON-safe values (dates become strings, bytes become base64)
-const typed = parseDocument('when: dt"2026-08-24T09:00:00.000Z", data: b"SGVsbG8="');
+const typed = io.doc`when: dt"2026-08-24T09:00:00.000Z", data: b"SGVsbG8="`;
 console.log('\ntoObject:', typed.toObject());
 console.log('toJSON  :', typed.toJSON());
 

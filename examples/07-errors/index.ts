@@ -3,13 +3,13 @@
  *
  * Run me:  npx tsx examples/07-errors/index.ts
  */
-import { parse, parseDocument, ErrorCodes } from '../../src/index';
+import io, { parse, ErrorCodes } from '../../src/index';
 
 // ── Two ways to receive an error ──────────────────────────────────────────────
 
 // 1. Throw — best when you only want to proceed with valid data.
 try {
-  parseDocument('name: string, age: int\n---\n~ Alice, notanumber');
+  io.doc`name: string, age: int\n---\n~ Alice, notanumber`;
 } catch (e) {
   const err = e as any;
   console.log('threw    :', err.errorCode);
@@ -17,12 +17,13 @@ try {
 }
 
 // 2. Collect — pass an array and parsing keeps going, reporting everything it can.
+// A sink goes in the same slot on a tag as on a function: `.with(defs, sink)`.
 const errors: Error[] = [];
-parseDocument(`name: string, age: int, email: email
+io.doc.with(null, errors)`name: string, age: int, email: email
 ---
 ~ Alice, notanumber, alice@example.com
 ~ Bob, 25, not-an-email
-~ Carol, 28, carol@example.com`, null, errors);
+~ Carol, 28, carol@example.com`;
 
 console.log(`\ncollected ${errors.length} problems, and still read the good rows:`);
 for (const e of errors) {
@@ -33,7 +34,7 @@ for (const e of errors) {
 // ── An error tells you three things ───────────────────────────────────────────
 
 const one: Error[] = [];
-parseDocument('age: int\n---\n~ nope', null, one);
+io.doc.with(null, one)`age: int\n---\n~ nope`;
 const e = one[0] as any;
 console.log('\ncode    ', e.errorCode, '  <- stable, safe to branch on');
 console.log('fact    ', e.fact, '  <- for a human');
@@ -51,6 +52,8 @@ if (e.errorCode === ErrorCodes.expectedInteger) console.log('\nMatched ErrorCode
 //   1. thrown          -- structural problems, when you did not pass a collector
 //   2. the collector   -- most validation failures
 //   3. on the VALUE    -- a bad literal replaces the record it appeared in
+// This helper receives its text as an argument, so it uses the FUNCTION form. A tag can only
+// be written inline, against a literal -- which is the whole difference between the two.
 const codeOf = (src: string): string => {
   const collected: Error[] = [];
   let value: any;

@@ -6,7 +6,7 @@
  *
  * Run me:  npx tsx examples/15-kitchen-sink/index.ts
  */
-import {
+import io, {
   parse, parseDocument,
   parseDefinitions,
   parseSchema,
@@ -46,7 +46,36 @@ console.log(multi.toObject());
 // to key against, so the projection unwraps — you never see `data` in the output.
 
 // ═════════════════════════════════════════════════════════════════════════════
-h1('2 · The type system');
+h1('2 · Writing it inline: the tag family');
+// ═════════════════════════════════════════════════════════════════════════════
+
+// Everything above hands TEXT to a function, which is what you do when the text
+// arrives — from a file, a response, an editor. When you write the IO yourself,
+// the same entry points exist as tags, and nothing else changes.
+
+h2('io`` is parse — plain JavaScript');
+console.log(io`name: string, age: int
+---
+~ Alice, 30
+~ Bob, 25`);
+
+h2('io.doc`` is parseDocument — the document');
+console.log(' ', io.doc`name: Alice, age: 30`.constructor.name);
+
+h2('and the other three');
+console.log('  io.object :', io.object`name: Alice, age: 30`.toObject());
+console.log('  io.schema :', io.schema`{name: string, age: int}`.names.join(', '));
+console.log('  io.defs   :', io.defs`~ $p: {name: string}` ? 'parsed' : 'none');
+
+h2('.with(defs, sink) on each, when the schema lives in your code');
+console.log('  ', io.with(io.schema`{name: string, age: int}`)`Alice, 30`);
+
+h2('an interpolated ${value} is written as a VALUE, never spliced in as source');
+const messy = 'Smith, John';
+console.log('  ', io`name: ${messy}`, '  ← one member, not two');
+
+// ═════════════════════════════════════════════════════════════════════════════
+h1('3 · The type system');
 // ═════════════════════════════════════════════════════════════════════════════
 
 // The types JSON never had. Each is a real value in JavaScript, not a string.
@@ -71,7 +100,7 @@ console.log('note*: set to N  →', parse('name: string, note*: string\n---\n~ A
 // `?` means "may be absent". `*` means "may be null". Ask for both with `?*`.
 
 // ═════════════════════════════════════════════════════════════════════════════
-h1('3 · Schemas validate as the document is read');
+h1('4 · Schemas validate as the document is read');
 // ═════════════════════════════════════════════════════════════════════════════
 
 // The first line IS the schema. Validation is not a second pass you remember to
@@ -90,7 +119,7 @@ try {
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
-h1('4 · Three places an error can reach you');
+h1('5 · Three places an error can reach you');
 // ═════════════════════════════════════════════════════════════════════════════
 
 // Which one you get is a choice, and it is worth knowing all three exist.
@@ -111,7 +140,7 @@ console.log('  records          :', rows0.length, '(the good ones survive)');
 console.log('  record 1 is an error node:', !!(rows0.getAt(1) as any)?.errorCode || 'see toObject');
 
 // ═════════════════════════════════════════════════════════════════════════════
-h1('5 · Definitions: schemas and variables');
+h1('6 · Definitions: schemas and variables');
 // ═════════════════════════════════════════════════════════════════════════════
 
 const doc = parseDocument(
@@ -130,7 +159,7 @@ console.log('  data            :', JSON.stringify(doc.toObject()));
 // document; they are not members of it. `doc.toObject()` above has no header key.
 
 // ═════════════════════════════════════════════════════════════════════════════
-h1('6 · Reading a document without converting it');
+h1('7 · Reading a document without converting it');
 // ═════════════════════════════════════════════════════════════════════════════
 
 // `toObject()` is a conversion, not a required step. A document is usable as it is,
@@ -151,7 +180,7 @@ for (const r of staff) { console.log('  for..of         :', r.get('name')); brea
 // surface: join, sort, slice, at, includes, concat, flatMap, toSorted, toReversed.
 
 // ═════════════════════════════════════════════════════════════════════════════
-h1('7 · Mutating the data, then writing it back out');
+h1('8 · Mutating the data, then writing it back out');
 // ═════════════════════════════════════════════════════════════════════════════
 
 const editable = parseDocument('name: string, age: int\n---\n~ Alice, 30\n~ Bob, 25');
@@ -192,7 +221,7 @@ console.log('  accepted   :', JSON.stringify(loose.toObject()));
 console.log('  round-trips:', JSON.stringify(stringifyDocument(loose)));
 
 // ═════════════════════════════════════════════════════════════════════════════
-h1('8 · Mutating the header');
+h1('9 · Mutating the header');
 // ═════════════════════════════════════════════════════════════════════════════
 
 // The header is data too. Add a variable, and it is there when you serialize.
@@ -208,7 +237,7 @@ console.log('  keys :', (hdoc as any).header.definitions.keys);
 console.log(stringifyDocument(hdoc));
 
 // ═════════════════════════════════════════════════════════════════════════════
-h1('9 · toObject() vs toJSON()');
+h1('10 · toObject() vs toJSON()');
 // ═════════════════════════════════════════════════════════════════════════════
 
 // Both are conversions for a boundary. They differ in what they do to values
@@ -225,7 +254,7 @@ console.log('  toObject :', kinds(vals.toObject()), '  ← exact, for your code'
 console.log('  toJSON   :', kinds(vals.toJSON()), '  ← strings, for the wire');
 
 // ═════════════════════════════════════════════════════════════════════════════
-h1('10 · Validating plain JavaScript you already have');
+h1('11 · Validating plain JavaScript you already have');
 // ═════════════════════════════════════════════════════════════════════════════
 
 // You do not need IO text to use IO schemas. Point one at ordinary objects.
@@ -241,7 +270,7 @@ h2('or a standalone schema, with no document at all');
 console.log('  valid   :', validate({ name: 'A', age: 1 }, parseSchema('{name: string, age: int}') as any).valid);
 
 // ═════════════════════════════════════════════════════════════════════════════
-h1('11 · Streaming: records as they arrive');
+h1('12 · Streaming: records as they arrive');
 // ═════════════════════════════════════════════════════════════════════════════
 
 async function main() {
@@ -264,7 +293,7 @@ async function main() {
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
-  h1('12 · The whole round trip');
+  h1('13 · The whole round trip');
   // ═══════════════════════════════════════════════════════════════════════════
 
   const original = '~ $p: {name: string, age: int}\n--- team: $p\n~ Alice, 30\n~ Bob, 25';
