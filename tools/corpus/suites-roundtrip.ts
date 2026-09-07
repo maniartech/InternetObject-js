@@ -172,6 +172,16 @@ const containers: RtCase[] = [
 // Quoting — where a writer must add quotes its reader would otherwise misread
 // ---------------------------------------------------------------------------------------------
 const quoting: RtCase[] = [
+  // A string carrying a C0 CONTROL. Only two such cases can be recorded here:
+  // the writer emits controls RAW, so a backspace comes back as a different
+  // value and a bell produces output that does not re-parse at all. ESC and
+  // NUL survive by luck rather than correctness. io-go finding #10 carries
+  // the two that are still refused, and this comment is here so nobody adds
+  // them back without fixing the writer first.
+  { group: 'control characters',
+    name: 'string_with_escape_char', input: '~ v: "a\\u001bb"' },
+  { name: 'string_with_null', input: '~ v: "a\\u0000b"' },
+
   { group: 'keys that need quoting', name: 'key_with_colon', input: '{"a:b": 1}' },
   { name: 'key_with_comma', input: '{"a,b": 1}' },
   { name: 'key_with_space', input: '{"has space": 1}' },
