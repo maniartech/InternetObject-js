@@ -919,28 +919,28 @@ class Decimal {
      */
     mul(other: Decimal): Decimal {
         if (!(other instanceof Decimal)) throw new DecimalError('Invalid operand');
-        // Multiply coefficients directly using BigInt arithmetic
+
+        // The product of two decimals is EXACT at the sum of their scales, and
+        // that is the scale used here. Rounding to max(s1, s2) instead — which
+        // this did until 2026-09-07 — can only ever destroy information, and
+        // when the product is smaller than the operands' own scale it destroys
+        // all of it: 0.01 * 0.01 became 0.00, and 0.001 * 0.002 became 0.000.
+        //
+        // Division is different and stays different: it has no exact answer to
+        // inherit a scale from, so some scale must be chosen. Multiplication
+        // always has one, so choosing anything else is a silent loss. A caller
+        // who wants the product at a particular scale says so with round().
+        //
+        // This is the rule Java's BigDecimal, Python's decimal and SQL all
+        // follow. Reported by io-go as finding #26.
         const resultCoeff = this.coefficient * other.coefficient;
-        const intermediateScale = this.scale + other.scale;
+        const resultScale = this.scale + other.scale;
 
-        // Tests expect result scale to be max(s1, s2)
-        const targetScale = Math.max(this.scale, other.scale);
+        const resultDigits = resultCoeff.toString().replace('-', '').length;
+        const finalPrecision = Math.max(this.precision, other.precision, resultDigits, resultScale);
 
-        // Adjust result to target scale
-        let adjustedCoeff = resultCoeff;
-        if (intermediateScale > targetScale) {
-            adjustedCoeff = roundHalfUp(resultCoeff, intermediateScale, targetScale);
-        } else if (intermediateScale < targetScale) {
-            adjustedCoeff = scaleUp(resultCoeff, targetScale - intermediateScale);
-        }
-
-        // Compute appropriate precision
-        const resultDigits = adjustedCoeff.toString().replace('-', '').length;
-        let finalPrecision = Math.max(this.precision, other.precision, resultDigits);
-        if (resultDigits > finalPrecision) finalPrecision = resultDigits;
-
-        const resultStr = formatBigIntAsDecimal(adjustedCoeff, targetScale);
-        return new Decimal(resultStr, finalPrecision, targetScale);
+        const resultStr = formatBigIntAsDecimal(resultCoeff, resultScale);
+        return new Decimal(resultStr, finalPrecision, resultScale);
     }
 
     /**

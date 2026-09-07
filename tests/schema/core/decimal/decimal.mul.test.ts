@@ -7,16 +7,16 @@ describe('Comprehensive Decimal.mul Regression Tests', () => {
       const a = new Decimal('2.5', 3, 1);
       const b = new Decimal('4.0', 3, 1);
       const result = a.mul(b);
-      expect(result.toString()).toBe('10.0');
-      expect(result.getScale()).toBe(1);
+      expect(result.toString()).toBe('10.00');
+      expect(result.getScale()).toBe(2);
     });
 
     it('should handle multiplication with different scales', () => {
       const a = new Decimal('1.23', 3, 2);  // Scale 2
       const b = new Decimal('4.565', 4, 3); // Scale 3
       const result = a.mul(b);
-      expect(result.toString()).toBe('5.615'); // Rounded from 5.61495 to scale 3 (max of 2,3)
-      expect(result.getScale()).toBe(3); // max(2, 3) = 3
+      expect(result.toString()).toBe('5.61495'); // Rounded from 5.61495 to scale 3 (max of 2,3)
+      expect(result.getScale()).toBe(5); // max(2, 3) = 3
     });
 
     it('should handle integer multiplication', () => {
@@ -33,24 +33,24 @@ describe('Comprehensive Decimal.mul Regression Tests', () => {
       const a = new Decimal('123.45', 5, 2);
       const b = new Decimal('0.00', 3, 2);
       const result = a.mul(b);
-      expect(result.toString()).toBe('0.00');
-      expect(result.getScale()).toBe(2);
+      expect(result.toString()).toBe('0.0000');
+      expect(result.getScale()).toBe(4);
     });
 
     it('should handle zero multiplied by zero', () => {
       const a = new Decimal('0.000', 4, 3);
       const b = new Decimal('0.00', 3, 2);
       const result = a.mul(b);
-      expect(result.toString()).toBe('0.000');
-      expect(result.getScale()).toBe(3);
+      expect(result.toString()).toBe('0.00000');
+      expect(result.getScale()).toBe(5);
     });
 
     it('should handle multiplication by one', () => {
       const a = new Decimal('123.45', 5, 2);
       const b = new Decimal('1.00', 3, 2);
       const result = a.mul(b);
-      expect(result.toString()).toBe('123.45');
-      expect(result.getScale()).toBe(2);
+      expect(result.toString()).toBe('123.4500');
+      expect(result.getScale()).toBe(4);
     });
   });
 
@@ -59,32 +59,32 @@ describe('Comprehensive Decimal.mul Regression Tests', () => {
       const a = new Decimal('2.5', 2, 1);
       const b = new Decimal('-3.2', 2, 1);
       const result = a.mul(b);
-      expect(result.toString()).toBe('-8.0');
-      expect(result.getScale()).toBe(1);
+      expect(result.toString()).toBe('-8.00');
+      expect(result.getScale()).toBe(2);
     });
 
     it('should handle negative * positive', () => {
       const a = new Decimal('-4.25', 3, 2);
       const b = new Decimal('2.0', 2, 1);
       const result = a.mul(b);
-      expect(result.toString()).toBe('-8.50');
-      expect(result.getScale()).toBe(2);
+      expect(result.toString()).toBe('-8.500');
+      expect(result.getScale()).toBe(3);
     });
 
     it('should handle negative * negative', () => {
       const a = new Decimal('-1.5', 2, 1);
       const b = new Decimal('-2.4', 2, 1);
       const result = a.mul(b);
-      expect(result.toString()).toBe('3.6');
-      expect(result.getScale()).toBe(1);
+      expect(result.toString()).toBe('3.60');
+      expect(result.getScale()).toBe(2);
     });
 
     it('should handle very small negative numbers', () => {
       const a = new Decimal('-0.001', 4, 3);
       const b = new Decimal('-0.002', 4, 3);
       const result = a.mul(b);
-      expect(result.toString()).toBe('0.000'); // Rounded from 0.000002
-      expect(result.getScale()).toBe(3);
+      expect(result.toString()).toBe('0.000002'); // Rounded from 0.000002
+      expect(result.getScale()).toBe(6);
     });
   });
 
@@ -93,8 +93,8 @@ describe('Comprehensive Decimal.mul Regression Tests', () => {
       const a = new Decimal('1.235', 4, 3);
       const b = new Decimal('2.0', 2, 1);
       const result = a.mul(b);
-      expect(result.toString()).toBe('2.470'); // 2.470 from 1.235 * 2.0
-      expect(result.getScale()).toBe(3);
+      expect(result.toString()).toBe('2.4700'); // 2.470 from 1.235 * 2.0
+      expect(result.getScale()).toBe(4);
     });
 
     it('should handle scale up when needed', () => {
@@ -109,8 +109,8 @@ describe('Comprehensive Decimal.mul Regression Tests', () => {
       const a = new Decimal('999.99', 5, 2);
       const b = new Decimal('999.99', 5, 2);
       const result = a.mul(b);
-      expect(result.toString()).toBe('999980.00');
-      expect(result.getScale()).toBe(2);
+      expect(result.toString()).toBe('999980.0001');
+      expect(result.getScale()).toBe(4);
       expect(result.getPrecision()).toBeGreaterThan(5); // Precision expanded
     });
 
@@ -118,8 +118,8 @@ describe('Comprehensive Decimal.mul Regression Tests', () => {
       const a = new Decimal('1.23456789', 9, 8);
       const b = new Decimal('2.0', 2, 1);
       const result = a.mul(b);
-      expect(result.toString()).toBe('2.46913578');
-      expect(result.getScale()).toBe(8); // max(8, 1) = 8
+      expect(result.toString()).toBe('2.469135780');
+      expect(result.getScale()).toBe(9); // max(8, 1) = 8
     });
   });
 
@@ -136,16 +136,16 @@ describe('Comprehensive Decimal.mul Regression Tests', () => {
       const a = new Decimal('123456789.123456789', 18, 9);
       const b = new Decimal('2.5', 2, 1);
       const result = a.mul(b);
-      expect(result.toString()).toBe('308641972.808641973');
-      expect(result.getScale()).toBe(9);
+      expect(result.toString()).toBe('308641972.8086419725');
+      expect(result.getScale()).toBe(10);
     });
 
     it('should handle very large coefficients', () => {
       const a = new Decimal('999999999999999999999999999999.99', 32, 2);
       const b = new Decimal('2.00', 3, 2);
       const result = a.mul(b);
-      expect(result.toString()).toBe('1999999999999999999999999999999.98');
-      expect(result.getScale()).toBe(2);
+      expect(result.toString()).toBe('1999999999999999999999999999999.9800');
+      expect(result.getScale()).toBe(4);
     });
   });
 
@@ -154,24 +154,24 @@ describe('Comprehensive Decimal.mul Regression Tests', () => {
       const a = new Decimal('0.000001', 7, 6);
       const b = new Decimal('0.000002', 7, 6);
       const result = a.mul(b);
-      expect(result.toString()).toBe('0.000000'); // Rounded to scale 6
-      expect(result.getScale()).toBe(6);
+      expect(result.toString()).toBe('0.000000000002'); // Rounded to scale 6
+      expect(result.getScale()).toBe(12);
     });
 
     it('should handle multiplication resulting in very small numbers', () => {
       const a = new Decimal('0.1', 2, 1);
       const b = new Decimal('0.01', 3, 2);
       const result = a.mul(b);
-      expect(result.toString()).toBe('0.00'); // 0.001 rounded to scale 2 (max of 1,2)
-      expect(result.getScale()).toBe(2); // max(1, 2) = 2
+      expect(result.toString()).toBe('0.001'); // 0.001 rounded to scale 2 (max of 1,2)
+      expect(result.getScale()).toBe(3); // max(1, 2) = 2
     });
 
     it('should handle tiny fractions', () => {
       const a = new Decimal('0.00000123', 9, 8);
       const b = new Decimal('0.00000456', 9, 8);
       const result = a.mul(b);
-      expect(result.toString()).toBe('0.00000000'); // Rounded from 0.0000000056088 to scale 8
-      expect(result.getScale()).toBe(8);
+      expect(result.toString()).toBe('0.0000000000056088'); // Rounded from 0.0000000056088 to scale 8
+      expect(result.getScale()).toBe(16);
     });
   });
 
@@ -180,24 +180,24 @@ describe('Comprehensive Decimal.mul Regression Tests', () => {
       const a = new Decimal('1.235', 4, 3);
       const b = new Decimal('1.0', 2, 1);
       const result = a.mul(b);
-      expect(result.toString()).toBe('1.235');
-      expect(result.getScale()).toBe(3);
+      expect(result.toString()).toBe('1.2350');
+      expect(result.getScale()).toBe(4);
     });
 
     it('should handle rounding with carry', () => {
       const a = new Decimal('9.99', 3, 2);
       const b = new Decimal('1.005', 4, 3);
       const result = a.mul(b);
-      expect(result.toString()).toBe('10.040'); // Rounded from 10.04995 to scale 3 (max of 2,3)
-      expect(result.getScale()).toBe(3); // max(2, 3) = 3
+      expect(result.toString()).toBe('10.03995'); // Rounded from 10.04995 to scale 3 (max of 2,3)
+      expect(result.getScale()).toBe(5); // max(2, 3) = 3
     });
 
     it('should handle complex rounding scenarios', () => {
       const a = new Decimal('123.456', 6, 3);
       const b = new Decimal('7.8901', 5, 4);
       const result = a.mul(b);
-      expect(result.toString()).toBe('974.0802'); // Correctly rounded to scale 4 (max of 3,4)
-      expect(result.getScale()).toBe(4); // max(3, 4) = 4
+      expect(result.toString()).toBe('974.0801856'); // Correctly rounded to scale 4 (max of 3,4)
+      expect(result.getScale()).toBe(7); // max(3, 4) = 4
     });
   });
 
@@ -206,16 +206,16 @@ describe('Comprehensive Decimal.mul Regression Tests', () => {
       const a = new Decimal('1.23', 50, 2);
       const b = new Decimal('4.56', 50, 2);
       const result = a.mul(b);
-      expect(result.toString()).toBe('5.61');
-      expect(result.getScale()).toBe(2);
+      expect(result.toString()).toBe('5.6088');
+      expect(result.getScale()).toBe(4);
     });
 
     it('should handle mixed precision and scale combinations', () => {
       const a = new Decimal('12.3', 10, 1);
       const b = new Decimal('45.67890', 20, 5);
       const result = a.mul(b);
-      expect(result.toString()).toBe('561.85047'); // Correctly rounded to scale 5 (max of 1,5)
-      expect(result.getScale()).toBe(5);
+      expect(result.toString()).toBe('561.850470'); // Correctly rounded to scale 5 (max of 1,5)
+      expect(result.getScale()).toBe(6);
     });
 
     it('should throw error for invalid operand', () => {
@@ -232,8 +232,8 @@ describe('Comprehensive Decimal.mul Regression Tests', () => {
       const b = new Decimal('2.0', 2, 1);
       const result = a.mul(b);
       // Intermediate: 2.4690 (scale 5), rounded to scale 4 (max of 4,1): 2.4690
-      expect(result.toString()).toBe('2.4690');
-      expect(result.getScale()).toBe(4); // max(4, 1) = 4
+      expect(result.toString()).toBe('2.46900');
+      expect(result.getScale()).toBe(5); // max(4, 1) = 4
     });
 
     it('should use scaleUp when intermediate scale is less than target', () => {
@@ -259,16 +259,20 @@ describe('Comprehensive Decimal.mul Regression Tests', () => {
       const a = new Decimal('1.23', 3, 2);
       const b = new Decimal('4.56', 3, 2);
       const result = a.mul(b);
-      expect(result.toString()).toBe('5.61');
-      expect(result.getScale()).toBe(2); // max(2, 2) = 2
+      expect(result.toString()).toBe('5.6088');
+      expect(result.getScale()).toBe(4); // max(2, 2) = 2
     });
 
-    it('should maintain result scale as max of operand scales', () => {
+    it('gives the result the SUM of the operand scales, which is exact', () => {
+      // A product is exact at scale1 + scale2 and nowhere shorter. This used to
+      // round to max(s1, s2), which silently destroyed the tail — and destroyed
+      // the whole value when the product was smaller than the operands' scale
+      // (0.01 * 0.01 became 0.00). io-go finding #26.
       const testCases = [
-        { a: '1.23', aP: 3, aS: 2, b: '4.565', bP: 4, bS: 3, expected: '5.615', expectedScale: 3 }, // max(2,3)=3
-        { a: '12.3', aP: 3, aS: 1, b: '4.56', bP: 3, bS: 2, expected: '56.09', expectedScale: 2 }, // max(1,2)=2
-        { a: '123', aP: 3, aS: 0, b: '4.56', bP: 3, bS: 2, expected: '560.88', expectedScale: 2 }, // max(0,2)=2
-        { a: '1.2345', aP: 5, aS: 4, b: '2.1', bP: 2, bS: 1, expected: '2.5925', expectedScale: 4 } // max(4,1)=4
+        { a: '1.23', aP: 3, aS: 2, b: '4.565', bP: 4, bS: 3, expected: '5.61495', expectedScale: 5 }, // 2+3
+        { a: '12.3', aP: 3, aS: 1, b: '4.56', bP: 3, bS: 2, expected: '56.088', expectedScale: 3 }, // 1+2
+        { a: '123', aP: 3, aS: 0, b: '4.56', bP: 3, bS: 2, expected: '560.88', expectedScale: 2 }, // 0+2
+        { a: '1.2345', aP: 5, aS: 4, b: '2.1', bP: 2, bS: 1, expected: '2.59245', expectedScale: 5 } // 4+1
       ];
 
       testCases.forEach(({ a, aP, aS, b, bP, bS, expected, expectedScale }) => {
@@ -287,8 +291,12 @@ describe('Comprehensive Decimal.mul Regression Tests', () => {
       for (let i = 0; i < 10; i++) {
         result = result.mul(new Decimal('1.1', 10, 1));
       }
-      expect(result.getScale()).toBe(1);
-      expect(parseFloat(result.toString())).toBeCloseTo(2.8, 1); // Correct accumulated result
+      // Exactness has a cost, and this is it: repeated multiplication grows the
+      // scale by the multiplier's each time, so 1.1^11 carries 11 digits. That
+      // is the correct answer, and a caller who wants it bounded rounds. The
+      // old rule kept the scale at 1 by throwing the digits away.
+      expect(result.getScale()).toBe(11);
+      expect(result.toString()).toBe('2.85311670611');
     });
 
     it('should handle multiplication chains', () => {
@@ -296,8 +304,8 @@ describe('Comprehensive Decimal.mul Regression Tests', () => {
       const b = new Decimal('3.0', 5, 1);
       const c = new Decimal('4.0', 5, 1);
       const result = a.mul(b).mul(c);
-      expect(result.toString()).toBe('24.0');
-      expect(result.getScale()).toBe(1);
+      expect(result.toString()).toBe('24.000');
+      expect(result.getScale()).toBe(3);
     });
   });
 
@@ -306,24 +314,26 @@ describe('Comprehensive Decimal.mul Regression Tests', () => {
       const a = new Decimal('1.200', 4, 3);
       const b = new Decimal('2.500', 4, 3);
       const result = a.mul(b);
-      expect(result.toString()).toBe('3.000');
-      expect(result.getScale()).toBe(3);
+      expect(result.toString()).toBe('3.000000');
+      expect(result.getScale()).toBe(6);
     });
 
     it('should handle multiplication with leading zeros in fractional part', () => {
       const a = new Decimal('0.001', 4, 3);
       const b = new Decimal('0.002', 4, 3);
       const result = a.mul(b);
-      expect(result.toString()).toBe('0.000'); // Rounded from 0.000002
-      expect(result.getScale()).toBe(3);
+      expect(result.toString()).toBe('0.000002'); // Rounded from 0.000002
+      expect(result.getScale()).toBe(6);
     });
 
     it('should handle scientific notation edge cases', () => {
       const a = new Decimal('1.23e2', 5, 2); // 123.00
       const b = new Decimal('4.56e-1', 5, 3); // 0.456
       const result = a.mul(b);
-      expect(result.toString()).toBe('56.088'); // Scale 3 (max of 2,3)
-      expect(result.getScale()).toBe(3); // max(2, 3) = 3
+      // 123.00 (scale 2) * 0.456 (scale 3) is exact at scale 5. The declared
+      // scale is what counts, not the literal's own spelling.
+      expect(result.toString()).toBe('56.08800');
+      expect(result.getScale()).toBe(5); // 2 + 3
     });
 
     it('should handle maximum coefficient values', () => {
@@ -331,16 +341,18 @@ describe('Comprehensive Decimal.mul Regression Tests', () => {
       const a = new Decimal(`${maxBigInt}.0`, 51, 1);
       const b = new Decimal('1.0', 2, 1);
       const result = a.mul(b);
-      expect(result.toString()).toBe(`${maxBigInt}.0`);
-      expect(result.getScale()).toBe(1);
+      // Multiplying by 1.0 is still a scale-1 * scale-1 product, so the exact
+      // result carries scale 2 — the value is unchanged, the scale is not.
+      expect(result.toString()).toBe(`${maxBigInt}.00`);
+      expect(result.getScale()).toBe(2); // 1 + 1
     });
 
     it('should handle precision boundary conditions', () => {
       const a = new Decimal('9.99', 3, 2);
       const b = new Decimal('1.01', 3, 2);
       const result = a.mul(b);
-      expect(result.toString()).toBe('10.09'); // Precision expanded
-      expect(result.getScale()).toBe(2);
+      expect(result.toString()).toBe('10.0899'); // Precision expanded
+      expect(result.getScale()).toBe(4);
       expect(result.getPrecision()).toBeGreaterThan(3);
     });
 
@@ -356,32 +368,32 @@ describe('Comprehensive Decimal.mul Regression Tests', () => {
       const a = new Decimal('2.5', 2, 1);
       const b = new Decimal('4.0', 2, 1);
       const result = a.mul(b);
-      expect(result.toString()).toBe('10.0');
-      expect(result.getScale()).toBe(1);
+      expect(result.toString()).toBe('10.00');
+      expect(result.getScale()).toBe(2);
     });
 
     it('should handle very high precision numbers', () => {
       const a = new Decimal('1.23456789012345678901234567890', 30, 29);
       const b = new Decimal('2.0', 2, 1);
       const result = a.mul(b);
-      expect(result.toString()).toBe('2.46913578024691357802469135780');
-      expect(result.getScale()).toBe(29);
+      expect(result.toString()).toBe('2.469135780246913578024691357800');
+      expect(result.getScale()).toBe(30);
     });
 
     it('should maintain coefficient integrity with complex operations', () => {
       const a = new Decimal('999.999', 6, 3);
       const b = new Decimal('0.001', 4, 3);
       const result = a.mul(b);
-      expect(result.toString()).toBe('1.000'); // Rounded from 0.999999
-      expect(result.getScale()).toBe(3);
+      expect(result.toString()).toBe('0.999999'); // Rounded from 0.999999
+      expect(result.getScale()).toBe(6);
     });
 
     it('should handle edge case rounding scenarios', () => {
       const a = new Decimal('1.9995', 5, 4);
       const b = new Decimal('1.0', 2, 1);
       const result = a.mul(b);
-      expect(result.toString()).toBe('1.9995');
-      expect(result.getScale()).toBe(4);
+      expect(result.toString()).toBe('1.99950');
+      expect(result.getScale()).toBe(5);
     });
   });
 
@@ -390,8 +402,8 @@ describe('Comprehensive Decimal.mul Regression Tests', () => {
       const a = new Decimal('1.23', 3, 2);
       const b = new Decimal('4.56', 3, 2);
       const result = a.mul(b);
-      expect(result.toString()).toBe('5.61');
-      expect(result.getScale()).toBe(2); // max(2, 2) = 2
+      expect(result.toString()).toBe('5.6088');
+      expect(result.getScale()).toBe(4); // max(2, 2) = 2
     });
   });
 });
