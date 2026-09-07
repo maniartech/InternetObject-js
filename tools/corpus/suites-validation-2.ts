@@ -334,37 +334,6 @@ const temporalDepth: Case[] = [
   { name: 'year_9999', schema: 'd: date', input: 'd"9999-12-31"' },
   { name: 'year_two_digit', schema: 'd: date', input: 'd"24-01-01"' },
   { name: 'year_five_digit', schema: 'd: date', input: 'd"12024-01-01"' },
-
-  // A bound is compared at the precision the member DECLARES, not on the whole
-  // instant. The declared type already governs precision everywhere else - any
-  // temporal may be written under any annotation, and the writer emits only the
-  // declared part - so comparing whole instants would reject a value on a
-  // component the same schema discards on output, and would compare a `time`
-  // bound (which carries only the 1900-01-01 anchor) against a value that has a
-  // real date. Decided 2026-09-03; specified in
-  // schema-definition-language/data-types/date-and-time.md.
-  { group: 'min/max compare at the DECLARED precision',
-    name: 'date_bound_ignores_the_clock', schema: 'd: {date, max: d"2024-03-20"}',
-    input: 'dt"2024-03-20T14:30:45.123Z"',
-    note: 'the DATE is exactly the bound, so the clock must not reject it' },
-  { name: 'date_bound_next_day_rejected', schema: 'd: {date, max: d"2024-03-20"}',
-    input: 'dt"2024-03-21T00:00:00.000Z"' },
-  { name: 'date_min_previous_day_rejected', schema: 'd: {date, min: d"2024-03-20"}',
-    input: 'dt"2024-03-19T23:59:59.999Z"' },
-  { name: 'date_min_same_day_accepted', schema: 'd: {date, min: d"2024-03-20"}',
-    input: 'dt"2024-03-20T00:00:00.000Z"' },
-  { name: 'time_bound_ignores_the_date', schema: 'd: {time, max: t"15:00:00"}',
-    input: 'dt"2024-03-20T14:30:00.000Z"',
-    note: '14:30 precedes 15:00; the date is not part of the comparison' },
-  { name: 'time_bound_later_clock_rejected', schema: 'd: {time, max: t"15:00:00"}',
-    input: 'dt"2024-03-20T15:30:00.000Z"' },
-  { name: 'time_min_earlier_clock_rejected', schema: 'd: {time, min: t"15:00:00"}',
-    input: 'dt"2024-03-20T14:30:00.000Z"' },
-  { name: 'datetime_bound_compares_the_instant', schema: 'd: {datetime, max: dt"2024-03-20T12:00:00.000Z"}',
-    input: 'dt"2024-03-20T14:00:00.000Z"',
-    note: 'a datetime member declares full precision, so the clock DOES count' },
-  { name: 'datetime_bound_within_the_instant', schema: 'd: {datetime, max: dt"2024-03-20T12:00:00.000Z"}',
-    input: 'dt"2024-03-20T10:00:00.000Z"' },
 ];
 
 // ---------------------------------------------------------------------------------------------

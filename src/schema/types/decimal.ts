@@ -37,40 +37,9 @@ class DecimalDef implements TypeDef {
   get type(): string { return this._type }
   get schema(): Schema { return decimalSchema }
 
-  /**
-   * How `choices` compares two decimals.
-   *
-   * Without one of these, common-type falls through to `val === choice` on two
-   * Decimal OBJECTS — identity — which is never true, so a decimal `choices`
-   * constraint rejected EVERY value, including the choices themselves.
-   * `datetime` has always passed a comparator here; `decimal` passed none.
-   * Reported by io-go as finding #24.
-   *
-   * The comparison is STRUCTURAL — same scale and same coefficient — because
-   * scale is part of a decimal's value everywhere else in this format: the
-   * writer preserves it and the corpus pins that. So `1.50m` is not a member of
-   * `[1.5m]`. Numeric equality is the other defensible reading and the format
-   * may yet choose it; what is not defensible is the previous answer, which was
-   * that nothing matches anything.
-   *
-   * `compareTo` is deliberately not used: it THROWS when precision or scale
-   * differ, and a choices check must answer, not raise.
-   */
-  #decimalEqualityComparator = (value: any, choice: any): boolean => {
-    if (!(value instanceof Decimal)) return false
-    let other: Decimal
-    try {
-      other = Decimal.ensureDecimal(choice)
-    } catch {
-      return false
-    }
-    return value.getScale() === other.getScale() &&
-           value.getCoefficient() === other.getCoefficient()
-  }
-
   parse(node: Node, memberDef: MemberDef, defs?: Definitions): Decimal {
     const valueNode = defs?.getV(node) || node
-    let { value, changed } = doCommonTypeCheck(memberDef, valueNode, node, defs, this.#decimalEqualityComparator)
+    let { value, changed } = doCommonTypeCheck(memberDef, valueNode, node, defs)
     if (changed) return value
 
     this.#requireDecimal(value, memberDef, node)
@@ -81,7 +50,7 @@ class DecimalDef implements TypeDef {
   }
 
   load(value: any, memberDef: MemberDef, defs?: Definitions): Decimal {
-    const { value: checkedValue, changed } = doCommonTypeCheck(memberDef, value, undefined, defs, this.#decimalEqualityComparator)
+    const { value: checkedValue, changed } = doCommonTypeCheck(memberDef, value)
     if (changed) return checkedValue
 
     // The SAME guard the text path applies. This site had none at all, so a plain JS `12.5` or the

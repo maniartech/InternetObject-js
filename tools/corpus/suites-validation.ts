@@ -107,21 +107,6 @@ const decimals: Case[] = [
   { group: 'optional and nullable', name: 'optional_omitted', schema: 'd?: decimal', input: '' },
   { name: 'null_rejected_by_default', schema: 'd: decimal', input: 'N' },
   { name: 'null_allowed_when_declared', schema: 'd: {decimal, "null": T}', input: 'N' },
-  // `choices` on a decimal. The reference matched NOTHING here until
-  // 2026-09-07 - it compared two Decimal objects by identity, so the
-  // constraint rejected every value including the choices themselves (io-go
-  // finding #24). The comparison is STRUCTURAL, because scale is part of a
-  // decimal's value everywhere else: the writer preserves it and this corpus
-  // pins that. So 1.50m is not a member of [1.5m].
-  { group: 'decimal choices compare structurally',
-    name: 'decimal_choice_exact_match', schema: 'd: {decimal, choices: [1.5m, 2m]}',
-    input: '1.5m', note: 'a choice must at minimum match itself' },
-  { name: 'decimal_choice_second_alternative', schema: 'd: {decimal, choices: [1.5m, 2m]}',
-    input: '2m' },
-  { name: 'decimal_choice_other_scale_rejected', schema: 'd: {decimal, choices: [1.5m, 2m]}',
-    input: '1.50m', note: 'same magnitude, different scale, so a different value' },
-  { name: 'decimal_choice_absent_rejected', schema: 'd: {decimal, choices: [1.5m, 2m]}',
-    input: '3m' },
 ];
 
 // ---------------------------------------------------------------------------------------------

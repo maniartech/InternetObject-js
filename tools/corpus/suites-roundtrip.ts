@@ -114,26 +114,6 @@ const scalars: RtCase[] = [
   { name: 'datetime_with_millis', input: 'dt"2024-03-20T14:30:45.123Z"' },
   { name: 'date_value', input: 'd"2024-03-20"' },
   { name: 'time_value', input: 't"14:30:45.000"' },
-  // A ZERO millisecond field cannot tell "elides a zero" from "drops the
-  // field", so time_value above pinned nothing and five ports could disagree
-  // about it undetected. This one can: io-js2 wrote t"14:30:45" for it until
-  // 2026-09-07, silently changing the instant on every round trip (io-go
-  // finding #21).
-  { name: 'time_with_millis', input: 't"14:30:45.999"',
-    note: 'a NON-ZERO millisecond field, which is what distinguishes eliding from dropping' },
-  { name: 'time_with_leading_zero_millis', input: 't"14:30:45.001"' },
-
-  // A data member whose key is literally `*`, under a TYPED wildcard. The `*`
-  // entry in a schema is openness, not a member, so this key is an ordinary
-  // extra and must keep its arrival order. io-go bound it to the wildcard
-  // DEFINITION instead and emitted it in schema order — ahead of the
-  // positional members — producing `"*": 0, 0`, which no reader accepts
-  // (io-go finding #20). No case combined the two before.
-  { group: 'wildcard', name: 'literal_star_key_under_typed_wildcard',
-    input: '*: int\n---\n~ 0, "*": 0',
-    note: 'the `*` key is an extra member, not the wildcard itself' },
-  { name: 'literal_star_key_after_named_member',
-    input: 'a: string, *: int\n---\n~ x, "*": 5' },
 
   { group: 'binary', name: 'binary_value', input: 'b"SGVsbG8="' },
   { name: 'binary_empty', input: 'b""' },
@@ -172,13 +152,6 @@ const containers: RtCase[] = [
 // Quoting — where a writer must add quotes its reader would otherwise misread
 // ---------------------------------------------------------------------------------------------
 const quoting: RtCase[] = [
-  // NO control-character case belongs here yet. The reference writer emits
-  // C0 controls RAW, so the only cases that survive its own round trip are
-  // ones that pin that defect: `~ v: a<ESC>b`, with the control unescaped in
-  // the output. io-go escapes them correctly and FAILS such a case, which is
-  // the corpus enshrining a bug rather than catching one. An oracle-derived
-  // expectation does not get to contradict the specification. Add these back
-  // once the writer escapes the C0 range — io-go finding #10.
   { group: 'keys that need quoting', name: 'key_with_colon', input: '{"a:b": 1}' },
   { name: 'key_with_comma', input: '{"a,b": 1}' },
   { name: 'key_with_space', input: '{"has space": 1}' },

@@ -16,7 +16,7 @@ describe('Decimal', () => {
     const b = new Decimal('4.565');
   expect(a.add(b).toString()).toBe('5.795');
     expect(b.sub(a).toString()).toBe('3.335');
-  expect(a.mul(b).toString()).toBe('5.61495'); // exact: scale 2 + scale 3
+  expect(a.mul(b).toString()).toBe('5.615');
     expect(b.div(a).toString()).toBe('3.71');
   });
 

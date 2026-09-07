@@ -128,41 +128,12 @@ class DateTimeDef implements TypeDef {
     return valDate.getTime() === choiceDate.getTime()
   }
 
-  /**
-   * Reduces a temporal to the part its DECLARED type carries, in UTC, as a
-   * number that can be ordered.
-   *
-   * The declared type governs precision everywhere else — any temporal may be
-   * written under any annotation, and the writer emits only the declared part
-   * (a `date` member writes `d"…"` and drops the clock). Comparison was the
-   * one place precision was not applied, so a value could be rejected on a
-   * component the same schema discards on output, and a `time` bound — which
-   * carries no date, only the 1900-01-01 anchor — was compared against values
-   * that have one.
-   *
-   * Decided by the format's owner 2026-09-03; specified in
-   * schema-definition-language/data-types/date-and-time.md and pinned by
-   * validation/temporal-depth.io.
-   */
-  #comparable = (d: Date, declared: string): number => {
-    switch (declared) {
-      case 'date':
-        return Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate())
-      case 'time':
-        return d.getUTCHours() * 3600000 + d.getUTCMinutes() * 60000 +
-               d.getUTCSeconds() * 1000 + d.getUTCMilliseconds()
-      default:
-        return d.getTime()
-    }
-  }
-
   #validate(value:Date, memberDef: MemberDef, node?: Node, defs?: Definitions) {
     const dateType:any = memberDef.type
-    const at = (d: Date) => this.#comparable(d, dateType)
 
     if (memberDef.min) {
       const min = this.#normalizeToDate(memberDef.min, defs)
-      if (min && at(value) < at(min)) {
+      if (min && value < min) {
         throw new ValidationError(
           ErrorCodes.mismatchedMin,
           `Expecting the value ${memberDef.path ? `for '${memberDef.path}'` : ''} to be greater than or equal to '${dt.dateToSmartString(min, dateType)}'`,
@@ -173,7 +144,7 @@ class DateTimeDef implements TypeDef {
 
     if (memberDef.max) {
       const max = this.#normalizeToDate(memberDef.max, defs)
-      if (max && at(value) > at(max)) {
+      if (max && value > max) {
         throw new ValidationError(
           ErrorCodes.mismatchedMax,
           `Expecting the value ${memberDef.path ? `for '${memberDef.path}'` : ''} to be less than or equal to '${dt.dateToSmartString(max, dateType)}'`,

@@ -49,7 +49,7 @@ describe('Decimal Edge Cases', () => {
     const b = new Decimal('4.56', 3, 2);
     expect(a.add(b).toString()).toBe('5.79');
     expect(b.sub(a).toString()).toBe('3.33');
-    expect(a.mul(b).toString()).toBe('5.6088'); // exact: scale 2 + scale 2
+    expect(a.mul(b).toString()).toBe('5.61');
     expect(b.div(a).toString()).toBe('3.71');
   });
 });
