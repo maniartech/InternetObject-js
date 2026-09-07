@@ -161,9 +161,20 @@ export const dateToDateString = (date: Date | null, noSep = false) => {
 export const dateToTimeString = (date: Date | null, noSep = false) => {
   if (date === null) return null
 
-  // Convert the date to iso string and return the time part
-  // without the timezone
-  return date.toISOString().split('T')[1].split('.')[0]
+  // The time part of the ISO string, without the zone.
+  //
+  // MILLISECONDS ARE KEPT. This used to end in `.split('.')[0]`, which dropped
+  // them outright, so t"14:30:45.999" serialized as t"14:30:45" and
+  // parse -> toString -> parse silently changed the instant. The specification
+  // (the-structure/values/date-and-time.md) gives the canonical Time form as
+  // HH:mm:ss.SSS, and `datetime` had always written them; only `time` lost
+  // them. Reported by io-go as finding #21.
+  //
+  // A zero millisecond field is still elided, so t"14:30:45.000" writes as
+  // t"14:30:45" — that is what the corpus pins, and eliding a zero loses
+  // nothing.
+  const time = date.toISOString().split('T')[1].replace(/Z$/, '')
+  return time.endsWith('.000') ? time.slice(0, -4) : time
 }
 
 const _ = (n: number, pad: number = 2) => {
